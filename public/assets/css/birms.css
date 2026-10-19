@@ -1,0 +1,85 @@
+/* BIRMS UI. Tokens sampled from the ff.pptx reference; confirm in docs/DESIGN.md. */
+:root {
+  --navy-1: #0c3366; --navy-2: #0d3b75; --primary: #1565c0; --primary-dark: #0f4f9a;
+  --ink: #0b2a55; --muted: #5b6b82; --page: #f6f8fb; --card: #ffffff; --line: #e3e8ef;
+  --pill-blue-bg: #e3f2fd; --pill-blue: #0b5cab; --pill-green-bg: #ecfdf3; --pill-green: #027a48;
+  --pill-amber-bg: #fff4e5; --pill-amber: #b45309; --pill-grey-bg: #eef1f5; --pill-grey: #475467;
+  --sidebar-w: 248px;
+}
+html, body { height: 100%; }
+body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; font-size: 14px; }
+.btn-reset { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+
+/* shell */
+.app-shell { display: flex; min-height: 100vh; }
+.sidebar { width: var(--sidebar-w); flex: 0 0 var(--sidebar-w); background: linear-gradient(180deg, var(--navy-1), var(--navy-2)); color: #dbe7f6; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; gap: .75rem; align-items: center; padding: 1.1rem 1rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+.brand-mark { width: 36px; height: 36px; border-radius: 9px; background: #fff; color: var(--navy-1); font-weight: 800; display: grid; place-items: center; flex: 0 0 36px; }
+.brand-text strong { display: block; color: #fff; font-size: 1.05rem; line-height: 1.1; }
+.brand-text span { display: block; font-size: .68rem; line-height: 1.25; opacity: .8; }
+.nav-scroll { flex: 1; overflow-y: auto; padding: .5rem .75rem; }
+.nav-group { font-size: .68rem; letter-spacing: .08em; opacity: .65; padding: 1rem .5rem .4rem; }
+.nav-link-item { display: flex; align-items: center; gap: .7rem; padding: .62rem .75rem; border-radius: 9px; color: #dbe7f6; text-decoration: none; font-weight: 500; margin-bottom: 2px; width: 100%; }
+.nav-link-item:hover { background: rgba(255,255,255,.1); color: #fff; }
+.nav-link-item.active { background: #fff; color: var(--navy-1); }
+.nav-link-item i { font-size: 1.05rem; }
+.sidebar-foot { padding: .75rem; border-top: 1px solid rgba(255,255,255,.12); }
+.app-shell.collapsed .sidebar { width: 68px; flex-basis: 68px; }
+.app-shell.collapsed .brand-text, .app-shell.collapsed .nav-link-item span, .app-shell.collapsed .nav-group { display: none; }
+.app-shell.collapsed .nav-link-item { justify-content: center; }
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar { background: #fff; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; padding: .7rem 1.5rem; min-height: 58px; }
+.crumbs { list-style: none; display: flex; gap: .5rem; margin: 0; padding: 0; color: var(--muted); }
+.crumbs li + li::before { content: "›"; margin-right: .5rem; color: #98a4b8; }
+.crumbs a { color: var(--muted); text-decoration: none; } .crumbs a:hover { color: var(--primary); }
+.crumbs [aria-current] { color: var(--ink); font-weight: 600; }
+.user-chip .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--pill-blue-bg); color: var(--primary); font-weight: 700; display: grid; place-items: center; }
+.user-chip .uname { display: block; font-weight: 600; line-height: 1.1; } .user-chip .urole { display: block; font-size: .72rem; color: var(--muted); }
+.content { padding: 1.75rem 2rem 2.5rem; flex: 1; max-width: 1280px; width: 100%; }
+.app-foot { padding: .9rem 2rem; color: var(--muted); font-size: .75rem; border-top: 1px solid var(--line); background: #fff; }
+
+/* page header and cards */
+.page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.page-head h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 .15rem; color: var(--ink); }
+.page-head p { margin: 0; color: var(--muted); }
+.card-b { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+.card-b .card-h { padding: 1.1rem 1.25rem .6rem; } .card-b .card-h h2 { font-size: 1.05rem; font-weight: 700; margin: 0; } .card-b .card-h p { margin: .15rem 0 0; color: var(--muted); font-size: .85rem; }
+.card-b .card-body-b { padding: .75rem 1.25rem 1.25rem; }
+.btn-primary { background: var(--primary); border-color: var(--primary); } .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+.form-label { font-weight: 600; font-size: .85rem; } .form-text { color: var(--muted); }
+.form-control, .form-select { border-color: #d0d7e2; } .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 .2rem rgba(21,101,192,.15); }
+.req::after { content: " *"; color: #c0392b; }
+
+/* tables and pills */
+.table-b { width: 100%; margin: 0; } .table-b thead th { background: #f7fafc; color: var(--muted); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid var(--line); padding: .8rem 1rem; }
+.table-b td { padding: .8rem 1rem; vertical-align: middle; border-color: var(--line); }
+.pill { display: inline-block; padding: .18rem .6rem; border-radius: 999px; font-size: .74rem; font-weight: 600; }
+.pill-blue { background: var(--pill-blue-bg); color: var(--pill-blue); } .pill-green { background: var(--pill-green-bg); color: var(--pill-green); }
+.pill-amber { background: var(--pill-amber-bg); color: var(--pill-amber); } .pill-grey { background: var(--pill-grey-bg); color: var(--pill-grey); }
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); } .empty-state i { font-size: 2rem; display: block; margin-bottom: .5rem; opacity: .6; }
+.filters { display: flex; gap: .6rem; flex-wrap: wrap; align-items: end; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+
+/* login and errors */
+.bare { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: linear-gradient(135deg, #e9f1fb, #cfe1f6); }
+.login-card { width: 100%; max-width: 400px; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(12,51,102,.18); overflow: hidden; }
+.login-head { background: linear-gradient(180deg, var(--navy-1), var(--navy-2)); color: #fff; text-align: center; padding: 1.5rem 1rem; }
+.login-head .brand-mark { margin: 0 auto .6rem; width: 46px; height: 46px; } .login-head h1 { font-size: 1.05rem; margin: 0; font-weight: 700; } .login-head p { margin: .2rem 0 0; font-size: .78rem; opacity: .85; }
+.login-body { padding: 1.5rem; }
+.error-card { max-width: 520px; margin: 3rem auto; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 2.5rem 1.5rem; }
+.error-code { font-size: 3rem; font-weight: 800; color: var(--primary); }
+.bare .error-card { margin: 0; }
+@media (max-width: 991px) { .sidebar { display: none; } .content { padding: 1.25rem 1rem; } }
+@media print { .sidebar, .topbar, .app-foot, .no-print { display: none !important; } .content { padding: 0; max-width: none; } }
+.pill-red { background: #fef3f2; color: #b42318; }
+
+/* printable certificate */
+.cert-wrap { background: #e9edf3; min-height: 100vh; padding: 1.5rem; }
+.cert-bar { max-width: 794px; margin: 0 auto 1rem; display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.cert-sheet { background: #fff; max-width: 794px; margin: 0 auto; padding: 56px 64px 48px; min-height: 1000px; box-shadow: 0 2px 12px rgba(0,0,0,.12); font-family: "Times New Roman", Times, serif; color: #000; position: relative; }
+.cert-head { text-align: center; line-height: 1.35; border-bottom: 2px solid #0c3366; padding-bottom: 14px; margin-bottom: 28px; }
+.cert-head .l1 { font-size: 13px; } .cert-head .l3 { font-size: 20px; font-weight: 700; letter-spacing: .02em; }
+.cert-title { text-align: center; font-size: 26px; font-weight: 700; margin: 6px 0 30px; letter-spacing: .03em; text-transform: uppercase; }
+.cert-body { font-size: 17px; line-height: 1.9; text-align: justify; white-space: pre-line; }
+.cert-sign { margin-top: 90px; text-align: right; } .cert-sign .name { display: inline-block; min-width: 260px; border-top: 1px solid #000; text-align: center; padding-top: 4px; font-weight: 700; text-transform: uppercase; } .cert-sign .role { display: block; text-align: center; font-size: 13px; }
+.cert-foot { position: absolute; left: 64px; right: 64px; bottom: 36px; font-size: 12px; display: flex; justify-content: space-between; border-top: 1px solid #999; padding-top: 6px; }
+@media print { .cert-wrap { background: #fff; padding: 0; } .cert-sheet { box-shadow: none; max-width: none; padding: 40px 56px; } .cert-bar { display: none !important; } @page { size: A4; margin: 12mm; } }

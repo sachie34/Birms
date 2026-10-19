@@ -1,0 +1,3 @@
+app/config.local.php
+storage/logs/*
+storage/backups/*

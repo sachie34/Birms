@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS residents;
+DROP TABLE IF EXISTS households;

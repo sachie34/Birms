@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS counters;
+DROP TABLE IF EXISTS document_types;
+DROP TABLE IF EXISTS lookups;
+DROP TABLE IF EXISTS settings;

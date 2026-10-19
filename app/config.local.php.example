@@ -1,0 +1,20 @@
+<?php
+/**
+ * Copy this file to  app/config.local.php  and edit it. config.local.php is private: never share it or upload it.
+ * Anything you leave out uses the safe default from app/core.php.
+ */
+return [
+    'env' => 'production',                 // 'development' shows PHP errors on screen (use only while fixing problems)
+    'db' => [
+        'host' => '127.0.0.1',
+        'port' => 3306,
+        'name' => 'barangay_db_work',      // WORKING COPY. Do not point this at your original database yet.
+        'user' => 'birms_app',             // create a limited MySQL user (see docs/README_XAMPP.md)
+        'pass' => 'CHANGE_ME',
+    ],
+    'session' => [
+        'idle_minutes' => 30,              // automatic sign-out after this many idle minutes
+        'secure'       => null,            // null = secure cookies only when the site uses HTTPS
+    ],
+    // 'base_url' => '/birms_work/public', // only if page links come out wrong
+];
