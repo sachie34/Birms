@@ -6,9 +6,9 @@ Scope: Verify and fix the existing B1–B6 BIRMS implementation for the October 
 
 ## Result
 
-No reproducible PHP, route, form, navigation, database-schema, authentication, authorization, or B1–B6 workflow defect was found in the isolated verification environment. No application code or database schema change was necessary.
+No reproducible PHP, route, form, navigation, database-schema, authentication, authorization, or B1–B6 workflow defect was found in the isolated verification environment. The safe, deterministic B7/B8 gaps were then implemented without changing the existing schema.
 
-The branch records verification evidence and the remaining environment-specific checks. The project remains a presentation-ready B1–B6 implementation, not a completed B7–B9 production release.
+The branch records verification evidence and the remaining environment-specific checks. The project now covers the deterministic B1–B8 presentation scope, but it is not a completed B9 production release.
 
 ## Verification performed
 
@@ -31,10 +31,19 @@ The branch records verification evidence and the remaining environment-specific 
 ### Automated results
 
 - `php tests/run_tests.php`: **36 PASS, 0 FAIL, 1 NOT TESTED**.
-- `php tests/run_modules.php`: **102 PASS, 0 FAIL, 0 NOT TESTED**.
-- Combined automated result: **138 PASS, 0 FAIL, 1 NOT TESTED**.
+- `php tests/run_modules.php`: **108 PASS, 0 FAIL, 0 NOT TESTED**.
+- Combined automated result after B7/B8: **144 PASS, 0 FAIL, 1 NOT TESTED**.
 
-The one not-tested item is E1, which requires Apache/XAMPP-style private-folder access rules. The application HTTP workflow tests, login/logout, CSRF checks, session behavior, permissions, sidebar link crawl, CRUD validation, search/filter behavior, status transitions, certificate issuance/printing logic, audit records, and blotter/hearing workflows passed in the local PHP server test run.
+The one not-tested item is E1, which requires Apache/XAMPP-style private-folder access rules. The application HTTP workflow tests, login/logout, CSRF checks, session behavior, permissions, sidebar link crawl, CRUD validation, search/filter behavior, status transitions, certificate issuance/printing logic, audit records, blotter/hearing workflows, reports, report export, and backup download passed in the local PHP server test run.
+
+## Implemented in this branch
+
+- Real dashboard figures for active residents, open requests, current-month issuances, and unresolved blotters.
+- Reports page using live data for demographic breakdown, issuance totals and fees, request statuses, blotter statuses, and blotter counts by Purok.
+- Monthly, quarterly, and annual report filters.
+- Permission-protected report CSV export with audit logging.
+- Administrator-only SQL schema/data backup download with CSRF protection and audit logging.
+- Regression coverage for the reports and backup routes in `tests/mod_b7.php`.
 
 ## Verified areas
 
@@ -55,15 +64,14 @@ The one not-tested item is E1, which requires Apache/XAMPP-style private-folder 
 
 These are scope or deployment limitations, not defects discovered during this pass:
 
-1. Reports and real dashboard analytics (B7) are not implemented.
-2. Backup management and restore UI (B8) are not implemented.
-3. Voter verification and final integration/delivery validation (B9) are not implemented.
-4. SMS is log-only; no external SMS gateway sends messages.
-5. Occupation/employment data is not present in the current resident schema.
-6. PNP/LGU referral tracking is not represented as a separate blotter workflow.
-7. The PDF uses `Approved`, `Ready for Pickup`, and `Issued`, while the code uses `Review`, `Ready`, and `Claimed`. The presentation should describe the actual code labels or update the documentation before the defense.
-8. Official Puroks, fees, certificate wording, signatories, summons wording, and role permissions still require barangay confirmation.
-9. Certificate and summons paper printing, Apache `.htaccess` protection, HTTPS, and the owner’s exact XAMPP versions still require local verification.
+1. Backup restore workflow is not implemented in the web UI; restoration should remain an administrator/operations procedure until a safe, approved workflow is defined.
+2. Voter verification and final integration/delivery validation (B9) are not implemented.
+3. SMS is log-only; no external SMS gateway sends messages.
+4. Occupation/employment data is not present in the current resident schema.
+5. PNP/LGU referral tracking is not represented as a separate blotter workflow.
+6. The PDF uses `Approved`, `Ready for Pickup`, and `Issued`, while the code uses `Review`, `Ready`, and `Claimed`. The presentation should describe the actual code labels or update the documentation before the defense.
+7. Official Puroks, fees, certificate wording, signatories, summons wording, and role permissions still require barangay confirmation.
+8. Certificate and summons paper printing, Apache `.htaccess` protection, HTTPS, and the owner’s exact XAMPP versions still require local verification.
 
 ## Presentation demo recommendation
 
@@ -79,7 +87,7 @@ Use synthetic records in `barangay_db_work`. Demonstrate:
 8. Open a blotter case, schedule a hearing, and show the summons workflow.
 9. Demonstrate a denied action with a role that lacks the permission.
 
-Do not claim that the current build sends SMS, generates the PDF-listed reports, provides a backup page, or has completed production/XAMPP validation.
+Do not claim that the current build sends SMS, stores occupation/employment, tracks PNP/LGU referrals, provides voter verification, or has completed production/XAMPP validation.
 
 ## Required XAMPP retest before presentation
 

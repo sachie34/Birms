@@ -11,11 +11,22 @@ $modules = array_values(array_filter($menu['Workspace'] ?? [], fn($i) => $i['key
 $admin = array_merge($menu['Administration'] ?? []);
 $recent = can('audit.view') ? db_all('SELECT occurred_at, username_snapshot, action, module, status, remarks FROM audit_log ORDER BY audit_id DESC LIMIT 8') : [];
 $userCounts = can('users.manage') ? db_one("SELECT SUM(status = 'active') AS active_n, SUM(status = 'inactive') AS inactive_n FROM users") : null;
+$activeResidents = (int) db_val("SELECT COUNT(*) FROM residents WHERE archived_at IS NULL AND residency_status = 'Active'");
+$openRequests = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE status IN ('Pending', 'Review', 'Ready')");
+$monthIssuances = (int) db_val("SELECT COUNT(*) FROM issuances WHERE issued_at >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') AND issued_at < DATE_FORMAT(CURRENT_DATE + INTERVAL 1 MONTH, '%Y-%m-01')");
+$openBlotters = (int) db_val("SELECT COUNT(*) FROM blotters WHERE archived_at IS NULL AND status <> 'Resolved'");
 
 render_header('Operations Overview', [['Operations Overview', null]], 'dashboard');
 ?>
 <div class="page-head">
   <div><h1>Operations Overview</h1><p>Welcome, <?= e((string) $user['full_name']) ?>. You are signed in as <?= e(role_label((string) $user['role'])) ?>.</p></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Active residents</h2></div><div class="card-body-b"><div class="fs-3 fw-bold text-primary"><?= $activeResidents ?></div><div class="text-muted small">Current resident records</div></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Open requests</h2></div><div class="card-body-b"><div class="fs-3 fw-bold text-primary"><?= $openRequests ?></div><div class="text-muted small">Pending, in review, or ready</div></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Issued this month</h2></div><div class="card-body-b"><div class="fs-3 fw-bold text-primary"><?= $monthIssuances ?></div><div class="text-muted small">Certificate issuances</div></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Open blotters</h2></div><div class="card-body-b"><div class="fs-3 fw-bold text-primary"><?= $openBlotters ?></div><div class="text-muted small">Unresolved case records</div></div></div></div>
 </div>
 
 <div class="row g-3">

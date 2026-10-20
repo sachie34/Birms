@@ -13,17 +13,17 @@ Barangay Wawa, Balagtas, Bulacan. Updated 17 Oct 2026. Working copy, batches B1 
 | B4 | Visitor log, document requests, request tracker, log-only SMS outbox | Built. Sandbox-verified. XAMPP retest pending |
 | B5 | Certificate issue, print, issuance history and export, unique O.R. numbers | Built. Sandbox-verified. XAMPP retest pending |
 | B6 | Blotter: cases, parties, status, hearings with printable summons, case look-up, clearance background check | Built. Sandbox-verified. XAMPP retest pending |
-| B7 | Reports (monthly, quarterly), real dashboard figures, incident counts by Purok, demographic breakdown | NOT STARTED |
-| B8 | Backup and export page | NOT STARTED |
+| B7 | Reports (monthly, quarterly), real dashboard figures, incident counts by Purok, demographic breakdown | Built. Sandbox-verified. XAMPP retest pending |
+| B8 | Backup and export page | Backup download built. Restore workflow and XAMPP retest pending |
 | B9 | Voter verification (method pending), integration and regression, final delivery | NOT STARTED |
 
 ## 2. The 21 documented items
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | Resident profile registration | Built (sandbox) | B3-4 to B3-9b |
-| 2 | Purok masterlist | Partial | Purok list and search by Purok (B2-6, B3-12). Grouped Purok report waits for B7 |
+| 2 | Purok masterlist | Partial | Purok list and search by Purok (B2-6, B3-12). Incident counts by Purok are available in Reports |
 | 3 | Voter and ID verification | Field only | `voter_status` column exists. The method is undecided |
-| 4 | Demographic breakdown | NOT STARTED | Age-bracket setting exists (B2-4). Report is B7 |
+| 4 | Demographic breakdown | Built (sandbox) | Reports page uses active residents, age brackets, sex, civil status, and voter-status field |
 | 5 | Address and status tracking | Built (sandbox) | Active / relocated with audit (B3-7, B3-9b) |
 | 6 | Visitors logbook | Built (sandbox) | B4-2, B4-3 |
 | 7 | Automated certificate generation | Built (sandbox) | B5-3 to B5-13. Refuses to issue until fee, wording, Captain and Purok are set |
@@ -34,12 +34,12 @@ Barangay Wawa, Balagtas, Bulacan. Updated 17 Oct 2026. Working copy, batches B1 
 | 12 | Case status tracker | Built (sandbox) | B6-5, B6-6, B6-10, B6-11 |
 | 13 | Complainant / respondent look-up | Built (sandbox) | B6-12, B6-13 (clearance background check) |
 | 14 | Hearing and summons scheduler | Built (sandbox) | B6-8, B6-9, B6-14, B6-15, B6-16. Summons wording is blank until the Secretary enters it |
-| 15 | Incident summary and safety metrics | NOT STARTED | Counts by Purok belong to B7 |
+| 15 | Incident summary and safety metrics | Built (sandbox) | Reports page summarizes blotters by status and Purok |
 | 16 | Authentication and RBAC | Built (sandbox), permissions PROVISIONAL | U1, U2, H8, role checks in every batch |
-| 17 | Periodic report generator | NOT STARTED | B7 |
+| 17 | Periodic report generator | Built (sandbox) | Monthly, quarterly, annual reports with CSV export |
 | 18 | Audit trail | Built (sandbox) | A1 to A6, B2-16, B3-18, B4-18, B5-8 |
-| 19 | Executive dashboard | Partial | Shell and recent activity only. Real figures in B7 |
-| 20 | Backup and export | NOT STARTED | CSV exports exist for audit, residents and history |
+| 19 | Executive dashboard | Built (sandbox) | Real active resident, open request, monthly issuance, and open blotter figures |
+| 20 | Backup and export | Partial | Admin-only SQL schema/data download; restore workflow remains outside the web UI |
 | 21 | SMS notifications | Log-only by decision | B4-9, B4-10: messages are recorded, never sent |
 
 ## 3. Test evidence (sandbox, 16 Oct 2026)

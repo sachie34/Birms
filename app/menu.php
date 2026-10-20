@@ -19,11 +19,11 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'blotters',  'label' => 'Blotter',              'icon' => 'bi-shield-exclamation', 'path' => 'blotters/index.php', 'perm' => 'blotters.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'hearings',  'label' => 'Hearings',             'icon' => 'bi-calendar-event', 'path' => 'blotters/hearings.php', 'perm' => 'hearings.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'lookup',    'label' => 'Case Look-up',         'icon' => 'bi-search',       'path' => 'blotters/lookup.php',   'perm' => 'blotters.view',  'built' => true],
-        ['group' => 'Workspace', 'key' => 'reports',   'label' => 'Reports',              'icon' => 'bi-bar-chart-line','path' => 'reports/index.php',  'perm' => 'reports.view',   'built' => false],
+        ['group' => 'Workspace', 'key' => 'reports',   'label' => 'Reports',              'icon' => 'bi-bar-chart-line','path' => 'reports/index.php',  'perm' => 'reports.view',   'built' => true],
         ['group' => 'Administration', 'key' => 'users',    'label' => 'User Accounts',    'icon' => 'bi-people',       'path' => 'admin/users.php',     'perm' => 'users.manage',   'built' => true],
         ['group' => 'Administration', 'key' => 'settings', 'label' => 'Fees and Puroks',  'icon' => 'bi-sliders',      'path' => 'admin/settings.php',  'perm' => 'settings.view',  'built' => true],
         ['group' => 'Administration', 'key' => 'audit',    'label' => 'Audit Trail',      'icon' => 'bi-journal-check','path' => 'admin/audit.php',     'perm' => 'audit.view',     'built' => true],
-        ['group' => 'Administration', 'key' => 'backup',   'label' => 'Backup',           'icon' => 'bi-download',     'path' => 'admin/backup.php',    'perm' => 'backup.run',     'built' => false],
+        ['group' => 'Administration', 'key' => 'backup',   'label' => 'Backup',           'icon' => 'bi-download',     'path' => 'admin/backup.php',    'perm' => 'backup.run',     'built' => true],
     ];
 }
 
