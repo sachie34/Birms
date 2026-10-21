@@ -5,7 +5,7 @@ require_once __DIR__ . '/../app/bootstrap.php';
 
 require_login();
 $q = trim(get_str('q'));
-$q = mb_substr_safe($q, 0, 80);
+$q = mb_substr_safe($q, 80);
 $results = ['residents' => [], 'requests' => [], 'issuances' => [], 'blotters' => []];
 $searched = str_len($q) >= 2;
 
