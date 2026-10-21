@@ -193,6 +193,21 @@ if ($resident === null) {
     echo '<form method="post" action="' . e($action) . '" class="needs-validation" novalidate autocomplete="off">' . csrf_field() . '<input type="hidden" name="resident_id" value="' . (int) $resident['resident_id'] . '">' . ($visit ? '<input type="hidden" name="visit_id" value="' . (int) $visit['visit_id'] . '">' : '') . '<div class="row">';
     if (!$types) { echo '<div class="col-12 alert alert-warning">No document types are available. Ask the Secretary to set them up in Settings.</div>'; }
     echo f_select('type_id', 'Document', $types, $v['type_id'], ['required' => true, 'blank' => 'Select a document']);
+    echo f_select('fee_rule_id', 'Approved fee category / tier', $feeRuleOptions, $v['fee_rule_id'], [
+        'blank' => 'Use per-document fee only when no active matrix rule applies',
+        'col' => 'col-12',
+        'help' => 'Each option names its document type, approved category/tier, rate per unit, and quantity range. The server checks that the selected rule matches the document. Add only rates formally approved by the barangay in Settings → Multi-tier fee matrix.',
+    ]);
+    echo f_text('fee_quantity', 'Quantity for selected fee tier', $v['fee_quantity'], [
+        'required' => true, 'type' => 'number', 'min' => 1, 'step' => 1,
+        'help' => 'If a fee matrix rule is selected, the amount is calculated as approved rate × quantity. Without a matrix rule, the legacy document fee is used and quantity remains 1.',
+    ]);
+    if ($ex !== null && $ex['quoted_fee_amount'] !== null) {
+        echo '<div class="col-12"><div class="alert alert-info">Saved fee quote: <strong>' . e(money($ex['quoted_fee_amount'])) . '</strong>'
+           . ' · ' . e((string) ($ex['fee_category_snapshot'] ?? '')) . ' / ' . e((string) ($ex['fee_tier_snapshot'] ?? ''))
+           . ' · ' . (int) ($ex['fee_quantity'] ?? 1) . ' × ' . e(money($ex['fee_unit_rate'] ?? null))
+           . '. The quote is saved with the request and does not record a payment.</div></div>';
+    }
     echo f_select('assigned_to', 'Assigned to', $staff, $v['assigned_to'], ['blank' => 'Nobody yet']);
     echo f_select('requirements_status', 'Requirements review', [
         'Not checked' => 'Not checked yet', 'Incomplete' => 'Incomplete — needs follow-up', 'Complete' => 'Complete',
