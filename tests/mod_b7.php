@@ -126,7 +126,7 @@ function run_b7(array $S, string $base): void
         && str_contains($issuancePage['body'], 'ZZ B7 report test') === false
         && $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary')
         && $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident')
-        && $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Periodic Administrative Report')
+        && $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Monthly / Quarterly Administrative Report')
         && str_contains($periodicPage['body'], 'Philippine National Police (PNP)')
         && str_contains($periodicPage['body'], 'Revenue collected')
         && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
@@ -272,7 +272,7 @@ function run_b7(array $S, string $base): void
         $cloudStatusVisible && $passwordNotExposed);
 
     $periodicCsv = $sec->get('/reports/index.php?type=periodic&period=quarter&year=' . date('Y') . '&quarter=4&recipient=mayor&format=csv');
-    $periodicCsvBody = (string) $periodicCsv['body'];
+    $periodicCsvBody = preg_replace('/^\\xEF\\xBB\\xBF/', '', (string) $periodicCsv['body']) ?? (string) $periodicCsv['body'];
     record('B7-16', 'Periodic quarterly report can be exported for a named recipient and distinguishes reconciled collections from issuance fee amounts',
         $periodicCsv['status'] === 200
         && str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
