@@ -125,7 +125,7 @@ function run_b3(array $S, string $base): void
         && $verifyRow['verification_method'] === 'barangay_voter_list' && $verifyRow['outcome'] === 'registered'
         && db_val('SELECT voter_status FROM residents WHERE resident_id = ?', [$rid]) === 'Registered'
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_verification_recorded' AND entity_id = ?", [$rid]) >= 2
-        && str_contains($verifyView['body'], 'Identity &amp; voter verification')
+        && str_contains($verifyView['body'], 'Identity & voter verification')
         && str_contains($verifyView['body'], 'Local barangay voter list checked')
         && !str_contains($captainView['body'], 'name="verification_subject"'));
 
