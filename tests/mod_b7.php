@@ -8,6 +8,10 @@ function run_b7(array $S, string $base): void
     $adm = $S['admin']; $cap = $S['captain']; $sec = $S['secretary']; $clk = $S['clerk'];
 
     // Clean interrupted B7 test rows only. These prefixes are reserved for this automated test.
+    db_exec("DELETE FROM issuances WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test')");
+    db_exec("DELETE FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'");
+    db_exec("DELETE FROM fee_matrix WHERE fee_category = 'ZZ B7 Fee Category' AND fee_tier = 'ZZ B7 Fee Tier'");
+    db_exec("DELETE FROM document_types WHERE name = 'ZZ B7 Matrix Certificate'");
     db_exec("DELETE FROM issuances WHERE reference_no LIKE 'ZB7I%'");
     db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZB7R%'");
     db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no LIKE 'ZB7C%')");
@@ -126,6 +130,68 @@ function run_b7(array $S, string $base): void
         && count(array_filter($afterMonthRequests['by_type'], fn($r) => $r['type_name'] === 'Barangay Clearance' && (int) $r['request_count'] >= 1)) >= 1
         && count(array_filter($afterMonthRequests['by_assignee'], fn($r) => $r['assigned_to'] === 'Unassigned' && (int) $r['request_count'] >= 1)) >= 1);
 
+    // End-to-end fee matrix flow: create an approved rule, quote a request, issue it, and report the saved category/tier.
+    db_exec("INSERT INTO document_types (name, fee_amount, template_body, is_active, sort_order)
+             VALUES ('ZZ B7 Matrix Certificate', NULL, 'Test certificate for {{full_name}}: {{purpose}}', 1, 9907)");
+    $matrixTypeId = (int) db()->lastInsertId();
+    $feeRuleResponse = post_as($sec, '/admin/settings.php', '/admin/settings.php', [
+        'do' => 'fee_rule_add', 'tab' => 'fee_matrix', 'type_id' => (string) $matrixTypeId,
+        'fee_category' => 'ZZ B7 Fee Category', 'fee_tier' => 'ZZ B7 Fee Tier',
+        'unit_rate' => '18.50', 'min_quantity' => '1', 'max_quantity' => '4',
+        'effective_from' => date('Y-m-d'), 'effective_to' => '',
+    ]);
+    $matrixRuleId = (int) db_val("SELECT fee_rule_id FROM fee_matrix WHERE type_id = ? AND fee_category = 'ZZ B7 Fee Category' AND fee_tier = 'ZZ B7 Fee Tier' AND is_active = 1", [$matrixTypeId]);
+    $quotePurpose = 'ZZ B7 Fee matrix quote test';
+    $quotePost = post_as($clk, '/requests/form.php?resident=' . $residentId, '/requests/form.php?resident=' . $residentId, [
+        'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
+        'purpose' => $quotePurpose, 'assigned_to' => '',
+        'requirements_status' => 'Not checked', 'requirements_note' => '',
+        'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
+    ]);
+    $quoteRequestId = (int) db_val('SELECT request_id FROM document_requests WHERE purpose = ?', [$quotePurpose]);
+    $quoteRow = $quoteRequestId > 0 ? db_one('SELECT fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, quoted_fee_amount FROM document_requests WHERE request_id = ?', [$quoteRequestId]) : null;
+    record('B7-11', 'A real request uses the approved fee rule and saves the category/tier snapshot and quantity-based quote',
+        $feeRuleResponse['status'] === 302 && $matrixRuleId > 0 && $quotePost['status'] === 302 && $quoteRow !== null
+        && (int) $quoteRow['fee_rule_id'] === $matrixRuleId
+        && $quoteRow['fee_category_snapshot'] === 'ZZ B7 Fee Category'
+        && $quoteRow['fee_tier_snapshot'] === 'ZZ B7 Fee Tier'
+        && (int) $quoteRow['fee_quantity'] === 3
+        && abs((float) $quoteRow['fee_unit_rate'] - 18.50) < 0.001
+        && abs((float) $quoteRow['quoted_fee_amount'] - 55.50) < 0.001);
+
+    $quoteComplete = post_as($clk, '/requests/form.php?id=' . $quoteRequestId, '/requests/form.php?id=' . $quoteRequestId, [
+        'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
+        'purpose' => $quotePurpose, 'assigned_to' => '',
+        'requirements_status' => 'Complete', 'requirements_note' => '',
+        'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
+    ]);
+    $quoteReview = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
+    $quoteReady = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
+    $quoteOr = 'ZB7OR' . $stamp;
+    $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
+        'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
+    ]);
+    $quoteIssuance = db_one('SELECT issuance_id, fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, body_text FROM issuances WHERE request_id = ?', [$quoteRequestId]);
+    $quoteFeeReport = report_issuances($month);
+    $quoteFeeReportRow = null;
+    foreach ($quoteFeeReport['by_fee_rule'] as $fr) {
+        if ($fr['fee_category'] === 'ZZ B7 Fee Category' && $fr['fee_tier'] === 'ZZ B7 Fee Tier') { $quoteFeeReportRow = $fr; break; }
+    }
+    $updatedIssuancePage = $sec->get('/reports/index.php?type=issuance&period=month&year=' . date('Y') . '&month=' . date('n'));
+    record('B7-12', 'The saved quote survives review and issuance and appears in the fee report with the same category/tier',
+        $quoteComplete['status'] === 302 && $quoteReview['status'] === 302 && $quoteReady['status'] === 302
+        && $quoteIssue['status'] === 302 && $quoteIssuance !== null
+        && abs((float) $quoteIssuance['fee_amount'] - 55.50) < 0.001
+        && (int) $quoteIssuance['fee_rule_id'] === $matrixRuleId
+        && $quoteIssuance['fee_category_snapshot'] === 'ZZ B7 Fee Category'
+        && $quoteIssuance['fee_tier_snapshot'] === 'ZZ B7 Fee Tier'
+        && (int) $quoteIssuance['fee_quantity'] === 3
+        && abs((float) $quoteIssuance['fee_unit_rate'] - 18.50) < 0.001
+        && str_contains((string) $quoteIssuance['body_text'], 'ZZ B7 Fee matrix quote test')
+        && $quoteFeeReportRow !== null && (int) $quoteFeeReportRow['issued_count'] === 1
+        && abs((float) $quoteFeeReportRow['recorded_fees'] - 55.50) < 0.001
+        && $updatedIssuancePage['status'] === 200 && str_contains($updatedIssuancePage['body'], 'ZZ B7 Fee Category'));
+
     $backupAdmin = $adm->get('/admin/backup.php');
     record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
     $backup = post_as($adm, '/admin/backup.php', '/admin/backup.php', ['do' => 'download']);
@@ -141,6 +207,9 @@ function run_b7(array $S, string $base): void
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'database_backup_exported'") >= 1);
 
     // Clean child records first to respect the schema's restrictive foreign keys.
+    if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
+    if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
+    if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
     db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
     db_exec('DELETE FROM document_requests WHERE request_id = ?', [$requestId]);
     db_exec('DELETE FROM blotters WHERE case_no = ?', [$caseNo]);
