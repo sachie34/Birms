@@ -31,6 +31,9 @@ function config(?string $path = null, mixed $default = null): mixed
             'backup' => [
                 'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
             ],
+            'backup' => [
+                'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
+            ],
         ];
         $local = __DIR__ . '/config.local.php';
         if (is_file($local)) {
@@ -41,6 +44,9 @@ function config(?string $path = null, mixed $default = null): mixed
             'BIRMS_DB_HOST' => ['db', 'host'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
             'BIRMS_DB_USER' => ['db', 'user'], 'BIRMS_DB_PASS' => ['db', 'pass'], 'BIRMS_ENV' => ['env', null],
             'BIRMS_IDLE_MINUTES' => ['session', 'idle_minutes'],
+            'BIRMS_BACKUP_WEBDAV_URL' => ['backup', 'webdav_url'],
+            'BIRMS_BACKUP_WEBDAV_USERNAME' => ['backup', 'webdav_username'],
+            'BIRMS_BACKUP_WEBDAV_PASSWORD' => ['backup', 'webdav_password'],
             'BIRMS_BACKUP_WEBDAV_URL' => ['backup', 'webdav_url'],
             'BIRMS_BACKUP_WEBDAV_USERNAME' => ['backup', 'webdav_username'],
             'BIRMS_BACKUP_WEBDAV_PASSWORD' => ['backup', 'webdav_password'],
