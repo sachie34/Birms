@@ -24,6 +24,8 @@ const LOOKUP_LISTS = [
     'resident_category' => 'Resident categories',
     'visit_class'       => 'Visit classifications',
     'id_type'           => 'Government ID types',
+    'employment_status' => 'Employment statuses',
+    'incident_type'     => 'Incident types',
 ];
 
 /** @return array<int,string> id => label */
