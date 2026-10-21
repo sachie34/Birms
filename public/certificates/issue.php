@@ -1,5 +1,5 @@
 <?php
-/** Issue a certificate for a request that is Ready. Fee and wording come from Settings; nothing is guessed. */
+/** Issue a certificate for a Ready request using approved template/fee settings and its saved fee quote. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
@@ -52,9 +52,15 @@ if (is_post()) {
                 $x['reference_no'] = $ref; $v = certificate_vars($x);
                 $body = render_template((string) $x['template_body'], $v);
                 $actor = audit_actor();
-                db_exec('INSERT INTO issuances (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number, body_text, captain_name, issued_by, issued_by_name, issued_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-                    [$ref, $rid, $x['resident_id'], $x['type_id'], resident_name_natural($x), $x['type_name'], $x['purpose'], $x['fee_amount'], $or !== '' ? $or : null, $body, $v['captain_name'] !== '' ? $v['captain_name'] : null, $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
+                db_exec('INSERT INTO issuances
+                         (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount,
+                          fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate,
+                          or_number, body_text, captain_name, issued_by, issued_by_name, issued_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+                    [$ref, $rid, $x['resident_id'], $x['type_id'], resident_name_natural($x), $x['type_name'], $x['purpose'], $x['fee_amount'],
+                     $x['fee_rule_id'] ?? null, $x['fee_category_snapshot'] ?? null, $x['fee_tier_snapshot'] ?? null,
+                     $x['fee_quantity'] ?? 1, $x['fee_unit_rate'] ?? null,
+                     $or !== '' ? $or : null, $body, $v['captain_name'] !== '' ? $v['captain_name'] : null, $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
                 $iid = (int) db()->lastInsertId();
                 audit('certificate_issued', 'Certificates', 'Success', $ref . ' (' . $x['type_name'] . ') for ' . $x['last_name'] . ', ' . $x['first_name'] . '; fee ' . $x['fee_amount'] . ($or !== '' ? '; O.R. ' . $or : ''), 'issuance', $iid);
                 audit('request_status_changed', 'Requests', 'Success', $x['reference_no'] . ' -> Claimed via ' . $ref, 'request', $rid);
