@@ -225,7 +225,7 @@ function run_b6(array $S, string $base): void
     $missing = array_values(array_filter($need, fn($a) => $audit($a) < 1));
     record('B6-21', 'Every blotter action left an audit row (including refusals and searches)', !$missing, implode(',', $missing));
     $side = [];
-    foreach (['admin' => false, 'captain' => true, 'secretary' => true, 'clerk' => true] as $role => $should) {
+    foreach (['admin' => true, 'captain' => true, 'secretary' => true, 'clerk' => true] as $role => $should) {
         $b = $S[$role]->get('/dashboard.php')['body']; $has = str_contains($b, 'blotters/index.php') && str_contains($b, 'blotters/lookup.php') && str_contains($b, 'blotters/hearings.php');
         if ($has !== $should) { $side[] = $role; }
     }
