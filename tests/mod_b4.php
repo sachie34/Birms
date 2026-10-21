@@ -102,7 +102,7 @@ function run_b4(array $S, string $base): void
 
     $t = $sec->get('/requests/index.php?tab=Ready'); $tc = $sec->get('/requests/index.php?tab=closed'); $ts = $sec->get('/requests/index.php?q=' . urlencode((string) $row['reference_no']));
     $nReady = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE status = 'Ready'");
-    record('B4-13', 'Tracker tabs, counts and search match the data', str_contains($t['body'], 'REQ-') && str_contains($t['body'], 'Ready <span class="badge text-bg-light">' . $nReady . '</span>') && str_contains($tc['body'], 'ZZTest4, Rita') && str_contains($ts['body'], (string) $row['reference_no']) && !str_contains($t['body'], 'ZZ Test purpose cancel'));
+    record('B4-13', 'Tracker tabs, counts and search match the data', str_contains($t['body'], 'REQ-') && str_contains($t['body'], 'Ready for Pickup <span class="badge text-bg-light">' . $nReady . '</span>') && str_contains($tc['body'], 'ZZTest4, Rita') && str_contains($ts['body'], (string) $row['reference_no']) && !str_contains($t['body'], 'ZZ Test purpose cancel'));
 
     $refs = []; for ($i = 0; $i < 12; $i++) { $filed('ZZ Test purpose bulk ' . $i); $refs[] = (string) db_val('SELECT reference_no FROM document_requests WHERE purpose = ?', ['ZZ Test purpose bulk ' . $i]); }
     record('B4-14', '12 requests in a row all get different reference numbers', count(array_unique($refs)) === 12 && !in_array('', $refs, true));
