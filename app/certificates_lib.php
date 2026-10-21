@@ -81,9 +81,9 @@ function certificate_pdf_bytes(array $issuance): string
         . ' | O.R.: ' . $esc((string) ($issuance['or_number'] ?? '—')) . '</div></body></html>';
 
     if (class_exists('Dompdf\\Dompdf')) {
-        $options = class_exists('Dompdf\\Options') ? new \\Dompdf\\Options() : null;
+        $options = class_exists('Dompdf\\Options') ? new \Dompdf\Options() : null;
         if ($options !== null) { $options->set('isRemoteEnabled', false); $options->set('defaultFont', 'DejaVu Sans'); }
-        $pdf = $options !== null ? new \\Dompdf\\Dompdf($options) : new \\Dompdf\\Dompdf();
+        $pdf = $options !== null ? new \Dompdf\Dompdf($options) : new \Dompdf\Dompdf();
         $pdf->loadHtml($html, 'UTF-8');
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
