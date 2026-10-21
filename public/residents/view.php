@@ -6,8 +6,8 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('residents.view');
 $id = get_int('id');
-$r = $id === null ? null : db_one('SELECT r.*, h.household_code, h.street_address, pk.label AS purok, cat.label AS category, emp.label AS employment_status
-    FROM residents r LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id LEFT JOIN lookups cat ON cat.lookup_id = r.category_id LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status' WHERE r.resident_id = ?', [$id]);
+$r = $id === null ? null : db_one("SELECT r.*, h.household_code, h.street_address, pk.label AS purok, cat.label AS category, emp.label AS employment_status
+    FROM residents r LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id LEFT JOIN lookups cat ON cat.lookup_id = r.category_id LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status' WHERE r.resident_id = ?", [$id]);
 if ($r === null || ($r['archived_at'] !== null && !can('residents.archive'))) { abort(404, 'That resident was not found.'); }
 $members = $r['household_id'] ? db_all('SELECT resident_id, last_name, first_name, middle_name, suffix, is_household_head, residency_status FROM residents WHERE household_id = ? AND archived_at IS NULL AND resident_id <> ? ORDER BY last_name, first_name', [$r['household_id'], $id]) : [];
 $history = can('audit.view') ? db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'resident' AND entity_id = ? ORDER BY audit_id DESC LIMIT 15", [$id]) : [];
