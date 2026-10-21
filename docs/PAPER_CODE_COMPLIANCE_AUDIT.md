@@ -4,7 +4,7 @@
 **Repository:** `sachie34/Birms`  
 **Audit branch:** `john/paper-code-compliance`  
 **Audit date:** 2026-10-21  
-**Status:** Current review branch passes automated PHP syntax checks, migrations 001–010 on disposable MariaDB, 37 authentication/security/audit tests, and 118 module integration tests. Target-XAMPP browser testing and UAT are still required before claiming full compliance.
+**Status:** Current review branch passes automated PHP syntax checks, migrations 001–010 on disposable MariaDB, 37 authentication/security/audit tests, and 119 module integration tests. Target-XAMPP browser testing and UAT are still required before claiming full compliance.
 
 ## Source-of-truth order
 
@@ -87,7 +87,7 @@ The following table tracks the additional 20 assigned functions in `BIRMS_Projec
 
 ## Current audit conclusion
 
-The review branch includes the core resident, certificate, blotter, authentication and report workflows plus data-driven request/issuance/blotter reports and dashboard indicators. Added changes include migration 008 (request requirements review and an approval/issuance gate), migration 009 (effective-dated configurable fee matrix and request/issuance snapshots), migration 010 (manual identity/voter verification history), report CSV/print views, and an Administrator-only local SQL export. A read-only retrieval/report benchmark tool and a UAT/performance worksheet were also added. Latest verified GitHub Actions results on the manual-verification branch passed PHP syntax validation, migrations 001–010 on disposable MariaDB, **37 authentication/security/audit tests**, and **118 module integration tests**, including fee quote through certificate issuance and verification-history checks.
+The review branch includes the core resident, certificate, blotter, authentication and report workflows plus data-driven request/issuance/blotter reports and dashboard indicators. Added changes include migration 008 (request requirements review and an approval/issuance gate), migration 009 (effective-dated configurable fee matrix and request/issuance snapshots), migration 010 (manual identity/voter verification history), report CSV/print views, and an Administrator-only local SQL export. A read-only retrieval/report benchmark tool and a UAT/performance worksheet were also added. Latest verified GitHub Actions results on the manual-verification branch passed PHP syntax validation, migrations 001–010 on disposable MariaDB, **37 authentication/security/audit tests**, and **119 module integration tests**, including fee quote through certificate issuance and verification-history checks.
 
 **Still not verified / deliberately not claimed:** target-XAMPP/browser UAT; official role-matrix approval; official certificate/summons wording and fee rates; manual-vs-digital retrieval timings; office-data reconciliation; a successful backup restoration; cloud/scheduled backup; actual SMS delivery; and external COMELEC lookup. The verification log records a staff check and does not contact COMELEC. The fee matrix quotes an approved rate but does not prove cash was received. SMS remains log-only.
 
