@@ -96,7 +96,15 @@ function report_issuances(array $range): array
          FROM issuances WHERE issued_at >= ? AND issued_at < ?
          GROUP BY type_name ORDER BY type_name', $params
     );
-    return ['summary' => $summary, 'by_type' => $byType];
+    $byFeeRule = db_all(
+        "SELECT COALESCE(fee_category_snapshot, 'Per-document rate') AS fee_category,
+                COALESCE(fee_tier_snapshot, 'Legacy fee') AS fee_tier,
+                COUNT(*) AS issued_count, COALESCE(SUM(fee_amount), 0) AS recorded_fees
+         FROM issuances WHERE issued_at >= ? AND issued_at < ?
+         GROUP BY COALESCE(fee_category_snapshot, 'Per-document rate'), COALESCE(fee_tier_snapshot, 'Legacy fee')
+         ORDER BY fee_category, fee_tier", $params
+    );
+    return ['summary' => $summary, 'by_type' => $byType, 'by_fee_rule' => $byFeeRule];
 }
 
 
