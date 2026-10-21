@@ -83,6 +83,20 @@ function report_demographics(): array
     return $data;
 }
 
+/** Cash-collection ledger totals for a reporting window. Only reconciled entries count as collected revenue. */
+function report_cash_collections(array $range): array
+{
+    return db_one(
+        "SELECT
+            COALESCE(SUM(CASE WHEN reconciliation_status = 'reconciled' THEN fee_amount ELSE 0 END), 0) AS collected_amount,
+            COALESCE(SUM(CASE WHEN reconciliation_status = 'pending' THEN fee_amount ELSE 0 END), 0) AS pending_amount,
+            COUNT(*) AS ledger_entry_count
+         FROM cash_collection_ledger
+         WHERE transaction_date >= ? AND transaction_date < ?",
+        [$range['start'], $range['end']]
+    ) ?? ['collected_amount' => 0, 'pending_amount' => 0, 'ledger_entry_count' => 0];
+}
+
 /** Issued documents within [start, end); fee amounts are the amounts saved on issuance records, not a payment gateway total. */
 function report_issuances(array $range): array
 {
