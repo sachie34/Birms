@@ -30,7 +30,7 @@ $asset = fn(string $p): string => e(base_url('assets/' . $p));
     <div class="cert-title"><?= e((string) $c['type_name']) ?></div>
     <div class="cert-body"><?= e((string) $c['body_text']) ?></div>
     <div class="cert-sign"><span class="name"><?= e((string) ($c['captain_name'] ?? '')) ?>&nbsp;</span><span class="role"><?= $c['captain_name'] !== null ? 'Barangay Captain' : 'Authorized signatory' ?></span></div>
-    <div class="cert-foot"><span>Ref. <?= e((string) $c['reference_no']) ?> · Issued <?= e(date('j F Y', strtotime((string) $c['issued_at']))) ?> by <?= e((string) $c['issued_by_name']) ?></span><span><?= ((float) $c['fee_amount'] > 0 || $c['or_number'] !== null) ? 'Amount paid: ' . e(money($c['fee_amount'])) . ($c['or_number'] !== null ? ' · O.R. No. ' . e((string) $c['or_number']) : '') : 'No fee' ?></span></div>
+    <div class="cert-foot"><span>Ref. <?= e((string) $c['reference_no']) ?> · Issued <?= e(date('j F Y', strtotime((string) $c['issued_at']))) ?> by <?= e((string) $c['issued_by_name']) ?></span><span><?= ((float) $c['fee_amount'] > 0 || $c['or_number'] !== null) ? 'Recorded fee: ' . e(money($c['fee_amount'])) . ($c['or_number'] !== null ? ' · O.R. No. ' . e((string) $c['or_number']) : '') : 'No fee' ?></span></div>
   </div>
 </div>
 <script src="<?= $asset('vendor/bootstrap/js/bootstrap.bundle.min.js') ?>"></script><script src="<?= $asset('js/app.js') ?>"></script>
