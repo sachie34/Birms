@@ -28,7 +28,7 @@ It never touches your original `barangay_db`.
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   This applies migrations 001 to 006 to the new, empty `barangay_db_work` database.
+   This applies migrations 001 to 007 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and structured incident type fields used by reports.
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -75,7 +75,7 @@ cd C:\xampp\htdocs\birms_work
 C:\xampp\php\php.exe tests\run_tests.php http://localhost/birms_work/public --root=http://localhost/birms_work
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/birms_work/public
 ```
-- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, requests, certificates, blotter (B2-B6).
+- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, requests, certificates, blotter, reports, and backup-access checks (B2-B7).
 - If a run is interrupted it can leave test rows behind (names starting `ZZ`). Rebuild the **test** database
   (drop `barangay_db_work`, run `migrate.php up` again) before re-running.
 - Refuses to run unless the database name ends in `_work` or `_test`. Creates and deletes `zz_test_*` users.
@@ -91,12 +91,14 @@ mysqldump -u root -p --routines --triggers --events --single-transaction baranga
 Do not add `--databases`. Test the restore into a scratch database. Copy the project folder too.
 
 ## 8. Known limitations
-- **Not built yet:** Reports and the dashboard figures (including incident counts by Purok), Backup page, voter verification, demographic breakdown.
-  SMS is **log-only** by decision (nothing is ever sent).
-- Blotter look-up shows each matching person's age and address to every role that can view blotters (Clerk, Captain, Secretary). That follows the provisional matrix; tell me if it should be narrower.
+- **Available in the paper-compliance branch, pending XAMPP verification:** demographic/age/employment/voter/Purok reports; monthly, quarterly, and annual issuance and blotter summaries; CSV export; current dashboard indicators; and an Administrator-only local SQL backup download.
+- Migration 007 is required before opening the new reports, resident form, or blotter form because it adds nullable reporting fields. Enter the barangay-approved employment-status and incident-type categories under Settings → Other lists. No categories are guessed.
+- Voter registration status can be recorded by authorized staff, but the system does not verify it against COMELEC. Fees shown in reports are saved issuance fee amounts, not live payments or a payment-gateway total.
+- The backup page downloads a local SQL file only. Cloud storage, scheduled backups, automatic restore verification, and a completed restoration test are not included.
+- SMS is **log-only** by decision (nothing is ever sent).
+- Blotter look-up shows matching parties' information to roles with blotter lookup access. The role matrix is still provisional and needs approval by the Barangay Secretary / system owner.
 - Official facts are blank by design (see step 9). Certificate letterhead and layout are a **provisional default** until the Barangay Secretary approves them.
-- No browser test was possible in my sandbox (the Playwright browser download is blocked). Layout, colors and the
-  strict Content-Security-Policy are **NOT VERIFIED in a browser**. Please open every page and report anything odd.
+- The new reports and backup screens have not yet been verified in a real XAMPP/browser session. Layout, colors, print output, download integrity and the strict Content-Security-Policy must be checked on the target office PC.
 - Compatibility with your exact XAMPP versions is unverified.
 
 ## 9. Troubleshooting
