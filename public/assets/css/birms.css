@@ -33,6 +33,13 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 .crumbs li + li::before { content: "›"; margin-right: .5rem; color: #98a4b8; }
 .crumbs a { color: var(--muted); text-decoration: none; } .crumbs a:hover { color: var(--primary); }
 .crumbs [aria-current] { color: var(--ink); font-weight: 600; }
+.topbar-search { display: flex; align-items: center; gap: .55rem; width: min(330px, 32vw); margin: 0 1.25rem 0 auto; padding: .4rem .65rem; background: #f8fafc; border: 1px solid var(--line); border-radius: 9px; color: #75839a; }
+.topbar-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 .18rem rgba(21,101,192,.12); background: #fff; }
+.topbar-search > i { flex: 0 0 auto; }
+.topbar-search input { min-width: 0; width: 100%; border: 0; outline: 0; box-shadow: none; background: transparent; color: var(--ink); font: inherit; font-size: .82rem; }
+.topbar-search input::placeholder { color: #8290a5; }
+.topbar-search-submit { color: #8290a5; padding: .1rem; }
+.topbar-search-submit:hover { color: var(--primary); }
 .user-chip .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--pill-blue-bg); color: var(--primary); font-weight: 700; display: grid; place-items: center; }
 .user-chip .uname { display: block; font-weight: 600; line-height: 1.1; } .user-chip .urole { display: block; font-size: .72rem; color: var(--muted); }
 .content { padding: 1.75rem 2rem 2.5rem; flex: 1; max-width: 1280px; width: 100%; }
@@ -68,7 +75,17 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 .error-card { max-width: 520px; margin: 3rem auto; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 2.5rem 1.5rem; }
 .error-code { font-size: 3rem; font-weight: 800; color: var(--primary); }
 .bare .error-card { margin: 0; }
-@media (max-width: 991px) { .sidebar { display: none; } .content { padding: 1.25rem 1rem; } }
+@media (max-width: 991px) {
+  .sidebar { display: none; }
+  .content { padding: 1.25rem 1rem; }
+  .topbar { gap: .7rem; padding: .65rem 1rem; }
+  .topbar-search { width: min(300px, 36vw); margin: 0 auto 0 .5rem; }
+}
+@media (max-width: 575px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar nav[aria-label="breadcrumb"] { flex: 1 1 auto; min-width: 0; }
+  .topbar-search { order: 3; flex: 1 1 100%; width: 100%; margin: .1rem 0 0; }
+}
 @media print { .sidebar, .topbar, .app-foot, .no-print { display: none !important; } .content { padding: 0; max-width: none; } }
 .pill-red { background: #fef3f2; color: #b42318; }
 
