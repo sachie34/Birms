@@ -453,6 +453,18 @@
                 "nullable": false,
                 "default": "current_timestamp",
                 "extra": "on update current_timestamp"
+            },
+            "requirements_status": {
+                "type": "enum('not checked','incomplete','complete')",
+                "nullable": false,
+                "default": "not checked",
+                "extra": ""
+            },
+            "requirements_note": {
+                "type": "varchar(1000)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
             }
         },
         "indexes": {
