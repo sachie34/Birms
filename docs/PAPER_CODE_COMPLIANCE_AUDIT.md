@@ -2,9 +2,9 @@
 
 **Auditor:** John — BIRMS Paper-to-Code Compliance & Functionality Auditor  
 **Repository:** `sachie34/Birms`  
-**Audit branch:** `john/paper-code-compliance`  
+**Merged into:** `main` via pull request #2  
 **Audit date:** 2026-10-22
-**Verification status (2026-10-22):** The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39651736557) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **142/142 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
+**Verification status (2026-10-22):** The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **146/146 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
 
 ## Source-of-truth order
 
@@ -17,7 +17,7 @@
 
 The ten detailed modules supplied by Ron and Kurt are not all described as core scope in Chapters 1–3. Chapter 2, Table 2.2, marks Visitor Logbook/Form Filing, Multi-Tier Fee Matrix & Billing, Document Request Queue Tracker, Document Issuance History, Executive Overview Dashboard, and Cloud Backup/Data Export as **Confirm** or outside the Chapter 1 core areas. Authentication/RBAC, action logging, and periodic report generation are supported by the core paper requirements.
 
-The current review branch implements several supplementary functions. To avoid a paper-system mismatch at defense, either revise Chapters 1–3 to include the approved supplementary features or identify them as optional/out-of-core functions in the final system description. The module documentation’s roles (Admin, Captain, Secretary, Clerk) differ from the paper’s Admin/Staff description; the code’s permissions are explicitly provisional pending confirmation. The fee matrix supports configured rates, but approved standard/business fee tiers must be entered before the application can calculate those services; rates are not invented by code.
+The merged main branch implements several supplementary functions. To avoid a paper-system mismatch at defense, either revise Chapters 1–3 to include the approved supplementary features or identify them as optional/out-of-core functions in the final system description. The module documentation’s roles (Admin, Captain, Secretary, Clerk) differ from the paper’s Admin/Staff description; the code’s permissions are explicitly provisional pending confirmation. The fee matrix supports configured rates, but approved standard/business fee tiers must be entered before the application can calculate those services; rates are not invented by code.
 
 
 ## Core paper requirements
@@ -95,7 +95,7 @@ Server-generated PDFs are available, but output remains marked draft pending off
 
 ## Current audit conclusion
 
-The branch implements authentication/RBAC, resident management, certificate request/issuance, blotter/hearing management, data-backed reports, plus supplementary visitor intake, fee matrix/cash ledger, request queue, history, audit viewer, executive dashboard and backup/export. The latest verified application-code run is [available here](https://github.com/sachie34/Birms/actions/runs/39651736557) and passed PHP syntax, migrations 001–011 on disposable MariaDB, **37 authentication/security/audit checks** and **142 module integration checks**, with zero failures or untested checks.
+The merged main branch implements authentication/RBAC, resident management, certificate request/issuance, blotter/hearing management, data-backed reports, plus supplementary visitor intake, fee matrix/cash ledger, request queue, history, audit viewer, executive dashboard and backup/export. The latest verified application-code run is [available here](https://github.com/sachie34/Birms/actions/runs/39651736557) and passed PHP syntax, migrations 001–011 on disposable MariaDB, **37 authentication/security/audit checks** and **146 module integration checks**, with zero failures or untested checks.
 
 Recent supplementary changes include private visitor/request attachments; server-generated draft PDF certificates; fee-matrix quotations and a separate cash-collection ledger; ledger-aware issuance history with transaction date and reconciliation filter; combined monthly/quarterly administrative reporting; dashboard collection figures sourced from reconciled ledger entries; and optional HTTPS WebDAV backup upload. Optional cloud upload is implemented but cannot be considered deployed or verified until an approved cloud destination and private credentials are supplied.
 
