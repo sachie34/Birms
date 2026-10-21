@@ -195,14 +195,18 @@ function run_b8(array $S, string $base): void
                 && db_one('SELECT ledger_id FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]) === null
                 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'cash_ledger_deleted' AND entity_id = ?", [$ledgerId]) > 0);
 
+            $legacyDate = date('Y-m-d\\TH:i');
             $restore = $adm->post('/admin/ledger.php', [
                 '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'create',
                 'issuance_id' => (string) $paidIssuanceId, 'payment_method' => 'cash',
+                'transaction_date' => $legacyDate, 'collector_name' => 'ZZ B8 Historical Collector',
             ]);
             $restored = db_one('SELECT * FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]);
-            record('B8-13', 'Administrator can record a missing legacy ledger entry for an issued certificate with O.R.',
+            record('B8-13', 'Administrator backfill stores the actual legacy transaction date and collector name',
                 $restore['status'] === 302 && $restored !== null
-                && $restored['reconciliation_status'] === 'pending' && $restored['payment_method'] === 'cash');
+                && $restored['reconciliation_status'] === 'pending' && $restored['payment_method'] === 'cash'
+                && ($restored['collector_name'] ?? '') === 'ZZ B8 Historical Collector'
+                && str_starts_with((string) $restored['transaction_date'], str_replace('T', ' ', $legacyDate)));
         } else {
             for ($n = 8; $n <= 13; $n++) { record('B8-' . $n, 'Cash ledger lifecycle prerequisite', null, 'Paid issuance/ledger setup failed'); }
         }
