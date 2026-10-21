@@ -3,7 +3,8 @@
  * app/permissions.php
  * Role-permission map. STATUS: PROVISIONAL, pending validation by the Barangay Secretary.
  * Deny by default: a permission not listed for a role is refused. Enforced on the SERVER in every page/handler.
- * Mirrors the "Role Matrix (Provisional)" sheet (Admin 7, Captain 14, Secretary 23, Clerk 12 permissions).
+ * The compliance branch grants the Administrator all currently defined permissions (27); Captain 14, Secretary 23, Clerk 12.
+ * The other roles retain the current provisional matrix until the barangay validates it.
  */
 declare(strict_types=1);
 
