@@ -272,7 +272,8 @@ function run_b7(array $S, string $base): void
         $cloudStatusVisible && $passwordNotExposed);
 
     $periodicCsv = $sec->get('/reports/index.php?type=periodic&period=quarter&year=' . date('Y') . '&quarter=4&recipient=mayor&format=csv');
-    $periodicCsvBody = preg_replace('/^\\xEF\\xBB\\xBF/', '', (string) $periodicCsv['body']) ?? (string) $periodicCsv['body'];
+    $periodicCsvRaw = (string) $periodicCsv['body'];
+    $periodicCsvBody = str_starts_with($periodicCsvRaw, "\\xEF\\xBB\\xBF") ? substr($periodicCsvRaw, 3) : $periodicCsvRaw;
     record('B7-16', 'Periodic quarterly report can be exported for a named recipient and distinguishes reconciled collections from issuance fee amounts',
         $periodicCsv['status'] === 200
         && str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
