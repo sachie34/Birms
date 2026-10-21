@@ -5,7 +5,7 @@
 **Branch:** `john/paper-code-compliance`  
 **Environment requested:** Target office PC, Windows, XAMPP/Apache/PHP, MySQL or MariaDB  
 **Office-PC test status:** **NOT RUN — the target computer and its browser session were not available in this work session.**  
-**Latest automated CI:** **PASSED** — [GitHub Actions run #232](https://github.com/sachie34/Birms/actions/runs/39626220199): PHP syntax passed; migrations 001–011 applied to disposable MariaDB; 37/37 authentication/security/audit checks and 133/133 module integration checks passed, with zero failures and zero untested checks. Office-PC/browser UAT is separate and remains NOT RUN.  
+**Latest automated CI:** **PASSED** — [GitHub Actions run #244](https://github.com/sachie34/Birms/actions/runs/39627101927): PHP syntax passed; migrations 001–011 applied to disposable MariaDB; 37/37 authentication/security/audit checks and 133/133 module integration checks passed, with zero failures and zero untested checks. Office-PC/browser UAT is separate and remains NOT RUN.  
 **Test data:** Use fictitious records on an isolated `barangay_db_work` or `barangay_db_test` database only. Never use the original `barangay_db` for test writes.
 
 ## 1. Current module status
@@ -38,7 +38,7 @@ These are issues actually exposed by the automated CI runs during remediation. T
 | CI-05 | New B8 upload integration test | The initial fixture cleanup removed the temporary PDF before upload tests started. | Kept the fixture until the final cleanup block. | B8-1 to B8-14 passed. |
 | CI-06 | New B8 reconciliation-filter assertion | The test searched for a reference anywhere in the response, which also included the still-populated search input when no row matched. | Changed the assertion to verify the expected empty-results state for the unreconciled filter. | B8-9 passed; the final module suite reported 133 PASS, 0 FAIL, 0 NOT TESTED. |
 
-The verified full-suite run is [GitHub Actions run #232](https://github.com/sachie34/Birms/actions/runs/39626220199). No office-PC/browser behavior is inferred from these CI results.
+The verified full-suite run is [GitHub Actions run #244](https://github.com/sachie34/Birms/actions/runs/39627101927). No office-PC/browser behavior is inferred from these CI results.
 
 ## 2. Office-PC setup record — fill during the actual test
 
