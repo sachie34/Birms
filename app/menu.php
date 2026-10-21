@@ -9,7 +9,7 @@ function menu_definition(): array
 {
     return [
         ['group' => 'Workspace', 'key' => 'dashboard', 'label' => 'Operations Overview', 'icon' => 'bi-grid-1x2',     'path' => 'dashboard.php',     'perm' => 'dashboard.view', 'built' => true],
-        // Later batches switch these on:
+        // Each link is shown only when the route is implemented and the user's role has its permission.
         ['group' => 'Workspace', 'key' => 'residents', 'label' => 'Residents',            'icon' => 'bi-person-vcard', 'path' => 'residents/index.php', 'perm' => 'residents.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'households', 'label' => 'Households',          'icon' => 'bi-house',        'path' => 'residents/households.php', 'perm' => 'residents.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'visitors',  'label' => 'Visitor Logbook',      'icon' => 'bi-journal-text', 'path' => 'visitors/index.php',  'perm' => 'requests.view',  'built' => true],
