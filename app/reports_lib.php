@@ -167,6 +167,18 @@ function report_requests(array $range): array
     return ['summary' => $summary, 'by_type' => $byType, 'by_assignee' => $byAssignee, 'by_status' => $byStatus];
 }
 
+/** Compile the data-backed sections used by the monthly/quarterly administrative summary. */
+function report_periodic_administrative(array $range): array
+{
+    return [
+        'population' => report_demographics(),
+        'issuance' => report_issuances($range),
+        'collections' => report_cash_collections($range),
+        'requests' => report_requests($range),
+        'blotter' => report_blotters($range),
+    ];
+}
+
 /** Non-archived incidents filtered by incident date; current case statuses and type/Purok counts are all database-derived. */
 function report_blotters(array $range): array
 {
