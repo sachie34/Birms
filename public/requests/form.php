@@ -13,6 +13,24 @@ if ($id !== null) {
 } else { require_permission('requests.add'); require_permission('residents.view'); }
 
 $types = []; foreach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $t) { $types[(int) $t['type_id']] = (string) $t['name']; }
+$feeRules = db_all("SELECT fm.fee_rule_id, fm.type_id, fm.fee_category, fm.fee_tier, fm.unit_rate, fm.min_quantity, fm.max_quantity, fm.effective_from, fm.effective_to, fm.is_active, dt.name AS type_name
+                    FROM fee_matrix fm JOIN document_types dt ON dt.type_id = fm.type_id
+                    WHERE fm.is_active = 1 AND fm.effective_from <= CURDATE() AND (fm.effective_to IS NULL OR fm.effective_to >= CURDATE())
+                    ORDER BY dt.name, fm.fee_category, fm.fee_tier, fm.min_quantity");
+$existingFeeRule = null;
+if ($ex !== null && !empty($ex['fee_rule_id'])) {
+    $existingFeeRule = db_one('SELECT fm.fee_rule_id, fm.type_id, fm.fee_category, fm.fee_tier, fm.unit_rate, fm.min_quantity, fm.max_quantity, fm.effective_from, fm.effective_to, fm.is_active, dt.name AS type_name
+                               FROM fee_matrix fm JOIN document_types dt ON dt.type_id = fm.type_id WHERE fm.fee_rule_id = ?', [(int) $ex['fee_rule_id']]);
+}
+$feeRuleOptions = [];
+foreach ($feeRules as $rule) {
+    $range = (int) $rule['min_quantity'] . '–' . ($rule['max_quantity'] === null ? 'no limit' : (string) $rule['max_quantity']);
+    $feeRuleOptions[(int) $rule['fee_rule_id']] = $rule['type_name'] . ' — ' . $rule['fee_category'] . ' / ' . $rule['fee_tier'] . ' · ' . money($rule['unit_rate']) . ' per unit · quantity ' . $range;
+}
+if ($existingFeeRule !== null && !isset($feeRuleOptions[(int) $existingFeeRule['fee_rule_id']])) {
+    $range = (int) $existingFeeRule['min_quantity'] . '–' . ($existingFeeRule['max_quantity'] === null ? 'no limit' : (string) $existingFeeRule['max_quantity']);
+    $feeRuleOptions[(int) $existingFeeRule['fee_rule_id']] = $existingFeeRule['type_name'] . ' — ' . $existingFeeRule['fee_category'] . ' / ' . $existingFeeRule['fee_tier'] . ' · ' . money($existingFeeRule['unit_rate']) . ' per unit · quantity ' . $range . ' (existing saved quote; not available for new pricing)';
+}
 $staff = []; foreach (db_all("SELECT user_id, full_name FROM users WHERE status = 'active' AND role IN ('secretary','clerk') ORDER BY full_name") as $u) { $staff[(int) $u['user_id']] = (string) $u['full_name']; }
 $visitId = get_int('visit') ?? post_int('visit_id');
 $visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name FROM visitor_log WHERE visit_id = ?', [$visitId]) : null;
@@ -24,6 +42,8 @@ $errors = []; $v = [
     'assigned_to' => (string) ($ex['assigned_to'] ?? (audit_actor()['user_id'] ?? '')),
     'requirements_status' => (string) ($ex['requirements_status'] ?? 'Not checked'),
     'requirements_note' => (string) ($ex['requirements_note'] ?? ''),
+    'fee_rule_id' => (string) ($ex['fee_rule_id'] ?? ''),
+    'fee_quantity' => (string) ($ex['fee_quantity'] ?? '1'),
 ];
 
 if (is_post() && $resident !== null) {
@@ -31,6 +51,7 @@ if (is_post() && $resident !== null) {
     $v = [
         'type_id' => post_str('type_id'), 'purpose' => post_str('purpose'), 'assigned_to' => post_str('assigned_to'),
         'requirements_status' => post_str('requirements_status'), 'requirements_note' => post_text('requirements_note'),
+        'fee_rule_id' => post_str('fee_rule_id'), 'fee_quantity' => post_str('fee_quantity'),
     ];
     if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
