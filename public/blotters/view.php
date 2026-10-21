@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('blotters.view');
 $id = get_int('id');
-$b = $id === null ? null : db_one('SELECT b.*, pk.label AS purok, u.full_name AS recorder FROM blotters b LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id LEFT JOIN users u ON u.user_id = b.recorded_by WHERE b.blotter_id = ?', [$id]);
+$b = $id === null ? null : db_one("SELECT b.*, pk.label AS purok, it.label AS incident_type, u.full_name AS recorder FROM blotters b LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id LEFT JOIN lookups it ON it.lookup_id = b.incident_type_id AND it.list_key = 'incident_type' LEFT JOIN users u ON u.user_id = b.recorded_by WHERE b.blotter_id = ?", [$id]);
 if ($b === null) { abort(404, 'That case was not found.'); }
 $open = case_is_open($b);
 $parties = case_parties((int) $id);
@@ -24,7 +24,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
   <div class="col-lg-7">
     <div class="card-b mb-3"><div class="card-h"><h2>Details</h2></div><div class="card-body-b"><table class="table table-sm mb-0"><tbody>
       <?= $row('Status', status_pill((string) $b['status'])) ?>
-      <?= $row('Place', e((string) ($b['incident_place'] ?? '—'))) ?><?= $row('Purok', e((string) ($b['purok'] ?? '—'))) ?>
+      <?= $row('Place', e((string) ($b['incident_place'] ?? '—'))) ?><?= $row('Purok', e((string) ($b['purok'] ?? '—'))) ?><?= $row('Incident type', e((string) ($b['incident_type'] ?? 'Unclassified'))) ?>
       <?= $row('Recorded', e(fmt_dt((string) $b['recorded_at'])) . ' by ' . e((string) ($b['recorder'] ?? '—'))) ?>
       <?php if ($b['status'] === 'Resolved'): ?><?= $row('Resolved', e(fmt_dt((string) $b['resolved_at'])) . ' · ' . e((string) $b['resolution_note'])) ?><?php endif; ?>
     </tbody></table></div></div>

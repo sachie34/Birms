@@ -3,7 +3,8 @@
  * app/permissions.php
  * Role-permission map. STATUS: PROVISIONAL, pending validation by the Barangay Secretary.
  * Deny by default: a permission not listed for a role is refused. Enforced on the SERVER in every page/handler.
- * Mirrors the "Role Matrix (Provisional)" sheet (Admin 7, Captain 14, Secretary 23, Clerk 12 permissions).
+ * The compliance branch grants the Administrator all currently defined permissions (27); Captain 14, Secretary 23, Clerk 12.
+ * The other roles retain the current provisional matrix until the barangay validates it.
  */
 declare(strict_types=1);
 
@@ -12,8 +13,18 @@ const PERMISSIONS_STATUS = 'PROVISIONAL';
 function permission_map(): array
 {
     return [
+        // Administrator is the highest-privilege role and may perform operational tasks as needed.
+        // The map remains provisional until the barangay validates all role assignments.
         'admin' => [
-            'dashboard.view', 'settings.view', 'settings.edit', 'audit.view', 'audit.export', 'users.manage', 'backup.run',
+            'dashboard.view',
+            'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
+            'requests.view', 'requests.add', 'requests.edit', 'requests.approve',
+            'certificates.history', 'certificates.issue',
+            'settings.view', 'settings.edit',
+            'audit.view', 'audit.export', 'users.manage', 'backup.run',
+            'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
+            'hearings.view', 'hearings.add', 'hearings.edit',
+            'reports.view', 'reports.export',
         ],
         'captain' => [
             'dashboard.view', 'residents.view', 'residents.export', 'requests.view', 'requests.approve',

@@ -8,7 +8,7 @@ $id = post_int('id'); $to = post_str('to'); $note = post_str('note');
 if ($id === null || !in_array($to, REQUEST_STATUSES, true)) { abort(404, 'Unknown action.'); }
 require_csrf();
 require_permission('requests.view');
-$r = db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.assigned_to, r.contact_number, dt.name AS type_name FROM document_requests dr
+$r = db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.requirements_status, dr.assigned_to, r.contact_number, dt.name AS type_name FROM document_requests dr
               JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id WHERE dr.request_id = ?', [$id]);
 if ($r === null) { abort(404, 'That request was not found.'); }
 $perm = REQUEST_TRANSITIONS[$r['status']][$to] ?? null;
@@ -18,6 +18,11 @@ if ($perm === null) {
     redirect('requests/view.php', ['id' => $id]);
 }
 require_permission($perm);
+if ($to === 'Ready' && $r['requirements_status'] !== 'Complete') {
+    audit_best_effort('request_move_refused', 'Requests', 'Failed', $r['reference_no'] . ': cannot approve before requirements are marked Complete');
+    flash_add('danger', 'Complete the requirements review before approving this request as Ready. Edit the request and save its requirements status first.');
+    redirect('requests/view.php', ['id' => $id]);
+}
 if ($to === 'Rejected' && !v_len($note, 3, 255)) { flash_add('danger', 'Give a reason (3-255 characters) when rejecting.'); redirect('requests/view.php', ['id' => $id]); }
 if (str_len($note) > 255) { flash_add('danger', 'The note is too long.'); redirect('requests/view.php', ['id' => $id]); }
 

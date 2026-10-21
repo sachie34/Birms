@@ -1,0 +1,92 @@
+name: BIRMS PHP and MySQL checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [john/paper-code-compliance]
+
+permissions:
+  contents: read
+
+jobs:
+  php-and-integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci-root-pass
+          MARIADB_DATABASE: barangay_db_work
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, mbstring, pdo_mysql
+          coverage: none
+
+      - name: Validate PHP syntax
+        run: |
+          find app public tests tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Check the XAMPP setup wizard
+        run: php tools/setup_xampp.php --check
+
+      - name: Prepare local config
+        run: cp app/config.local.php.example app/config.local.php
+
+      - name: Apply migrations to the disposable CI database
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: php tools/migrate.php up
+
+      - name: Start local PHP server
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: |
+          php -S 127.0.0.1:8080 -t public > /tmp/birms-php-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/birms-php-server.log
+          exit 1
+
+      - name: Run authentication, security and audit tests
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080
+
+      - name: Run module integration tests, including reporting and backup access
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: php tests/run_modules.php http://127.0.0.1:8080

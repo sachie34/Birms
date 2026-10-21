@@ -20,7 +20,10 @@ function run_b5(array $S, string $base): void
         return (int) db()->lastInsertId();
     };
     $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n): int {
-        $n++; db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at) VALUES (?, ?, ?, ?, ?, NOW())', ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status]);
+        $n++;
+        $requirementsStatus = $status === 'Ready' ? 'Complete' : 'Not checked';
+        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requirements_status, requested_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $requirementsStatus]);
         return (int) db()->lastInsertId();
     };
     $issue = fn(Http $h, int $req, array $o = []) => post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req] + $o);
@@ -36,11 +39,16 @@ function run_b5(array $S, string $base): void
 
     // blockers
     $rFee = $mkReq($res, $tNoFee); $rWord = $mkReq($res, $tNoWord); $rArch = $mkReq($mkRes('Arch', null, true), $tPaid); $rNoAddr = $mkReq($mkRes('NoPurok', $hhNoPurok), $tPaid);
+    $rNoRequirements = $mkReq($res, $tPaid);
+    db_exec("UPDATE document_requests SET requirements_status = 'Not checked' WHERE request_id = ?", [$rNoRequirements]);
     db_exec("UPDATE settings SET setting_value = NULL WHERE setting_key = 'captain_name'"); $rNoCap = $mkReq($res, $tPaid);
-    $pgs = [$rFee => 'fee for', $rWord => 'wording', $rArch => 'archived', $rNoAddr => '{{purok}}', $rNoCap => 'Captain'];
+    $pgs = [
+        $rFee => 'fee for', $rWord => 'wording', $rArch => 'archived', $rNoAddr => '{{purok}}',
+        $rNoCap => 'Captain', $rNoRequirements => 'requirements have not been marked Complete',
+    ];
     $miss = []; foreach ($pgs as $id => $needle) { $pg = $clk->get('/certificates/issue.php?request=' . $id); $pp = issue_try($clk, $id); if (!str_contains($pg['body'], $needle) || $iss($id) !== null || $stat($id) !== 'Ready' || str_contains($pg['body'], 'name="or_number"')) { $miss[] = $needle; } }
     db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
-    record('B5-3', 'Nothing is guessed: unset fee, unset wording, missing Captain name, missing Purok and archived resident each BLOCK issuing (no certificate, status unchanged)', !$miss, implode(',', $miss));
+    record('B5-3', 'Certificate issuance is blocked for unchecked requirements, unset fee, unset wording, missing Captain name, missing Purok and archived residents (no certificate, status unchanged)', !$miss, implode(',', $miss));
     $pp = $issue($clk, $rPend, ['or_number' => 'ZZOR-P']);
     record('B5-4', 'A request that is not Ready cannot be issued', $iss($rPend) === null && $stat($rPend) === 'Pending');
 
@@ -71,8 +79,8 @@ function run_b5(array $S, string $base): void
     // printing
     $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]); $capView = $cap->get('/certificates/print.php?id=' . $row['issuance_id']); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     $clkView = $clk->get('/certificates/print.php?id=' . $row['issuance_id']); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']);
-    record('B5-13', 'Printing: captain can view without counting; an issuer\'s open counts and is audited; admin is refused', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $admView['status'] === 403 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 1);
+    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    record('B5-13', 'Printing: Captain can view without counting; issuer and highest-privilege Administrator can print and are audited', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $admView['status'] === 200 && $c3 === $c2 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 2);
 
     // history
     $h = $sec->get('/certificates/history.php?q=ZZOR-1'); $h2 = $sec->get('/certificates/history.php?q=ZZTest5&type=' . $tFree); $h3 = $sec->get('/certificates/history.php?from=' . date('Y-m-d') . '&to=' . date('Y-m-d') . '&q=ZZTest5'); $h4 = $sec->get('/certificates/history.php?to=2000-01-01&q=ZZTest5');
@@ -105,6 +113,8 @@ function run_b5(array $S, string $base): void
     $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
     record('B5-20', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
 
+    // New paid-issuance tests create a separate ledger row with an FK to each issuance.
+    db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTEST5%')");
     db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTEST5%'");
     db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
     db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'");

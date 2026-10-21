@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('requests.view');
-$tabs = ['all' => 'All requests', 'Pending' => 'Pending', 'Review' => 'In review', 'Ready' => 'Ready', 'Claimed' => 'Claimed', 'closed' => 'Closed'];
+$tabs = ['all' => 'All requests', 'Pending' => 'Pending', 'Review' => 'Under Review', 'Ready' => 'Ready for Pickup', 'Claimed' => 'Issued', 'closed' => 'Closed'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'all';
 $q = get_str('q'); $page = max(1, get_int('page') ?? 1); $per = 25;
 

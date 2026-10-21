@@ -60,6 +60,11 @@ function render_header(string $title, array $crumbs = [], string $active = ''): 
           <li><?php if ($url): ?><a href="<?= e(base_url($url)) ?>"><?= e($label) ?></a><?php else: ?><span aria-current="page"><?= e($label) ?></span><?php endif; ?></li>
         <?php endforeach; ?>
       </ol></nav>
+      <form class="topbar-search" method="get" action="<?= e(base_url('search.php')) ?>" role="search" aria-label="Search records">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" name="q" maxlength="80" placeholder="Search records" aria-label="Search records">
+        <button class="btn-reset topbar-search-submit" type="submit" aria-label="Submit search"><i class="bi bi-arrow-return-left" aria-hidden="true"></i></button>
+      </form>
       <div class="dropdown user-chip">
         <button class="btn-reset d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" type="button">
           <span class="avatar"><?= e(initials((string) $user['full_name'])) ?></span>

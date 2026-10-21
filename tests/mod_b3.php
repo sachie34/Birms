@@ -8,12 +8,12 @@ function run_b3(array $S, string $base): void
     $pk = (int) db_val("SELECT lookup_id FROM lookups WHERE label = 'ZZ Test Purok B3'");
     $sec = $S['secretary']; $clk = $S['clerk']; $cap = $S['captain']; $adm = $S['admin'];
     $mk = fn(array $o = []) => $o + ['last_name' => 'ZZTest', 'first_name' => 'Juan', 'middle_name' => 'Santos', 'suffix' => '', 'birthdate' => '1990-05-12', 'sex' => 'Male', 'civil_status' => 'Single',
-        'contact_number' => '09171234567', 'category_id' => '', 'household_id' => '', 'new_address' => 'ZZ Test Street 1', 'new_code' => '', 'new_purok' => (string) $pk];
+        'contact_number' => '09171234567', 'category_id' => '', 'employment_status_id' => '', 'voter_status' => 'Unverified', 'household_id' => '', 'new_address' => 'ZZ Test Street 1', 'new_code' => '', 'new_purok' => (string) $pk];
     $count = fn() => (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name LIKE 'ZZTest%'");
     $create = fn(Http $h, array $o = []) => post_as($h, '/residents/form.php', '/residents/form.php', $mk($o));
 
     $bad = ''; foreach (['/residents/index.php' => 'residents.view', '/residents/households.php' => 'residents.view', '/residents/form.php' => 'residents.add', '/residents/export.php' => 'residents.export', '/residents/household_edit.php' => 'residents.add'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
-    record('B3-1', 'Resident pages: every role gets exactly what the permission map says (admin has no resident access)', $bad === '', $bad);
+    record('B3-1', 'Resident pages: access is enforced server-side for every role; administrator has full access', $bad === '', $bad);
 
     $before = $count();
     $r = post_as($cap, '/residents/index.php', '/residents/form.php', $mk());
@@ -94,14 +94,59 @@ function run_b3(array $S, string $base): void
     $capHh = post_as($cap, '/residents/households.php', '/residents/household_edit.php', ['code' => 'ZZTEST-X', 'purok' => (string) $pk, 'address' => 'ZZ Test Street 8']);
     record('B3-17', 'Households: duplicate code refused; clerk can add; captain cannot', str_contains($r['body'], 'already used') && $r2['status'] === 302 && $capHh['status'] === 403 && (int) db_val("SELECT COUNT(*) FROM households WHERE household_code = 'ZZTEST-HH'") === 1);
 
-    $need = ['resident_created', 'resident_updated', 'resident_archived', 'resident_restored', 'residency_status_changed', 'household_created', 'resident_rejected'];
-    $miss = array_filter($need, fn($a) => (int) db_val('SELECT COUNT(*) FROM audit_log WHERE action = ?', [$a]) < 1);
-    record('B3-18', 'Every resident action left an audit row', !$miss, implode(',', $miss));
-    $tx = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_created' AND entity_id = ?", [$pid]);
-    record('B3-19', 'A resident and its audit row were saved together', $tx === 1);
-    $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
-    record('B3-20', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
+    // Manual ID and voter-list verification, without any external COMELEC/API integration.
+    $verifyBefore = (int) db_val('SELECT COUNT(*) FROM resident_verifications WHERE resident_id = ?', [$rid]);
+    $verificationPost = [
+        'verification_subject' => 'voter_registration', 'verification_method' => 'barangay_voter_list',
+        'verification_outcome' => 'registered', 'reference_note' => '2026 local list row reference',
+        'remarks' => 'Matched against the staff-held local list.',
+    ];
+    $verifyCaptain = post_as($cap, '/residents/view.php?id=' . $rid, '/residents/verify.php?id=' . $rid, $verificationPost);
+    $verifyNoToken = $clk->post('/residents/verify.php?id=' . $rid, $verificationPost);
+    $verifyInvalidMethod = post_as($clk, '/residents/view.php?id=' . $rid, '/residents/verify.php?id=' . $rid, [
+        'verification_subject' => 'identity', 'verification_method' => 'barangay_voter_list',
+        'verification_outcome' => 'verified', 'reference_note' => '', 'remarks' => '',
+    ]);
+    $identityCheck = post_as($clk, '/residents/view.php?id=' . $rid, '/residents/verify.php?id=' . $rid, [
+        'verification_subject' => 'identity', 'verification_method' => 'government_id',
+        'verification_outcome' => 'verified', 'reference_note' => 'Government ID checked in person', 'remarks' => 'ID visually checked; no ID number stored.',
+    ]);
+    $voterCheck = post_as($clk, '/residents/view.php?id=' . $rid, '/residents/verify.php?id=' . $rid, $verificationPost);
+    $verifyCount = (int) db_val('SELECT COUNT(*) FROM resident_verifications WHERE resident_id = ?', [$rid]);
+    $verifyRow = db_one("SELECT verification_subject, verification_method, outcome FROM resident_verifications WHERE resident_id = ? ORDER BY verification_id DESC LIMIT 1", [$rid]);
+    $verifyView = $sec->get('/residents/view.php?id=' . $rid);
+    $captainView = $cap->get('/residents/view.php?id=' . $rid);
+    $verifyStatus = (string) db_val('SELECT voter_status FROM residents WHERE resident_id = ?', [$rid]);
+    $verifyAuditCount = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_verification_recorded' AND entity_id = ?", [$rid]);
+    $verifyDebug = 'captain=' . $verifyCaptain['status'] . '; no-token=' . $verifyNoToken['status']
+        . '; invalid=' . $verifyInvalidMethod['status'] . '; identity=' . $identityCheck['status'] . '; voter=' . $voterCheck['status']
+        . '; count=' . $verifyCount . '/' . ($verifyBefore + 2) . '; last=' . json_encode($verifyRow)
+        . '; status=' . $verifyStatus . '; audit=' . $verifyAuditCount
+        . '; view-heading=' . (str_contains($verifyView['body'], 'Identity & voter verification') ? 'yes' : 'no')
+        . '; view-voter-method=' . (str_contains($verifyView['body'], 'Local barangay voter list checked') ? 'yes' : 'no')
+        . '; captain-form=' . (str_contains($captainView['body'], 'name="verification_subject"') ? 'present' : 'hidden');
+    record('B3-18', 'Staff can record manual ID and voter-list checks with history/audit; local voter outcome updates voter status; invalid methods, missing CSRF and Captain write attempts are refused',
+        $verifyCaptain['status'] === 403 && $verifyNoToken['status'] === 403
+        && $verifyInvalidMethod['status'] === 302
+        && $identityCheck['status'] === 302 && $voterCheck['status'] === 302
+        && $verifyCount === $verifyBefore + 2
+        && $verifyRow !== null && $verifyRow['verification_subject'] === 'voter_registration'
+        && $verifyRow['verification_method'] === 'barangay_voter_list' && $verifyRow['outcome'] === 'registered'
+        && $verifyStatus === 'Registered'
+        && $verifyAuditCount >= 2
+        && str_contains($verifyView['body'], 'Identity & voter verification')
+        && str_contains($verifyView['body'], 'Local barangay voter list checked')
+        && !str_contains($captainView['body'], 'name="verification_subject"'), $verifyDebug);
 
+    $need = ['resident_created', 'resident_updated', 'resident_archived', 'resident_restored', 'residency_status_changed', 'household_created', 'resident_rejected', 'resident_verification_recorded'];
+    $miss = array_filter($need, fn($a) => (int) db_val('SELECT COUNT(*) FROM audit_log WHERE action = ?', [$a]) < 1);
+    record('B3-19', 'Every resident action left an audit row', !$miss, implode(',', $miss));
+    $tx = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_created' AND entity_id = ?", [$pid]);
+    record('B3-20', 'A resident and its audit row were saved together', $tx === 1);
+    $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
+    record('B3-21', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
+
+    db_exec("DELETE FROM resident_verifications WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTest%')");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM households WHERE street_address LIKE 'ZZ Test%' OR household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");

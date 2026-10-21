@@ -14,10 +14,21 @@ function run_b4(array $S, string $base): void
         return (int) db()->lastInsertId();
     };
     $rita = $mkRes('Rita', '09170004444'); $nophone = $mkRes('NoPhone', null); $gone = $mkRes('Gone', '09170004445', true);
-    $filed = fn(string $purpose, ?int $res = null, array $o = []) => post_as($clk, '/requests/form.php?resident=' . ($res ?? $rita), '/requests/form.php?resident=' . ($res ?? $rita), ['resident_id' => (string) ($res ?? $rita), 'type_id' => (string) $typeId, 'purpose' => $purpose, 'assigned_to' => ''] + $o);
+    $filed = fn(string $purpose, ?int $res = null, array $o = []) => post_as($clk, '/requests/form.php?resident=' . ($res ?? $rita), '/requests/form.php?resident=' . ($res ?? $rita), [
+        'resident_id' => (string) ($res ?? $rita), 'type_id' => (string) $typeId, 'purpose' => $purpose, 'assigned_to' => '',
+        'requirements_status' => 'Not checked', 'requirements_note' => '',
+    ] + $o);
     $rid = fn(string $purpose) => (int) db_val('SELECT request_id FROM document_requests WHERE purpose = ?', [$purpose]);
     $status = fn(int $id) => (string) db_val('SELECT status FROM document_requests WHERE request_id = ?', [$id]);
     $move = fn(Http $h, int $id, string $to, string $note = '') => post_as($h, '/requests/view.php?id=' . $id, '/requests/action.php', ['id' => (string) $id, 'to' => $to, 'note' => $note]);
+    $completeRequirements = function (Http $h, int $id) {
+        $row = db_one('SELECT resident_id, type_id, purpose, assigned_to FROM document_requests WHERE request_id = ?', [$id]);
+        return post_as($h, '/requests/form.php?id=' . $id, '/requests/form.php?id=' . $id, [
+            'resident_id' => (string) $row['resident_id'], 'type_id' => (string) $row['type_id'],
+            'purpose' => (string) $row['purpose'], 'assigned_to' => (string) ($row['assigned_to'] ?? ''),
+            'requirements_status' => 'Complete', 'requirements_note' => '',
+        ]);
+    };
 
     $bad = ''; foreach (['/visitors/index.php' => 'requests.view', '/requests/index.php' => 'requests.view', '/requests/form.php' => 'requests.add'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
     record('B4-1', 'Visitor, tracker and request-form pages: every role gets exactly what the permission map says', $bad === '', $bad);
@@ -43,7 +54,7 @@ function run_b4(array $S, string $base): void
     record('B4-5', 'A request is filed: reference like REQ-YYYY-NNNN, status Pending, audited', $r['status'] === 302 && $row !== null && preg_match('/^REQ-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && $row['status'] === 'Pending' && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_created' AND entity_id = ?", [$id1]) === 1);
     $before = (int) db_val('SELECT COUNT(*) FROM document_requests');
     $rej = []; foreach (['bogus type' => ['type_id' => '99999999'], 'inactive type' => ['type_id' => (string) $inactive], 'short purpose' => ['purpose' => 'x'], 'bad assignee' => ['assigned_to' => '99999999'], 'archived resident' => ['resident_id' => (string) $gone]] as $n => $o) {
-        $r = post_as($clk, '/requests/form.php?resident=' . $rita, '/requests/form.php?resident=' . ($n === 'archived resident' ? $gone : $rita), $o + ['resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose bad', 'assigned_to' => '']);
+        $r = post_as($clk, '/requests/form.php?resident=' . $rita, '/requests/form.php?resident=' . ($n === 'archived resident' ? $gone : $rita), $o + ['resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose bad', 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '']);
         if ($r['status'] >= 500) { $rej[] = $n . '=' . $r['status']; } }
     record('B4-6', 'Bad requests (bogus/inactive document, short purpose, bad assignee, archived resident) are refused and nothing is saved', !$rej && (int) db_val('SELECT COUNT(*) FROM document_requests') === $before, implode(',', $rej));
     $r = post_as($cap, '/requests/index.php', '/requests/form.php?resident=' . $rita, ['resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose cap']);
@@ -55,15 +66,28 @@ function run_b4(array $S, string $base): void
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
     record('B4-8a', 'Illegal jump Pending to Ready refused; clerk can start review; clerk cannot approve (403)', $a && $b && $c);
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
+    $incompleteNoNote = post_as($clk, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
+        'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
+        'assigned_to' => '', 'requirements_status' => 'Incomplete', 'requirements_note' => '',
+    ]);
+    $invalidRequirements = $incompleteNoNote['status'] === 200
+        && str_contains($incompleteNoNote['body'], 'Explain which requirements are missing')
+        && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
+    $notComplete = $move($cap, $id1, 'Ready');
+    $blockedPage = $cap->get('/requests/view.php?id=' . $id1);
+    $blocked = $status($id1) === 'Review' && $notComplete['status'] === 302
+        && str_contains($blockedPage['body'], 'requirements review');
+    $markedComplete = $completeRequirements($clk, $id1);
+    $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
     $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
-    record('B4-8b', 'Captain approves to Ready; going back or cancelling a Ready request is refused', $d && $e);
+    record('B4-8b', 'Incomplete requirements need a note; approval is blocked until marked Complete; Captain can then approve, and a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
     record('B4-9', 'Approving logs (never sends) an SMS: recipient, default text with the reference, "Logged only"', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
-    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $move($sec, $id2, 'Ready');
+    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $completeRequirements($sec, $id2); $move($sec, $id2, 'Ready');
     $o2 = db_one('SELECT recipient_number, delivery FROM sms_outbox WHERE request_id = ?', [$id2]);
     $oldTxt = db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'"); db_exec("UPDATE settings SET setting_value = 'Custom: {{reference_no}} / {{document_name}}' WHERE setting_key = 'sms_ready_text'");
-    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($clk, $id3, 'Review'); $move($sec, $id3, 'Ready');
+    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($clk, $id3, 'Review'); $completeRequirements($sec, $id3); $move($sec, $id3, 'Ready');
     $o3 = (string) db_val('SELECT message FROM sms_outbox WHERE request_id = ?', [$id3]); db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'sms_ready_text'", [$oldTxt]);
     record('B4-10', 'No phone number: logged as "No number"; a custom SMS text from Settings is used', $o2 !== null && $o2['recipient_number'] === null && $o2['delivery'] === 'No number' && str_starts_with($o3, 'Custom: REQ-') && str_contains($o3, 'Barangay Clearance'));
 
@@ -78,13 +102,13 @@ function run_b4(array $S, string $base): void
 
     $t = $sec->get('/requests/index.php?tab=Ready'); $tc = $sec->get('/requests/index.php?tab=closed'); $ts = $sec->get('/requests/index.php?q=' . urlencode((string) $row['reference_no']));
     $nReady = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE status = 'Ready'");
-    record('B4-13', 'Tracker tabs, counts and search match the data', str_contains($t['body'], 'REQ-') && str_contains($t['body'], 'Ready <span class="badge text-bg-light">' . $nReady . '</span>') && str_contains($tc['body'], 'ZZTest4, Rita') && str_contains($ts['body'], (string) $row['reference_no']) && !str_contains($t['body'], 'ZZ Test purpose cancel'));
+    record('B4-13', 'Tracker tabs, counts and search match the data', str_contains($t['body'], 'REQ-') && str_contains($t['body'], 'Ready for Pickup <span class="badge text-bg-light">' . $nReady . '</span>') && str_contains($tc['body'], 'ZZTest4, Rita') && str_contains($ts['body'], (string) $row['reference_no']) && !str_contains($t['body'], 'ZZ Test purpose cancel'));
 
     $refs = []; for ($i = 0; $i < 12; $i++) { $filed('ZZ Test purpose bulk ' . $i); $refs[] = (string) db_val('SELECT reference_no FROM document_requests WHERE purpose = ?', ['ZZ Test purpose bulk ' . $i]); }
     record('B4-14', '12 requests in a row all get different reference numbers', count(array_unique($refs)) === 12 && !in_array('', $refs, true));
 
     $filed('ZZ Test purpose edit'); $ide = $rid('ZZ Test purpose edit');
-    $e1 = post_as($clk, '/requests/form.php?id=' . $ide, '/requests/form.php?id=' . $ide, ['resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose edited', 'assigned_to' => '']);
+    $e1 = post_as($clk, '/requests/form.php?id=' . $ide, '/requests/form.php?id=' . $ide, ['resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose edited', 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '']);
     $e2 = $clk->get('/requests/form.php?id=' . $id1); $e3 = $cap->get('/requests/form.php?id=' . $ide);
     record('B4-15', 'Editing: clerk can edit a Pending request; a Ready request and a captain are refused (403)', $e1['status'] === 302 && db_val('SELECT purpose FROM document_requests WHERE request_id = ?', [$ide]) === 'ZZ Test purpose edited' && $e2['status'] === 403 && $e3['status'] === 403);
 

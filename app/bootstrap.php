@@ -8,6 +8,7 @@ declare(strict_types=1);
 require __DIR__ . '/core.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/permissions.php';
+require __DIR__ . '/attachments_lib.php';
 require __DIR__ . '/menu.php';
 require __DIR__ . '/layout.php';
 require __DIR__ . '/lookups.php';
@@ -16,6 +17,7 @@ require __DIR__ . '/residents_lib.php';
 require __DIR__ . '/requests_lib.php';
 require __DIR__ . '/certificates_lib.php';
 require __DIR__ . '/blotters_lib.php';
+require __DIR__ . '/reports_lib.php';
 
 date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
 

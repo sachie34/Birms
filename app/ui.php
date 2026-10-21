@@ -72,7 +72,9 @@ function status_pill(string $s): string
         'Relocated' => 'grey', 'Registered' => 'green', 'Not registered' => 'grey', 'Unverified' => 'amber',
         'Verified' => 'green', 'Not found' => 'amber', 'Logged only' => 'grey', 'No number' => 'amber',
     ];
-    return pill($s, $map[$s] ?? 'grey');
+    // Persisted request enum values remain compatible with the Project Summary; display labels use the SOE2 wording.
+    static $labels = ['Review' => 'Under Review', 'Ready' => 'Ready for Pickup', 'Claimed' => 'Issued'];
+    return pill($labels[$s] ?? $s, $map[$s] ?? 'grey');
 }
 /** Active residents show green; use for a residency status specifically. */
 function residency_pill(string $s): string { return $s === 'Active' ? pill('Active', 'green') : pill($s, 'grey'); }
