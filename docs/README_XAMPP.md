@@ -3,7 +3,7 @@
 Barangay Wawa, Balagtas, Bulacan. This **working copy** starts from B1–B6 and adds database-derived reports/dashboard summaries, a request requirements-review gate, an effective-dated fee matrix, manual resident identity/voter verification history, and a local SQL export.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status:** GitHub Actions ran PHP 8.3, MariaDB 10.11, and the PHP built-in server. The B1 authentication/security/audit suite passed **37 checks**; the B2–B7 module suite passed **118 checks**; no failures or untested checks were reported.
+> **Latest verified automated CI status:** GitHub Actions ran PHP 8.3, MariaDB 10.11, and the PHP built-in server. The B1 authentication/security/audit suite passed **37 checks**; the B2–B7 module suite passed **119 checks**; no failures or untested checks were reported.
 > These are automated CI results, **not an office-XAMPP or browser user-acceptance test**. Section 6 gives you the tests to run on your XAMPP setup.
 
 ## 1. Requirements
