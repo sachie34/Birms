@@ -1,11 +1,10 @@
 # BIRMS working copy: install and run on XAMPP
 
-Barangay Wawa, Balagtas, Bulacan. **Batches B1 to B6** (accounts and roles, audit trail, settings, residents and households, visitor log, requests, certificates, blotter with hearings and summons). This is a **working copy**.
+Barangay Wawa, Balagtas, Bulacan. **Batches B1 to B7** cover accounts and roles, audit trail, settings, residents and households, visitor log, requests and certificates, blotter with hearings and summons, reports, dashboard summaries, and a local SQL export. This is a **working copy**.
 It never touches your original `barangay_db`.
 
-> **Honest status:** every check below was run in my sandbox (PHP 8.3.6, MariaDB 10.11, PHP's built-in server):
-> 36 checks in the B1 suite and 102 in the B2-B6 module suite, all passing, 1 not testable there (needs Apache).
-> **Nothing has been run on your XAMPP yet.** Section 6 gives you the tests to run there.
+> **Latest automated CI status:** GitHub Actions ran PHP 8.3, MariaDB 10.11, and the PHP built-in server. The B1 authentication/security/audit suite passed **37 checks**; the B2-B7 module suite passed **111 checks**; no failures or untested checks were reported.
+> These are automated CI results, **not an office-XAMPP or browser user-acceptance test**. Section 6 gives you the tests to run on your XAMPP setup.
 
 ## 1. Requirements
 - XAMPP with **PHP 8.1 or newer** and MySQL/MariaDB (5.7+ / 10.3+). Check with `C:\xampp\php\php.exe -v`.
