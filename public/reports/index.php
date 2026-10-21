@@ -12,6 +12,15 @@ $types = [
 ];
 $type = get_str('type');
 if (!isset($types[$type])) { $type = 'demographics'; }
+$recipients = [
+    'internal' => 'Internal administrative use',
+    'dilg' => 'Department of the Interior and Local Government (DILG)',
+    'mayor' => 'Office of the Mayor',
+    'pnp' => 'Philippine National Police (PNP)',
+];
+$recipient = get_str('recipient');
+if (!isset($recipients[$recipient])) { $recipient = 'internal'; }
+$recipientLabel = $recipients[$recipient];
 $isCsv = get_str('format') === 'csv';
 require_permission($isCsv ? 'reports.export' : 'reports.view');
 
@@ -25,10 +34,10 @@ $data = match ($type) {
 $reportLabel = $types[$type];
 $periodLabel = $type === 'demographics' ? date('j F Y') . ' (current active resident records)' : $range['label'];
 audit_best_effort($isCsv ? 'report_exported' : 'report_generated', 'Reports', 'Success',
-    $reportLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label']) . ($isCsv ? ' CSV' : ' viewed'));
+    $reportLabel . ' for ' . $recipientLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label']) . ($isCsv ? ' CSV' : ' viewed'));
 
 if ($isCsv) {
-    $filename = 'birms-' . $type . '-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($type === 'demographics' ? date('Y-m-d') : $range['label'])) . '.csv';
+    $filename = 'birms-' . $recipient . '-' . $type . '-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($type === 'demographics' ? date('Y-m-d') : $range['label'])) . '.csv';
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('X-Content-Type-Options: nosniff');
@@ -41,6 +50,9 @@ if ($isCsv) {
         }, $row);
         fputcsv($out, $safe, ',', '"', '\\');
     };
+    $write(['Prepared for', $recipientLabel]);
+    $write(['Template status', 'Draft standardized BIRMS summary; official agency-specific format pending recipient approval']);
+    $write(['Report period', $periodLabel]);
     if ($type === 'demographics') {
         $write(['Section', 'Category', 'Count']);
         $write(['Population', 'Current active residents', $data['total']]);
@@ -105,7 +117,7 @@ $months = [];
 for ($m = 1; $m <= 12; $m++) { $months[$m] = date('F', mktime(0, 0, 0, $m, 1, 2000)); }
 $quarters = [1 => 'Quarter 1 (Jan–Mar)', 2 => 'Quarter 2 (Apr–Jun)', 3 => 'Quarter 3 (Jul–Sep)', 4 => 'Quarter 4 (Oct–Dec)'];
 $period = $range['period'];
-$filterQuery = ['type' => $type, 'period' => $period, 'year' => $range['year']];
+$filterQuery = ['type' => $type, 'period' => $period, 'year' => $range['year'], 'recipient' => $recipient];
 if ($period === 'month') { $filterQuery['month'] = $range['month']; }
 if ($period === 'quarter') { $filterQuery['quarter'] = $range['quarter']; }
 $exportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
@@ -113,15 +125,20 @@ $reportActions = '<button class="btn btn-light border" type="button" data-print>
 if (can('reports.export')) { $reportActions .= ' <a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>'; }
 
 render_header('Reports & Analytics', [['Reports & Analytics', null]], 'reports');
-page_head('Reports & Analytics', 'Generate demographic, issuance, request-processing and blotter summaries from actual BIRMS records.', $reportActions);
+page_head('Reports & Analytics', 'Generate data-backed administrative summaries. Select the intended recipient and reporting period.', $reportActions);
 ?>
 <div class="card-b mb-3">
   <div class="card-h"><h2>Report options</h2><p>Choose the report and, for issuance and incident reports, the reporting period.</p></div>
   <div class="card-body-b">
     <form method="get" action="<?= e(base_url('reports/index.php')) ?>" class="row g-2 align-items-end">
-      <div class="col-md-4"><label class="form-label" for="reportType">Report</label>
+      <div class="col-md-3"><label class="form-label" for="reportType">Report</label>
         <select class="form-select" name="type" id="reportType">
           <?php foreach ($types as $key => $label): ?><option value="<?= e($key) ?>"<?= $key === $type ? ' selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-3"><label class="form-label" for="recipient">Output recipient</label>
+        <select class="form-select" name="recipient" id="recipient">
+          <?php foreach ($recipients as $key => $label): ?><option value="<?= e($key) ?>"<?= $key === $recipient ? ' selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="col-md-2"><label class="form-label" for="period">Period</label>
@@ -146,9 +163,11 @@ page_head('Reports & Analytics', 'Generate demographic, issuance, request-proces
 </div>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-  <div><h2 class="h4 mb-1"><?= e($reportLabel) ?></h2><div class="text-muted small">Period: <?= e($periodLabel) ?></div></div>
+  <div><h2 class="h4 mb-1"><?= e($reportLabel) ?></h2><div class="text-muted small">Prepared for: <?= e($recipientLabel) ?> · Period: <?= e($periodLabel) ?></div></div>
   <span class="badge text-bg-light border">Generated <?= e(date('d M Y, H:i')) ?></span>
 </div>
+
+<div class="alert alert-warning">This is a draft standardized BIRMS summary for <?= e($recipientLabel) ?>. The official agency-specific form, required fields, and submission rules must be confirmed with the receiving office before this output is treated as an official report.</div>
 
 <?php if ($type === 'demographics'): ?>
   <div class="row g-3 mb-3">
