@@ -5,7 +5,7 @@
 **Branch:** `john/paper-code-compliance`  
 **Environment requested:** Target office PC, Windows, XAMPP/Apache/PHP, MySQL or MariaDB  
 **Office-PC test status:** **NOT RUN — the target computer and its browser session were not available in this work session.**  
-**Latest automated CI:** **PASSED** — [GitHub Actions run #226](https://github.com/sachie34/Birms/actions/runs/39625741882): PHP syntax passed; migrations 001–011 applied to disposable MariaDB; 37/37 authentication/security/audit checks and 133/133 module integration checks passed, with zero failures and zero untested checks. Office-PC/browser UAT is separate and remains NOT RUN.  
+**Latest automated CI:** **PASSED** — [GitHub Actions run #232](https://github.com/sachie34/Birms/actions/runs/39626220199): PHP syntax passed; migrations 001–011 applied to disposable MariaDB; 37/37 authentication/security/audit checks and 133/133 module integration checks passed, with zero failures and zero untested checks. Office-PC/browser UAT is separate and remains NOT RUN.  
 **Test data:** Use fictitious records on an isolated `barangay_db_work` or `barangay_db_test` database only. Never use the original `barangay_db` for test writes.
 
 ## 1. Current module status
