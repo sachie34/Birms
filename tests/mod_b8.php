@@ -15,13 +15,13 @@ function run_b8(array $S, string $base): void
         $fileRows = db_all("SELECT da.storage_path FROM document_attachments da
             LEFT JOIN visitor_log vl ON vl.visit_id = da.visit_id
             LEFT JOIN document_requests dr ON dr.request_id = da.request_id
-            WHERE vl.visitor_name LIKE 'ZZ-B8%' OR dr.purpose LIKE 'ZZ-B8%'");
+            WHERE (vl.visitor_name LIKE 'ZZB %' OR vl.purpose LIKE 'ZZ-B8%') OR dr.purpose LIKE 'ZZ-B8%'");
         foreach ($fileRows as $row) { @unlink(APP_ROOT . '/' . ltrim((string) $row['storage_path'], '/\\')); }
         db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTestB8%')");
         db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTestB8%'");
-        db_exec("DELETE FROM document_attachments WHERE visit_id IN (SELECT visit_id FROM visitor_log WHERE visitor_name LIKE 'ZZ-B8%') OR request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B8%')");
+        db_exec("DELETE FROM document_attachments WHERE visit_id IN (SELECT visit_id FROM visitor_log WHERE (visitor_name LIKE 'ZZB %' OR purpose LIKE 'ZZ-B8%')) OR request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B8%')");
         db_exec("DELETE FROM document_requests WHERE purpose LIKE 'ZZ-B8%'");
-        db_exec("DELETE FROM visitor_log WHERE visitor_name LIKE 'ZZ-B8%'");
+        db_exec("DELETE FROM visitor_log WHERE (visitor_name LIKE 'ZZB %' OR purpose LIKE 'ZZ-B8%')");
         db_exec("DELETE FROM residents WHERE last_name = 'ZZTestB8'");
         db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST-B8%'");
         db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ-B8%'");
@@ -36,7 +36,7 @@ function run_b8(array $S, string $base): void
         $visitClass = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'visit_class' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
         $visitorFields = [
             '_csrf' => $clk->token('/visitors/index.php'),
-            'visitor_name' => 'ZZ-B8 Visitor',
+            'visitor_name' => 'ZZB Visitor',
             'purpose' => 'ZZ-B8 Supporting ID upload test',
             'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
             'visited_at' => date('Y-m-d\\TH:i'),
@@ -59,13 +59,13 @@ function run_b8(array $S, string $base): void
             && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf');
 
         $invalidPost = $clk->upload('/visitors/index.php', [
-            '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZ-B8 Invalid Upload',
+            '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
             'purpose' => 'ZZ-B8 disallowed extension', 'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
             'visited_at' => date('Y-m-d\\TH:i'),
         ], 'attachment', $tmp, 'not-allowed.txt', 'text/plain');
         record('B8-3', 'Disallowed upload types are rejected without saving a visitor record',
             $invalidPost['status'] === 200 && str_contains($invalidPost['body'], 'Allowed attachment formats')
-            && (int) db_val("SELECT COUNT(*) FROM visitor_log WHERE visitor_name = 'ZZ-B8 Invalid Upload'") === 0);
+            && (int) db_val("SELECT COUNT(*) FROM visitor_log WHERE visitor_name = 'ZZB Invalid Upload'") === 0);
 
         db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ-B8 Purok', 9998)");
         $purokId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND label = 'ZZ-B8 Purok'");
