@@ -2,15 +2,15 @@
 
 Barangay Information and Records Management System.
 
-This repository began as the clean Git import of the staged **B1–B6 BIRMS work package** from `Claudecodebirms.zip`. The `john/paper-code-compliance` review branch adds database-derived demographic, issuance, request and blotter reports; dashboard summaries; request requirements review before approval/issuance; an effective-dated configurable fee matrix; manual resident identity/voter verification history; and an Administrator-only local SQL export. It also adds a read-only performance benchmark and a UAT worksheet. It remains separate from `main` and the existing visual UI/UX prototype until reviewed.
+This repository contains the BIRMS B1–B8 application for Barangay Wawa, Balagtas, Bulacan. The paper-alignment and presentation-readiness changes have been merged into `main`: data-derived reports/dashboard figures, request requirements review, fee matrix/cash ledger, manual identity/voter verification history, private attachments/PDF output, local SQL export, global record search, UI consistency checks, and a guided XAMPP setup. The PowerPoint is a design reference; its sample content is not live system data.
 
 ## Repository layout
 
 - `app/` — shared application bootstrap, authentication, permissions, database helpers, and module libraries.
-- `public/` — web entry points and module screens, including reporting and Administrator-only local SQL backup on the paper-compliance branch.
+- `public/` — authenticated module pages for records, requests, certificates, blotters, reporting, Administrator-only backup/ledger and permission-aware global search.
 - `database/` — migrations and expected schema snapshot. Migrations 007–011 add reporting fields, request requirements review, fee matrix/quote snapshots, resident verification history, private attachment metadata, typed signatory snapshots, and the cash-collection ledger.
 - `tools/` — migration, administrator, schema verification and `benchmark.php` timing tools (the benchmark is read-only and refuses databases not named `*_work` or `*_test`).
-- `tests/` — module and application test runners, including fee matrix, requirements-review, manual-verification, report, backup-access, private-file upload/download, server-side PDF, ledger lifecycle, and reconciled-history tests.
+- `tests/` — module and application test runners, including fee matrix, requirements review, manual verification, reports, backup access, private attachments/PDF, ledger reconciliation, global search and shared UI checks.
 - `docs/` — design decisions, implementation notes, and XAMPP setup guidance.
 - `storage/` — runtime storage locations; logs and backups are ignored by Git.
 
@@ -20,7 +20,7 @@ Initial import branch: `integration/import-b6`
 
 Source package: `birms_work_B1-B6.zip` from the uploaded `Claudecodebirms.zip` bundle.
 
-The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files. Those were not mixed into this repository. The B1–B6 package was selected as the latest self-contained work package, while its existing documentation remains the source of truth for scope and pending decisions.
+The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files; the B1–B6 package was selected as the initial self-contained import. The additional B7/B8 and presentation-readiness work has now been merged into `main`.
 
 ## Download and run locally (XAMPP)
 
@@ -47,9 +47,9 @@ The test suite may require a configured local database. Run it only against a se
 
 ## Scope boundary
 
-The original main branch reflects the initial B1–B6 package. The `john/paper-code-compliance` review branch contains the paper-aligned additions described above. It does not change the existing BIRMS UI/UX prototype, PowerPoint materials, BPMN, or ERD. Review and run the complete test suite on a disposable `_work` or `_test` database before accepting or deploying these changes.
+The current `main` branch is the one-click presentation build. It includes the paper-aligned additions and a shared UI shell across role-accessible tabs. The uploaded PowerPoint, BPMN and ERD remain separate reference/design artifacts; the live app uses its own data-backed pages. Run the complete test suite on a disposable `_work` or `_test` database before presenting.
 
-Verified by the [latest application-code CI run](https://github.com/sachie34/Birms/actions/runs/39651736557) for commit `f79a4ca9c5ec35ee24a1a19e8b5e9cb52fcaeb8b`: PHP syntax passed; migrations 001–011 applied on disposable MariaDB 10.11; **37/37 authentication/security/audit checks** and **142/142 module integration checks** passed (zero failures or untested checks). Browser/UAT on the target office PC is a separate required step and remains NOT RUN until the checklist is executed on that PC. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md), [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md), and [the Lab Activity 1 remediation status and UAT record](docs/BIRMS_LAB_ACTIVITY1_REMEDIATION_STATUS.md).
+The merged application-code revision passed the [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319): PHP syntax passed; migrations 001–011 applied on disposable MariaDB 10.11; **37/37 authentication/security/audit checks** and **146/146 module integration checks** passed (zero failures or untested checks). The module run includes the shared-shell check across 50 role-accessible routes and global-search tests. This run was completed on the final tested code revision immediately before the squash merge to `main`. Browser/UAT on the target office PC is a separate required step and remains NOT RUN until the checklist is executed on that PC. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md), [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md), and [the Lab Activity 1 remediation status and UAT record](docs/BIRMS_LAB_ACTIVITY1_REMEDIATION_STATUS.md).
 
 ## Important scope boundaries
 
