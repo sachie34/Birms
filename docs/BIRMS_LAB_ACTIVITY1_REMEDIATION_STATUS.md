@@ -1,8 +1,8 @@
 # BIRMS Lab Activity 1 Remediation Status and Office-PC UAT Record
 
-**Date prepared:** 2026-10-21  
+**Last updated:** 2026-10-22  
 **Repository:** `sachie34/Birms`  
-**Branch:** `john/paper-code-compliance`  
+**Current branch:** `main` (merged from `john/paper-code-compliance`)  
 **Environment requested:** Target office PC, Windows, XAMPP/Apache/PHP, MySQL or MariaDB  
 **Office-PC test status:** **NOT RUN — the target computer and its browser session were not available in this work session.**  
 **Verified automated CI:** **PASSED** — [latest application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319): PHP syntax passed; migrations 001–011 applied to disposable MariaDB; **37/37 authentication/security/audit checks** and **146/146 module integration checks** passed, with zero failures or untested checks. Office-PC/browser UAT is separate and remains **NOT RUN**.  
@@ -40,7 +40,7 @@ These are issues actually exposed by the automated CI runs during remediation. T
 | CI-05 | New B8 upload integration test | The initial fixture cleanup removed the temporary PDF before upload tests started. | Kept the fixture until the final cleanup block. | B8-1 to B8-14 passed. |
 | CI-06 | New B8 reconciliation-filter assertion | The test searched for a reference anywhere in the response, which also included the still-populated search input when no row matched. | Changed the assertion to verify the expected empty-results state for the unreconciled filter. | B8-9 passed; the final module suite reported 133 PASS, 0 FAIL, 0 NOT TESTED. |
 
-The latest verified full-suite run before merge is [application-code CI run](https://github.com/sachie34/Birms/actions/runs/39651736557). No office-PC/browser behavior is inferred from these CI results.
+The latest verified full-suite run before merge is [application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319). No office-PC/browser behavior is inferred from these CI results.
 
 ## 2. Office-PC setup record — fill during the actual test
 
