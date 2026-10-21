@@ -17,21 +17,27 @@ if (is_post()) {
         if ($do === 'create') {
             $issuanceId = post_int('issuance_id');
             $method = post_str('payment_method');
+            $transactionDate = v_datetime_local(post_str('transaction_date'));
+            $collectorName = trim(post_str('collector_name'));
             if ($issuanceId === null) { throw new RuntimeException('Choose an issued certificate.'); }
             if (!isset($methods[$method])) { throw new RuntimeException('Choose a valid payment method.'); }
-            db_transaction(function () use ($issuanceId, $method, $actor): void {
+            if ($transactionDate === null) { throw new RuntimeException('Enter the actual transaction date and time from the receipt or office record.'); }
+            if (!v_len($collectorName, 2, 100)) { throw new RuntimeException('Enter the actual collector name (2-100 characters).'); }
+            db_transaction(function () use ($issuanceId, $method, $transactionDate, $collectorName): void {
                 $issuance = db_one('SELECT i.issuance_id, i.resident_name, i.fee_amount, i.or_number, i.reference_no
                     FROM issuances i LEFT JOIN cash_collection_ledger cc ON cc.issuance_id = i.issuance_id
                     WHERE i.issuance_id = ? AND cc.ledger_id IS NULL FOR UPDATE', [$issuanceId]);
                 if ($issuance === null || (float) $issuance['fee_amount'] <= 0 || trim((string) ($issuance['or_number'] ?? '')) === '') {
                     throw new RuntimeException('Only a paid issuance with an O.R. and no existing ledger entry can be added.');
                 }
+                // Legacy backfills must identify the actual collector and transaction time, not the admin who enters the record.
                 db_exec('INSERT INTO cash_collection_ledger
                     (issuance_id, transaction_date, requester_name, fee_amount, payment_method, collector_id, collector_name, reconciliation_status)
-                    VALUES (?, NOW(), ?, ?, ?, ?, ?, \'pending\')',
-                    [(int) $issuance['issuance_id'], (string) $issuance['resident_name'], (float) $issuance['fee_amount'], $method,
-                     $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'Administrator')]);
-                audit('cash_ledger_created', 'Cash Ledger', 'Success', 'Added missing ledger entry for ' . $issuance['reference_no'], 'cash_ledger', (int) db()->lastInsertId());
+                    VALUES (?, ?, ?, ?, ?, NULL, ?, \'pending\')',
+                    [(int) $issuance['issuance_id'], $transactionDate, (string) $issuance['resident_name'], (float) $issuance['fee_amount'], $method, $collectorName]);
+                audit('cash_ledger_created', 'Cash Ledger', 'Success',
+                    'Added missing ledger entry for ' . $issuance['reference_no'] . '; entered collector ' . $collectorName . '; transaction date ' . $transactionDate,
+                    'cash_ledger', (int) db()->lastInsertId());
             });
             flash_add('success', 'Ledger transaction recorded as pending reconciliation.');
             redirect('admin/ledger.php');
@@ -113,7 +119,7 @@ $totals = db_one("SELECT COUNT(*) AS transaction_count, COALESCE(SUM(cc.fee_amou
     COALESCE(SUM(CASE WHEN cc.reconciliation_status = 'reconciled' THEN cc.fee_amount ELSE 0 END),0) AS reconciled_total,
     COALESCE(SUM(CASE WHEN cc.reconciliation_status = 'pending' THEN cc.fee_amount ELSE 0 END),0) AS pending_total
     FROM cash_collection_ledger cc JOIN issuances i ON i.issuance_id = cc.issuance_id $sqlWhere", $params);
-$missing = db_all('SELECT i.issuance_id, i.reference_no, i.resident_name, i.fee_amount, i.or_number
+$missing = db_all('SELECT i.issuance_id, i.reference_no, i.resident_name, i.fee_amount, i.or_number, i.issued_at, i.issued_by_name
     FROM issuances i LEFT JOIN cash_collection_ledger cc ON cc.issuance_id = i.issuance_id
     WHERE i.fee_amount > 0 AND i.or_number IS NOT NULL AND cc.ledger_id IS NULL ORDER BY i.issued_at DESC LIMIT 200');
 
@@ -127,13 +133,15 @@ echo errors_box($errors);
   <div class="col-md-4"><div class="card-b p-3"><div class="text-muted small">Pending reconciliation</div><div class="fs-4 fw-bold"><?= e(money($totals['pending_total'] ?? 0)) ?></div></div></div>
 </div>
 <div class="card-b mb-3">
-  <div class="card-h"><h2>Record a missing transaction</h2><p>Paid certificates issued before the ledger was enabled can be added once. New paid issuances create a pending entry automatically.</p></div>
+  <div class="card-h"><h2>Record a missing transaction</h2><p>Paid certificates issued before the ledger was enabled can be added once. Enter the actual transaction date and actual collector from the receipt/office record; the Administrator entering the backfill is not automatically recorded as the collector. New paid issuances create a pending entry automatically.</p></div>
   <div class="card-body-b">
     <?php if (!$missing): ?><p class="text-muted mb-0">No eligible issuance is missing a ledger entry.</p><?php else: ?>
     <form method="post" action="<?= e(base_url('admin/ledger.php')) ?>" class="row g-2 align-items-end"><?= csrf_field() ?><input type="hidden" name="do" value="create">
-      <div class="col-lg-8"><label class="form-label" for="issuance_id">Issued certificate (must have an O.R.)</label><select class="form-select" id="issuance_id" name="issuance_id" required><option value="">Select</option><?php foreach ($missing as $m): ?><option value="<?= (int) $m['issuance_id'] ?>"><?= e((string) $m['reference_no'] . ' · ' . $m['resident_name'] . ' · ' . money($m['fee_amount']) . ' · O.R. ' . $m['or_number']) ?></option><?php endforeach; ?></select></div>
-      <div class="col-lg-2"><label class="form-label" for="new_method">Payment method</label><select class="form-select" id="new_method" name="payment_method"><?php foreach ($methods as $k => $label): ?><option value="<?= e($k) ?>"><?= e($label) ?></option><?php endforeach; ?></select></div>
-      <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit">Add pending entry</button></div>
+      <div class="col-lg-6"><label class="form-label" for="issuance_id">Issued certificate (must have an O.R.)</label><select class="form-select" id="issuance_id" name="issuance_id" required><option value="">Select</option><?php foreach ($missing as $m): ?><option value="<?= (int) $m['issuance_id'] ?>"><?= e((string) $m['reference_no'] . ' · ' . $m['resident_name'] . ' · ' . money($m['fee_amount']) . ' · O.R. ' . $m['or_number'] . ' · issued ' . date('Y-m-d', strtotime((string) $m['issued_at']))) ?></option><?php endforeach; ?></select></div>
+      <div class="col-lg-2"><label class="form-label" for="legacy_date">Actual transaction date/time</label><input class="form-control" type="datetime-local" id="legacy_date" name="transaction_date" required></div>
+      <div class="col-lg-2"><label class="form-label" for="collector_name">Actual collector name</label><input class="form-control" type="text" id="collector_name" name="collector_name" maxlength="100" required></div>
+      <div class="col-lg-1"><label class="form-label" for="new_method">Method</label><select class="form-select" id="new_method" name="payment_method"><?php foreach ($methods as $k => $label): ?><option value="<?= e($k) ?>"><?= e($label) ?></option><?php endforeach; ?></select></div>
+      <div class="col-lg-1"><button class="btn btn-primary w-100" type="submit">Add</button></div>
     </form><?php endif; ?>
   </div>
 </div>
