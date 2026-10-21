@@ -48,6 +48,9 @@ $errors = []; $v = [
 
 if (is_post() && $resident !== null) {
     require_csrf();
+    $file = $_FILES['attachment'] ?? null;
+    $uploadError = attachment_upload_error($file);
+    if ($uploadError !== null) { $errors[] = $uploadError; }
     $v = [
         'type_id' => post_str('type_id'), 'purpose' => post_str('purpose'), 'assigned_to' => post_str('assigned_to'),
         'requirements_status' => post_str('requirements_status'), 'requirements_note' => post_text('requirements_note'),
@@ -142,7 +145,7 @@ if (is_post() && $resident !== null) {
     }
 
     if (!$errors) {
-        $rid = db_transaction(function () use ($v, $pricing, $ex, $resident, $visit): int {
+        $rid = db_transaction(function () use ($v, $pricing, $ex, $resident, $visit, $file): int {
             $assigned = $v['assigned_to'] !== '' ? (int) $v['assigned_to'] : null;
             if ($ex) {
                 db_exec('UPDATE document_requests
@@ -151,6 +154,7 @@ if (is_post() && $resident !== null) {
                          WHERE request_id = ? AND status IN (\'Pending\',\'Review\')',
                     [(int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
                      $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], $ex['request_id']]);
+                store_document_upload('request', (int) $ex['request_id'], $file);
                 audit('request_updated', 'Requests', 'Success',
                     $ex['reference_no'] . ' edited' . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
                     'request', (int) $ex['request_id']);
@@ -164,6 +168,7 @@ if (is_post() && $resident !== null) {
                 [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
                  $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
+            store_document_upload('request', $new, $file);
             audit('request_created', 'Requests', 'Success',
                 $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'] . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
                 'request', $new);
@@ -192,7 +197,15 @@ if ($resident === null) {
 } else {
     $action = base_url('requests/form.php' . ($ex ? '?id=' . (int) $ex['request_id'] : ''));
     card_start();
-    echo '<form method="post" action="' . e($action) . '" class="needs-validation" novalidate autocomplete="off">' . csrf_field() . '<input type="hidden" name="resident_id" value="' . (int) $resident['resident_id'] . '">' . ($visit ? '<input type="hidden" name="visit_id" value="' . (int) $visit['visit_id'] . '">' : '') . '<div class="row">';
+    if ($ex !== null) {
+        $existingAttachments = attachments_for_parent('request', (int) $ex['request_id']);
+        if ($existingAttachments) {
+            echo '<div class="alert alert-light border"><strong>Attached supporting documents</strong>';
+            foreach ($existingAttachments as $att) { echo '<a class="d-block" href="' . e(base_url('files/download.php?id=' . (int) $att['attachment_id'])) . '">' . e((string) $att['original_name']) . '</a>'; }
+            echo '</div>';
+        }
+    }
+    echo '<form method="post" enctype="multipart/form-data" action="' . e($action) . '" class="needs-validation" novalidate autocomplete="off">' . csrf_field() . '<input type="hidden" name="resident_id" value="' . (int) $resident['resident_id'] . '">' . ($visit ? '<input type="hidden" name="visit_id" value="' . (int) $visit['visit_id'] . '">' : '') . '<div class="row">';
     if (!$types) { echo '<div class="col-12 alert alert-warning">No document types are available. Ask the Secretary to set them up in Settings.</div>'; }
     echo f_select('type_id', 'Document', $types, $v['type_id'], ['required' => true, 'blank' => 'Select a document']);
     echo f_select('fee_rule_id', 'Approved fee category / tier', $feeRuleOptions, $v['fee_rule_id'], [
@@ -216,6 +229,7 @@ if ($resident === null) {
     ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => 'Review supporting information before approving a request as Ready. No specific supporting documents are assumed by the system.']);
     echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => 'Required when marking the requirements as incomplete.']);
     echo f_textarea('purpose', 'Purpose / request details', $v['purpose'], ['required' => true, 'rows' => 3, 'maxlength' => 255]);
+    echo '<div class="col-12 mb-3"><label class="form-label" for="attachment">Supporting document (optional)</label><input class="form-control" id="attachment" name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div class="form-text">PDF, JPG or PNG; maximum 10 MB. Uploads are private and available to authorized staff.</div></div>';
     echo '</div><button class="btn btn-primary" type="submit">' . ($ex ? 'Save changes' : 'File request') . '</button> <a class="btn btn-light border" href="' . e(base_url('requests/index.php')) . '">Cancel</a></form>';
     card_end();
 }
