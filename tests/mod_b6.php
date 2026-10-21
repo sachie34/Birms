@@ -171,7 +171,10 @@ function run_b6(array $S, string $base): void
     db_exec("UPDATE blotter_parties SET full_name = 'Zzcomp ZZTest6Alpha' WHERE blotter_id = ? AND full_name = 'Zzcomp Alpha'", [$A]);
     $clr = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'"); $res = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Certificate of Residency'");
     $req = function (int $resident, int $type, string $purpose) use ($clk): int {
-        post_as($clk, '/requests/form.php?resident=' . $resident, '/requests/form.php?resident=' . $resident, ['resident_id' => (string) $resident, 'type_id' => (string) $type, 'purpose' => $purpose, 'assigned_to' => '']);
+        post_as($clk, '/requests/form.php?resident=' . $resident, '/requests/form.php?resident=' . $resident, [
+            'resident_id' => (string) $resident, 'type_id' => (string) $type, 'purpose' => $purpose, 'assigned_to' => '',
+            'requirements_status' => 'Not checked', 'requirements_note' => '',
+        ]);
         return (int) db_val('SELECT request_id FROM document_requests WHERE purpose = ?', [$purpose]);
     };
     $q1 = $req($rMatch, $clr, 'ZZ-B6 clearance for work'); $q2 = $req($rNone, $clr, 'ZZ-B6 clearance other person'); $q3 = $req($rMatch, $res, 'ZZ-B6 residency same person');
