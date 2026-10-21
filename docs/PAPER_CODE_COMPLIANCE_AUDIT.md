@@ -4,7 +4,7 @@
 **Repository:** `sachie34/Birms`  
 **Audit branch:** `john/paper-code-compliance`  
 **Audit date:** 2026-10-21  
-**Status:** Implementation added on the review branch; PHP syntax checks, database-backed tests, target-XAMPP testing, and UAT are still required before claiming full compliance.
+**Status:** Current review-branch implementation passes automated PHP syntax checks, migrations on disposable MariaDB, 37 authentication/security/audit tests, and 111 module integration tests. Target-XAMPP browser testing and UAT are still required before claiming full compliance.
 
 ## Source-of-truth order
 
@@ -60,6 +60,8 @@
 
 ## Current audit conclusion
 
-The review branch now adds the missing Reports module and database-derived demographic, issuance, and blotter summaries; dashboard indicators; configurable employment/incident classification fields; resident voter-status maintenance; and an Administrator-only local SQL export page. Migration 007 and B7 integration tests were added, and existing hard-coded RBAC test expectations were adjusted for the highest-privilege Administrator. **These changes have not yet been executed against a configured test database or the target XAMPP installation.** The role matrix still needs owner approval, billing beyond a fee-per-document issuance amount is not verified, cloud/scheduled backup is not implemented, SMS is log-only, and browser/UAT evidence is outstanding.
+The review branch adds the Reports module and database-derived demographic, issuance, and blotter summaries; dashboard indicators; configurable employment/incident classification fields; resident voter-status maintenance; and an Administrator-only local SQL export page. Migration 007 and B7 integration tests are included, and existing RBAC test expectations were adjusted for the highest-privilege Administrator. The latest GitHub Actions run passed PHP syntax validation, migration execution against disposable MariaDB, **37 authentication/security/audit tests**, and **111 module integration tests**, including the reporting and backup-access checks.
 
-This report records the initial audit findings; it is not a substitute for end-to-end execution against a configured XAMPP working copy.
+**Still not verified:** deployment and browser workflows on the target XAMPP PC, owner approval of the provisional role matrix, a tested restoration of the downloaded SQL backup, billing beyond saved per-document issuance fees, cloud/scheduled backup, and actual SMS delivery. SMS remains log-only. Do not claim full paper-to-code compliance until the required workflows are confirmed against the approved paper and exercised in a controlled working copy.
+
+This report records the current automated verification and remaining gaps; it is not a substitute for end-to-end testing against a configured XAMPP working copy.
