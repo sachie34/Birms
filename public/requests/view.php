@@ -12,6 +12,7 @@ $r = $id === null ? null : db_one('SELECT dr.*, r.last_name, r.first_name, r.mid
 if ($r === null) { abort(404, 'That request was not found.'); }
 $moves = request_allowed_moves((string) $r['status']);
 $iss = db_one('SELECT issuance_id, reference_no FROM issuances WHERE request_id = ?', [$id]);
+$attachments = attachments_for_parent('request', $id);
 $blockers = [];
 if ($r['status'] === 'Ready' && can('certificates.issue')) { $ir = issuable_request($id); $blockers = $ir ? certificate_blockers($ir, certificate_vars($ir)) : []; }
 $history = db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'request' AND entity_id = ? ORDER BY audit_id DESC LIMIT 20", [$id]);
@@ -19,7 +20,10 @@ $history = db_all("SELECT occurred_at, username_snapshot, action, remarks FROM a
 render_header((string) $r['reference_no'], [['Request Tracker', 'requests/index.php'], [(string) $r['reference_no'], null]], 'requests');
 $actions = (can('requests.edit') && in_array($r['status'], ['Pending', 'Review'], true)) ? btn_link('requests/form.php?id=' . $id, 'Edit', 'btn-light border', 'bi-pencil') : '';
 if ($r['status'] === 'Ready' && can('certificates.issue')) { $actions .= btn_link('certificates/issue.php?request=' . $id, 'Issue certificate', 'btn-primary', 'bi-file-earmark-check'); }
-if ($iss && can('certificates.history')) { $actions .= btn_link('certificates/print.php?id=' . (int) $iss['issuance_id'], 'Open certificate ' . $iss['reference_no'], 'btn-light border', 'bi-printer'); }
+if ($iss && can('certificates.history')) {
+    $actions .= btn_link('certificates/print.php?id=' . (int) $iss['issuance_id'], 'Open certificate ' . $iss['reference_no'], 'btn-light border', 'bi-printer');
+    $actions .= btn_link('certificates/pdf.php?id=' . (int) $iss['issuance_id'], 'Download PDF', 'btn-light border', 'bi-file-earmark-pdf');
+}
 page_head((string) $r['reference_no'], $r['type_name'] . ' for ' . resident_name($r), $actions);
 if ($blockers) { echo '<div class="alert alert-warning"><strong>Cannot be issued yet:</strong><ul class="mb-0">'; foreach ($blockers as $bk) { echo '<li>' . e($bk) . '</li>'; } echo '</ul></div>'; }
 // Background check for clearances: possible blotter records under this name. A hint only; it never blocks the request.
@@ -48,6 +52,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
       <?php endif; ?>
       <?= $row('Submitted', e(fmt_dt((string) $r['requested_at']))) ?><?= $row('Assigned to', e((string) ($r['assigned'] ?? '—'))) ?><?= $row('Filed by', e((string) ($r['creator'] ?? '—'))) ?>
     </tbody></table></div></div>
+    <?php if ($attachments): ?><div class="card-b mb-3"><div class="card-h"><h2>Supporting documents</h2><p>Private files uploaded with this request.</p></div><div class="card-body-b"><?php foreach ($attachments as $attachment): ?><div class="border-bottom py-2"><a href="<?= e(base_url('files/download.php?id=' . (int) $attachment['attachment_id'])) ?>"><?= e((string) $attachment['original_name']) ?></a><div class="small text-muted"><?= e((string) $attachment['mime_type']) ?> · <?= e(number_format(((int) $attachment['byte_size']) / 1024, 1)) ?> KB · <?= e(fmt_dt((string) $attachment['uploaded_at'])) ?></div></div><?php endforeach; ?></div></div><?php endif; ?>
     <?php if ($moves): ?><div class="card-b"><div class="card-h"><h2>Next step</h2><p>Only steps your role may take are shown.</p></div><div class="card-body-b">
       <?php foreach ($moves as $to):
         $label = ['Review' => 'Start review', 'Ready' => 'Approve (ready for pickup)', 'Rejected' => 'Reject', 'Cancelled' => 'Cancel request'][$to] ?? $to;
