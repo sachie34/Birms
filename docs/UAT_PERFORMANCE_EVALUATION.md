@@ -56,12 +56,13 @@ Record the actual times. Do not write projected speed improvements as measured r
 | Reports reconciled against the working database |  |
 | CSV export opens correctly and contains the expected totals |  |
 | Local SQL backup downloaded and restored into a separate scratch database |  |
+| If cloud backup is configured, remote SQL file appears in the approved HTTPS WebDAV folder and can be retrieved |  |
 | Tester / date / XAMPP version |  |
 
 ## Known limits to mention accurately
 
 - Staff-recorded voter status and manual verification do not mean that BIRMS queries COMELEC.
 - Fee matrix rules are configurable; no official rates are preloaded. The certificate issuance history and its CSV use the separate cash-collection ledger for amounts and reconciliation filters; other issuance/report/dashboard fee figures may reflect saved issuance snapshots. Ledger entries are staff-recorded and are not independent proof of cash counts or bank deposits. Review missing historical ledger entries against reliable O.R./cash evidence before financial use. No online payment gateway exists.
-- The backup feature currently downloads a local SQL export. Cloud storage, scheduled backups, and a verified automatic restore are not implemented.
+- The backup feature downloads a local SQL export and supports optional one-click HTTPS WebDAV upload when the approved remote folder and app credentials are configured privately. Cloud upload has not been tested against a real service in CI because no cloud account is bundled. Scheduled backups/notifications and a verified automatic restore are not implemented. Test a downloaded or remotely uploaded SQL file by restoring it only into a separate scratch database.
 - SMS is log-only unless a real provider has been authorized and configured.
 - The final role matrix and official certificate/summons wording must be approved by the barangay/system owner.
