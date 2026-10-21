@@ -4,22 +4,17 @@
 
 Use the `john/paper-code-compliance` branch for the expanded demo. It contains the current B1–B8 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, and cash-collection ledger. These additions are not yet merged to `main`.
 
-Latest verified application-code CI before the documentation-only updates:
-- PHP syntax check passed.
-- Migrations 001–011 applied to a disposable MariaDB 10.11 database.
-- 37/37 authentication, security, and audit checks passed.
-- 142/142 module integration checks passed.
-- No CI failures or untested checks in that run.
+The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39650720352) before the final documentation changes passed PHP syntax, migrations 001-011 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **142/142 module integration checks** (zero failures/untested). The dashboard and visible request-status label changes were included in that passing run.
 
-CI is not the same as running the app on the target office PC. The XAMPP/browser checklist below remains required before claiming the system was fully tested for the presentation.
+CI is not the same as running the app on the target office PC. Target-PC XAMPP/browser UAT remains required. Also check the latest [GitHub Actions runs](https://github.com/sachie34/Birms/actions) for the setup-wizard preflight run triggered by the final workflow update.
 
 ## 1. Safety and setup
 
-1. Use a working project folder such as `C:\xampp\htdocs\birms_work`.
-2. Keep the original `barangay_db` untouched. Configure BIRMS to use a separate `barangay_db_work` or `barangay_db_test` database.
-3. Back up the working project and database before changes. Never run test scripts against the original or production database.
-4. Follow [README_XAMPP.md](README_XAMPP.md) to configure `app/config.local.php`, PHP extensions, database permissions, migrations, and the first administrator. The configuration example defaults to `barangay_db_work`; replace the example password with a private password.
-5. Start Apache and MySQL from XAMPP. Open `http://localhost/birms_work/public/` (adjust the folder name if yours differs).
+1. Download the [paper-compliance branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/paper-code-compliance.zip) and extract the full folder under `C:\xampp\htdocs\`.
+2. Keep the original `barangay_db` untouched. The setup wizard targets a separate `barangay_db_work` database only.
+3. Start Apache and the intended local MySQL/MariaDB server. The wizard expects `127.0.0.1:3306` by default; avoid starting two database services on the same port.
+4. Double-click `SETUP_XAMPP.bat`. Enter the local MySQL root password and create a non-default administrator account/password when prompted. The wizard creates the private `app/config.local.php`, applies migrations, and sets up the limited application DB user.
+5. Open the localhost URL printed by the installer (it includes your extracted folder name). Read [README_XAMPP.md](README_XAMPP.md) if the installer reports a setup error. Back up the working project and database before subsequent changes.
 6. Create synthetic demo residents, households, visitors, requests, and blotter incidents. Do not use real residents' personal data for a classroom demo.
 7. In Settings, configure test Puroks, required document wording and a test Captain/Secretary name. Configure demo fee rules only if you need to show the fee workflow. Use clearly marked draft/demo values; do not issue or present draft output as an official barangay certificate.
 
@@ -76,6 +71,8 @@ Do not claim any of the following as complete unless you have separately configu
 - **Cloud backup/restore:** local SQL download is implemented; optional WebDAV upload needs a private approved HTTPS destination. Live upload and successful restoration are not verified by CI.
 - **Final office workflow/policy:** official Purok list, fee tier mapping, requirement checklists, payment reconciliation policy, and the Captain/Secretary/Clerk role matrix still require barangay/system-owner confirmation.
 - **Measured accuracy or speed improvement:** the paper's accuracy and retrieval-time values are targets, not measured results. Use the UAT worksheet to record real task timings before making performance claims.
+
+For exact requirement differences across the compiled thesis, SOE2 and the earlier paper, see [PAPER_CODE_ALIGNMENT.md](PAPER_CODE_ALIGNMENT.md). It documents that SMS is currently log-only and that an additional independently stored Approved stage is not part of the current request state model.
 
 ## Final sign-off
 
