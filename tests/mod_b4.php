@@ -67,7 +67,9 @@ function run_b4(array $S, string $base): void
     record('B4-8a', 'Illegal jump Pending to Ready refused; clerk can start review; clerk cannot approve (403)', $a && $b && $c);
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     $notComplete = $move($cap, $id1, 'Ready');
-    $blocked = $status($id1) === 'Review' && str_contains($notComplete['body'], 'requirements review');
+    $blockedPage = $cap->get('/requests/view.php?id=' . $id1);
+    $blocked = $status($id1) === 'Review' && $notComplete['status'] === 302
+        && str_contains($blockedPage['body'], 'requirements review');
     $markedComplete = $completeRequirements($clk, $id1);
     $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
