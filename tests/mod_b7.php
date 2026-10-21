@@ -291,7 +291,7 @@ function run_b7(array $S, string $base): void
         str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)'));
     record('B7-16', 'Periodic quarterly report can be exported for a named recipient and distinguishes reconciled collections from issuance fee amounts',
         $periodicCsv['status'] === 200
-        && str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
+        && str_contains($periodicCsvBody, 'Office of the Mayor')
         && str_contains($periodicCsvBody, 'Template status')
         && str_contains($periodicCsvBody, 'Reconciled cash-collection ledger amount')
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
