@@ -1,9 +1,9 @@
 # BIRMS working copy: install and run on XAMPP
 
-Barangay Wawa, Balagtas, Bulacan. This **working copy** starts from B1–B6 and adds database-derived reports/dashboard summaries, a request requirements-review gate, an effective-dated fee matrix, manual resident identity/voter verification history, and a local SQL export.
+Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search and local SQL export.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39651736557) on commit `f79a4ca9c5ec35ee24a1a19e8b5e9cb52fcaeb8b` passed PHP syntax validation, migrations 001–011 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **142/142 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
+> **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39659718319) on the final tested application-code revision before squash-merge passed PHP syntax validation, migrations 001–011 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **146/146 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
 
 ## Quick install (recommended)
 
@@ -63,7 +63,7 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
 
 ## 4. Accounts and roles
 Four roles: Administrator, Barangay Captain, Barangay Secretary, Barangay Staff/Clerk.
-In the paper-compliance branch, the Administrator has all currently defined module permissions plus account, settings, audit and backup access, matching the intended highest-privilege role. Captain, Secretary and Clerk use the existing **PROVISIONAL** role map until the Barangay Secretary/system owner approves the final matrix. The map must still be validated against the approved paper and office responsibilities.
+In the merged presentation build, the Administrator has all currently defined module permissions plus account, settings, audit and backup access, matching the intended highest-privilege role. Captain, Secretary and Clerk use the existing **PROVISIONAL** role map until the Barangay Secretary/system owner approves the final matrix. The map must still be validated against the approved paper and office responsibilities.
 - New users get a temporary password and must change it at first sign-in.
 - Forgot password: the Administrator sets a new temporary password (User Accounts → Manage).
 - If the Administrator is locked out: `C:\xampp\php\php.exe tools\create_admin.php --reset=username`.
