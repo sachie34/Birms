@@ -189,6 +189,12 @@ page_head('Reports & Analytics', 'Generate demographic, issuance, request-proces
       <?php foreach ($data['by_fee_rule'] as $row): ?><tr><td><?= e((string) $row['fee_category']) ?></td><td><?= e((string) $row['fee_tier']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $row['recorded_fees'], 2) ?></td></tr><?php endforeach; ?>
     </tbody></table></div><?php endif; ?>
   </div></div>
+  <div class="card-b mt-3"><div class="card-h"><h2>Issuance by saved fee category and tier</h2><p>Based on fee category/tier captured on issued records. Amounts are recorded issuance amounts, not independently reconciled cash receipts.</p></div><div class="card-body-b">
+    <?php if (!$data['by_fee_rule']): ?><?= empty_state('bi-cash-stack', 'No issuances were recorded in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Fee category</th><th>Fee tier</th><th class="text-end">Issued</th><th class="text-end">Recorded fees</th></tr></thead><tbody>
+      <?php foreach ($data['by_fee_rule'] as $row): ?><tr><td><?= e((string) $row['fee_category']) ?></td><td><?= e((string) $row['fee_tier']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $row['recorded_fees'], 2) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
 
 <?php elseif ($type === 'requests'): ?>
   <?php $s = $data['summary']; ?>
