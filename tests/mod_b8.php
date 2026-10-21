@@ -167,7 +167,7 @@ function run_b8(array $S, string $base): void
                 $reconcile['status'] === 302 && ($updated['reconciliation_status'] ?? '') === 'reconciled'
                 && $updated['reconciled_at'] !== null && str_contains($historyReconciled['body'], '27.50')
                 && str_contains($historyReconciled['body'], 'Reconciled')
-                && !str_contains($historyPending['body'], $ref));
+                && str_contains($historyPending['body'], 'No certificates issued yet.'));
 
             $lockedEdit = $adm->post('/admin/ledger.php', [
                 '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) $ledgerId,
