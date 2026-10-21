@@ -5,12 +5,23 @@ It never touches your original `barangay_db`.
 
 > **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39644996924) on commit `942ab4ae9b71f608d3f353dd29ba6949e447365b` passed PHP syntax validation, migrations 001–011 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **142/142 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
 
-## 1. Requirements
-- XAMPP with **PHP 8.1 or newer** and MySQL/MariaDB (5.7+ / 10.3+). Check with `C:\xampp\php\php.exe -v`.
-- PHP extensions: `pdo_mysql` (needed), `curl` (only for the tests), `mbstring` (optional, there is a fallback).
-- Use the system on your office network only. **Do not expose it to the public internet.**
+## Quick install (recommended)
 
-## 2. Install (working copy)
+1. Download the [BIRMS paper-compliance branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/paper-code-compliance.zip) and extract the whole folder under `C:\xampp\htdocs\`. Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
+2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
+3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
+4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies migrations 001-011, writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` and does not seed official fees, certificate wording, Puroks or signatories.
+5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
+6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
+
+The wizard refuses a pre-existing non-empty `barangay_db_work` without migration history. It will not overwrite a manually created `app/config.local.php`; if its own generated config exists after an interrupted setup, it can resume using that local configuration.
+
+## 1. Requirements
+- XAMPP with **PHP 8.1 or newer** and a local MySQL/MariaDB server (MySQL 5.7+ or MariaDB 10.3+). Check PHP with `C:\xampp\php\php.exe -v`.
+- PHP extensions: `pdo_mysql` and `fileinfo` (required); `curl` for the automated HTTP tests; `mbstring` is optional (the application has a fallback).
+- Keep BIRMS on the trusted local office network. **Do not expose it to the public internet.**
+
+## 2. Install manually (advanced)
 1. **Back up first** (see section 7). Never skip this.
 2. Copy this folder to `C:\xampp\htdocs\birms_work`.
 3. Start **Apache** and **MySQL** in the XAMPP Control Panel.
