@@ -56,6 +56,8 @@ function issuable_request(int $id): ?array
  */
 function certificate_pdf_bytes(array $issuance): string
 {
+    $autoload = APP_ROOT . '/vendor/autoload.php';
+    if (is_file($autoload)) { require_once $autoload; }
     $esc = static fn(string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $draft = 'DRAFT - PENDING OFFICIAL LAYOUT APPROVAL';
     $body = (string) ($issuance['body_text'] ?? '');
