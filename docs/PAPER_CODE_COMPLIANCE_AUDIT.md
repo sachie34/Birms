@@ -4,7 +4,7 @@
 **Repository:** `sachie34/Birms`  
 **Audit branch:** `john/paper-code-compliance`  
 **Audit date:** 2026-10-22
-**Verification status (2026-10-22):** Verified by the [latest application-code CI run](https://github.com/sachie34/Birms/actions/runs/39650720352) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **142/142 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
+**Verification status (2026-10-22):** The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39650720352) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **142/142 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
 
 ## Source-of-truth order
 
