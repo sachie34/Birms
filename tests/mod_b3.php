@@ -8,7 +8,7 @@ function run_b3(array $S, string $base): void
     $pk = (int) db_val("SELECT lookup_id FROM lookups WHERE label = 'ZZ Test Purok B3'");
     $sec = $S['secretary']; $clk = $S['clerk']; $cap = $S['captain']; $adm = $S['admin'];
     $mk = fn(array $o = []) => $o + ['last_name' => 'ZZTest', 'first_name' => 'Juan', 'middle_name' => 'Santos', 'suffix' => '', 'birthdate' => '1990-05-12', 'sex' => 'Male', 'civil_status' => 'Single',
-        'contact_number' => '09171234567', 'category_id' => '', 'household_id' => '', 'new_address' => 'ZZ Test Street 1', 'new_code' => '', 'new_purok' => (string) $pk];
+        'contact_number' => '09171234567', 'category_id' => '', 'employment_status_id' => '', 'voter_status' => 'Unverified', 'household_id' => '', 'new_address' => 'ZZ Test Street 1', 'new_code' => '', 'new_purok' => (string) $pk];
     $count = fn() => (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name LIKE 'ZZTest%'");
     $create = fn(Http $h, array $o = []) => post_as($h, '/residents/form.php', '/residents/form.php', $mk($o));
 
