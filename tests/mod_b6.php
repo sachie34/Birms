@@ -115,7 +115,7 @@ function run_b6(array $S, string $base): void
     $o5 = $outc($cap, $A, $H1, 'Held');                                                                     // already final
     $sched($sec, $A, $future(5)); $H3 = $hid($A); db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-2 hours')), $H3]);
     $o6 = $outc($cap, $A, $H3, 'Held');
-    record('B6-9', 'Outcomes: Held only once due; clerk/admin cannot; Postponed or Cancelled need a reason; the case returns to Active only when no hearing is left open; an outcome is final (audited)',
+    record('B6-9', 'Outcomes: clerk is denied; admin cannot mark a future hearing Held; Postponed/Cancelled reasons, status updates and final outcomes are enforced',
         $o0['status'] === 302 && $s0 === 'Scheduled' && $o1['status'] === 403 && $o1a['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Scheduled' && $o2['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
         && $stillSched === 'Scheduled' && $afterAll === 'Active' && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H2]) === 'Postponed' && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
         && $o6['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H3]) === 'Held' && $status($A) === 'Active' && $audit('hearing_outcome') >= 3);
@@ -194,7 +194,7 @@ function run_b6(array $S, string $base): void
         str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set') && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500 && $w2['status'] === 302
         && db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'") === $wording
         && str_contains($s3['body'], 'cannot be printed yet') && str_contains($s3['body'], 'venue') && str_contains($s4['body'], 'no respondent') && str_contains($s5['body'], 'still Scheduled') && $s6['status'] === 404 && $s7['status'] < 500);
-    record('B6-16', 'Printing a summons: wording filled in, HTML escaped, respondent and case shown; only the person who schedules hearings counts as printing it (audited); Administrator access is allowed',
+    record('B6-16', 'Printing a summons: wording is escaped and correct; view-only roles do not increment print count, while Secretary and Administrator actions are counted and audited',
         $p1['status'] === 200 && str_contains($p1['body'], 'SUMMONS') && str_contains($p1['body'], $cNo) && str_contains($p1['body'], 'ZZ Test Hall') && str_contains($p1['body'], 'Zzresp Juliet') && str_contains($p1['body'], '&lt;b&gt;Bring a valid ID&lt;/b&gt;') && !str_contains($p1['body'], '<b>Bring')
         && !str_contains($p1['body'], '{{') && $c1 === 1 && $p2['status'] === 200 && $p3['status'] === 200 && $c2 === 1 && $p4['status'] === 200 && $c3 === $c2 + 1 && $audit('summons_printed') === $sp0 + 2);
 
