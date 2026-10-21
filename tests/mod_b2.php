@@ -72,9 +72,9 @@ function run_b2(array $S, string $base): void
         && abs((float) db_val('SELECT unit_rate FROM fee_matrix WHERE fee_rule_id = ?', [$feeRuleId]) - 12.50) < 0.001
         && (int) db_val('SELECT COUNT(*) FROM audit_log WHERE action = ? AND entity_id = ?', ['fee_rule_added', $feeRuleId]) === 1);
 
-    $overlap = $post($sec, $feeRuleData + ['unit_rate' => '15.00']);
-    $invalidRange = $post($sec, $feeRuleData + ['max_quantity' => '0']);
-    $captainFeeEdit = post_as($cap, '/admin/settings.php', '/admin/settings.php', $feeRuleData + ['unit_rate' => '99.00']);
+    $overlap = $post($sec, array_replace($feeRuleData, ['unit_rate' => '15.00']));
+    $invalidRange = $post($sec, array_replace($feeRuleData, ['max_quantity' => '0']));
+    $captainFeeEdit = post_as($cap, '/admin/settings.php', '/admin/settings.php', array_replace($feeRuleData, ['unit_rate' => '99.00']));
     record('B2-16', 'Duplicate/overlapping fee rules, invalid quantity ranges and unprivileged fee edits are refused',
         str_contains($overlap['body'], 'overlapping effective dates')
         && str_contains($invalidRange['body'], 'Maximum quantity must be a positive whole number')
