@@ -99,7 +99,7 @@ function run_b2(array $S, string $base): void
     $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
     record('B2-20', 'schema_check.php agrees with the migrated database (expected_schema.json is in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 4)));
     $out = []; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/migrate.php') . ' status 2>&1', $out, $code);
-    record('B2-18', 'No migration is pending on the working database', $code === 0 && preg_match('/(^|\n)0 pending\./', implode("\n", $out)) === 1);
+    record('B2-21', 'No migration is pending on the working database', $code === 0 && preg_match('/(^|\n)0 pending\./', implode("\n", $out)) === 1);
 
     // cleanup: put everything back
     foreach ($snap as $k => $v) { db_exec('UPDATE settings SET setting_value = ? WHERE setting_key = ?', [$v, $k]); }
