@@ -985,6 +985,12 @@
                 "nullable": true,
                 "default": "null",
                 "extra": ""
+            },
+            "signature_text": {
+                "type": "varchar(150)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
             }
         },
         "indexes": {
@@ -1955,6 +1961,275 @@
             "fk_res_verification_user": {
                 "columns": [
                     "verified_by"
+                ],
+                "ref": "users(user_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            }
+        }
+    },
+    "document_attachments": {
+        "columns": {
+            "attachment_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": "auto_increment"
+            },
+            "visit_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "request_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "original_name": {
+                "type": "varchar(255)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "storage_path": {
+                "type": "varchar(255)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "mime_type": {
+                "type": "varchar(100)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "byte_size": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "sha256": {
+                "type": "char(64)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "uploaded_by": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "uploaded_at": {
+                "type": "datetime",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": ""
+            }
+        },
+        "indexes": {
+            "idx_attachment_visit": {
+                "unique": false,
+                "columns": [
+                    "visit_id"
+                ]
+            },
+            "idx_attachment_request": {
+                "unique": false,
+                "columns": [
+                    "request_id"
+                ]
+            },
+            "idx_attachment_uploader": {
+                "unique": false,
+                "columns": [
+                    "uploaded_by"
+                ]
+            },
+            "primary": {
+                "unique": true,
+                "columns": [
+                    "attachment_id"
+                ]
+            }
+        },
+        "fks": {
+            "fk_attachment_visit": {
+                "columns": [
+                    "visit_id"
+                ],
+                "ref": "visitor_log(visit_id)",
+                "on_delete": "CASCADE",
+                "on_update": "CASCADE"
+            },
+            "fk_attachment_request": {
+                "columns": [
+                    "request_id"
+                ],
+                "ref": "document_requests(request_id)",
+                "on_delete": "CASCADE",
+                "on_update": "CASCADE"
+            },
+            "fk_attachment_uploader": {
+                "columns": [
+                    "uploaded_by"
+                ],
+                "ref": "users(user_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            }
+        }
+    },
+    "cash_collection_ledger": {
+        "columns": {
+            "ledger_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": "auto_increment"
+            },
+            "issuance_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "transaction_date": {
+                "type": "datetime",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": ""
+            },
+            "requester_name": {
+                "type": "varchar(200)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "fee_amount": {
+                "type": "decimal(12,2)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "payment_method": {
+                "type": "enum('cash','bank_transfer','other')",
+                "nullable": false,
+                "default": "cash",
+                "extra": ""
+            },
+            "collector_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "collector_name": {
+                "type": "varchar(100)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "reconciliation_status": {
+                "type": "enum('pending','reconciled')",
+                "nullable": false,
+                "default": "pending",
+                "extra": ""
+            },
+            "reconciled_by": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "reconciled_at": {
+                "type": "datetime",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "notes": {
+                "type": "varchar(500)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "created_at": {
+                "type": "timestamp",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": ""
+            },
+            "updated_at": {
+                "type": "timestamp",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": "on update current_timestamp"
+            }
+        },
+        "indexes": {
+            "idx_cash_ledger_date": {
+                "unique": false,
+                "columns": [
+                    "transaction_date"
+                ]
+            },
+            "idx_cash_ledger_status": {
+                "unique": false,
+                "columns": [
+                    "reconciliation_status",
+                    "transaction_date"
+                ]
+            },
+            "idx_cash_ledger_collector": {
+                "unique": false,
+                "columns": [
+                    "collector_id"
+                ]
+            },
+            "idx_cash_ledger_reconciler": {
+                "unique": false,
+                "columns": [
+                    "reconciled_by"
+                ]
+            },
+            "primary": {
+                "unique": true,
+                "columns": [
+                    "ledger_id"
+                ]
+            },
+            "uq_cash_ledger_issuance": {
+                "unique": true,
+                "columns": [
+                    "issuance_id"
+                ]
+            }
+        },
+        "fks": {
+            "fk_cash_ledger_issuance": {
+                "columns": [
+                    "issuance_id"
+                ],
+                "ref": "issuances(issuance_id)",
+                "on_delete": "RESTRICT",
+                "on_update": "CASCADE"
+            },
+            "fk_cash_ledger_collector": {
+                "columns": [
+                    "collector_id"
+                ],
+                "ref": "users(user_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            },
+            "fk_cash_ledger_reconciler": {
+                "columns": [
+                    "reconciled_by"
                 ],
                 "ref": "users(user_id)",
                 "on_delete": "SET NULL",
