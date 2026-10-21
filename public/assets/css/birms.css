@@ -65,6 +65,7 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 .pill-amber { background: var(--pill-amber-bg); color: var(--pill-amber); } .pill-grey { background: var(--pill-grey-bg); color: var(--pill-grey); }
 .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); } .empty-state i { font-size: 2rem; display: block; margin-bottom: .5rem; opacity: .6; }
 .filters { display: flex; gap: .6rem; flex-wrap: wrap; align-items: end; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+.global-search-field { min-width: min(240px, 70vw); flex: 1 1 360px; }
 
 /* login and errors */
 .bare { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: linear-gradient(135deg, #e9f1fb, #cfe1f6); }
