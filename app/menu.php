@@ -24,6 +24,7 @@ function menu_definition(): array
         ['group' => 'Administration', 'key' => 'settings', 'label' => 'Fees and Puroks',  'icon' => 'bi-sliders',      'path' => 'admin/settings.php',  'perm' => 'settings.view',  'built' => true],
         ['group' => 'Administration', 'key' => 'audit',    'label' => 'Audit Trail',      'icon' => 'bi-journal-check','path' => 'admin/audit.php',     'perm' => 'audit.view',     'built' => true],
         ['group' => 'Administration', 'key' => 'backup',   'label' => 'Backup',           'icon' => 'bi-download',     'path' => 'admin/backup.php',    'perm' => 'backup.run',     'built' => true],
+        ['group' => 'Administration', 'key' => 'ledger',   'label' => 'Cash Collection Ledger', 'icon' => 'bi-cash-stack', 'path' => 'admin/ledger.php', 'perm' => 'backup.run', 'built' => true],
     ];
 }
 
