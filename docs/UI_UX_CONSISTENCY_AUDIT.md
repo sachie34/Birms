@@ -2,7 +2,7 @@
 
 **Status: CONSISTENT ACROSS INTERACTIVE TABS — automated layout check added.**  
 **Reference reviewed:** user-provided `ff(1).pptx` (six UI screens).  
-**Repository branch:** `john/paper-code-compliance`  
+**Available from:** `main` one-click ZIP download  
 **Review date:** 2026-10-22.
 
 ## What must remain the same between tabs
@@ -33,7 +33,7 @@ The Operations Overview/dashboard uses the same `page-head`, `card-b`, `card-h`,
 
 ## Verification
 
-The code test run for the shared-layout change includes `B9-1` through `B9-4`. `B9-1` checks the layout on every permission-accessible sidebar route for Administrator, Captain, Secretary and Clerk and the search page for each role. `B9-2` checks that hostile HTML in a search query is escaped; `B9-3` checks a real stored working-copy resident can be found; `B9-4` checks search usability for staff.
+The passed code test run for the shared-layout change includes `B9-1` through `B9-4` and is merged into `main`. `B9-1` checks the layout on every permission-accessible sidebar route for Administrator, Captain, Secretary and Clerk and the search page for each role. `B9-2` checks that hostile HTML in a search query is escaped; `B9-3` checks a real stored working-copy resident can be found; `B9-4` checks search usability for staff.
 
 See the [latest GitHub Actions run list](https://github.com/sachie34/Birms/actions) for the current status and the [presentation runbook](PRESENTATION_RUNBOOK.md) for target-PC checks.
 
