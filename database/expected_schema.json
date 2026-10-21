@@ -1864,5 +1864,102 @@
                 "on_update": "CASCADE"
             }
         }
+    },
+    "resident_verifications": {
+        "columns": {
+            "verification_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": "auto_increment"
+            },
+            "resident_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "verification_subject": {
+                "type": "enum('identity','voter_registration')",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "verification_method": {
+                "type": "enum('government_id','barangay_voter_list','other_document')",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "outcome": {
+                "type": "enum('verified','unable_to_verify','registered','not_registered')",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "reference_note": {
+                "type": "varchar(150)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "remarks": {
+                "type": "varchar(500)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "verified_by": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "verified_at": {
+                "type": "timestamp",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": ""
+            }
+        },
+        "indexes": {
+            "primary": {
+                "unique": true,
+                "columns": [
+                    "verification_id"
+                ]
+            },
+            "idx_res_verification_history": {
+                "unique": false,
+                "columns": [
+                    "resident_id",
+                    "verified_at"
+                ]
+            },
+            "idx_res_verification_actor": {
+                "unique": false,
+                "columns": [
+                    "verified_by"
+                ]
+            }
+        },
+        "fks": {
+            "fk_res_verification_resident": {
+                "columns": [
+                    "resident_id"
+                ],
+                "ref": "residents(resident_id)",
+                "on_delete": "RESTRICT",
+                "on_update": "CASCADE"
+            },
+            "fk_res_verification_user": {
+                "columns": [
+                    "verified_by"
+                ],
+                "ref": "users(user_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            }
+        }
     }
 }
