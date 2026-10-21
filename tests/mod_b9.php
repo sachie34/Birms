@@ -38,8 +38,12 @@ function run_b9(array $S, string $base): void
     $residentId = (int) db()->lastInsertId();
     try {
         $result = $S['secretary']->get('/search.php?q=GlobalProbe');
+        $hasName = str_contains($result['body'], 'ZZB9Search');
+        $hasLink = str_contains($result['body'], 'residents/view.php?id=' . $residentId);
         record('B9-3', 'Global search finds a stored resident and links to the permitted resident profile',
-            $result['status'] === 200 && str_contains($result['body'], 'ZZB9Search') && str_contains($result['body'], 'residents/view.php?id=' . $residentId));
+            $result['status'] === 200 && $hasName && $hasLink,
+            'status=' . $result['status'] . ', name=' . ($hasName ? 'yes' : 'no') . ', link=' . ($hasLink ? 'yes' : 'no')
+            . ', matching output=' . (preg_match('/.{0,60}GlobalProbe.{0,100}/s', $result['body'], $m) ? trim($m[0]) : 'none'));
 
         $clerk = $S['clerk']->get('/search.php?q=GlobalProbe');
         record('B9-4', 'Global search is usable by staff through the shared layout without a server error',
