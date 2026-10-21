@@ -2,15 +2,15 @@
 
 Barangay Information and Records Management System.
 
-This repository is the clean Git import of the staged **B1–B6 BIRMS work package** from `Claudecodebirms.zip`. It is maintained separately from the existing visual UI/UX prototype so application-code integration does not overwrite or silently redesign the approved mockup.
+This repository began as the clean Git import of the staged **B1–B6 BIRMS work package** from `Claudecodebirms.zip`. The paper-compliance branch adds a reporting module, reporting data fields, and a local SQL backup download while keeping changes isolated from `main` until reviewed. It remains separate from the existing visual UI/UX prototype.
 
 ## Repository layout
 
 - `app/` — shared application bootstrap, authentication, permissions, database helpers, and module libraries.
-- `public/` — web entry points and module screens.
-- `database/` — migrations and expected schema snapshot.
+- `public/` — web entry points and module screens, including reporting and Administrator-only local SQL backup on the paper-compliance branch.
+- `database/` — migrations and expected schema snapshot, including migration 007 for reporting fields.
 - `tools/` — migration, administrator, and schema verification tools.
-- `tests/` — module and application test runners.
+- `tests/` — module and application test runners, including B7 report and backup-access tests.
 - `docs/` — design decisions, implementation notes, and XAMPP setup guidance.
 - `storage/` — runtime storage locations; logs and backups are ignored by Git.
 
@@ -41,4 +41,4 @@ The test suite may require a configured local database. Run it only against a se
 
 ## Scope boundary
 
-The repository contains the code delivered in the B1–B6 package. It does not change the existing BIRMS UI/UX prototype, PowerPoint materials, BPMN, or ERD. Any future UI integration, schema change, or module expansion must be reviewed in a separate branch and pull request.
+The original main branch reflects the initial B1–B6 package. The `john/paper-code-compliance` review branch contains the reporting and backup additions. It does not change the existing BIRMS UI/UX prototype, PowerPoint materials, BPMN, or ERD. Review and run the complete test suite on a disposable `_work` or `_test` database before accepting or deploying these changes.
