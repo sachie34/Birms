@@ -131,7 +131,7 @@ function run_b6(array $S, string $base): void
     ];
     $outcomeFailures = array_keys(array_filter($outcomeChecks, static fn(bool $ok): bool => !$ok));
     record('B6-9', 'Hearing outcomes enforce role access, reasons, due times, case-state synchronization and audit logging',
-        !$outcomeFailures, implode(', ', $outcomeFailures) . '; o1a=' . $o1a['status'] . '; after_admin=' . json_encode($afterAdminOutcome) . '; o2=' . $o2['status'] . '; after_empty_postpone=' . (string) $afterEmptyPostpone);
+        !$outcomeFailures, $outcomeFailures ? implode(', ', $outcomeFailures) : '');
 
     /* ---- resolve rules ---- */
     $file($clk, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']); $D = $cid('four');
