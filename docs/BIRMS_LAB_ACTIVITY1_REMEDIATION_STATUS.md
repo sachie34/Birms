@@ -21,6 +21,8 @@
 ### Cross-cutting status
 
 - Migration `011_document_attachments_cash_ledger_signature.sql` adds the attachment, ledger and typed-signature fields. The expected schema snapshot was updated.
+- The dashboard's “Revenue collected” figure now uses reconciled cash-ledger entries, with pending reconciliation shown separately. A combined monthly/quarterly report can be generated for DILG, the Mayor’s Office, or PNP; the output remains a draft pending official templates.
+- Administrator-only SQL backup now offers optional HTTPS WebDAV upload when the destination and app credentials are privately configured. Automated checks cover URL validation and the UI/config state, but real cloud transfer and restoration remain **NOT RUN** pending an approved cloud destination.
 - Added `tests/mod_b8.php`; this extends rather than replaces the existing B7 reporting tests.
 - PDF output is marked draft pending approval. Test with the exact office PHP version and verify that each downloaded PDF opens in a standard PDF reader.
 - **No process target is claimed as measured:** no 99% accuracy, retrieval-time improvement, or processing-time target is reported as achieved by this remediation.
