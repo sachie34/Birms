@@ -51,7 +51,9 @@ if (is_post() && $resident !== null) {
     $v = [
         'type_id' => post_str('type_id'), 'purpose' => post_str('purpose'), 'assigned_to' => post_str('assigned_to'),
         'requirements_status' => post_str('requirements_status'), 'requirements_note' => post_text('requirements_note'),
-        'fee_rule_id' => post_str('fee_rule_id'), 'fee_quantity' => post_str('fee_quantity'),
+        'fee_rule_id' => post_str('fee_rule_id'),
+        // Legacy request-form clients may omit fee quantity. Quantity 1 preserves the prior workflow.
+        'fee_quantity' => post_str('fee_quantity') !== '' ? post_str('fee_quantity') : '1',
     ];
     if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
