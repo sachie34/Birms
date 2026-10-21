@@ -35,7 +35,7 @@ if ($isCsv) {
     $write = static function (array $row) use ($out): void {
         $safe = array_map(static function ($v) {
             if (!is_string($v)) { return $v; }
-            return preg_match('/^[=+@\t\r]/', $v) ? "'" . $v : $v;
+            return preg_match('/^[\x00-\x20]*[=+\-@]/', $v) ? "'" . $v : $v;
         }, $row);
         fputcsv($out, $safe, ',', '"', '\\');
     };
@@ -85,10 +85,11 @@ $filterQuery = ['type' => $type, 'period' => $period, 'year' => $range['year']];
 if ($period === 'month') { $filterQuery['month'] = $range['month']; }
 if ($period === 'quarter') { $filterQuery['quarter'] = $range['quarter']; }
 $exportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
+$reportActions = '<button class="btn btn-light border" type="button" data-print><i class="bi bi-printer me-1"></i>Print</button>';
+if (can('reports.export')) { $reportActions .= ' <a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>'; }
 
 render_header('Reports & Analytics', [['Reports & Analytics', null]], 'reports');
-page_head('Reports & Analytics', 'Generate demographic, issuance and blotter summaries from actual BIRMS records.',
-    can('reports.export') ? '<a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>' : '');
+page_head('Reports & Analytics', 'Generate demographic, issuance and blotter summaries from actual BIRMS records.', $reportActions);
 ?>
 <div class="card-b mb-3">
   <div class="card-h"><h2>Report options</h2><p>Choose the report and, for issuance and incident reports, the reporting period.</p></div>
