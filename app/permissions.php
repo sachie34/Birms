@@ -12,8 +12,18 @@ const PERMISSIONS_STATUS = 'PROVISIONAL';
 function permission_map(): array
 {
     return [
+        // Administrator is the highest-privilege role and may perform operational tasks as needed.
+        // The map remains provisional until the barangay validates all role assignments.
         'admin' => [
-            'dashboard.view', 'settings.view', 'settings.edit', 'audit.view', 'audit.export', 'users.manage', 'backup.run',
+            'dashboard.view',
+            'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
+            'requests.view', 'requests.add', 'requests.edit', 'requests.approve',
+            'certificates.history', 'certificates.issue',
+            'settings.view', 'settings.edit',
+            'audit.view', 'audit.export', 'users.manage', 'backup.run',
+            'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
+            'hearings.view', 'hearings.add', 'hearings.edit',
+            'reports.view', 'reports.export',
         ],
         'captain' => [
             'dashboard.view', 'residents.view', 'residents.export', 'requests.view', 'requests.approve',
