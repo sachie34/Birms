@@ -16,6 +16,8 @@ CREATE TABLE fee_matrix (
     PRIMARY KEY (fee_rule_id),
     UNIQUE KEY uq_fee_matrix_effective (type_id, fee_category, fee_tier, effective_from),
     KEY idx_fee_matrix_active (type_id, is_active, effective_from, effective_to),
+    KEY idx_fee_matrix_type (type_id),
+    KEY idx_fee_matrix_creator (created_by),
     CONSTRAINT fk_fee_matrix_type FOREIGN KEY (type_id) REFERENCES document_types (type_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_fee_matrix_creator FOREIGN KEY (created_by) REFERENCES users (user_id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
