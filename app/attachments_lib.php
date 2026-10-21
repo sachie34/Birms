@@ -54,7 +54,7 @@ function store_document_upload(string $scope, int $parentId, ?array $file): ?int
     @chmod($absolute, 0640);
     $mime = match ($extension) { 'pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'png' => 'image/png', default => 'application/octet-stream' };
     $original = preg_replace('/[\x00-\x1F\x7F]/u', '', basename((string) $file['name'])) ?? 'attachment';
-    $original = mb_substr($original, 0, 255, 'UTF-8');
+    $original = function_exists('mb_substr') ? mb_substr($original, 0, 255, 'UTF-8') : substr($original, 0, 255);
     try {
         $actor = audit_actor();
         $visitId = $scope === 'visitor' ? $parentId : null;
