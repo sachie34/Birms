@@ -89,7 +89,7 @@ page_head('Search Records', 'Search the record areas available to your account.'
     <?php if (!$results['residents']): ?><div class="empty-state">No matching resident records.</div>
     <?php else: ?><div class="table-responsive"><table class="table table-b"><thead><tr><th>Resident</th><th>Household</th><th>Status</th><th class="text-end">Action</th></tr></thead><tbody>
       <?php foreach ($results['residents'] as $r): ?><tr>
-        <td class="fw-semibold"><?= e(trim(implode(' ', array_filter([(string) $r['last_name'] . ',', (string) $r['first_name'], (string) ($r['middle_name'] ?? ''), (string) ($r['suffix'] ?? '')]))) ?></td>
+        <td class="fw-semibold"><?= e(trim(implode(' ', array_filter([(string) $r['last_name'] . ',', (string) $r['first_name'], (string) ($r['middle_name'] ?? ''), (string) ($r['suffix'] ?? '')])))) ?></td>
         <td><?= e((string) ($r['household_code'] ?? '—')) ?></td><td><?= residency_pill((string) $r['residency_status']) ?></td>
         <td class="text-end"><a class="btn btn-sm btn-light border" href="<?= e(base_url('residents/view.php?id=' . (int) $r['resident_id'])) ?>">Open</a></td>
       </tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
