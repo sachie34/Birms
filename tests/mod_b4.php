@@ -66,14 +66,22 @@ function run_b4(array $S, string $base): void
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
     record('B4-8a', 'Illegal jump Pending to Ready refused; clerk can start review; clerk cannot approve (403)', $a && $b && $c);
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
+    $incompleteNoNote = post_as($clk, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
+        'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
+        'assigned_to' => '', 'requirements_status' => 'Incomplete', 'requirements_note' => '',
+    ]);
+    $invalidRequirements = $incompleteNoNote['status'] === 200
+        && str_contains($incompleteNoNote['body'], 'Explain which requirements are missing')
+        && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
     $notComplete = $move($cap, $id1, 'Ready');
     $blockedPage = $cap->get('/requests/view.php?id=' . $id1);
     $blocked = $status($id1) === 'Review' && $notComplete['status'] === 302
         && str_contains($blockedPage['body'], 'requirements review');
     $markedComplete = $completeRequirements($clk, $id1);
+    $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
     $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
-    record('B4-8b', 'Approval is blocked until requirements are reviewed as Complete; Captain can then approve, and a Ready request cannot move backward or cancel', $blocked && $markedComplete['status'] === 302 && $d && $e);
+    record('B4-8b', 'Incomplete requirements need a note; approval is blocked until marked Complete; Captain can then approve, and a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
     record('B4-9', 'Approving logs (never sends) an SMS: recipient, default text with the reference, "Logged only"', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
     $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $completeRequirements($sec, $id2); $move($sec, $id2, 'Ready');
