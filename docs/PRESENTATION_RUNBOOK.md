@@ -10,7 +10,7 @@ CI is not the same as running the app on the target office PC. Target-PC XAMPP/b
 
 ## 1. Safety and setup
 
-1. Download the [paper-compliance branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/paper-code-compliance.zip) and extract the full folder under `C:\xampp\htdocs\`.
+1. Download the [paper-compliance branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/paper-code-compliance.zip), extract the full folder under `C:\xampp\htdocs\`, and rename the extracted folder to `birms_work` so the commands below work as written.
 2. Keep the original `barangay_db` untouched. The setup wizard targets a separate `barangay_db_work` database only.
 3. Start Apache and the intended local MySQL/MariaDB server. The wizard expects `127.0.0.1:3306` by default; avoid starting two database services on the same port.
 4. Double-click `SETUP_XAMPP.bat`. Enter the local MySQL root password and create a non-default administrator account/password when prompted. The wizard creates the private `app/config.local.php`, applies migrations, and sets up the limited application DB user.
