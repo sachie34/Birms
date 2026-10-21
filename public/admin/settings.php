@@ -89,13 +89,23 @@ if (is_post()) {
                     if ($to !== null && !v_date($to)) { $errors[] = 'Enter a valid effective-to date or leave it blank.'; }
                     if ($to !== null && v_date($from) && v_date($to) && $to < $from) { $errors[] = 'Effective-to date cannot be earlier than effective-from date.'; }
                     if ($errors) { throw new RuntimeException('invalid'); }
-                    $overlap = (int) db_val(
-                        'SELECT COUNT(*) FROM fee_matrix
-                         WHERE type_id = ? AND fee_category = ? AND fee_tier = ? AND is_active = 1
-                           AND (effective_to IS NULL OR effective_to >= ?)
-                           AND (? IS NULL OR effective_from <= ?)',
-                        [$typeId, $category, $tier, $from, $to, $to]
-                    );
+                    if ($to === null) {
+                        // A new open-ended rule overlaps every later rule for the same key whose end is not before this start.
+                        $overlap = (int) db_val(
+                            'SELECT COUNT(*) FROM fee_matrix
+                             WHERE type_id = ? AND fee_category = ? AND fee_tier = ? AND is_active = 1
+                               AND (effective_to IS NULL OR effective_to >= ?)',
+                            [$typeId, $category, $tier, $from]
+                        );
+                    } else {
+                        $overlap = (int) db_val(
+                            'SELECT COUNT(*) FROM fee_matrix
+                             WHERE type_id = ? AND fee_category = ? AND fee_tier = ? AND is_active = 1
+                               AND (effective_to IS NULL OR effective_to >= ?)
+                               AND effective_from <= ?',
+                            [$typeId, $category, $tier, $from, $to]
+                        );
+                    }
                     if ($overlap > 0) { $errors[] = 'This category and tier already has an active rule with overlapping effective dates. Disable the old rule before creating a replacement.'; throw new RuntimeException('invalid'); }
                     db_exec('INSERT INTO fee_matrix (type_id, fee_category, fee_tier, unit_rate, min_quantity, max_quantity, effective_from, effective_to, created_by)
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
