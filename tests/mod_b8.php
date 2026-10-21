@@ -170,8 +170,18 @@ function run_b8(array $S, string $base): void
                 && str_contains($historyReconciled['body'], 'Reconciled')
                 && !str_contains($historyPending['body'], $ref));
 
+            $lockedEdit = $adm->post('/admin/ledger.php', [
+                '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) $ledgerId,
+                'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '35.00',
+                'payment_method' => 'cash', 'notes' => 'ZZ-B8 invalid reconciled edit',
+            ]);
+            $lockedRow = db_one('SELECT * FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]);
+            record('B8-10', 'Reconciled ledger rows cannot be edited without first returning to Pending',
+                $lockedEdit['status'] === 200 && str_contains($lockedEdit['body'], 'Mark this transaction Pending before editing')
+                && (float) ($lockedRow['fee_amount'] ?? 0) === 27.5 && ($lockedRow['reconciliation_status'] ?? '') === 'reconciled');
+
             $csv = $sec->get('/certificates/history_export.php?q=' . urlencode($ref) . '&reconciliation=reconciled');
-            record('B8-10', 'History CSV contains cash-ledger amount and reconciliation status',
+            record('B8-11', 'History CSV contains cash-ledger amount and reconciliation status',
                 $csv['status'] === 200 && str_contains($csv['body'], 'Cash ledger amount')
                 && str_contains($csv['body'], '27.50') && str_contains(strtolower($csv['body']), 'reconciled'));
 
@@ -181,7 +191,7 @@ function run_b8(array $S, string $base): void
             $delete = $adm->post('/admin/ledger.php', [
                 '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'delete', 'id' => (string) $ledgerId,
             ]);
-            record('B8-11', 'Pending ledger records can be deleted with an audit record',
+            record('B8-12', 'Pending ledger records can be deleted with an audit record',
                 $pending['status'] === 302 && $delete['status'] === 302
                 && db_one('SELECT ledger_id FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]) === null
                 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'cash_ledger_deleted' AND entity_id = ?", [$ledgerId]) > 0);
@@ -191,16 +201,16 @@ function run_b8(array $S, string $base): void
                 'issuance_id' => (string) $paidIssuanceId, 'payment_method' => 'cash',
             ]);
             $restored = db_one('SELECT * FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]);
-            record('B8-12', 'Administrator can record a missing legacy ledger entry for an issued certificate with O.R.',
+            record('B8-13', 'Administrator can record a missing legacy ledger entry for an issued certificate with O.R.',
                 $restore['status'] === 302 && $restored !== null
                 && $restored['reconciliation_status'] === 'pending' && $restored['payment_method'] === 'cash');
         } else {
-            for ($n = 8; $n <= 12; $n++) { record('B8-' . $n, 'Cash ledger lifecycle prerequisite', null, 'Paid issuance/ledger setup failed'); }
+            for ($n = 8; $n <= 13; $n++) { record('B8-' . $n, 'Cash ledger lifecycle prerequisite', null, 'Paid issuance/ledger setup failed'); }
         }
 
         $schemaOutput = []; $schemaCode = 0;
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $schemaOutput, $schemaCode);
-        record('B8-13', 'Expected schema agrees with the migrated database', $schemaCode === 0, $schemaCode === 0 ? '' : implode(' | ', array_slice($schemaOutput, 0, 4)));
+        record('B8-14', 'Expected schema agrees with the migrated database', $schemaCode === 0, $schemaCode === 0 ? '' : implode(' | ', array_slice($schemaOutput, 0, 4)));
     } finally {
         $cleanup();
     }
