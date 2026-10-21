@@ -20,7 +20,10 @@ function run_b5(array $S, string $base): void
         return (int) db()->lastInsertId();
     };
     $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n): int {
-        $n++; db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at) VALUES (?, ?, ?, ?, ?, NOW())', ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status]);
+        $n++;
+        $requirementsStatus = $status === 'Ready' ? 'Complete' : 'Not checked';
+        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requirements_status, requested_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $requirementsStatus]);
         return (int) db()->lastInsertId();
     };
     $issue = fn(Http $h, int $req, array $o = []) => post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req] + $o);
@@ -36,11 +39,16 @@ function run_b5(array $S, string $base): void
 
     // blockers
     $rFee = $mkReq($res, $tNoFee); $rWord = $mkReq($res, $tNoWord); $rArch = $mkReq($mkRes('Arch', null, true), $tPaid); $rNoAddr = $mkReq($mkRes('NoPurok', $hhNoPurok), $tPaid);
+    $rNoRequirements = $mkReq($res, $tPaid);
+    db_exec("UPDATE document_requests SET requirements_status = 'Not checked' WHERE request_id = ?", [$rNoRequirements]);
     db_exec("UPDATE settings SET setting_value = NULL WHERE setting_key = 'captain_name'"); $rNoCap = $mkReq($res, $tPaid);
-    $pgs = [$rFee => 'fee for', $rWord => 'wording', $rArch => 'archived', $rNoAddr => '{{purok}}', $rNoCap => 'Captain'];
+    $pgs = [
+        $rFee => 'fee for', $rWord => 'wording', $rArch => 'archived', $rNoAddr => '{{purok}}',
+        $rNoCap => 'Captain', $rNoRequirements => 'requirements have not been marked Complete',
+    ];
     $miss = []; foreach ($pgs as $id => $needle) { $pg = $clk->get('/certificates/issue.php?request=' . $id); $pp = issue_try($clk, $id); if (!str_contains($pg['body'], $needle) || $iss($id) !== null || $stat($id) !== 'Ready' || str_contains($pg['body'], 'name="or_number"')) { $miss[] = $needle; } }
     db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
-    record('B5-3', 'Nothing is guessed: unset fee, unset wording, missing Captain name, missing Purok and archived resident each BLOCK issuing (no certificate, status unchanged)', !$miss, implode(',', $miss));
+    record('B5-3', 'Certificate issuance is blocked for unchecked requirements, unset fee, unset wording, missing Captain name, missing Purok and archived residents (no certificate, status unchanged)', !$miss, implode(',', $miss));
     $pp = $issue($clk, $rPend, ['or_number' => 'ZZOR-P']);
     record('B5-4', 'A request that is not Ready cannot be issued', $iss($rPend) === null && $stat($rPend) === 'Pending');
 
