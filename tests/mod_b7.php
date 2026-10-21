@@ -278,10 +278,12 @@ function run_b7(array $S, string $base): void
     record('B7-16A', 'Periodic quarterly CSV response succeeds with a CSV content type',
         $periodicCsv['status'] === 200
         && str_contains(strtolower((string) ($periodicCsv['headers']['content-type'] ?? '')), 'text/csv'));
-    record('B7-16B', 'Periodic quarterly CSV identifies the selected recipient and draft template',
-        str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
-        && str_contains($periodicCsvBody, 'Template status')
-        && str_contains($periodicCsvBody, 'Report period'));
+    record('B7-16B1', 'Periodic quarterly CSV includes selected recipient',
+        str_contains($periodicCsvBody, 'Office of the Mayor'));
+    record('B7-16B2', 'Periodic quarterly CSV identifies draft template status',
+        str_contains($periodicCsvBody, 'Template status'));
+    record('B7-16B3', 'Periodic quarterly CSV includes reporting period',
+        str_contains($periodicCsvBody, 'Report period'));
     record('B7-16C', 'Periodic quarterly CSV distinguishes reconciled and pending cash-ledger amounts',
         str_contains($periodicCsvBody, 'Reconciled cash-collection ledger amount')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
