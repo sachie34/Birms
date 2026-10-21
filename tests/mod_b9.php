@@ -1,19 +1,32 @@
 <?php
 /** B9 tests: global search and shared application chrome. */
 declare(strict_types=1);
+require_once __DIR__ . '/../app/menu.php';
 
 function run_b9(array $S, string $base): void
 {
     $roles = ['admin', 'captain', 'secretary', 'clerk'];
-    $layoutOk = true;
+    $layoutProblems = [];
+    $checkedPages = 0;
     foreach ($roles as $role) {
-        $r = $S[$role]->get('/search.php');
-        if ($r['status'] !== 200 || !str_contains($r['body'], 'topbar-search')
-            || !str_contains($r['body'], 'Search Records') || !str_contains($r['body'], 'name="q"')) {
-            $layoutOk = false;
+        foreach (menu_definition() as $item) {
+            if (empty($item['built']) || !role_can($role, (string) $item['perm'])) { continue; }
+            $page = $S[$role]->get('/' . ltrim((string) $item['path'], '/'));
+            $checkedPages++;
+            if ($page['status'] !== 200 || !str_contains($page['body'], 'class="app-shell"')
+                || !str_contains($page['body'], 'class="sidebar"')
+                || !str_contains($page['body'], 'class="topbar"')
+                || !str_contains($page['body'], 'class="topbar-search"')
+                || !str_contains($page['body'], 'class="content"')) {
+                $layoutProblems[] = $role . ':' . $item['path'] . '=' . $page['status'];
+            }
+        }
+        $searchPage = $S[$role]->get('/search.php');
+        if ($searchPage['status'] !== 200 || !str_contains($searchPage['body'], 'name="q"')) {
+            $layoutProblems[] = $role . ':search.php=' . $searchPage['status'];
         }
     }
-    record('B9-1', 'Global search is available inside the shared signed-in layout for all four roles', $layoutOk);
+    record('B9-1', 'Shared UI shell is consistent across all permission-accessible workspace/admin tabs and all four roles (' . $checkedPages . ' menu routes)', !$layoutProblems, implode(', ', $layoutProblems));
 
     $odd = $S['clerk']->get('/search.php?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E');
     record('B9-2', 'Global search safely handles HTML/script input without reflected markup or a server error',
@@ -29,7 +42,7 @@ function run_b9(array $S, string $base): void
             $result['status'] === 200 && str_contains($result['body'], 'ZZB9Search') && str_contains($result['body'], 'residents/view.php?id=' . $residentId));
 
         $clerk = $S['clerk']->get('/search.php?q=ZZB9GlobalProbe');
-        record('B9-4', 'Global search remains available through the common layout for staff roles without exposing a database error',
+        record('B9-4', 'Global search is usable by staff through the shared layout without a server error',
             $clerk['status'] === 200 && str_contains($clerk['body'], 'Residents') && !leaks($clerk));
     } finally {
         db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
