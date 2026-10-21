@@ -268,6 +268,12 @@
                 "nullable": false,
                 "default": "current_timestamp",
                 "extra": "on update current_timestamp"
+            },
+            "incident_type_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
             }
         },
         "indexes": {
@@ -307,6 +313,12 @@
                 "columns": [
                     "case_no"
                 ]
+            },
+            "idx_blotter_incident_type": {
+                "unique": false,
+                "columns": [
+                    "incident_type_id"
+                ]
             }
         },
         "fks": {
@@ -324,6 +336,14 @@
                 ],
                 "ref": "users(user_id)",
                 "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            },
+            "fk_blotter_incident_type": {
+                "columns": [
+                    "incident_type_id"
+                ],
+                "ref": "lookups(lookup_id)",
+                "on_delete": "RESTRICT",
                 "on_update": "CASCADE"
             }
         }
@@ -1184,6 +1204,12 @@
                 "nullable": true,
                 "default": "null",
                 "extra": ""
+            },
+            "employment_status_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
             }
         },
         "indexes": {
@@ -1230,6 +1256,12 @@
                 "columns": [
                     "resident_id"
                 ]
+            },
+            "idx_res_employment_status": {
+                "unique": false,
+                "columns": [
+                    "employment_status_id"
+                ]
             }
         },
         "fks": {
@@ -1254,6 +1286,14 @@
                     "household_id"
                 ],
                 "ref": "households(household_id)",
+                "on_delete": "RESTRICT",
+                "on_update": "CASCADE"
+            },
+            "fk_res_employment_status": {
+                "columns": [
+                    "employment_status_id"
+                ],
+                "ref": "lookups(lookup_id)",
                 "on_delete": "RESTRICT",
                 "on_update": "CASCADE"
             }
