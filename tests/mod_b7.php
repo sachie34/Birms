@@ -119,12 +119,16 @@ function run_b7(array $S, string $base): void
     $issuancePage = $sec->get('/reports/index.php?type=issuance&period=month&year=' . date('Y') . '&month=' . date('n'));
     $requestsPage = $sec->get('/reports/index.php?type=requests&period=month&year=' . date('Y') . '&month=' . date('n'));
     $blotterPage = $sec->get('/reports/index.php?type=blotter&period=month&year=' . date('Y') . '&month=' . date('n'));
+    $periodicPage = $sec->get('/reports/index.php?type=periodic&period=month&year=' . date('Y') . '&month=' . date('n') . '&recipient=pnp');
     $dashboard = $sec->get('/dashboard.php');
     record('B7-7', 'Report screens and dashboard expose the configured categories and real operational summaries',
         $reportPage['status'] === 200 && str_contains($reportPage['body'], 'ZZ B7 Employment') && $issuancePage['status'] === 200
         && str_contains($issuancePage['body'], 'ZZ B7 report test') === false
         && $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary')
         && $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident')
+        && $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Periodic Administrative Report')
+        && str_contains($periodicPage['body'], 'Philippine National Police (PNP)')
+        && str_contains($periodicPage['body'], 'Revenue collected')
         && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
     record('B7-10', 'Request-processing summaries derive totals, current status, document type and assignee from saved requests',
         (int) $afterMonthRequests['summary']['total'] === (int) $baselineMonthRequests['summary']['total'] + 1
@@ -262,9 +266,20 @@ function run_b7(array $S, string $base): void
     $cloudStatusVisible = $cloudConfigured
         ? str_contains($backupAdmin['body'], 'Cloud destination is configured')
         : str_contains($backupAdmin['body'], 'Cloud upload is not configured yet');
+    $cloudPassword = (string) config('backup.webdav_password', '');
+    $passwordNotExposed = $cloudPassword === '' || !str_contains($backupAdmin['body'], $cloudPassword);
     record('B7-15', 'Cloud backup UI truthfully reflects configuration without printing configured credentials',
-        $cloudStatusVisible
-        && !str_contains($backupAdmin['body'], (string) config('backup.webdav_password', 'BIRMS_TEST_NO_MATCH')));
+        $cloudStatusVisible && $passwordNotExposed);
+
+    $periodicCsv = $sec->get('/reports/index.php?type=periodic&period=quarter&year=' . date('Y') . '&quarter=4&recipient=mayor&format=csv');
+    $periodicCsvBody = (string) $periodicCsv['body'];
+    record('B7-16', 'Periodic quarterly report can be exported for a named recipient and distinguishes reconciled collections from issuance fee amounts',
+        $periodicCsv['status'] === 200
+        && str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
+        && str_contains($periodicCsvBody, 'Template status')
+        && str_contains($periodicCsvBody, 'Reconciled cash-collection ledger amount')
+        && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
+        && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
     // Clean ledger children before removing issuances, and issuances before requests.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
