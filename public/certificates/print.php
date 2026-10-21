@@ -29,7 +29,7 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
     <button type="button" class="btn btn-primary" data-print><i class="bi bi-printer me-1"></i>Print</button>
   </div>
   <div class="cert-sheet">
-    <div style="border:2px solid #9b2c2c;color:#9b2c2c;font-weight:bold;text-align:center;padding:8px;margin-bottom:18px;">DRAFT — PENDING OFFICIAL LAYOUT APPROVAL</div>
+    <div class="cert-draft">DRAFT — PENDING OFFICIAL LAYOUT APPROVAL</div>
     <div class="cert-head"><div class="l1">Republic of the Philippines</div><div class="l1">Province of <?= e((string) setting('province', '')) ?> · Municipality of <?= e((string) setting('municipality', '')) ?></div><div class="l3"><?= e(barangay_title()) ?></div></div>
     <div class="cert-title"><?= e((string) $c['type_name']) ?></div>
     <div class="cert-body"><?= e((string) $c['body_text']) ?></div>
