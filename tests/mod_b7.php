@@ -275,11 +275,22 @@ function run_b7(array $S, string $base): void
     $periodicCsvRaw = (string) $periodicCsv['body'];
     $periodicCsvBom = pack('CCC', 0xEF, 0xBB, 0xBF);
     $periodicCsvBody = str_starts_with($periodicCsvRaw, $periodicCsvBom) ? substr($periodicCsvRaw, 3) : $periodicCsvRaw;
+    $periodicCsvStream = fopen('php://temp', 'w+');
+    fwrite($periodicCsvStream, $periodicCsvBody);
+    rewind($periodicCsvStream);
+    $periodicCsvRows = [];
+    while (($periodicCsvRow = fgetcsv($periodicCsvStream)) !== false) { $periodicCsvRows[] = $periodicCsvRow; }
+    fclose($periodicCsvStream);
+    $preparedForLabel = '';
+    foreach ($periodicCsvRows as $periodicCsvRow) {
+        if (($periodicCsvRow[0] ?? '') === 'Prepared for') { $preparedForLabel = (string) ($periodicCsvRow[1] ?? ''); break; }
+    }
     record('B7-16A', 'Periodic quarterly CSV response succeeds with a CSV content type',
         $periodicCsv['status'] === 200
         && str_contains(strtolower((string) ($periodicCsv['headers']['content-type'] ?? '')), 'text/csv'));
     record('B7-16B1', 'Periodic quarterly CSV includes selected recipient',
-        str_contains($periodicCsvBody, 'Office of the Mayor'));
+        $preparedForLabel === 'Office of the Mayor',
+        'Parsed Prepared for value: ' . ($preparedForLabel !== '' ? $preparedForLabel : '(missing)'));
     record('B7-16B2', 'Periodic quarterly CSV identifies draft template status',
         str_contains($periodicCsvBody, 'Template status'));
     record('B7-16B3', 'Periodic quarterly CSV includes reporting period',
@@ -291,7 +302,7 @@ function run_b7(array $S, string $base): void
         str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)'));
     record('B7-16', 'Periodic quarterly report can be exported for a named recipient and distinguishes reconciled collections from issuance fee amounts',
         $periodicCsv['status'] === 200
-        && str_contains($periodicCsvBody, 'Office of the Mayor')
+        && $preparedForLabel === 'Office of the Mayor'
         && str_contains($periodicCsvBody, 'Template status')
         && str_contains($periodicCsvBody, 'Reconciled cash-collection ledger amount')
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
