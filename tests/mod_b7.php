@@ -215,6 +215,16 @@ function run_b7(array $S, string $base): void
         && abs((float) $quoteFeeReportRow['recorded_fees'] - 55.50) < 0.001
         && $updatedIssuancePage['status'] === 200 && str_contains($updatedIssuancePage['body'], 'ZZ B7 Fee Category'));
 
+    $benchmarkOut = []; $benchmarkCode = 0;
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/benchmark.php') . ' --iterations=1 --query=ZZ 2>&1', $benchmarkOut, $benchmarkCode);
+    $benchmarkText = implode("\n", $benchmarkOut);
+    record('B7-13', 'The read-only performance benchmark runs on the working database and reports timings without resident details',
+        $benchmarkCode === 0
+        && str_contains($benchmarkText, 'BIRMS read-only performance check')
+        && str_contains($benchmarkText, 'Resident search + first 20 results')
+        && str_contains($benchmarkText, 'Monthly request-processing report')
+        && str_contains($benchmarkText, 'No data was created, updated, or deleted'));
+
     $backupAdmin = $adm->get('/admin/backup.php');
     record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
     $backup = post_as($adm, '/admin/backup.php', '/admin/backup.php', ['do' => 'download']);
