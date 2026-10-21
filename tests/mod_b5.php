@@ -113,6 +113,8 @@ function run_b5(array $S, string $base): void
     $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
     record('B5-20', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
 
+    // New paid-issuance tests create a separate ledger row with an FK to each issuance.
+    db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTEST5%')");
     db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTEST5%'");
     db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
     db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'");
