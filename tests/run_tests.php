@@ -59,7 +59,7 @@ record('S2', 'No inline styles or scripts (strict Content-Security-Policy)', !$i
 
 /* ------------------------------------------------------------ http: access control */
 $anon = new Http($base);
-$prot = ['/dashboard.php', '/admin/users.php', '/admin/user_edit.php', '/admin/audit.php', '/admin/audit_export.php', '/account/password.php'];
+$prot = ['/dashboard.php', '/admin/users.php', '/admin/user_edit.php', '/admin/audit.php', '/admin/audit_export.php', '/account/password.php', '/search.php'];
 $okAll = true; foreach ($prot as $p) { $r = $anon->get($p); if ($r['status'] !== 302 || !str_contains(loc($r), 'index.php')) { $okAll = false; } }
 record('H1', 'Protected pages redirect to sign-in when signed out', $okAll);
 $r = $anon->get('/index.php'); $h = $r['headers'];
