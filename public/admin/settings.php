@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('settings.view');
 $canEdit = can('settings.edit');
-$tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'summons' => 'Hearing summons', 'sms' => 'SMS text'];
+$tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'sms' => 'SMS text'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'general';
 $errors = [];
 
@@ -65,6 +65,53 @@ if (is_post()) {
                     db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ? WHERE type_id = ?', [$fee === '' ? null : $fee, $body === '' ? null : $body, post_str('is_active') === '1' ? 1 : 0, $id]);
                     audit('doctype_saved', 'Settings', 'Success', $dt['name'] . ': fee ' . ($fee === '' ? 'not set' : $fee) . ', wording ' . ($body === '' ? 'not set' : 'set'), 'document_type', (int) $id);
                     flash_add('success', 'Saved ' . $dt['name'] . '.');
+                    break;
+                case 'fee_rule_add':
+                    $typeId = post_int('type_id');
+                    $category = post_str('fee_category');
+                    $tier = post_str('fee_tier');
+                    $rate = post_str('unit_rate');
+                    $minQuantity = post_int('min_quantity');
+                    $maxRaw = post_str('max_quantity');
+                    $maxQuantity = $maxRaw === '' ? null : post_int('max_quantity');
+                    $from = post_str('effective_from');
+                    $toRaw = post_str('effective_to');
+                    $to = $toRaw === '' ? null : $toRaw;
+                    $dt = $typeId === null ? null : db_one("SELECT type_id, name FROM document_types WHERE type_id = ? AND is_active = 1", [$typeId]);
+                    if ($dt === null) { $errors[] = 'Choose an active document/service type.'; }
+                    if (!v_len($category, 1, 100)) { $errors[] = 'Fee category must be 1-100 characters.'; }
+                    if (!v_len($tier, 1, 100)) { $errors[] = 'Fee tier must be 1-100 characters.'; }
+                    if (!v_money($rate)) { $errors[] = 'Unit rate must be an amount like 50 or 50.00 (0 means free).'; }
+                    if ($minQuantity === null || $minQuantity < 1) { $errors[] = 'Minimum quantity must be at least 1.'; }
+                    if ($maxRaw !== '' && ($maxQuantity === null || $maxQuantity < 1)) { $errors[] = 'Maximum quantity must be a positive whole number, or left blank.'; }
+                    if ($maxQuantity !== null && $minQuantity !== null && $maxQuantity < $minQuantity) { $errors[] = 'Maximum quantity cannot be less than minimum quantity.'; }
+                    if (!v_date($from)) { $errors[] = 'Enter a valid effective-from date.'; }
+                    if ($to !== null && !v_date($to)) { $errors[] = 'Enter a valid effective-to date or leave it blank.'; }
+                    if ($to !== null && v_date($from) && v_date($to) && $to < $from) { $errors[] = 'Effective-to date cannot be earlier than effective-from date.'; }
+                    if ($errors) { throw new RuntimeException('invalid'); }
+                    $overlap = (int) db_val(
+                        'SELECT COUNT(*) FROM fee_matrix
+                         WHERE type_id = ? AND fee_category = ? AND fee_tier = ? AND is_active = 1
+                           AND (effective_to IS NULL OR effective_to >= ?)
+                           AND (? IS NULL OR effective_from <= ?)',
+                        [$typeId, $category, $tier, $from, $to, $to]
+                    );
+                    if ($overlap > 0) { $errors[] = 'This category and tier already has an active rule with overlapping effective dates. Disable the old rule before creating a replacement.'; throw new RuntimeException('invalid'); }
+                    db_exec('INSERT INTO fee_matrix (type_id, fee_category, fee_tier, unit_rate, min_quantity, max_quantity, effective_from, effective_to, created_by)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [$typeId, $category, $tier, $rate, $minQuantity, $maxQuantity, $from, $to, audit_actor()['user_id'] ?? null]);
+                    $ruleId = (int) db()->lastInsertId();
+                    audit('fee_rule_added', 'Fee Matrix', 'Success', $dt['name'] . ': ' . $category . ' / ' . $tier . ' at ' . $rate . ' per unit, effective ' . $from . ($to !== null ? ' to ' . $to : ' onward'), 'fee_rule', $ruleId);
+                    flash_add('success', 'Approved fee rule saved. It will be offered for new requests while active and within its effective dates.');
+                    break;
+                case 'fee_rule_disable':
+                    $ruleId = post_int('id');
+                    $rule = $ruleId === null ? null : db_one('SELECT fm.fee_rule_id, fm.fee_category, fm.fee_tier, fm.is_active, dt.name AS type_name FROM fee_matrix fm JOIN document_types dt ON dt.type_id = fm.type_id WHERE fm.fee_rule_id = ?', [$ruleId]);
+                    if ($rule === null) { $errors[] = 'That fee rule does not exist.'; throw new RuntimeException('invalid'); }
+                    if ((int) $rule['is_active'] !== 1) { $errors[] = 'That fee rule is already disabled.'; throw new RuntimeException('invalid'); }
+                    db_exec('UPDATE fee_matrix SET is_active = 0 WHERE fee_rule_id = ?', [$ruleId]);
+                    audit('fee_rule_disabled', 'Fee Matrix', 'Success', $rule['type_name'] . ': ' . $rule['fee_category'] . ' / ' . $rule['fee_tier'] . ' disabled', 'fee_rule', (int) $ruleId);
+                    flash_add('success', 'Fee rule disabled. Existing request/issuance snapshots are retained.');
                     break;
                 case 'summons_save':
                     $t = input_str($_POST, 'summons_wording', true);
