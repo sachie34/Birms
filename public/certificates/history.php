@@ -41,7 +41,7 @@ page_head('Issuance History', 'Search completed issuances. Reference and O.R. nu
     <div><button class="btn btn-light border" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button></div>
   </form>
   <?php if (!$rows): ?><?= empty_state('bi-clock-history', 'No certificates issued yet.') ?><?php else: ?>
-  <div class="px-3 py-2 small text-muted border-bottom"><?= $total ?> certificate(s) · fees collected: <strong><?= e(money($sum)) ?></strong></div>
+  <div class="px-3 py-2 small text-muted border-bottom"><?= $total ?> certificate(s) · recorded issuance fees: <strong><?= e(money($sum)) ?></strong></div>
   <div class="table-responsive"><table class="table table-b"><thead><tr><th>Reference</th><th>Resident</th><th>Document</th><th>Date issued</th><th>Issued by</th><th>Fee</th><th>O.R.</th><th></th></tr></thead><tbody>
   <?php foreach ($rows as $r): ?><tr><td class="fw-semibold"><?= e((string) $r['reference_no']) ?></td><td><?= e((string) $r['resident_name']) ?></td><td><?= e((string) $r['type_name']) ?></td><td class="text-nowrap"><?= e(fmt_dt((string) $r['issued_at'])) ?></td><td><?= e((string) $r['issued_by_name']) ?></td><td><?= e(money($r['fee_amount'])) ?></td><td><?= e((string) ($r['or_number'] ?? '—')) ?></td>
     <td class="text-end"><a class="btn btn-sm btn-light border" href="<?= e(base_url('certificates/print.php?id=' . (int) $r['issuance_id'])) ?>"><i class="bi bi-printer"></i></a></td></tr><?php endforeach; ?></tbody></table></div>
