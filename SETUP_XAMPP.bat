@@ -8,7 +8,9 @@ echo ============================================
 echo.
 echo This installer uses a separate database named barangay_db_work.
 echo It does NOT import or modify barangay_db.
-echo Start MySQL in the XAMPP Control Panel before continuing.
+echo Start Apache and the intended MySQL/MariaDB server before continuing.
+echo The installer expects MySQL on 127.0.0.1 port 3306 by default.
+echo Do not start two MySQL services on the same port.
 echo.
 
 set "PHP=C:\xampp\php\php.exe"
