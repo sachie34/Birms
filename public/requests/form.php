@@ -19,24 +19,37 @@ $visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name FROM visitor_
 $residentId = $ex ? (int) $ex['resident_id'] : (get_int('resident') ?? post_int('resident_id'));
 $resident = $residentId !== null ? db_one('SELECT resident_id, last_name, first_name, middle_name, suffix, residency_status, archived_at FROM residents WHERE resident_id = ?', [$residentId]) : null;
 if ($resident !== null && $resident['archived_at'] !== null) { $resident = null; }
-$errors = []; $v = ['type_id' => (string) ($ex['type_id'] ?? ''), 'purpose' => $ex['purpose'] ?? '', 'assigned_to' => (string) ($ex['assigned_to'] ?? (audit_actor()['user_id'] ?? ''))];
+$errors = []; $v = [
+    'type_id' => (string) ($ex['type_id'] ?? ''), 'purpose' => $ex['purpose'] ?? '',
+    'assigned_to' => (string) ($ex['assigned_to'] ?? (audit_actor()['user_id'] ?? '')),
+    'requirements_status' => (string) ($ex['requirements_status'] ?? 'Not checked'),
+    'requirements_note' => (string) ($ex['requirements_note'] ?? ''),
+];
 
 if (is_post() && $resident !== null) {
     require_csrf();
-    $v = ['type_id' => post_str('type_id'), 'purpose' => post_str('purpose'), 'assigned_to' => post_str('assigned_to')];
+    $v = [
+        'type_id' => post_str('type_id'), 'purpose' => post_str('purpose'), 'assigned_to' => post_str('assigned_to'),
+        'requirements_status' => post_str('requirements_status'), 'requirements_note' => post_text('requirements_note'),
+    ];
     if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
     if ($v['assigned_to'] !== '' && !isset($staff[(int) $v['assigned_to']])) { $errors[] = 'Choose a valid staff member or leave it blank.'; }
+    if (!in_array($v['requirements_status'], ['Not checked', 'Incomplete', 'Complete'], true)) { $errors[] = 'Choose a valid requirements-check status.'; }
+    if (str_len($v['requirements_note']) > 1000) { $errors[] = 'Requirements notes are limited to 1,000 characters.'; }
+    if ($v['requirements_status'] === 'Incomplete' && !v_len($v['requirements_note'], 3, 1000)) { $errors[] = 'Explain which requirements are missing (3-1,000 characters).'; }
+    if ($v['requirements_status'] === 'Not checked') { $v['requirements_note'] = ''; }
     if (!$errors) {
         $rid = db_transaction(function () use ($v, $ex, $resident, $visit): int {
             $assigned = $v['assigned_to'] !== '' ? (int) $v['assigned_to'] : null;
             if ($ex) {
-                db_exec('UPDATE document_requests SET type_id = ?, purpose = ?, assigned_to = ? WHERE request_id = ? AND status IN (\'Pending\',\'Review\')', [(int) $v['type_id'], $v['purpose'], $assigned, $ex['request_id']]);
+                db_exec('UPDATE document_requests SET type_id = ?, purpose = ?, assigned_to = ?, requirements_status = ?, requirements_note = ? WHERE request_id = ? AND status IN (\'Pending\',\'Review\')',
+                    [(int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null, $ex['request_id']]);
                 audit('request_updated', 'Requests', 'Success', $ex['reference_no'] . ' edited', 'request', (int) $ex['request_id']); return (int) $ex['request_id'];
             }
             $ref = new_request_reference();
-            db_exec('INSERT INTO document_requests (reference_no, visit_id, resident_id, type_id, purpose, assigned_to, requested_at, created_by) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)',
-                [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, audit_actor()['user_id'] ?? null]);
+            db_exec('INSERT INTO document_requests (reference_no, visit_id, resident_id, type_id, purpose, assigned_to, requirements_status, requirements_note, requested_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
+                [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null, audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
             audit('request_created', 'Requests', 'Success', $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'], 'request', $new);
             return $new;
@@ -68,6 +81,10 @@ if ($resident === null) {
     if (!$types) { echo '<div class="col-12 alert alert-warning">No document types are available. Ask the Secretary to set them up in Settings.</div>'; }
     echo f_select('type_id', 'Document', $types, $v['type_id'], ['required' => true, 'blank' => 'Select a document']);
     echo f_select('assigned_to', 'Assigned to', $staff, $v['assigned_to'], ['blank' => 'Nobody yet']);
+    echo f_select('requirements_status', 'Requirements review', [
+        'Not checked' => 'Not checked yet', 'Incomplete' => 'Incomplete — needs follow-up', 'Complete' => 'Complete',
+    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => 'Review supporting information before approving a request as Ready. No specific supporting documents are assumed by the system.']);
+    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => 'Required when marking the requirements as incomplete.']);
     echo f_textarea('purpose', 'Purpose / request details', $v['purpose'], ['required' => true, 'rows' => 3, 'maxlength' => 255]);
     echo '</div><button class="btn btn-primary" type="submit">' . ($ex ? 'Save changes' : 'File request') . '</button> <a class="btn btn-light border" href="' . e(base_url('requests/index.php')) . '">Cancel</a></form>';
     card_end();
