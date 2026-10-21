@@ -15,12 +15,12 @@ $puroks = lookup_list('purok'); $cats = lookup_list('resident_category'); $emplo
 $errors = []; $dupFound = false;
 $v = ['last_name' => $ex['last_name'] ?? '', 'first_name' => $ex['first_name'] ?? '', 'middle_name' => $ex['middle_name'] ?? '', 'suffix' => $ex['suffix'] ?? '',
       'birthdate' => $ex['birthdate'] ?? '', 'sex' => $ex['sex'] ?? '', 'civil_status' => $ex['civil_status'] ?? '', 'contact_number' => $ex['contact_number'] ?? '',
-      'category_id' => (string) ($ex['category_id'] ?? ''), 'employment_status_id' => (string) ($ex['employment_status_id'] ?? ''), 'household_id' => (string) ($ex['household_id'] ?? ''), 'is_head' => (int) ($ex['is_household_head'] ?? 0) === 1,
+      'category_id' => (string) ($ex['category_id'] ?? ''), 'employment_status_id' => (string) ($ex['employment_status_id'] ?? ''), 'voter_status' => (string) ($ex['voter_status'] ?? 'Unverified'), 'household_id' => (string) ($ex['household_id'] ?? ''), 'is_head' => (int) ($ex['is_household_head'] ?? 0) === 1,
       'residency_status' => $ex['residency_status'] ?? 'Active', 'new_address' => '', 'new_code' => '', 'new_purok' => '', 'confirm_dup' => false];
 
 if (is_post()) {
     require_csrf();
-    foreach (['last_name', 'first_name', 'middle_name', 'suffix', 'birthdate', 'sex', 'civil_status', 'contact_number', 'category_id', 'employment_status_id', 'household_id', 'new_address', 'new_code', 'new_purok'] as $k) { $v[$k] = post_str($k); }
+    foreach (['last_name', 'first_name', 'middle_name', 'suffix', 'birthdate', 'sex', 'civil_status', 'contact_number', 'category_id', 'employment_status_id', 'voter_status', 'household_id', 'new_address', 'new_code', 'new_purok'] as $k) { $v[$k] = post_str($k); }
     $v['is_head'] = post_str('is_head') === '1'; $v['confirm_dup'] = post_str('confirm_dup') === '1';
     $v['residency_status'] = $ex ? post_str('residency_status') : 'Active';
 
@@ -37,6 +37,7 @@ if (is_post()) {
     if ($ex && !in_array($v['residency_status'], ['Active', 'Relocated'], true)) { $errors[] = 'Choose a residency status.'; }
     if ($v['category_id'] !== '' && !isset($cats[(int) $v['category_id']]) && (string) ($ex['category_id'] ?? '') !== $v['category_id']) { $errors[] = 'That category is not available.'; }
     if ($v['employment_status_id'] !== '' && !isset($employmentStatuses[(int) $v['employment_status_id']]) && (string) ($ex['employment_status_id'] ?? '') !== $v['employment_status_id']) { $errors[] = 'Choose an employment status from the configured list.'; }
+    if (!in_array($v['voter_status'], ['Unverified', 'Registered', 'Not registered'], true)) { $errors[] = 'Choose a valid voter registration status.'; }
 
     $newHh = $v['new_address'] !== '';
     if ($newHh && $v['household_id'] !== '') { $errors[] = 'Choose an existing household OR create a new one, not both.'; }
@@ -65,22 +66,22 @@ if (is_post()) {
                 audit('household_created', 'Residents', 'Success', 'Household ' . $code, 'household', $hid);
             }
             $cols = [$hid, $v['last_name'], $v['first_name'], $v['middle_name'] ?: null, $v['suffix'] ?: null, $v['birthdate'], $v['sex'], $v['civil_status'], $v['contact_number'] ?: null,
-                     $v['category_id'] !== '' ? (int) $v['category_id'] : null, $v['employment_status_id'] !== '' ? (int) $v['employment_status_id'] : null, $hid !== null && $v['is_head'] ? 1 : 0];
+                     $v['category_id'] !== '' ? (int) $v['category_id'] : null, $v['employment_status_id'] !== '' ? (int) $v['employment_status_id'] : null, $v['voter_status'], $hid !== null && $v['is_head'] ? 1 : 0];
             if ($ex === null) {
-                db_exec('INSERT INTO residents (household_id, last_name, first_name, middle_name, suffix, birthdate, sex, civil_status, contact_number, category_id, employment_status_id, is_household_head, created_by)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array_merge($cols, [audit_actor()['user_id'] ?? null]));
+                db_exec('INSERT INTO residents (household_id, last_name, first_name, middle_name, suffix, birthdate, sex, civil_status, contact_number, category_id, employment_status_id, voter_status, is_household_head, created_by)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array_merge($cols, [audit_actor()['user_id'] ?? null]));
                 $rid = (int) db()->lastInsertId();
                 audit('resident_created', 'Residents', 'Success', 'Registered: ' . $v['last_name'] . ', ' . $v['first_name'], 'resident', $rid);
             } else {
                 $rid = (int) $ex['resident_id'];
-                db_exec('UPDATE residents SET household_id = ?, last_name = ?, first_name = ?, middle_name = ?, suffix = ?, birthdate = ?, sex = ?, civil_status = ?, contact_number = ?, category_id = ?, employment_status_id = ?, is_household_head = ?, residency_status = ? WHERE resident_id = ?',
+                db_exec('UPDATE residents SET household_id = ?, last_name = ?, first_name = ?, middle_name = ?, suffix = ?, birthdate = ?, sex = ?, civil_status = ?, contact_number = ?, category_id = ?, employment_status_id = ?, voter_status = ?, is_household_head = ?, residency_status = ? WHERE resident_id = ?',
                     array_merge($cols, [$v['residency_status'], $rid]));
                 $ch = [];
-                foreach (['last_name', 'first_name', 'middle_name', 'suffix', 'birthdate', 'sex', 'civil_status', 'contact_number', 'residency_status', 'employment_status_id'] as $k) { if ((string) $ex[$k] !== (string) ($v[$k] ?? '')) { $ch[] = $k . ($k === 'civil_status' || $k === 'residency_status' ? ': ' . $ex[$k] . ' -> ' . $v[$k] : ' changed'); } }
+                foreach (['last_name', 'first_name', 'middle_name', 'suffix', 'birthdate', 'sex', 'civil_status', 'contact_number', 'residency_status', 'employment_status_id', 'voter_status'] as $k) { if ((string) $ex[$k] !== (string) ($v[$k] ?? '')) { $ch[] = $k . ($k === 'civil_status' || $k === 'residency_status' || $k === 'voter_status' ? ': ' . $ex[$k] . ' -> ' . $v[$k] : ' changed'); } }
                 if ((int) ($ex['household_id'] ?? 0) !== (int) ($hid ?? 0)) { $ch[] = 'household changed'; }
                 audit('resident_updated', 'Residents', 'Success', ($ch ? implode('; ', $ch) : 'No field changed') . ' [' . $v['last_name'] . ', ' . $v['first_name'] . ']', 'resident', $rid);
             }
-            if ($hid !== null && $cols[11] === 1) { db_exec('UPDATE residents SET is_household_head = 0 WHERE household_id = ? AND resident_id <> ?', [$hid, $rid]); }
+            if ($hid !== null && $cols[12] === 1) { db_exec('UPDATE residents SET is_household_head = 0 WHERE household_id = ? AND resident_id <> ?', [$hid, $rid]); }
             return $rid;
         });
         flash_add('success', $ex ? 'Resident updated.' : 'Resident registered.');
@@ -110,6 +111,7 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
     <?= f_text('contact_number', 'Contact number', (string) $v['contact_number'], ['maxlength' => 20, 'placeholder' => '09171234567', 'col' => 'col-12']) ?>
     <?php if ($cats): ?><?= f_select('category_id', 'Category', $cats, (string) $v['category_id'], ['blank' => 'None', 'col' => 'col-12']) ?><?php endif; ?>
     <?php if ($employmentStatuses): ?><?= f_select('employment_status_id', 'Employment status', $employmentStatuses, (string) $v['employment_status_id'], ['blank' => 'Not specified', 'col' => 'col-12', 'help' => 'Values are configured in Settings → Other lists.']) ?><?php else: ?><div class="col-12 text-muted small">Employment status options are not configured yet. Add the approved list under Settings → Other lists.</div><?php endif; ?>
+    <?= f_select('voter_status', 'Voter registration status', ['Unverified' => 'Unverified', 'Registered' => 'Registered', 'Not registered' => 'Not registered'], (string) $v['voter_status'], ['required' => true, 'col' => 'col-12', 'help' => 'This is the status recorded by barangay staff, not an automatic COMELEC verification.']) ?>
     <?php if ($ex): ?><?= f_select('residency_status', 'Residency status', ['Active' => 'Active', 'Relocated' => 'Relocated'], (string) $v['residency_status'], ['col' => 'col-12']) ?><?php endif; ?>
   </div></div></div></div>
   <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Household and address</h2></div><div class="card-body-b"><div class="row">
