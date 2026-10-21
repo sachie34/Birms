@@ -1,12 +1,12 @@
 # BIRMS paper-to-code alignment and presentation sign-off
 
-**Review branch:** `john/paper-code-compliance`  
+**Merged into:** `main` via pull request #2  
 **Review date:** 2026-10-22  
 **Purpose:** Compare the checked-in functions against the uploaded compiled Chapters 1-3, the earlier Design and Development paper, the SOE2 / panel-recommendation file, and the repository's documented project decisions.
 
 ## Overall finding
 
-The current source code implements the main application flows for the five core functional areas in the compiled Chapters 1-3 paper, plus record searching/retrieval (FR6). The latest verified application-code CI run before the documentation and UI-label changes passed PHP syntax, migrations 001-011 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **142/142 integration checks**.
+The current source code implements the main application flows for the five core functional areas in the compiled Chapters 1-3 paper, plus record searching/retrieval (FR6). The latest completed application-code CI run before squash-merge to `main` passed PHP syntax, migrations 001-011 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **146/146 module integration checks**, including global search and UI-shell coverage.
 
 That does **not** mean every sentence in every provided document is an exact match. Some uploaded documents describe different or supplementary requirements. Those conflicts are listed below rather than represented as completed functionality. The actual XAMPP/browser test on the presentation computer is still required.
 
@@ -23,7 +23,7 @@ That does **not** mean every sentence in every provided document is an exact mat
 
 ## The supplemental files contain different scope
 
-The compiled Chapters 1-3 explicitly define five core functional areas and classify some of the detailed 20-module items as needing confirmation / outside the core Chapter 1 scope. The earlier Design and Development document and the SOE2 file describe a broader feature set. The working branch contains several of those broader features, but this does not automatically make them part of the thesis's approved core scope.
+The compiled Chapters 1-3 explicitly define five core functional areas and classify some of the detailed 20-module items as needing confirmation / outside the core Chapter 1 scope. The earlier Design and Development document and the SOE2 file describe a broader feature set. The merged main branch contains several of those broader features, but this does not automatically make them part of the thesis's approved core scope.
 
 | Supplemental requirement | Current software behavior | Match / remaining action |
 |---|---|---|
