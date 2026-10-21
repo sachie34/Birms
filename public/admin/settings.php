@@ -117,10 +117,10 @@ if ($tab === 'general') {
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
     card_end();
 } elseif ($tab === 'puroks' || $tab === 'lists') {
-    $keys = $tab === 'puroks' ? ['purok'] : ['resident_category', 'visit_class', 'id_type'];
+    $keys = $tab === 'puroks' ? ['purok'] : ['resident_category', 'visit_class', 'id_type', 'employment_status', 'incident_type'];
     foreach ($keys as $key) {
         $items = db_all('SELECT lookup_id, label, is_active FROM lookups WHERE list_key = ? ORDER BY sort_order, label', [$key]);
-        card_start(LOOKUP_LISTS[$key], $key === 'purok' ? 'The official Purok names have not been provided. Enter them here.' : 'Empty until you enter the official list.', 'mb-3');
+        card_start(LOOKUP_LISTS[$key], $key === 'purok' ? 'The official Purok names have not been provided. Enter them here.' : 'Enter the categories approved for your barangay. Reporting will group records using these values.', 'mb-3');
         if (!$items) { echo empty_state('bi-list-ul', 'Nothing entered yet.'); }
         else {
             echo '<table class="table table-b mb-3"><tbody>';
