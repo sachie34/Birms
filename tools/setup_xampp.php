@@ -1,0 +1,270 @@
+<?php
+/**
+ * BIRMS local XAMPP setup helper.
+ *
+ * Safe defaults:
+ * - targets barangay_db_work only;
+ * - refuses to adopt a non-empty database without schema_migrations;
+ * - never stores the MySQL root password in app/config.local.php;
+ * - gives the web application a limited CRUD account;
+ * - keeps official barangay wording, fees and signatories unset until the owner configures them.
+ *
+ * Usage:
+ *   php tools/setup_xampp.php --check
+ *   php tools/setup_xampp.php
+ */
+declare(strict_types=1);
+
+if (PHP_SAPI !== 'cli') {
+    fwrite(STDERR, "Command-line only.\n");
+    exit(2);
+}
+
+require_once __DIR__ . '/../app/core.php';
+
+function setup_out(string $message): void
+{
+    fwrite(STDOUT, $message . PHP_EOL);
+}
+
+function setup_fail(string $message, int $exitCode = 2): never
+{
+    fwrite(STDERR, 'ERROR: ' . $message . PHP_EOL);
+    exit($exitCode);
+}
+
+function setup_prompt(string $message): string
+{
+    fwrite(STDOUT, $message);
+    $value = fgets(STDIN);
+    return trim($value === false ? '' : $value);
+}
+
+function setup_require_extensions(): array
+{
+    $missing = [];
+    foreach (['pdo_mysql', 'fileinfo'] as $extension) {
+        if (!extension_loaded($extension)) {
+            $missing[] = $extension;
+        }
+    }
+    return $missing;
+}
+
+function setup_check(): int
+{
+    $missing = setup_require_extensions();
+    if (PHP_VERSION_ID < 80100) {
+        setup_out('FAIL: PHP 8.1 or newer is required. Current version: ' . PHP_VERSION);
+        return 1;
+    }
+    if ($missing) {
+        setup_out('FAIL: Required PHP extension(s) missing: ' . implode(', ', $missing));
+        return 1;
+    }
+    if (!is_file(APP_ROOT . '/database/migrations/001_core.sql')
+        || !is_file(APP_ROOT . '/app/config.local.php.example')
+        || !is_file(APP_ROOT . '/tools/migrate.php')
+        || !is_file(APP_ROOT . '/tools/create_admin.php')) {
+        setup_out('FAIL: One or more required BIRMS setup files are missing.');
+        return 1;
+    }
+    setup_out('PASS: PHP ' . PHP_VERSION . ' and required extensions are available.');
+    setup_out('PASS: Database migrations and local configuration template are present.');
+    setup_out('NOTE: This preflight does not connect to MySQL or prove the site works in a browser.');
+    return 0;
+}
+
+if (in_array('--check', $argv, true)) {
+    exit(setup_check());
+}
+if (in_array('--help', $argv, true)) {
+    setup_out('BIRMS XAMPP installer');
+    setup_out('1. Extract the repository under C:\xampp\htdocs\birms_work.');
+    setup_out('2. Start Apache and MySQL in the XAMPP Control Panel.');
+    setup_out('3. Run SETUP_XAMPP.bat or php tools/setup_xampp.php.');
+    setup_out('4. The installer creates barangay_db_work, applies migrations, and creates the first administrator.');
+    setup_out('Run php tools/setup_xampp.php --check for a local preflight.');
+    exit(0);
+}
+
+$missing = setup_require_extensions();
+if (PHP_VERSION_ID < 80100 || $missing) {
+    setup_check();
+    setup_fail('Fix the PHP version/extensions listed above before continuing.');
+}
+
+$configPath = APP_ROOT . '/app/config.local.php';
+if (is_file($configPath)) {
+    setup_fail(
+        'app/config.local.php already exists. It was not overwritten. Back it up and use the existing XAMPP guide for updates, or move the working folder aside for a clean installation.'
+    );
+}
+
+$dbName = 'barangay_db_work';
+$dbHost = '127.0.0.1';
+$dbPort = 3306;
+$dbUser = 'birms_app';
+$appPassword = bin2hex(random_bytes(24));
+$rootPassword = getenv('BIRMS_MYSQL_ROOT_PASSWORD');
+if ($rootPassword === false) {
+    setup_out('Target database: ' . $dbName);
+    setup_out('Enter the MySQL root password for this local XAMPP installation.');
+    setup_out('On a fresh XAMPP installation this is often blank; press Enter if you have not set one.');
+    $rootPassword = setup_prompt('MySQL root password (input is visible): ');
+}
+
+try {
+    $rootPdo = new PDO(
+        sprintf('mysql:host=%s;port=%d;charset=utf8mb4', $dbHost, $dbPort),
+        'root',
+        $rootPassword,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+    );
+} catch (Throwable $e) {
+    setup_fail('Could not connect to MySQL as root. Confirm MySQL is running in XAMPP and the password is correct. Details: ' . $e->getMessage());
+}
+
+try {
+    $rootPdo->exec("CREATE DATABASE IF NOT EXISTS barangay_db_work CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $rootPdo->exec('USE barangay_db_work');
+    $tables = $rootPdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_NUM);
+    $tableNames = array_map(static fn(array $row): string => (string) $row[0], $tables);
+    if ($tableNames && !in_array('schema_migrations', $tableNames, true)) {
+        setup_fail(
+            "barangay_db_work already contains tables but has no schema_migrations record. Nothing in that database was altered. Choose an empty _work/_test database or inspect it first."
+        );
+    }
+
+    // The account is restricted to this local working database and ordinary application CRUD.
+    // Both hosts are created because localhost and 127.0.0.1 can match different MySQL accounts.
+    foreach (['localhost', '127.0.0.1'] as $accountHost) {
+        $quotedPassword = $rootPdo->quote($appPassword);
+        $account = "'birms_app'@'" . $accountHost . "'";
+        $rootPdo->exec('CREATE USER IF NOT EXISTS ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
+        $rootPdo->exec('ALTER USER ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
+        $rootPdo->exec('GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO ' . $account);
+    }
+
+    $localConfig = [
+        'env' => 'production',
+        'timezone' => 'Asia/Manila',
+        'base_url' => null,
+        'db' => [
+            'host' => $dbHost,
+            'port' => $dbPort,
+            'name' => $dbName,
+            'user' => $dbUser,
+            'pass' => $appPassword,
+            'charset' => 'utf8mb4',
+        ],
+        'session' => ['idle_minutes' => 30, 'secure' => null],
+        'backup' => ['webdav_url' => '', 'webdav_username' => '', 'webdav_password' => ''],
+    ];
+    $configContents = "<?php\n/** Generated for this local installation. Do not commit or share this file. */\nreturn "
+        . var_export($localConfig, true) . ";\n";
+    if (file_put_contents($configPath, $configContents, LOCK_EX) === false) {
+        setup_fail('Could not write app/config.local.php. Check Windows folder permissions.');
+    }
+    @chmod($configPath, 0600);
+} catch (Throwable $e) {
+    setup_fail('Could not prepare the working database/application account. Nothing was deleted. Details: ' . $e->getMessage());
+} finally {
+    unset($rootPdo);
+}
+
+setup_out('');
+setup_out('Applying database migrations to barangay_db_work as MySQL root (root credentials are not saved in the app config)...');
+putenv('BIRMS_DB_HOST=' . $dbHost);
+putenv('BIRMS_DB_PORT=' . (string) $dbPort);
+putenv('BIRMS_DB_NAME=' . $dbName);
+putenv('BIRMS_DB_USER=root');
+putenv('BIRMS_DB_PASS=' . $rootPassword);
+$command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/migrate.php') . ' up';
+passthru($command, $migrationExit);
+putenv('BIRMS_DB_USER');
+putenv('BIRMS_DB_PASS');
+putenv('BIRMS_DB_HOST');
+putenv('BIRMS_DB_PORT');
+putenv('BIRMS_DB_NAME');
+unset($rootPassword);
+
+if ($migrationExit !== 0) {
+    setup_fail('Migration did not complete. The new local config is preserved. Review the error above before trying again.');
+}
+
+try {
+    $appPdo = new PDO(
+        sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $dbHost, $dbPort, $dbName),
+        $dbUser,
+        $appPassword,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    $appPdo->query('SELECT 1');
+    $hasAdmin = (int) $appPdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn() > 0;
+} catch (Throwable $e) {
+    setup_fail('Migrations completed, but the limited application account could not connect. Check app/config.local.php and the MySQL grants. Details: ' . $e->getMessage());
+}
+unset($appPdo);
+
+if (!$hasAdmin) {
+    setup_out('');
+    setup_out('Create the first administrator. This is a local account; do not use a shared/default password.');
+    $username = strtolower(setup_prompt('Administrator username [admin]: '));
+    if ($username === '') {
+        $username = 'admin';
+    }
+    $fullName = setup_prompt('Administrator full name: ');
+    if (!v_username($username)) {
+        setup_fail('Invalid username. Use 3-30 letters, numbers, dots, dashes or underscores. Configuration/migrations remain in place.');
+    }
+    if (!v_person_name($fullName)) {
+        setup_fail('Enter a valid full name. Configuration/migrations remain in place.');
+    }
+    $adminPassword = setup_prompt('Administrator password (input is visible; use 10+ characters with letters and numbers): ');
+    $adminConfirm = setup_prompt('Re-enter administrator password: ');
+    if (!hash_equals($adminPassword, $adminConfirm)) {
+        setup_fail('The passwords did not match. Configuration/migrations remain in place; rerun tools/create_admin.php after correcting the password.');
+    }
+    $passwordErrors = password_policy_errors($adminPassword, $username);
+    if ($passwordErrors) {
+        setup_fail('The administrator password did not meet policy: ' . implode('; ', $passwordErrors));
+    }
+
+    putenv('BIRMS_ADMIN_PASSWORD=' . $adminPassword);
+    $adminCommand = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/create_admin.php')
+        . ' --username=' . escapeshellarg($username)
+        . ' --name=' . escapeshellarg($fullName);
+    passthru($adminCommand, $adminExit);
+    putenv('BIRMS_ADMIN_PASSWORD');
+    unset($adminPassword, $adminConfirm);
+
+    if ($adminExit !== 0) {
+        setup_fail('The administrator could not be created. Configuration/migrations remain in place. See tools/create_admin.php for manual recovery.');
+    }
+} else {
+    setup_out('An administrator already exists in barangay_db_work; it was not changed.');
+}
+
+setup_out('');
+setup_out('SETUP COMPLETE');
+setup_out('Database: barangay_db_work');
+setup_out('Application database account: birms_app (limited local CRUD permissions)');
+setup_out('Official Puroks, certificate/summons wording, official fees and signatory names remain unset until entered by the authorized owner.');
+setup_out('Start Apache and MySQL in XAMPP if they are not already running, then open the URL that matches your folder under htdocs:');
+$htdocs = realpath('C:/xampp/htdocs');
+$project = realpath(APP_ROOT);
+if ($htdocs !== false && $project !== false) {
+    $htdocsNorm = rtrim(str_replace('\\', '/', $htdocs), '/');
+    $projectNorm = str_replace('\\', '/', $project);
+    if (stripos($projectNorm, $htdocsNorm . '/') === 0) {
+        $relative = trim(substr($projectNorm, strlen($htdocsNorm)), '/');
+        $webPath = '/' . ($relative !== '' ? $relative . '/' : '') . 'public/';
+        setup_out('http://localhost' . $webPath);
+    } else {
+        setup_out('http://localhost/birms_work/public/ (if you placed this folder at C:\xampp\htdocs\birms_work)');
+    }
+} else {
+    setup_out('http://localhost/birms_work/public/ (if you placed this folder at C:\xampp\htdocs\birms_work)');
+}
+setup_out('Before presenting: configure test/demo data and complete docs/PRESENTATION_RUNBOOK.md.');
