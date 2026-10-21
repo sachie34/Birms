@@ -99,6 +99,52 @@ function report_issuances(array $range): array
     return ['summary' => $summary, 'by_type' => $byType];
 }
 
+
+/** Requests created within [start, end); status counts reflect each request's current saved status at report time. */
+function report_requests(array $range): array
+{
+    $params = [$range['start'], $range['end']];
+    $summary = db_one(
+        "SELECT COUNT(*) AS total,
+                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(status = 'Review'), 0) AS review_count,
+                COALESCE(SUM(status = 'Ready'), 0) AS ready_count,
+                COALESCE(SUM(status = 'Claimed'), 0) AS claimed_count,
+                COALESCE(SUM(status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count
+         FROM document_requests WHERE requested_at >= ? AND requested_at < ?", $params
+    ) ?? ['total' => 0, 'pending_count' => 0, 'review_count' => 0, 'ready_count' => 0,
+          'claimed_count' => 0, 'rejected_count' => 0, 'cancelled_count' => 0];
+
+    $byType = db_all(
+        "SELECT dt.name AS type_name, COUNT(*) AS request_count,
+                COALESCE(SUM(dr.status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(dr.status = 'Review'), 0) AS review_count,
+                COALESCE(SUM(dr.status = 'Ready'), 0) AS ready_count,
+                COALESCE(SUM(dr.status = 'Claimed'), 0) AS claimed_count
+         FROM document_requests dr JOIN document_types dt ON dt.type_id = dr.type_id
+         WHERE dr.requested_at >= ? AND dr.requested_at < ?
+         GROUP BY dt.type_id, dt.name ORDER BY dt.name", $params
+    );
+
+    $byAssignee = db_all(
+        "SELECT COALESCE(u.full_name, 'Unassigned') AS assigned_to, COUNT(*) AS request_count
+         FROM document_requests dr LEFT JOIN users u ON u.user_id = dr.assigned_to
+         WHERE dr.requested_at >= ? AND dr.requested_at < ?
+         GROUP BY COALESCE(u.full_name, 'Unassigned') ORDER BY request_count DESC, assigned_to", $params
+    );
+
+    $byStatus = db_all(
+        "SELECT status, COUNT(*) AS request_count
+         FROM document_requests
+         WHERE requested_at >= ? AND requested_at < ?
+         GROUP BY status
+         ORDER BY FIELD(status, 'Pending', 'Review', 'Ready', 'Claimed', 'Rejected', 'Cancelled')", $params
+    );
+
+    return ['summary' => $summary, 'by_type' => $byType, 'by_assignee' => $byAssignee, 'by_status' => $byStatus];
+}
+
 /** Non-archived incidents filtered by incident date; current case statuses and type/Purok counts are all database-derived. */
 function report_blotters(array $range): array
 {
