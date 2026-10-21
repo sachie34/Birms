@@ -465,6 +465,42 @@
                 "nullable": true,
                 "default": "null",
                 "extra": ""
+            },
+            "fee_rule_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "fee_category_snapshot": {
+                "type": "varchar(100)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "fee_tier_snapshot": {
+                "type": "varchar(100)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "fee_quantity": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "1",
+                "extra": ""
+            },
+            "fee_unit_rate": {
+                "type": "decimal(10,2)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "quoted_fee_amount": {
+                "type": "decimal(12,2)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
             }
         },
         "indexes": {
@@ -516,6 +552,12 @@
                 "columns": [
                     "reference_no"
                 ]
+            },
+            "idx_request_fee_rule": {
+                "unique": false,
+                "columns": [
+                    "fee_rule_id"
+                ]
             }
         },
         "fks": {
@@ -556,6 +598,14 @@
                     "visit_id"
                 ],
                 "ref": "visitor_log(visit_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            },
+            "fk_request_fee_rule": {
+                "columns": [
+                    "fee_rule_id"
+                ],
+                "ref": "fee_matrix(fee_rule_id)",
                 "on_delete": "SET NULL",
                 "on_update": "CASCADE"
             }
@@ -905,6 +955,36 @@
                 "nullable": true,
                 "default": "null",
                 "extra": ""
+            },
+            "fee_rule_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "fee_category_snapshot": {
+                "type": "varchar(100)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "fee_tier_snapshot": {
+                "type": "varchar(100)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "fee_quantity": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "1",
+                "extra": ""
+            },
+            "fee_unit_rate": {
+                "type": "decimal(10,2)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
             }
         },
         "indexes": {
@@ -955,6 +1035,12 @@
                 "columns": [
                     "request_id"
                 ]
+            },
+            "idx_issuance_fee_rule": {
+                "unique": false,
+                "columns": [
+                    "fee_rule_id"
+                ]
             }
         },
         "fks": {
@@ -987,6 +1073,14 @@
                     "issued_by"
                 ],
                 "ref": "users(user_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            },
+            "fk_issuance_fee_rule": {
+                "columns": [
+                    "fee_rule_id"
+                ],
+                "ref": "fee_matrix(fee_rule_id)",
                 "on_delete": "SET NULL",
                 "on_update": "CASCADE"
             }
@@ -1632,6 +1726,138 @@
             "fk_visit_user": {
                 "columns": [
                     "logged_by"
+                ],
+                "ref": "users(user_id)",
+                "on_delete": "SET NULL",
+                "on_update": "CASCADE"
+            }
+        }
+    },
+    "fee_matrix": {
+        "columns": {
+            "fee_rule_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": "auto_increment"
+            },
+            "type_id": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "fee_category": {
+                "type": "varchar(100)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "fee_tier": {
+                "type": "varchar(100)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "unit_rate": {
+                "type": "decimal(10,2)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "min_quantity": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "1",
+                "extra": ""
+            },
+            "max_quantity": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "effective_from": {
+                "type": "date",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "effective_to": {
+                "type": "date",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "is_active": {
+                "type": "tinyint(1)",
+                "nullable": false,
+                "default": "1",
+                "extra": ""
+            },
+            "created_by": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "created_at": {
+                "type": "timestamp",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": ""
+            }
+        },
+        "indexes": {
+            "primary": {
+                "unique": true,
+                "columns": [
+                    "fee_rule_id"
+                ]
+            },
+            "uq_fee_matrix_effective": {
+                "unique": true,
+                "columns": [
+                    "type_id",
+                    "fee_category",
+                    "fee_tier",
+                    "effective_from"
+                ]
+            },
+            "idx_fee_matrix_active": {
+                "unique": false,
+                "columns": [
+                    "type_id",
+                    "is_active",
+                    "effective_from",
+                    "effective_to"
+                ]
+            },
+            "idx_fee_matrix_type": {
+                "unique": false,
+                "columns": [
+                    "type_id"
+                ]
+            },
+            "idx_fee_matrix_creator": {
+                "unique": false,
+                "columns": [
+                    "created_by"
+                ]
+            }
+        },
+        "fks": {
+            "fk_fee_matrix_type": {
+                "columns": [
+                    "type_id"
+                ],
+                "ref": "document_types(type_id)",
+                "on_delete": "RESTRICT",
+                "on_update": "CASCADE"
+            },
+            "fk_fee_matrix_creator": {
+                "columns": [
+                    "created_by"
                 ],
                 "ref": "users(user_id)",
                 "on_delete": "SET NULL",
