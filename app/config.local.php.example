@@ -16,5 +16,12 @@ return [
         'idle_minutes' => 30,              // automatic sign-out after this many idle minutes
         'secure'       => null,            // null = secure cookies only when the site uses HTTPS
     ],
+    // Optional private WebDAV cloud backup. Use HTTPS and a dedicated app password.
+    // Keep real credentials in config.local.php or server environment variables only.
+    'backup' => [
+        'webdav_url' => '',       // HTTPS WebDAV folder URL ending with /
+        'webdav_username' => '',
+        'webdav_password' => '',
+    ],
     // 'base_url' => '/birms_work/public', // only if page links come out wrong
 ];
