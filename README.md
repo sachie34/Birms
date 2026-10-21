@@ -43,7 +43,7 @@ The test suite may require a configured local database. Run it only against a se
 
 The original main branch reflects the initial B1–B6 package. The `john/paper-code-compliance` review branch contains the paper-aligned additions described above. It does not change the existing BIRMS UI/UX prototype, PowerPoint materials, BPMN, or ERD. Review and run the complete test suite on a disposable `_work` or `_test` database before accepting or deploying these changes.
 
-The current review branch's latest verified CI run passed **37 authentication/security/audit tests** and **118 module integration tests**, along with PHP syntax and migrations 001–010. This does not replace browser/UAT testing on the target XAMPP computer. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md) and [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md) for remaining checks.
+The current review branch's latest verified CI run passed **37 authentication/security/audit tests** and **119 module integration tests**, along with PHP syntax and migrations 001–010. This does not replace browser/UAT testing on the target XAMPP computer. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md) and [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md) for remaining checks.
 
 ## Important scope boundaries
 
