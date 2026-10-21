@@ -22,7 +22,7 @@ $data = match ($type) {
 };
 $reportLabel = $types[$type];
 $periodLabel = $type === 'demographics' ? date('j F Y') . ' (current active resident records)' : $range['label'];
-$audit_best_effort($isCsv ? 'report_exported' : 'report_generated', 'Reports', 'Success',
+audit_best_effort($isCsv ? 'report_exported' : 'report_generated', 'Reports', 'Success',
     $reportLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label']) . ($isCsv ? ' CSV' : ' viewed'));
 
 if ($isCsv) {
