@@ -25,6 +25,21 @@
 - PDF output is marked draft pending approval. Test with the exact office PHP version and verify that each downloaded PDF opens in a standard PDF reader.
 - **No process target is claimed as measured:** no 99% accuracy, retrieval-time improvement, or processing-time target is reported as achieved by this remediation.
 
+## 1A. Automated verification discrepancies found and closed
+
+These are issues actually exposed by the automated CI runs during remediation. They are not observations from the target office PC.
+
+| ID | Where detected | Discrepancy found | Corrective action | Verification |
+|---|---|---|---|---|
+| CI-01 | Migration 011 on MariaDB 10.11 | MariaDB rejected a CHECK constraint that referenced the attachment table's foreign-key owner columns. | Removed the incompatible CHECK constraint. The upload helper writes exactly one parent reference (visitor or request); ownership remains linked by foreign keys. | Migration 011 subsequently applied in the passing CI run. |
+| CI-02 | Strict CSP test S2 | Inline style attributes in the ledger editor and certificate draft banner violated the application's no-inline-style policy. | Moved the styling into the shared BIRMS stylesheet and replaced inline style attributes with CSS classes. | All 37 authentication/security/audit checks passed. |
+| CI-03 | Certificate issuance integration tests B5 | Issuance SQL did not include the new signature snapshot column consistently with its parameters, and a later ledger insert could overwrite PDO's last-insert ID. | Added the signature column and matching placeholder; captured the issuance ID immediately after its INSERT and before ledger insertion. | Existing certificate issuance/history tests passed. |
+| CI-04 | B5/B7 integration cleanup | New ledger foreign keys prevented test cleanup from deleting issuance parents while ledger child rows still existed. | Updated test cleanup to delete ledger children before issuance rows. | Module suite passed through B7 cleanup. |
+| CI-05 | New B8 upload integration test | The initial fixture cleanup removed the temporary PDF before upload tests started. | Kept the fixture until the final cleanup block. | B8-1 to B8-14 passed. |
+| CI-06 | New B8 reconciliation-filter assertion | The test searched for a reference anywhere in the response, which also included the still-populated search input when no row matched. | Changed the assertion to verify the expected empty-results state for the unreconciled filter. | B8-9 passed; the final module suite reported 133 PASS, 0 FAIL, 0 NOT TESTED. |
+
+The verified full-suite run is [GitHub Actions run #232](https://github.com/sachie34/Birms/actions/runs/39626220199). No office-PC/browser behavior is inferred from these CI results.
+
 ## 2. Office-PC setup record — fill during the actual test
 
 Do not fill in guessed versions or test outcomes.
