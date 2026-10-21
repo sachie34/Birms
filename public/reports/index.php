@@ -9,6 +9,7 @@ $types = [
     'issuance' => 'Issuance summary',
     'requests' => 'Request processing summary',
     'blotter' => 'Blotter summary',
+    'periodic' => 'Monthly / Quarterly Administrative Report',
 ];
 $type = get_str('type');
 if (!isset($types[$type])) { $type = 'demographics'; }
@@ -30,6 +31,7 @@ $data = match ($type) {
     'issuance' => report_issuances($range),
     'requests' => report_requests($range),
     'blotter' => report_blotters($range),
+    'periodic' => report_periodic_administrative($range),
 };
 $reportLabel = $types[$type];
 $periodLabel = $type === 'demographics' ? date('j F Y') . ' (current active resident records)' : $range['label'];
@@ -89,6 +91,33 @@ if ($isCsv) {
             $write(['Assigned to', $row['assigned_to'], (int) $row['request_count']]);
         }
         $write(['Note', 'Status reflects the saved current status when the report is generated.', '']);
+    } elseif ($type === 'periodic') {
+        $population = $data['population'];
+        $issuance = $data['issuance'];
+        $collections = $data['collections'];
+        $requests = $data['requests'];
+        $blotter = $data['blotter'];
+        $write(['Section', 'Metric', 'Value']);
+        $write(['Population', 'Current active resident snapshot (not historical population)', (int) $population['total']]);
+        foreach ($population['purok'] as $purok => $count) { $write(['Population by Purok', $purok, (int) $count]); }
+        $write(['Certificates', 'Documents issued in selected period', (int) $issuance['summary']['issued_count']]);
+        $write(['Certificates', 'Recorded issuance fee amounts (not confirmed collections)', number_format((float) $issuance['summary']['recorded_fees'], 2, '.', '')]);
+        $write(['Collections', 'Reconciled cash-collection ledger amount', number_format((float) $collections['collected_amount'], 2, '.', '')]);
+        $write(['Collections', 'Pending reconciliation amount', number_format((float) $collections['pending_amount'], 2, '.', '')]);
+        $write(['Collections', 'Ledger entry count', (int) $collections['ledger_entry_count']]);
+        $write(['Requests', 'Total requests created in selected period', (int) $requests['summary']['total']]);
+        foreach (['Pending'=>'pending_count','Review'=>'review_count','Ready'=>'ready_count','Claimed'=>'claimed_count','Rejected'=>'rejected_count','Cancelled'=>'cancelled_count'] as $status => $key) {
+            $write(['Requests by current status', $status, (int) $requests['summary'][$key]]);
+        }
+        foreach ($requests['by_type'] as $row) { $write(['Requests by document type', $row['type_name'], (int) $row['request_count']]); }
+        $write(['Blotters', 'Non-archived incidents in selected period', (int) $blotter['summary']['total']]);
+        foreach (['Pending'=>'pending_count','Active'=>'active_count','Scheduled'=>'scheduled_count','Resolved'=>'resolved_count'] as $status => $key) {
+            $write(['Blotters by status', $status, (int) $blotter['summary'][$key]]);
+        }
+        $write(['Blotters', 'Resolution rate (%)', number_format((float) $blotter['summary']['resolution_rate'], 1, '.', '')]);
+        foreach ($blotter['by_type'] as $row) { $write(['Blotters by incident type', $row['incident_type'], (int) $row['case_count']]); }
+        foreach ($blotter['by_purok'] as $row) { $write(['Blotters by Purok', $row['purok'], (int) $row['case_count']]); }
+        $write(['Note', 'Request status counts are the current saved statuses at report time; official agency-specific templates remain pending approval.', '']);
     } else {
         $s = $data['summary'];
         $write(['Report period', $range['label']]);
@@ -240,6 +269,54 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     </tbody></table></div><?php endif; ?>
   </div></div>
 
+<?php elseif ($type === 'periodic'): ?>
+  <?php
+    $population = $data['population'];
+    $issuance = $data['issuance'];
+    $collections = $data['collections'];
+    $requests = $data['requests'];
+    $blotter = $data['blotter'];
+  ?>
+  <div class="alert alert-info">This is a consolidated BIRMS administrative summary for <?= e($range['label']) ?>. Resident population is a current snapshot, not a historical period-end count. Collected revenue includes reconciled cash-ledger rows only. Agency-specific forms and mandatory report fields still require confirmation by the receiving office.</div>
+  <div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card-b h-100"><div class="card-h"><h2>Current population</h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format((int) $population['total']) ?></div><small class="text-muted">Active, non-archived residents</small></div></div></div>
+    <div class="col-md-3"><div class="card-b h-100"><div class="card-h"><h2>Documents issued</h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format((int) $issuance['summary']['issued_count']) ?></div><small class="text-muted"><?= e($range['label']) ?></small></div></div></div>
+    <div class="col-md-3"><div class="card-b h-100"><div class="card-h"><h2>Revenue collected</h2></div><div class="card-body-b"><div class="fs-3 fw-bold">₱<?= number_format((float) $collections['collected_amount'], 2) ?></div><small class="text-muted">Reconciled ledger only</small></div></div></div>
+    <div class="col-md-3"><div class="card-b h-100"><div class="card-h"><h2>Pending collection</h2></div><div class="card-body-b"><div class="fs-3 fw-bold">₱<?= number_format((float) $collections['pending_amount'], 2) ?></div><small class="text-muted">Awaiting reconciliation</small></div></div></div>
+  </div>
+  <div class="card-b mb-3">
+    <div class="card-h"><h2>Current population by Purok</h2><p>Grouped from active residents and their household assignments.</p></div>
+    <div class="card-body-b">
+      <?php if (!$population['purok']): ?><?= empty_state('bi-people', 'No active resident records are available.') ?>
+      <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Residents</th></tr></thead><tbody>
+        <?php foreach ($population['purok'] as $purok => $count): ?><tr><td><?= e((string) $purok) ?></td><td class="text-end"><?= number_format((int) $count) ?></td></tr><?php endforeach; ?>
+      </tbody></table></div><?php endif; ?>
+    </div>
+  </div>
+  <div class="card-b mb-3">
+    <div class="card-h"><h2>Request queue summary</h2><p>Requests created in the selected period; displayed status counts reflect current status at generation time.</p></div>
+    <div class="card-body-b"><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Status</th><th class="text-end">Requests</th></tr></thead><tbody>
+      <?php foreach (['Pending'=>'pending_count','Review'=>'review_count','Ready'=>'ready_count','Claimed'=>'claimed_count','Rejected'=>'rejected_count','Cancelled'=>'cancelled_count'] as $status => $key): ?><tr><td><?= e($status) ?></td><td class="text-end"><?= number_format((int) $requests['summary'][$key]) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div></div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><div class="card-b h-100"><div class="card-h"><h2>Certificate issuance</h2><p>Recorded fee amounts are not proof of collected payments.</p></div><div class="card-body-b">
+      <div class="mb-2">Issuances: <strong><?= number_format((int) $issuance['summary']['issued_count']) ?></strong></div>
+      <div class="mb-2">Saved issuance fees: <strong>₱<?= number_format((float) $issuance['summary']['recorded_fees'], 2) ?></strong></div>
+      <div>Reconciled cash ledger entries: <strong><?= number_format((int) $collections['ledger_entry_count']) ?></strong></div>
+      <?php if (!$issuance['by_type']): ?><div class="text-muted mt-3">No certificates were issued in this period.</div><?php else: ?><div class="table-responsive mt-3"><table class="table table-b mb-0"><thead><tr><th>Document</th><th class="text-end">Issued</th></tr></thead><tbody><?php foreach ($issuance['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
+    </div></div></div>
+    <div class="col-lg-6"><div class="card-b h-100"><div class="card-h"><h2>Blotter summary</h2></div><div class="card-body-b">
+      <div class="mb-2">Non-archived cases in period: <strong><?= number_format((int) $blotter['summary']['total']) ?></strong></div>
+      <div class="mb-2">Resolved: <strong><?= number_format((int) $blotter['summary']['resolved_count']) ?></strong></div>
+      <div class="mb-3">Resolution rate: <strong><?= number_format((float) $blotter['summary']['resolution_rate'], 1) ?>%</strong></div>
+      <?php if (!$blotter['by_type']): ?><div class="text-muted">No incidents were recorded in this period.</div><?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Incident type</th><th class="text-end">Cases</th></tr></thead><tbody><?php foreach ($blotter['by_type'] as $row): ?><tr><td><?= e((string) $row['incident_type']) ?></td><td class="text-end"><?= number_format((int) $row['case_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
+    </div></div></div>
+  </div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Blotter cases by Purok</h2></div><div class="card-body-b">
+    <?php if (!$blotter['by_purok']): ?><?= empty_state('bi-shield-exclamation', 'No cases were recorded in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Cases</th></tr></thead><tbody><?php foreach ($blotter['by_purok'] as $row): ?><tr><td><?= e((string) $row['purok']) ?></td><td class="text-end"><?= number_format((int) $row['case_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
+  </div></div>
 <?php else: ?>
   <?php $s = $data['summary']; ?>
   <div class="row g-3 mb-3">
