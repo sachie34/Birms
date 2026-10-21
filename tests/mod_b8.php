@@ -26,7 +26,6 @@ function run_b8(array $S, string $base): void
         db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST-B8%'");
         db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ-B8%'");
         db_exec("DELETE FROM lookups WHERE label = 'ZZ-B8 Purok'");
-        @unlink($tmp);
     };
 
     try {
@@ -213,5 +212,6 @@ function run_b8(array $S, string $base): void
         record('B8-14', 'Expected schema agrees with the migrated database', $schemaCode === 0, $schemaCode === 0 ? '' : implode(' | ', array_slice($schemaOutput, 0, 4)));
     } finally {
         $cleanup();
+        @unlink($tmp);
     }
 }
