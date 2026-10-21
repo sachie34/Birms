@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('blotters.view');
 $id = get_int('id');
-$b = $id === null ? null : db_one('SELECT b.*, pk.label AS purok, it.label AS incident_type, u.full_name AS recorder FROM blotters b LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id LEFT JOIN lookups it ON it.lookup_id = b.incident_type_id AND it.list_key = 'incident_type' LEFT JOIN users u ON u.user_id = b.recorded_by WHERE b.blotter_id = ?', [$id]);
+$b = $id === null ? null : db_one("SELECT b.*, pk.label AS purok, it.label AS incident_type, u.full_name AS recorder FROM blotters b LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id LEFT JOIN lookups it ON it.lookup_id = b.incident_type_id AND it.list_key = 'incident_type' LEFT JOIN users u ON u.user_id = b.recorded_by WHERE b.blotter_id = ?", [$id]);
 if ($b === null) { abort(404, 'That case was not found.'); }
 $open = case_is_open($b);
 $parties = case_parties((int) $id);
