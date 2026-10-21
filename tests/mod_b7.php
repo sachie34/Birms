@@ -112,6 +112,10 @@ function run_b7(array $S, string $base): void
         && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
     $backupAdmin = $adm->get('/admin/backup.php');
     record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
+    $backup = post_as($adm, '/admin/backup.php', '/admin/backup.php', ['do' => 'download']);
+    $backupClerk = post_as($clk, '/admin/backup.php', '/admin/backup.php', ['do' => 'download']);
+    record('B7-9', 'Administrator SQL backup streams database DDL and data, logs the operation, and rejects unauthorized exports',
+        $backup['status'] === 200 && str_starts_with($backup['body'], '-- BIRMS local SQL export') && str_contains($backup['body'], 'CREATE TABLE `users`') && str_contains($backup['body'], 'CREATE TABLE `residents`') && $backupClerk['status'] === 403 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'database_backup_exported'") >= 1);
 
     // Clean child records first to respect the schema's restrictive foreign keys.
     db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
