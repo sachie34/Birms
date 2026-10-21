@@ -57,6 +57,7 @@ if ($isCsv) {
         $write(['TOTAL', (int) $data['summary']['issued_count'], number_format((float) $data['summary']['recorded_fees'], 2, '.', '')]);
     } elseif ($type === 'requests') {
         $s = $data['summary'];
+        $write(['Report', 'Request processing summary']);
         $write(['Report period', $range['label']]);
         $write(['Metric', 'Status / category', 'Count']);
         $write(['Requests', 'Total requests created in period', (int) $s['total']]);
