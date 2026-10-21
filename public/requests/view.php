@@ -55,7 +55,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
     <?php if ($attachments): ?><div class="card-b mb-3"><div class="card-h"><h2>Supporting documents</h2><p>Private files uploaded with this request.</p></div><div class="card-body-b"><?php foreach ($attachments as $attachment): ?><div class="border-bottom py-2"><a href="<?= e(base_url('files/download.php?id=' . (int) $attachment['attachment_id'])) ?>"><?= e((string) $attachment['original_name']) ?></a><div class="small text-muted"><?= e((string) $attachment['mime_type']) ?> · <?= e(number_format(((int) $attachment['byte_size']) / 1024, 1)) ?> KB · <?= e(fmt_dt((string) $attachment['uploaded_at'])) ?></div></div><?php endforeach; ?></div></div><?php endif; ?>
     <?php if ($moves): ?><div class="card-b"><div class="card-h"><h2>Next step</h2><p>Only steps your role may take are shown.</p></div><div class="card-body-b">
       <?php foreach ($moves as $to):
-        $label = ['Review' => 'Start review', 'Ready' => 'Approve (ready for pickup)', 'Rejected' => 'Reject', 'Cancelled' => 'Cancel request'][$to] ?? $to;
+        $label = ['Review' => 'Start review', 'Ready' => 'Approve and mark Ready for Pickup', 'Rejected' => 'Reject', 'Cancelled' => 'Cancel request'][$to] ?? $to;
         $needNote = $to === 'Rejected'; ?>
         <form method="post" action="<?= e(base_url('requests/action.php')) ?>" class="mb-3" data-confirm="<?= e($label . '?') ?>"><?= csrf_field() ?>
           <input type="hidden" name="id" value="<?= (int) $id ?>"><input type="hidden" name="to" value="<?= e($to) ?>">
