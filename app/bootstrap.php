@@ -8,6 +8,7 @@ declare(strict_types=1);
 require __DIR__ . '/core.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/permissions.php';
+require __DIR__ . '/attachments_lib.php';
 require __DIR__ . '/menu.php';
 require __DIR__ . '/layout.php';
 require __DIR__ . '/lookups.php';
