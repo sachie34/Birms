@@ -7,7 +7,8 @@ function run_b7(array $S, string $base): void
 {
     $adm = $S['admin']; $cap = $S['captain']; $sec = $S['secretary']; $clk = $S['clerk'];
 
-    // Clean interrupted B7 test rows only. These prefixes are reserved for this automated test.
+    // Clean interrupted B7 test rows only. Delete any ledger children before deleting issuance parents.
+    db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no LIKE 'ZB7I%' OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))");
     db_exec("DELETE FROM issuances WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test')");
     db_exec("DELETE FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'");
     db_exec("DELETE FROM fee_matrix WHERE fee_category = 'ZZ B7 Fee Category' AND fee_tier = 'ZZ B7 Fee Tier'");
@@ -239,7 +240,8 @@ function run_b7(array $S, string $base): void
         && $backupClerk['status'] === 403
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'database_backup_exported'") >= 1);
 
-    // Clean child records first to respect the schema's restrictive foreign keys.
+    // Clean ledger children before removing issuances, and issuances before requests.
+    db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
     if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
     if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
