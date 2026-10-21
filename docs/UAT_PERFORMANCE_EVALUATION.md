@@ -61,7 +61,7 @@ Record the actual times. Do not write projected speed improvements as measured r
 ## Known limits to mention accurately
 
 - Staff-recorded voter status and manual verification do not mean that BIRMS queries COMELEC.
-- Fee matrix rules are configurable; no official rates are preloaded. Issuance figures show saved fee amounts, not independently reconciled cash receipts or online payment totals.
+- Fee matrix rules are configurable; no official rates are preloaded. The certificate issuance history and its CSV use the separate cash-collection ledger for amounts and reconciliation filters; other issuance/report/dashboard fee figures may reflect saved issuance snapshots. Ledger entries are staff-recorded and are not independent proof of cash counts or bank deposits. Review missing historical ledger entries against reliable O.R./cash evidence before financial use. No online payment gateway exists.
 - The backup feature currently downloads a local SQL export. Cloud storage, scheduled backups, and a verified automatic restore are not implemented.
 - SMS is log-only unless a real provider has been authorized and configured.
 - The final role matrix and official certificate/summons wording must be approved by the barangay/system owner.
