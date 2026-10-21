@@ -91,7 +91,7 @@ page_head('Database Backup & Export', 'Create a one-click SQL backup and, when c
       <div class="card-body-b">
         <?php if ($cloudConfigured): ?>
           <div class="alert alert-success">Cloud destination is configured. The endpoint and credentials are read from protected local configuration and are not displayed here.</div>
-          <form method="post" action="<?= e(base_url('admin/backup.php')) ?>" onsubmit="return confirm('Upload a full BIRMS database backup, including sensitive resident and case records, to the configured remote storage?');">
+          <form method="post" action="<?= e(base_url('admin/backup.php')) ?>">
             <?= csrf_field() ?><input type="hidden" name="do" value="cloud_upload">
             <button class="btn btn-primary" type="submit"><i class="bi bi-cloud-arrow-up me-1"></i>Create and upload cloud backup</button>
           </form>
