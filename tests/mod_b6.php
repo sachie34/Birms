@@ -115,10 +115,23 @@ function run_b6(array $S, string $base): void
     $o5 = $outc($cap, $A, $H1, 'Held');                                                                     // already final
     $sched($sec, $A, $future(5)); $H3 = $hid($A); db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-2 hours')), $H3]);
     $o6 = $outc($cap, $A, $H3, 'Held');
-    record('B6-9', 'Outcomes: clerk is denied; admin cannot mark a future hearing Held; Postponed/Cancelled reasons, status updates and final outcomes are enforced',
-        $o0['status'] === 302 && $s0 === 'Scheduled' && $o1['status'] === 403 && $o1a['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Scheduled' && $o2['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
-        && $stillSched === 'Scheduled' && $afterAll === 'Active' && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H2]) === 'Postponed' && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
-        && $o6['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H3]) === 'Held' && $status($A) === 'Active' && $audit('hearing_outcome') >= 3);
+    $outcomeChecks = [
+        'held-too-early-not-saved' => $o0['status'] === 302 && $s0 === 'Scheduled',
+        'clerk-denied' => $o1['status'] === 403,
+        'admin-held-too-early-not-saved' => $o1a['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Scheduled' && str_contains($o1a['body'], 'still in the future'),
+        'postponed-without-reason-not-saved' => $o2['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Scheduled',
+        'cancelled-with-reason' => db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled',
+        'case-stays-scheduled-with-open-hearing' => $stillSched === 'Scheduled',
+        'case-returns-active-when-no-hearing-open' => $afterAll === 'Active',
+        'postponed-hearing-saved' => db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H2]) === 'Postponed',
+        'cancelled-hearing-saved' => db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled',
+        'past-held-hearing-saved' => $o6['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H3]) === 'Held',
+        'case-remains-active' => $status($A) === 'Active',
+        'outcomes-audited' => $audit('hearing_outcome') >= 3,
+    ];
+    $outcomeFailures = array_keys(array_filter($outcomeChecks, static fn(bool $ok): bool => !$ok));
+    record('B6-9', 'Hearing outcomes enforce role access, reasons, due times, case-state synchronization and audit logging',
+        !$outcomeFailures, implode(', ', $outcomeFailures));
 
     /* ---- resolve rules ---- */
     $file($clk, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']); $D = $cid('four');
