@@ -39,6 +39,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
       <?= $row('Status', status_pill((string) $r['status']) . ($r['status_note'] ? ' <span class="text-muted small">' . e((string) $r['status_note']) . '</span>' : '')) ?>
       <?= $row('Resident', can('residents.view') ? '<a href="' . e(base_url('residents/view.php?id=' . (int) $r['resident_id'])) . '">' . e(resident_name($r)) . '</a> ' . residency_pill((string) $r['residency_status']) : e(resident_name($r))) ?>
       <?= $row('Document', e((string) $r['type_name'])) ?><?= $row('Purpose', e((string) $r['purpose'])) ?>
+      <?= $row('Requirements review', status_pill((string) $r['requirements_status'])) ?><?= $row('Requirements / follow-up notes', e((string) ($r['requirements_note'] ?? '—') ?: '—')) ?>
       <?= $row('Submitted', e(fmt_dt((string) $r['requested_at']))) ?><?= $row('Assigned to', e((string) ($r['assigned'] ?? '—'))) ?><?= $row('Filed by', e((string) ($r['creator'] ?? '—'))) ?>
     </tbody></table></div></div>
     <?php if ($moves): ?><div class="card-b"><div class="card-h"><h2>Next step</h2><p>Only steps your role may take are shown.</p></div><div class="card-body-b">
