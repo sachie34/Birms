@@ -13,7 +13,8 @@ if ($id !== null) {
 } else { require_permission('blotters.add'); }
 
 $puroks = lookup_list('purok');
-$v = ['incident_date' => (string) ($ex['incident_date'] ?? date('Y-m-d')), 'incident_place' => (string) ($ex['incident_place'] ?? ''), 'purok_id' => (string) ($ex['purok_id'] ?? ''), 'narrative' => (string) ($ex['narrative'] ?? ''),
+$incidentTypes = lookup_list('incident_type');
+$v = ['incident_date' => (string) ($ex['incident_date'] ?? date('Y-m-d')), 'incident_place' => (string) ($ex['incident_place'] ?? ''), 'purok_id' => (string) ($ex['purok_id'] ?? ''), 'incident_type_id' => (string) ($ex['incident_type_id'] ?? ''), 'narrative' => (string) ($ex['narrative'] ?? ''),
       'c_name' => '', 'c_age' => '', 'c_address' => '', 'c_contact' => '', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => ''];
 $errors = [];
 $oldest = date('Y-m-d', strtotime('-10 years'));
@@ -26,6 +27,7 @@ if (is_post()) {
     elseif ($v['incident_date'] < $oldest) { $errors[] = 'The incident date cannot be more than 10 years ago.'; }
     if ($v['incident_place'] !== '' && !v_len($v['incident_place'], 3, 150)) { $errors[] = 'The place must be 3-150 characters.'; }
     if ($v['purok_id'] !== '' && !isset($puroks[(int) $v['purok_id']]) && (string) ($ex['purok_id'] ?? '') !== $v['purok_id']) { $errors[] = 'Choose a Purok from the list.'; }
+    if ($v['incident_type_id'] !== '' && !isset($incidentTypes[(int) $v['incident_type_id']]) && (string) ($ex['incident_type_id'] ?? '') !== $v['incident_type_id']) { $errors[] = 'Choose an incident type from the configured list.'; }
     if (!v_len($v['narrative'], 10, 5000)) { $errors[] = 'Describe what happened (10-5000 characters).'; }
     $c = $r = null;
     if (!$ex) {
@@ -34,15 +36,15 @@ if (is_post()) {
     }
     if (!$errors) {
         $nid = db_transaction(function () use ($v, $ex, $c, $r): int {
-            $purok = $v['purok_id'] !== '' ? (int) $v['purok_id'] : null; $place = $v['incident_place'] !== '' ? $v['incident_place'] : null;
+            $purok = $v['purok_id'] !== '' ? (int) $v['purok_id'] : null; $incidentType = $v['incident_type_id'] !== '' ? (int) $v['incident_type_id'] : null; $place = $v['incident_place'] !== '' ? $v['incident_place'] : null;
             if ($ex) {
-                db_exec("UPDATE blotters SET incident_date = ?, incident_place = ?, purok_id = ?, narrative = ? WHERE blotter_id = ? AND status <> 'Resolved' AND archived_at IS NULL", [$v['incident_date'], $place, $purok, $v['narrative'], $ex['blotter_id']]);
+                db_exec("UPDATE blotters SET incident_date = ?, incident_place = ?, purok_id = ?, incident_type_id = ?, narrative = ? WHERE blotter_id = ? AND status <> 'Resolved' AND archived_at IS NULL", [$v['incident_date'], $place, $purok, $incidentType, $v['narrative'], $ex['blotter_id']]);
                 audit('blotter_updated', 'Blotter', 'Success', $ex['case_no'] . ' details corrected', 'blotter', (int) $ex['blotter_id']);
                 return (int) $ex['blotter_id'];
             }
             $no = new_case_no();
-            db_exec('INSERT INTO blotters (case_no, incident_date, incident_place, purok_id, narrative, recorded_at, recorded_by) VALUES (?, ?, ?, ?, ?, NOW(), ?)',
-                [$no, $v['incident_date'], $place, $purok, $v['narrative'], audit_actor()['user_id'] ?? null]);
+            db_exec('INSERT INTO blotters (case_no, incident_date, incident_place, purok_id, incident_type_id, narrative, recorded_at, recorded_by) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)',
+                [$no, $v['incident_date'], $place, $purok, $incidentType, $v['narrative'], audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
             foreach ([['Complainant', $c], ['Respondent', $r]] as [$role, $pty]) {
                 if ($pty) { db_exec('INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number) VALUES (?, ?, ?, ?, ?, ?)', [$new, $role, $pty['name'], $pty['age'], $pty['address'], $pty['contact']]); }
@@ -65,6 +67,8 @@ card_start('Incident'); echo '<div class="row">';
 echo f_text('incident_date', 'Date of incident', $v['incident_date'], ['type' => 'date', 'required' => true, 'max' => date('Y-m-d'), 'min' => $oldest, 'col' => 'col-md-4']);
 echo f_text('incident_place', 'Place of incident', $v['incident_place'], ['maxlength' => 150, 'col' => 'col-md-5']);
 if ($puroks) { echo f_select('purok_id', 'Purok', $puroks, $v['purok_id'], ['blank' => 'Not stated', 'col' => 'col-md-3']); }
+if ($incidentTypes) { echo f_select('incident_type_id', 'Incident type', $incidentTypes, $v['incident_type_id'], ['blank' => 'Not classified', 'col' => 'col-md-6', 'help' => 'Categories are configured in Settings → Other lists.']); }
+else { echo '<div class="col-12 text-muted small mb-3">Incident type categories are not configured yet. Add the approved list under Settings → Other lists. Cases can still be recorded as unclassified.</div>'; }
 echo f_textarea('narrative', 'What happened', $v['narrative'], ['rows' => 6, 'maxlength' => 5000, 'required' => true, 'help' => 'Facts only: who, what, when, where.']);
 echo '</div>'; card_end();
 if (!$ex) {
