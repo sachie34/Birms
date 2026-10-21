@@ -20,11 +20,8 @@ CREATE TABLE document_attachments (
     KEY idx_attachment_uploader (uploaded_by),
     CONSTRAINT fk_attachment_visit FOREIGN KEY (visit_id) REFERENCES visitor_log (visit_id) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_attachment_request FOREIGN KEY (request_id) REFERENCES document_requests (request_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_attachment_uploader FOREIGN KEY (uploaded_by) REFERENCES users (user_id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT chk_attachment_parent CHECK (
-        (visit_id IS NOT NULL AND request_id IS NULL) OR
-        (visit_id IS NULL AND request_id IS NOT NULL)
-    )
+    CONSTRAINT fk_attachment_uploader FOREIGN KEY (uploaded_by) REFERENCES users (user_id) ON DELETE SET NULL ON UPDATE CASCADE
+    -- The application deliberately inserts exactly one owner column; MariaDB 10.11 does not permit this FK-column CHECK.
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE cash_collection_ledger (
