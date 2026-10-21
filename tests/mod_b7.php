@@ -2,6 +2,7 @@
 /** B7 tests: paper-required demographic, issuance and blotter reporting; dashboard data; admin backup access. */
 declare(strict_types=1);
 require_once __DIR__ . '/../app/reports_lib.php';
+require_once __DIR__ . '/../app/backup_lib.php';
 
 function run_b7(array $S, string $base): void
 {
@@ -37,9 +38,9 @@ function run_b7(array $S, string $base): void
     $requestsDisposition = (string) ($csvRequests['headers']['content-disposition'] ?? '');
     record('B7-2', 'Authorized roles can export CSV reports with valid attachment filenames; unauthorized export is denied',
         $csv['status'] === 200 && str_contains(strtolower((string) ($csv['headers']['content-type'] ?? '')), 'text/csv')
-        && preg_match('/^attachment; filename="birms-issuance-[a-z0-9-]+\.csv"$/i', trim($csvDisposition)) === 1
+        && preg_match('/^attachment; filename="birms-(?:internal|dilg|mayor|pnp)-issuance-[a-z0-9-]+\.csv"$/i', trim($csvDisposition)) === 1
         && $csvRequests['status'] === 200 && str_contains($csvRequests['body'], 'Request processing summary')
-        && preg_match('/^attachment; filename="birms-requests-[a-z0-9-]+\.csv"$/i', trim($requestsDisposition)) === 1
+        && preg_match('/^attachment; filename="birms-(?:internal|dilg|mayor|pnp)-requests-[a-z0-9-]+\.csv"$/i', trim($requestsDisposition)) === 1
         && str_starts_with($csv['body'], "\xEF\xBB\xBF") && $csvAdmin['status'] === 200 && $csvClerk['status'] === 403);
 
     $month = report_period_range('month', (int) date('Y'), (int) date('n'));
@@ -233,12 +234,37 @@ function run_b7(array $S, string $base): void
     $backupDisposition = (string) ($backup['headers']['content-disposition'] ?? '');
     record('B7-9', 'Administrator SQL backup streams database DDL and data with a valid attachment filename, logs the operation, and rejects unauthorized exports',
         $backup['status'] === 200
-        && preg_match('/^attachment; filename="birms-backup-[0-9-]+\.sql"$/i', trim($backupDisposition)) === 1
-        && str_starts_with($backup['body'], '-- BIRMS local SQL export')
+        && preg_match('/^attachment; filename="birms-backup-[0-9-]+-[a-f0-9]{6}\.sql"$/i', trim($backupDisposition)) === 1
+        && str_starts_with($backup['body'], '-- BIRMS SQL backup')
         && str_contains($backup['body'], 'CREATE TABLE `users`')
         && str_contains($backup['body'], 'CREATE TABLE `residents`')
         && $backupClerk['status'] === 403
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'database_backup_exported'") >= 1);
+
+    $safeCloudTarget = backup_webdav_destination_url('https://cloud.example.test/remote.php/dav/files/birms/backups/', 'birms-backup-2026-10-22-abcdef.sql');
+    $badCloudUrls = [
+        'http://cloud.example.test/backups/',
+        'https://user:password@cloud.example.test/backups/',
+        'https://cloud.example.test/backups/?token=secret',
+        'https://cloud.example.test/backups/../public/',
+        'https://cloud.example.test/backups/#fragment',
+    ];
+    $invalidCloudUrlsRejected = true;
+    foreach ($badCloudUrls as $badUrl) {
+        try { backup_webdav_destination_url($badUrl, 'birms-backup-2026-10-22-abcdef.sql'); $invalidCloudUrlsRejected = false; }
+        catch (InvalidArgumentException $expected) { /* expected validation rejection */ }
+    }
+    record('B7-14', 'Cloud backup URL validation requires HTTPS and rejects embedded credentials, query strings, fragments and dot-segment paths',
+        $safeCloudTarget === 'https://cloud.example.test/remote.php/dav/files/birms/backups/birms-backup-2026-10-22-abcdef.sql'
+        && $invalidCloudUrlsRejected);
+
+    $cloudConfigured = backup_webdav_is_configured();
+    $cloudStatusVisible = $cloudConfigured
+        ? str_contains($backupAdmin['body'], 'Cloud destination is configured')
+        : str_contains($backupAdmin['body'], 'Cloud upload is not configured yet');
+    record('B7-15', 'Cloud backup UI truthfully reflects configuration without printing configured credentials',
+        $cloudStatusVisible
+        && !str_contains($backupAdmin['body'], (string) config('backup.webdav_password', 'BIRMS_TEST_NO_MATCH')));
 
     // Clean ledger children before removing issuances, and issuances before requests.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
