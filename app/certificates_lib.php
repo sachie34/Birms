@@ -23,6 +23,9 @@ function certificate_vars(array $r, ?DateTimeImmutable $now = null): array
 function certificate_blockers(array $r, array $vars): array
 {
     $b = [];
+    if (($r['requirements_status'] ?? 'Not checked') !== 'Complete') {
+        $b[] = 'The request requirements have not been marked Complete. Return to Request Tracker and finish the requirements review before issuing the certificate.';
+    }
     if ($r['fee_amount'] === null) { $b[] = 'The fee for ' . $r['type_name'] . ' is not set yet. The Secretary must enter it in Settings, Documents and fees (0 means free).'; }
     $body = (string) ($r['template_body'] ?? '');
     if (trim($body) === '') { $b[] = 'The official wording for ' . $r['type_name'] . ' is not set yet. The Secretary must enter it in Settings, Documents and fees.'; }
@@ -37,7 +40,7 @@ function v_or_number(string $s): bool { return preg_match('/^[A-Za-z0-9-]{1,30}$
 /** Request + resident + household + document type, for issuing. */
 function issuable_request(int $id): ?array
 {
-    return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status,
+    return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.requirements_status, dr.requirements_note, dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status,
             r.archived_at AS resident_archived, h.street_address, pk.label AS purok, dt.name AS type_name, dt.fee_amount, dt.template_body
         FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id
         LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id WHERE dr.request_id = ?', [$id]);
