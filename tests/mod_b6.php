@@ -43,11 +43,11 @@ function run_b6(array $S, string $base): void
     $n0 = $cases();
     $r = $file($clk, ['narrative' => 'ZZ-B6 one: fence dispute between neighbours']); $A = $cid('one'); $aNo = $cno($A);
     $file($clk, ['narrative' => 'ZZ-B6 two: noise complaint', 'c_name' => 'Zzcomp Charlie', 'r_name' => 'Zzresp Delta']); $B = $cid('two'); $bNo = $cno($B);
-    $adminTry = $file($adm, ['narrative' => 'ZZ-B6 admin attempt']);
+    $adminTry = $file($adm, ['narrative' => 'ZZ-B6 admin attempt']); $AdminCase = $cid('admin attempt');
     $parts = db_all('SELECT party_role FROM blotter_parties WHERE blotter_id = ? ORDER BY party_id', [$A]);
-    record('B6-2', 'A clerk files a case: numbered BLT-YYYY-NNNN, Pending, both parties saved, audited; numbers are unique and sequential; the Administrator is refused',
+    record('B6-2', 'A clerk files a case: numbered BLT-YYYY-NNNN, Pending, both parties saved, audited; numbers are unique and sequential; the Administrator also files a case',
         $r['status'] === 302 && preg_match('/^BLT-' . date('Y') . '-\d{4}$/', $aNo) === 1 && $status($A) === 'Pending' && array_column($parts, 'party_role') === ['Complainant', 'Respondent']
-        && $audit('blotter_filed') >= 2 && (int) substr($bNo, -4) === (int) substr($aNo, -4) + 1 && $adminTry['status'] === 403 && $cases() === $n0 + 2);
+        && $audit('blotter_filed') >= 3 && (int) substr($bNo, -4) === (int) substr($aNo, -4) + 1 && $AdminCase > 0 && $adminTry['status'] === 302 && $status($AdminCase) === 'Pending' && $cases() === $n0 + 3);
 
     $variants = ['empty narrative' => ['narrative' => ''], 'short narrative' => ['narrative' => 'ZZ-B6'], 'future date' => ['incident_date' => date('Y-m-d', strtotime('+1 day'))], 'bad date' => ['incident_date' => '31/12/2026'],
                  'older than 10 years' => ['incident_date' => date('Y-m-d', strtotime('-11 years'))], 'short place' => ['incident_place' => 'ab'], 'no complainant name' => ['c_name' => ''], 'digits in name' => ['c_name' => 'Bob9 Cruz'],
@@ -67,14 +67,14 @@ function run_b6(array $S, string $base): void
         && $sec->get('/blotters/form.php?id=99999999')['status'] === 404 && $sec->get('/blotters/form.php?id[]=1')['status'] < 500);
 
     /* ---- status moves ---- */
-    $m1 = $move($clk, $A, 'Active'); $m1a = $move($adm, $A, 'Active'); $s1 = $status($A);
+    $m1 = $move($clk, $A, 'Active'); $m1a = $move($adm, $AdminCase, 'Active'); $adminCaseStatus = $status($AdminCase); $s1 = $status($A);
     $m2 = $move($cap, $A, 'Scheduled'); $s2 = $status($A);
     $m3 = $move($cap, $A, 'Active'); $s3 = $status($A);
     $m4 = $move($cap, $A, 'Pending'); $s4 = $status($A);
     $m5 = $move($cap, $A, 'Resolved', ''); $s5 = $status($A);
     $m6 = post_as($cap, $page($A), '/blotters/action.php', ['id' => (string) $A, 'do' => 'move', 'to' => ['Resolved'], 'note' => 'x']);
-    record('B6-5', 'Status rules: a clerk and the admin cannot move a case; Pending to Active works for the Captain; Scheduled cannot be set by hand; no way back; Resolved needs a note',
-        $m1['status'] === 403 && $m1a['status'] === 403 && $s1 === 'Pending' && $s2 === 'Pending' && $m3['status'] === 302 && $s3 === 'Active' && $s4 === 'Active' && $s5 === 'Active' && $m6['status'] < 500 && $status($A) === 'Active'
+    record('B6-5', 'Status rules: the clerk is denied while Administrator and Captain can make permitted moves; Pending to Active works for the Captain; Scheduled cannot be set by hand; no way back; Resolved needs a note',
+        $m1['status'] === 403 && $m1a['status'] === 302 && $adminCaseStatus === 'Active' && $s1 === 'Pending' && $s2 === 'Pending' && $m3['status'] === 302 && $s3 === 'Active' && $s4 === 'Active' && $s5 === 'Active' && $m6['status'] < 500 && $status($A) === 'Active'
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'blotter_status_changed' AND remarks LIKE ?", [$aNo . ': Pending -> Active%']) === 1);
     $m7 = $move($cap, $B, 'Resolved', 'ZZ withdrawn by complainant'); $rowB = db_one('SELECT status, resolution_note, resolved_at FROM blotters WHERE blotter_id = ?', [$B]);
     $m8 = $move($sec, $B, 'Active'); $m9 = $move($sec, $B, 'Resolved', 'again');
@@ -94,7 +94,7 @@ function run_b6(array $S, string $base): void
         && $sec->get('/blotters/party.php?case=' . $B)['status'] === 403 && $sec->get('/blotters/party.php?id=99999999')['status'] === 404 && $audit('blotter_party_added') >= 1 && $audit('blotter_party_updated') >= 1);
 
     /* ---- hearings: scheduling ---- */
-    $h0 = [$clk, $cap, $adm]; $stat = []; foreach ($h0 as $h) { $stat[] = $sched($h, $A, $future(3))['status']; }
+    $stat = [$sched($clk, $A, $future(3))['status'], $sched($cap, $A, $future(4))['status'], $sched($adm, $AdminCase, $future(3))['status']];
     $hn = $nHear($A);
     $r = $sched($sec, $A, $future(3)); $H1 = $hid($A);
     $bads = ['past' => '2020-01-01T09:00', 'garbage' => 'soon', 'over a year' => date('Y-m-d\TH:i', strtotime('+2 years')), 'duplicate time' => $future(3)];
@@ -102,13 +102,13 @@ function run_b6(array $S, string $base): void
     $sched($sec, $A, $future(9), 'ab'); $sched($sec, $A, $future(9), 'ZZ Test Hall');  $extra = $nHear($A);
     $aw = post_as($sec, $page($A), '/blotters/hearing_action.php', ['do' => 'schedule', 'id' => (string) $A, 'scheduled_at' => ['x'], 'venue' => '', 'notes' => '']);
     record('B6-8', 'Scheduling: only the Secretary may; it sets the case to Scheduled (audited); past, garbage, far-future, duplicate times and short venues are refused; a resolved case takes no hearing',
-        $stat === [403, 403, 403] && $hn === 0 && $r['status'] === 302 && $H1 > 0 && $status($A) === 'Scheduled' && $okBad && $extra === 2 && $aw['status'] < 500
+        $stat === [403, 403, 302] && $hn === 0 && $r['status'] === 302 && $H1 > 0 && $status($A) === 'Scheduled' && $okBad && $extra === 2 && $aw['status'] < 500
         && $audit('hearing_scheduled') >= 2 && $nHear($B) === 0 && $sched($sec, $B, $future(4))['status'] === 302 && $nHear($B) === 0);
 
     /* ---- hearings: outcomes ---- */
     $H2 = $hid($A);  // the later one (+9 days) is the newest
     $o0 = $outc($sec, $A, $H1, 'Held'); $s0 = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);
-    $o1 = $outc($clk, $A, $H1, 'Cancelled', 'ZZ clerk try'); $o1a = $outc($adm, $A, $H1, 'Cancelled', 'ZZ admin try');
+    $o1 = $outc($clk, $A, $H1, 'Cancelled', 'ZZ clerk try'); $o1a = $outc($adm, $A, $H1, 'Held');
     $o2 = $outc($cap, $A, $H1, 'Postponed', '');
     $o3 = $outc($cap, $A, $H1, 'Cancelled', 'ZZ complainant unavailable'); $stillSched = $status($A);   // H2 is still open
     $o4 = $outc($cap, $A, $H2, 'Postponed', 'ZZ hall in use'); $afterAll = $status($A);                    // none left: back to Active
@@ -116,7 +116,7 @@ function run_b6(array $S, string $base): void
     $sched($sec, $A, $future(5)); $H3 = $hid($A); db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-2 hours')), $H3]);
     $o6 = $outc($cap, $A, $H3, 'Held');
     record('B6-9', 'Outcomes: Held only once due; clerk/admin cannot; Postponed or Cancelled need a reason; the case returns to Active only when no hearing is left open; an outcome is final (audited)',
-        $o0['status'] === 302 && $s0 === 'Scheduled' && $o1['status'] === 403 && $o1a['status'] === 403 && $o2['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
+        $o0['status'] === 302 && $s0 === 'Scheduled' && $o1['status'] === 403 && $o1a['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Scheduled' && $o2['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
         && $stillSched === 'Scheduled' && $afterAll === 'Active' && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H2]) === 'Postponed' && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled'
         && $o6['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H3]) === 'Held' && $status($A) === 'Active' && $audit('hearing_outcome') >= 3);
 
@@ -146,10 +146,10 @@ function run_b6(array $S, string $base): void
     /* ---- look-up ---- */
     $lk = fn(Http $h, string $q) => $h->get('/blotters/lookup.php?q=' . rawurlencode($q));
     $before = $audit('blotter_lookup');
-    $l1 = $lk($clk, 'zzcomp alpha'); $l2 = $lk($clk, 'alpha ZZCOMP'); $l3 = $lk($sec, 'Charlie'); $l4 = $lk($clk, 'z'); $l5 = $lk($clk, '%%'); $l6 = $lk($clk, 'Zznobody Qxz');
-    record('B6-12', 'Look-up: finds a person by name words in any order across all cases including archived ones; one letter is not enough; % and _ are plain text; each real search is audited; the admin is refused',
+    $l1 = $lk($clk, 'zzcomp alpha'); $l2 = $lk($clk, 'alpha ZZCOMP'); $l3 = $lk($sec, 'Charlie'); $l4 = $lk($clk, 'z'); $l5 = $lk($clk, '%%'); $l6 = $lk($clk, 'Zznobody Qxz'); $l7 = $lk($adm, 'alpha');
+    record('B6-12', 'Look-up: finds a person by name words in any order across all cases including archived ones; one letter is not enough; % and _ are plain text; each real search is audited; Administrator access is also available',
         str_contains($l1['body'], $aNo) && str_contains($l2['body'], $aNo) && str_contains($l3['body'], $bNo) && str_contains($l3['body'], 'Archived') && str_contains($l4['body'], 'at least two letters') && !str_contains($l4['body'], $aNo)
-        && str_contains($l5['body'], 'No blotter record') && str_contains($l6['body'], 'No blotter record') && $audit('blotter_lookup') === $before + 5 && $lk($adm, 'alpha')['status'] === 403 && $clk->get('/blotters/lookup.php?q[]=x')['status'] < 500);
+        && str_contains($l5['body'], 'No blotter record') && str_contains($l6['body'], 'No blotter record') && $audit('blotter_lookup') === $before + 6 && $l7['status'] === 200 && str_contains($l7['body'], $aNo) && $clk->get('/blotters/lookup.php?q[]=x')['status'] < 500);
 
     /* ---- clearance hint ---- */
     db_exec("INSERT INTO households (household_code, street_address) VALUES ('ZZTEST-B6', 'ZZ Test Street B6')"); $hh = (int) db()->lastInsertId();
@@ -174,7 +174,7 @@ function run_b6(array $S, string $base): void
     $upc = $sec->get('/blotters/hearings.php')['body']; db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-3 hours')), $C2]);
     $ovr = $sec->get('/blotters/hearings.php?tab=overdue')['body']; $pst = $clk->get('/blotters/hearings.php?tab=past')['body'];
     record('B6-14', 'Hearing agenda: upcoming shows scheduled hearings; a past-due one moves to "Outcome needed"; finished hearings are under Past',
-        str_contains($upc, $cNo) && str_contains($ovr, $cNo) && str_contains($ovr, 'Outcome needed') && str_contains($pst, $aNo) && $adm->get('/blotters/hearings.php')['status'] === 403);
+        str_contains($upc, $cNo) && str_contains($ovr, $cNo) && str_contains($ovr, 'Outcome needed') && str_contains($pst, $aNo) && $adm->get('/blotters/hearings.php')['status'] === 200);
 
     /* ---- summons ---- */
     $sumPage = fn(Http $h, int $id) => $h->get('/blotters/summons.php?id=' . $id);
@@ -186,7 +186,7 @@ function run_b6(array $S, string $base): void
     $wording = "You are summoned to appear at {{venue}} on {{hearing_date}} at {{hearing_time}} regarding case {{case_no}}.\nRespondent: {{respondent_names}}.\n<b>Bring a valid ID</b>";
     $w2 = $saveW($sec, $wording);
     $sp0 = $audit('summons_printed');   // audit rows persist between runs, so count from here
-    $p1 = $sumPage($sec, $C1); $c1 = $cnt($C1); $p2 = $sumPage($cap, $C1); $p3 = $sumPage($clk, $C1); $c2 = $cnt($C1); $p4 = $sumPage($adm, $C1);
+    $p1 = $sumPage($sec, $C1); $c1 = $cnt($C1); $p2 = $sumPage($cap, $C1); $p3 = $sumPage($clk, $C1); $c2 = $cnt($C1); $p4 = $sumPage($adm, $C1); $c3 = $cnt($C1);
     $sched($sec, $C, $future(8), ''); $C3 = $hid($C); $s3 = $sumPage($sec, $C3);
     $file($clk, ['narrative' => 'ZZ-B6 five: no respondent known', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => '', 'c_name' => 'Zzcomp Kilo']); $E = $cid('five'); $sched($sec, $E, $future(6)); $HE = $hid($E); $s4 = $sumPage($sec, $HE);
     $s5 = $sumPage($sec, $H1); $s6 = $sumPage($sec, 99999999); $s7 = $sec->get('/blotters/summons.php?id[]=1');
@@ -194,9 +194,9 @@ function run_b6(array $S, string $base): void
         str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set') && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500 && $w2['status'] === 302
         && db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'") === $wording
         && str_contains($s3['body'], 'cannot be printed yet') && str_contains($s3['body'], 'venue') && str_contains($s4['body'], 'no respondent') && str_contains($s5['body'], 'still Scheduled') && $s6['status'] === 404 && $s7['status'] < 500);
-    record('B6-16', 'Printing a summons: wording filled in, HTML escaped, respondent and case shown; only the person who schedules hearings counts as printing it (audited); the admin is refused',
+    record('B6-16', 'Printing a summons: wording filled in, HTML escaped, respondent and case shown; only the person who schedules hearings counts as printing it (audited); Administrator access is allowed',
         $p1['status'] === 200 && str_contains($p1['body'], 'SUMMONS') && str_contains($p1['body'], $cNo) && str_contains($p1['body'], 'ZZ Test Hall') && str_contains($p1['body'], 'Zzresp Juliet') && str_contains($p1['body'], '&lt;b&gt;Bring a valid ID&lt;/b&gt;') && !str_contains($p1['body'], '<b>Bring')
-        && !str_contains($p1['body'], '{{') && $c1 === 1 && $p2['status'] === 200 && $p3['status'] === 200 && $c2 === 1 && $p4['status'] === 403 && $audit('summons_printed') === $sp0 + 1);
+        && !str_contains($p1['body'], '{{') && $c1 === 1 && $p2['status'] === 200 && $p3['status'] === 200 && $c2 === 1 && $p4['status'] === 200 && $c3 === $c2 + 1 && $audit('summons_printed') === $sp0 + 2);
 
     /* ---- CSRF, methods, odd input, XSS ---- */
     $snap = [$status($A), $nPart($A), $nHear($A), $cases()]; $nt = [];
