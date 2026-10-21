@@ -3,7 +3,7 @@
 Barangay Wawa, Balagtas, Bulacan. This **working copy** starts from B1–B6 and adds database-derived reports/dashboard summaries, a request requirements-review gate, an effective-dated fee matrix, manual resident identity/voter verification history, and a local SQL export.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status:** GitHub Actions ran PHP 8.3, MariaDB 10.11, and the PHP built-in server. The B1 authentication/security/audit suite passed **37 checks**; the B2–B7 module suite passed **119 checks**; no failures or untested checks were reported.
+> **Latest verified automated CI status:** GitHub Actions ran PHP 8.3, MariaDB 10.11, and the PHP built-in server. The **pre-remediation baseline** B1 authentication/security/audit suite passed **37 checks**; the B2–B7 module suite passed **119 checks**; no failures or untested checks were reported in that baseline run. Migration 011 and B8 integration checks have since been added, so verify the latest run in GitHub Actions before claiming this revision passed.
 > These are automated CI results, **not an office-XAMPP or browser user-acceptance test**. Section 6 gives you the tests to run on your XAMPP setup.
 
 ## 1. Requirements
@@ -27,7 +27,7 @@ It never touches your original `barangay_db`.
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   This applies migrations 001 to 010 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history.
+   This applies migrations 001 to 011 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history.
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -71,12 +71,12 @@ cd C:\xampp\htdocs\birms_work
 C:\xampp\php\php.exe tests\run_tests.php http://localhost/birms_work/public --root=http://localhost/birms_work
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/birms_work/public
 ```
-- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, manual verification, request review, fee matrix, certificates, blotter, reports, and backup-access checks (B2–B7).
+- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, manual verification, request review, fee matrix, certificates, blotter, reports, backup-access, attachment, PDF, ledger and reconciliation checks (B2–B8).
 - If a run is interrupted it can leave test rows behind (names starting `ZZ`). Rebuild the **test** database
   (drop `barangay_db_work`, run `migrate.php up` again) before re-running.
 - Refuses to run unless the database name ends in `_work` or `_test`. Creates and deletes `zz_test_*` users.
 - Expect `FAIL 0`. `NOT TESTED` means a check could not run. Send me the full output, including any FAIL lines.
-- The `--root` check confirms the private folders (`app`, `database`, `storage`, `tests`, `tools`, `docs`) cannot be downloaded.
+- The `--root` check confirms private folders are not downloadable through Apache. `app`, `storage`, and other project folders use `.htaccess` deny rules; the PHP built-in server ignores `.htaccess`, so run that particular protection check under Apache on XAMPP.
   It depends on Apache's `AllowOverride All` (the XAMPP default).
 
 ## 7. Backup before any change
