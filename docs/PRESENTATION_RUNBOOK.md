@@ -15,7 +15,7 @@ CI is not the same as running the app on the target office PC. The XAMPP/browser
 
 ## 1. Safety and setup
 
-1. Use a working project folder such as `C:\\xampp\\htdocs\\birms_work`.
+1. Use a working project folder such as `C:\xampp\htdocs\birms_work`.
 2. Keep the original `barangay_db` untouched. Configure BIRMS to use a separate `barangay_db_work` or `barangay_db_test` database.
 3. Back up the working project and database before changes. Never run test scripts against the original or production database.
 4. Follow [README_XAMPP.md](README_XAMPP.md) to configure `app/config.local.php`, PHP extensions, database permissions, migrations, and the first administrator. The configuration example defaults to `barangay_db_work`; replace the example password with a private password.
@@ -28,12 +28,12 @@ CI is not the same as running the app on the target office PC. The XAMPP/browser
 Open XAMPP Shell or Command Prompt:
 
 ```bat
-cd C:\\xampp\\htdocs\\birms_work
-C:\\xampp\\php\\php.exe tools\\migrate.php status
-C:\\xampp\\php\\php.exe tools\\migrate.php up
-C:\\xampp\\php\\php.exe tests\\run_tests.php http://localhost/birms_work/public --root=http://localhost/birms_work
-C:\\xampp\\php\\php.exe tests\\run_modules.php http://localhost/birms_work/public
-C:\\xampp\\php\\php.exe tools\\schema_check.php --db=barangay_db_work
+cd C:\xampp\htdocs\birms_work
+C:\xampp\php\php.exe tools\migrate.php status
+C:\xampp\php\php.exe tools\migrate.php up
+C:\xampp\php\php.exe tests\run_tests.php http://localhost/birms_work/public --root=http://localhost/birms_work
+C:\xampp\php\php.exe tests\run_modules.php http://localhost/birms_work/public
+C:\xampp\php\php.exe tools\schema_check.php --db=barangay_db_work
 ```
 
 Run migration commands only after confirming that `app/config.local.php` points to the separate working database. Both test runners refuse database names that do not end in `_work` or `_test`; respect that safeguard. The schema checker should show no differences after migrations. Expect zero failures and zero untested checks. If the test runners fail or report untested checks, save the complete output and fix those results before stating local tests passed.
