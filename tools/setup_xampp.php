@@ -150,17 +150,17 @@ try {
         );
     }
 
-    // The account is restricted to this local working database and ordinary application CRUD.
-    // Both hosts are created because localhost and 127.0.0.1 can match different MySQL accounts.
-    foreach (['localhost', '127.0.0.1'] as $accountHost) {
-        $quotedPassword = $rootPdo->quote($appPassword);
-        $account = "'birms_app'@'" . $accountHost . "'";
-        $rootPdo->exec('CREATE USER IF NOT EXISTS ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
-        $rootPdo->exec('ALTER USER ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
-        $rootPdo->exec('GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO ' . $account);
-    }
-
+    // Never reset a pre-existing account unless this wizard's private config proves it owns the account.
     if (!$resuming) {
+        $existingAppUsers = (int) $rootPdo->query(
+            "SELECT COUNT(*) FROM mysql.user WHERE User = 'birms_app' AND Host IN ('localhost', '127.0.0.1')"
+        )->fetchColumn();
+        if ($existingAppUsers > 0) {
+            setup_fail(
+                "A MySQL account named birms_app already exists but no setup-generated app/config.local.php was found. Its password was not changed. Use the existing configuration or have the database administrator verify that the account is unused before adjusting it."
+            );
+        }
+
         $localConfig = [
             'env' => 'production',
             'timezone' => 'Asia/Manila',
@@ -182,6 +182,20 @@ try {
             setup_fail('Could not write app/config.local.php. Check Windows folder permissions.');
         }
         @chmod($configPath, 0600);
+    }
+
+    // The account is restricted to this local working database and ordinary application CRUD.
+    // Both hosts are created because localhost and 127.0.0.1 can match different MySQL accounts.
+    foreach (['localhost', '127.0.0.1'] as $accountHost) {
+        $quotedPassword = $rootPdo->quote($appPassword);
+        $account = "'birms_app'@'" . $accountHost . "'";
+        if ($resuming) {
+            $rootPdo->exec('CREATE USER IF NOT EXISTS ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
+            $rootPdo->exec('ALTER USER ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
+        } else {
+            $rootPdo->exec('CREATE USER ' . $account . ' IDENTIFIED BY ' . $quotedPassword);
+        }
+        $rootPdo->exec('GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO ' . $account);
     }
 } catch (Throwable $e) {
     setup_fail('Could not prepare the working database/application account. Nothing was deleted. Details: ' . $e->getMessage());
