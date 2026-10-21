@@ -55,6 +55,11 @@ if ($isCsv) {
         $write(['Document type', 'Issued count', 'Recorded issuance fees (PHP)']);
         foreach ($data['by_type'] as $row) { $write([$row['type_name'], (int) $row['issued_count'], number_format((float) $row['recorded_fees'], 2, '.', '')]); }
         $write(['TOTAL', (int) $data['summary']['issued_count'], number_format((float) $data['summary']['recorded_fees'], 2, '.', '')]);
+        $write([]);
+        $write(['Recorded fee breakdown by saved category/tier', 'Category', 'Tier', 'Issued count', 'Recorded fees (PHP)']);
+        foreach ($data['by_fee_rule'] as $row) {
+            $write(['Fee category/tier', $row['fee_category'], $row['fee_tier'], (int) $row['issued_count'], number_format((float) $row['recorded_fees'], 2, '.', '')]);
+        }
     } elseif ($type === 'requests') {
         $s = $data['summary'];
         $write(['Report', 'Request processing summary']);
@@ -172,11 +177,17 @@ page_head('Reports & Analytics', 'Generate demographic, issuance, request-proces
     <div class="col-md-6"><div class="card-b"><div class="card-h"><h2>Documents issued</h2></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $data['summary']['issued_count']) ?></div><div class="text-muted small"><?= e($range['label']) ?></div></div></div></div>
     <div class="col-md-6"><div class="card-b"><div class="card-h"><h2>Recorded issuance fees</h2></div><div class="card-body-b"><div class="fs-2 fw-bold">₱<?= number_format((float) $data['summary']['recorded_fees'], 2) ?></div><div class="text-muted small">Sum of fee amounts saved in issued-document records; not a live payment-gateway total.</div></div></div></div>
   </div>
-  <div class="card-b"><div class="card-h"><h2>Issuance by document type</h2></div><div class="card-body-b">
+  <div class="card-b mb-3"><div class="card-h"><h2>Issuance by document type</h2></div><div class="card-body-b">
     <?php if (!$data['by_type']): ?><?= empty_state('bi-file-earmark', 'No documents were issued in this period.') ?>
     <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Issued</th><th class="text-end">Recorded fees</th></tr></thead><tbody>
       <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $row['recorded_fees'], 2) ?></td></tr><?php endforeach; ?>
     </tbody><tfoot><tr class="fw-semibold"><td>Total</td><td class="text-end"><?= number_format((int) $data['summary']['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $data['summary']['recorded_fees'], 2) ?></td></tr></tfoot></table></div><?php endif; ?>
+  </div></div>
+  <div class="card-b"><div class="card-h"><h2>Recorded fees by category and tier</h2><p>Amounts are read from saved issuance snapshots. Older issuances without a matrix snapshot appear as legacy fee entries.</p></div><div class="card-body-b">
+    <?php if (!$data['by_fee_rule']): ?><?= empty_state('bi-cash-stack', 'No recorded issuance fees are available for this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Fee category</th><th>Fee tier</th><th class="text-end">Issued</th><th class="text-end">Recorded fees</th></tr></thead><tbody>
+      <?php foreach ($data['by_fee_rule'] as $row): ?><tr><td><?= e((string) $row['fee_category']) ?></td><td><?= e((string) $row['fee_tier']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $row['recorded_fees'], 2) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
   </div></div>
 
 <?php elseif ($type === 'requests'): ?>
