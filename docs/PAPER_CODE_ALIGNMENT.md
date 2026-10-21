@@ -35,7 +35,7 @@ The compiled Chapters 1-3 explicitly define five core functional areas and class
 | Dashboard design described in Chapter 3 | Added separate dashboard counts for residents, households, certificates issued this month, requests, revenue and open blotter cases | The displayed overview better reflects the Chapter 3 screen description. The compiled Chapter 2 still classifies an executive dashboard as supplementary pending scope confirmation. |
 | First-Time Jobseeker (in the earlier Design and Development document) | No default type/template/fee is seeded. The application supports adding a document type through authorized Settings, subject to its validation. | Not preconfigured because the compiled Chapters 1-3 core list only names Clearance, Indigency and Residency and the project decisions say not to invent fees or wording. Add it only if the owner confirms it is required, then enter approved wording and fee. |
 | Voter/ID verification | Authorized staff can record a manual ID or local voter-list check and its history | Manual recording only. There is no COMELEC/PSA/PhilHealth API; this aligns with the thesis limitation against external database integration. |
-| Hearing scheduler and summons | Hearings, outcome workflow, case-party lookup and summons generation/print route | Supplementary. It is implemented/tested, but the office-approved summons wording and local printer output must be checked. |
+| Hearing scheduler, summons and referral status | Hearings, outcome workflow, case-party lookup and summons generation/print route | Hearings/summons are supplementary and implemented/tested, but approved summons wording and local printer output must be checked. The code's case statuses are `Pending`, `Active`, `Scheduled`, `Resolved`; it does not separately store SOE2's `Settled` or `Referred to PNP/LGU` states, and no separate referral-tracking workflow exists. The core thesis/project summary uses pending/active/scheduled/resolved, so those statuses were not silently replaced; this remains a supplementary-spec difference to confirm with the panel/system owner. |
 | Local/cloud backup | Administrator-only local SQL download; optional HTTPS WebDAV upload only if configured | Local export is implemented. Live cloud upload and a successful restore are **not verified**; scheduled backup/notifications/verified restoration are not included. Present this as optional supplementary functionality, not a proven backup service. |
 | Mobile app, public portal, online payments | Not included | Correctly excluded by the thesis limitations. |
 
@@ -47,6 +47,8 @@ The compiled Chapters 1-3 explicitly define five core functional areas and class
 - Added explicit separate household and monthly certificate counts to the dashboard, in line with the Chapter 3 dashboard description.
 - Removed duplicate backup-configuration/environment-variable entries in the shared PHP configuration.
 - Added this file to make the remaining paper differences visible instead of claiming perfect compliance.
+
+The SOE2 document's implementation-status table leaves several functions as `{specify}`, so it is not evidence that those functions passed implementation or acceptance testing. Its note that the SMS gateway was “Under Testing” conflicts with the repository's explicit log-only decision and the absence of an approved provider/account. In this branch, SMS should be treated as **not implemented for actual delivery**, not as a finished feature.
 
 ## Local verification is still required
 
