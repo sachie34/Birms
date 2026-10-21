@@ -25,12 +25,16 @@ function run_b7(array $S, string $base): void
     record('B7-1', 'Reports page access follows server-side role permissions', $bad === '', $bad);
 
     $csv = $sec->get('/reports/index.php?type=issuance&period=month&format=csv');
+    $csvRequests = $sec->get('/reports/index.php?type=requests&period=month&format=csv');
     $csvAdmin = $adm->get('/reports/index.php?type=blotter&period=quarter&format=csv');
     $csvClerk = $clk->get('/reports/index.php?type=demographics&format=csv');
     $csvDisposition = (string) ($csv['headers']['content-disposition'] ?? '');
-    record('B7-2', 'Authorized roles can export CSV reports with a valid attachment filename; unauthorized export is denied',
+    $requestsDisposition = (string) ($csvRequests['headers']['content-disposition'] ?? '');
+    record('B7-2', 'Authorized roles can export CSV reports with valid attachment filenames; unauthorized export is denied',
         $csv['status'] === 200 && str_contains(strtolower((string) ($csv['headers']['content-type'] ?? '')), 'text/csv')
         && preg_match('/^attachment; filename="birms-issuance-[a-z0-9-]+\.csv"$/i', trim($csvDisposition)) === 1
+        && $csvRequests['status'] === 200 && str_contains($csvRequests['body'], 'Request processing summary')
+        && preg_match('/^attachment; filename="birms-requests-[a-z0-9-]+\.csv"$/i', trim($requestsDisposition)) === 1
         && str_starts_with($csv['body'], "\xEF\xBB\xBF") && $csvAdmin['status'] === 200 && $csvClerk['status'] === 403);
 
     $month = report_period_range('month', (int) date('Y'), (int) date('n'));
@@ -58,6 +62,7 @@ function run_b7(array $S, string $base): void
     $baselineDemo = report_demographics();
     $baselineMonthIssuance = report_issuances($month);
     $baselineMonthBlotters = report_blotters($month);
+    $baselineMonthRequests = report_requests($month);
     $ageLabel = '18-59';
     foreach (age_brackets() as [$lo, $hi, $label]) {
         if (age_on('1990-01-01') >= $lo && age_on('1990-01-01') <= $hi) { $ageLabel = $label; break; }
@@ -86,6 +91,7 @@ function run_b7(array $S, string $base): void
     $afterDemo = report_demographics();
     $afterMonthIssuance = report_issuances($month);
     $afterMonthBlotters = report_blotters($month);
+    $afterMonthRequests = report_requests($month);
     $employmentCountOkay = (int) ($afterDemo['employment_status']['ZZ B7 Employment'] ?? 0) === (int) ($baselineDemo['employment_status']['ZZ B7 Employment'] ?? 0) + 1;
     $purokCountOkay = (int) ($afterDemo['purok']['ZZ B7 Purok'] ?? 0) === (int) ($baselineDemo['purok']['ZZ B7 Purok'] ?? 0) + 1;
     $voterCountOkay = (int) ($afterDemo['voter_status']['Registered'] ?? 0) === (int) ($baselineDemo['voter_status']['Registered'] ?? 0) + 1;
@@ -105,13 +111,21 @@ function run_b7(array $S, string $base): void
 
     $reportPage = $sec->get('/reports/index.php?type=demographics');
     $issuancePage = $sec->get('/reports/index.php?type=issuance&period=month&year=' . date('Y') . '&month=' . date('n'));
+    $requestsPage = $sec->get('/reports/index.php?type=requests&period=month&year=' . date('Y') . '&month=' . date('n'));
     $blotterPage = $sec->get('/reports/index.php?type=blotter&period=month&year=' . date('Y') . '&month=' . date('n'));
     $dashboard = $sec->get('/dashboard.php');
     record('B7-7', 'Report screens and dashboard expose the configured categories and real operational summaries',
         $reportPage['status'] === 200 && str_contains($reportPage['body'], 'ZZ B7 Employment') && $issuancePage['status'] === 200
         && str_contains($issuancePage['body'], 'ZZ B7 report test') === false
+        && $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary')
         && $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident')
         && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
+    record('B7-10', 'Request-processing summaries derive totals, current status, document type and assignee from saved requests',
+        (int) $afterMonthRequests['summary']['total'] === (int) $baselineMonthRequests['summary']['total'] + 1
+        && (int) $afterMonthRequests['summary']['claimed_count'] === (int) $baselineMonthRequests['summary']['claimed_count'] + 1
+        && count(array_filter($afterMonthRequests['by_type'], fn($r) => $r['type_name'] === 'Barangay Clearance' && (int) $r['request_count'] >= 1)) >= 1
+        && count(array_filter($afterMonthRequests['by_assignee'], fn($r) => $r['assigned_to'] === 'Unassigned' && (int) $r['request_count'] >= 1)) >= 1);
+
     $backupAdmin = $adm->get('/admin/backup.php');
     record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
     $backup = post_as($adm, '/admin/backup.php', '/admin/backup.php', ['do' => 'download']);
