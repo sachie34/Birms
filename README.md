@@ -8,9 +8,9 @@ This repository began as the clean Git import of the staged **B1–B6 BIRMS work
 
 - `app/` — shared application bootstrap, authentication, permissions, database helpers, and module libraries.
 - `public/` — web entry points and module screens, including reporting and Administrator-only local SQL backup on the paper-compliance branch.
-- `database/` — migrations and expected schema snapshot. Migrations 007–010 add reporting fields, request requirements review, fee matrix/quote snapshots, and resident verification history.
+- `database/` — migrations and expected schema snapshot. Migrations 007–011 add reporting fields, request requirements review, fee matrix/quote snapshots, resident verification history, private attachment metadata, typed signatory snapshots, and the cash-collection ledger.
 - `tools/` — migration, administrator, schema verification and `benchmark.php` timing tools (the benchmark is read-only and refuses databases not named `*_work` or `*_test`).
-- `tests/` — module and application test runners, including fee matrix, requirements-review, manual-verification, report, and backup-access tests.
+- `tests/` — module and application test runners, including fee matrix, requirements-review, manual-verification, report, backup-access, private-file upload/download, server-side PDF, ledger lifecycle, and reconciled-history tests.
 - `docs/` — design decisions, implementation notes, and XAMPP setup guidance.
 - `storage/` — runtime storage locations; logs and backups are ignored by Git.
 
@@ -43,12 +43,14 @@ The test suite may require a configured local database. Run it only against a se
 
 The original main branch reflects the initial B1–B6 package. The `john/paper-code-compliance` review branch contains the paper-aligned additions described above. It does not change the existing BIRMS UI/UX prototype, PowerPoint materials, BPMN, or ERD. Review and run the complete test suite on a disposable `_work` or `_test` database before accepting or deploying these changes.
 
-The current review branch's latest verified CI run passed **37 authentication/security/audit tests** and **119 module integration tests**, along with PHP syntax and migrations 001–010. This does not replace browser/UAT testing on the target XAMPP computer. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md) and [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md) for remaining checks.
+The pre-remediation baseline passed **37 authentication/security/audit tests** and **119 module integration tests**, along with PHP syntax and migrations 001–010. Migration 011 and the new `tests/mod_b8.php` add attachment, PDF, ledger lifecycle, and reconciliation-history coverage; check the latest [GitHub Actions run](https://github.com/sachie34/Birms/actions) before describing this revision as passing. Browser/UAT on the target office PC is a separate required step and is not complete until the checklist is run on that PC. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md), [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md), and [the Lab Activity 1 remediation status and UAT record](docs/BIRMS_LAB_ACTIVITY1_REMEDIATION_STATUS.md).
 
 ## Important scope boundaries
 
-- Fee rules must be entered from barangay-approved rates; no sample rates are seeded. Issuance totals reflect saved fees and O.R. details, not independently reconciled cash receipts.
+- Fee rules must be entered from barangay-approved rates; no sample rates are seeded. Issuance history now sums entries in the separate cash-collection ledger and filters reconciled/unreconciled entries. A ledger amount is staff-recorded data, not independent proof of a bank deposit; older paid issuances without entries must be reviewed and reconciled.
 - Resident verification is recorded manually and does not contact COMELEC or another external database.
 - The backup page downloads a local SQL file only. Cloud/scheduled backup and a verified restoration are not included.
 - SMS is log-only; the application does not send messages without an approved provider integration.
-- Official certificate and summons text, role permissions, standard agency report templates, and performance/UAT results require owner approval or actual testing.
+- Visitor/request attachments accept PDF/JPG/PNG up to 10 MB and are stored with random names outside the public web root; downloads are permission-checked and checksum-checked.
+- Certificates can be downloaded as server-generated PDFs (Dompdf when installed, otherwise an offline-compatible PDF writer). The template is conspicuously marked DRAFT pending official layout approval. Typed signature names are not cryptographically verified digital signatures.
+- Official certificate and summons text, fee rates, role permissions, and standard agency report templates require owner approval. Office-PC XAMPP/browser UAT and process timing/accuracy metrics must be recorded only after they are actually tested.
