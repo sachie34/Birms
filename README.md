@@ -26,6 +26,8 @@ The outer archive also contained earlier B1 and B1–B5 packages and duplicate S
 
 For the presentation build, download the [one-click BIRMS ZIP from main](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract the entire folder under `C:\xampp\htdocs\`, rename the extracted folder to `birms_work`, start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes a separate `barangay_db_work` database, applies migrations 001-011, writes the private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
 
+**UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme were tested across 50 role-accessible menu routes. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
+
 Read [the XAMPP setup guide](docs/README_XAMPP.md), [the paper-to-code alignment matrix](docs/PAPER_CODE_ALIGNMENT.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
 
 ## Local setup
