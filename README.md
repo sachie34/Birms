@@ -6,13 +6,15 @@ This repository contains the BIRMS B1–B8 application for Barangay Wawa, Balagt
 
 ## Repository layout
 
-- `app/` — shared application bootstrap, authentication, permissions, database helpers, and module libraries.
-- `public/` — authenticated module pages for records, requests, certificates, blotters, reporting, Administrator-only backup/ledger and permission-aware global search.
+- `app/` — shared PHP bootstrap, authentication, permissions, database helpers, layout, and module libraries.
+- `public/` — Apache web entry point and module pages. `public/index.php` handles sign-in; `public/assets/css/birms.css` holds the shared theme; `public/assets/js/app.js` holds shared browser behavior; `public/assets/vendor/` contains local Bootstrap and Bootstrap Icons files.
 - `database/` — migrations and expected schema snapshot. Migrations 007–011 add reporting fields, request requirements review, fee matrix/quote snapshots, resident verification history, private attachment metadata, typed signatory snapshots, and the cash-collection ledger.
 - `tools/` — migration, administrator, schema verification and `benchmark.php` timing tools (the benchmark is read-only and refuses databases not named `*_work` or `*_test`).
 - `tests/` — module and application test runners, including fee matrix, requirements review, manual verification, reports, backup access, private attachments/PDF, ledger reconciliation, global search and shared UI checks.
-- `docs/` — design decisions, implementation notes, and XAMPP setup guidance.
+- `docs/` — design decisions, implementation notes, setup guidance, and the [project structure review](docs/PROJECT_STRUCTURE.md).
 - `storage/` — runtime storage locations; logs and backups are ignored by Git.
+  
+BIRMS is a PHP application, so its executable entry point is `public/index.php`, not a static root `index.html`. Keep public assets separate from PHP logic and keep credentials, logs, backups, and private uploads outside the public web root. See the [project structure guide](docs/PROJECT_STRUCTURE.md) before proposing file moves.
 
 ## Branch provenance
 
