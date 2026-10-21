@@ -56,8 +56,7 @@ It never touches your original `barangay_db`.
 
 ## 4. Accounts and roles
 Four roles: Administrator, Barangay Captain, Barangay Secretary, Barangay Staff/Clerk.
-The Administrator manages the system only (accounts, settings, audit, backup). **Permissions are PROVISIONAL**
-until the Barangay Secretary validates them (tracker sheet *Role Matrix (Provisional)*).
+In the paper-compliance branch, the Administrator has all currently defined module permissions plus account, settings, audit and backup access, matching the intended highest-privilege role. Captain, Secretary and Clerk use the existing **PROVISIONAL** role map until the Barangay Secretary/system owner approves the final matrix. The map must still be validated against the approved paper and office responsibilities.
 - New users get a temporary password and must change it at first sign-in.
 - Forgot password: the Administrator sets a new temporary password (User Accounts → Manage).
 - If the Administrator is locked out: `C:\xampp\php\php.exe tools\create_admin.php --reset=username`.
