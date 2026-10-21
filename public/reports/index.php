@@ -1,5 +1,5 @@
 <?php
-/** Data-backed demographic, issuance and blotter reports. */
+/** Data-backed demographic, issuance, request-processing and blotter reports. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
@@ -7,6 +7,7 @@ require_login();
 $types = [
     'demographics' => 'Demographic report',
     'issuance' => 'Issuance summary',
+    'requests' => 'Request processing summary',
     'blotter' => 'Blotter summary',
 ];
 $type = get_str('type');
@@ -18,6 +19,7 @@ $range = report_period_range(get_str('period'), get_int('year'), get_int('month'
 $data = match ($type) {
     'demographics' => report_demographics(),
     'issuance' => report_issuances($range),
+    'requests' => report_requests($range),
     'blotter' => report_blotters($range),
 };
 $reportLabel = $types[$type];
@@ -53,6 +55,22 @@ if ($isCsv) {
         $write(['Document type', 'Issued count', 'Recorded issuance fees (PHP)']);
         foreach ($data['by_type'] as $row) { $write([$row['type_name'], (int) $row['issued_count'], number_format((float) $row['recorded_fees'], 2, '.', '')]); }
         $write(['TOTAL', (int) $data['summary']['issued_count'], number_format((float) $data['summary']['recorded_fees'], 2, '.', '')]);
+    } elseif ($type === 'requests') {
+        $s = $data['summary'];
+        $write(['Report period', $range['label']]);
+        $write(['Metric', 'Status / category', 'Count']);
+        $write(['Requests', 'Total requests created in period', (int) $s['total']]);
+        foreach ([
+            'Pending' => $s['pending_count'], 'Review' => $s['review_count'], 'Ready' => $s['ready_count'],
+            'Claimed' => $s['claimed_count'], 'Rejected' => $s['rejected_count'], 'Cancelled' => $s['cancelled_count'],
+        ] as $status => $count) { $write(['Current status', $status, (int) $count]); }
+        foreach ($data['by_type'] as $row) {
+            $write(['Document type', $row['type_name'], (int) $row['request_count']]);
+        }
+        foreach ($data['by_assignee'] as $row) {
+            $write(['Assigned to', $row['assigned_to'], (int) $row['request_count']]);
+        }
+        $write(['Note', 'Status reflects the saved current status when the report is generated.', '']);
     } else {
         $s = $data['summary'];
         $write(['Report period', $range['label']]);
@@ -89,7 +107,7 @@ $reportActions = '<button class="btn btn-light border" type="button" data-print>
 if (can('reports.export')) { $reportActions .= ' <a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>'; }
 
 render_header('Reports & Analytics', [['Reports & Analytics', null]], 'reports');
-page_head('Reports & Analytics', 'Generate demographic, issuance and blotter summaries from actual BIRMS records.', $reportActions);
+page_head('Reports & Analytics', 'Generate demographic, issuance, request-processing and blotter summaries from actual BIRMS records.', $reportActions);
 ?>
 <div class="card-b mb-3">
   <div class="card-h"><h2>Report options</h2><p>Choose the report and, for issuance and incident reports, the reporting period.</p></div>
@@ -158,6 +176,31 @@ page_head('Reports & Analytics', 'Generate demographic, issuance and blotter sum
     <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Issued</th><th class="text-end">Recorded fees</th></tr></thead><tbody>
       <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $row['recorded_fees'], 2) ?></td></tr><?php endforeach; ?>
     </tbody><tfoot><tr class="fw-semibold"><td>Total</td><td class="text-end"><?= number_format((int) $data['summary']['issued_count']) ?></td><td class="text-end">₱<?= number_format((float) $data['summary']['recorded_fees'], 2) ?></td></tr></tfoot></table></div><?php endif; ?>
+  </div></div>
+
+<?php elseif ($type === 'requests'): ?>
+  <?php $s = $data['summary']; ?>
+  <div class="alert alert-info">This report counts requests created during <?= e($range['label']) ?>. Status counts reflect the current saved status when the report is generated, not a historical status snapshot.</div>
+  <div class="row g-3 mb-3">
+    <?php foreach ([
+      'Total requests' => (int) $s['total'], 'Pending' => (int) $s['pending_count'], 'In review' => (int) $s['review_count'],
+      'Ready for pickup' => (int) $s['ready_count'], 'Claimed' => (int) $s['claimed_count'],
+      'Rejected' => (int) $s['rejected_count'], 'Cancelled' => (int) $s['cancelled_count'],
+    ] as $label => $count): ?>
+      <div class="col-6 col-lg-3"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div>
+    <?php endforeach; ?>
+  </div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Requests by document type</h2></div><div class="card-body-b">
+    <?php if (!$data['by_type']): ?><?= empty_state('bi-inbox', 'No requests were filed in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Review</th><th class="text-end">Ready</th><th class="text-end">Claimed</th></tr></thead><tbody>
+      <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td><td class="text-end"><?= number_format((int) $row['pending_count']) ?></td><td class="text-end"><?= number_format((int) $row['review_count']) ?></td><td class="text-end"><?= number_format((int) $row['ready_count']) ?></td><td class="text-end"><?= number_format((int) $row['claimed_count']) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Requests by assignee</h2></div><div class="card-body-b">
+    <?php if (!$data['by_assignee']): ?><?= empty_state('bi-people', 'No requests were assigned in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Assigned to</th><th class="text-end">Requests</th></tr></thead><tbody>
+      <?php foreach ($data['by_assignee'] as $row): ?><tr><td><?= e((string) $row['assigned_to']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
   </div></div>
 
 <?php else: ?>
