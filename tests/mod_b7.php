@@ -134,6 +134,18 @@ function run_b7(array $S, string $base): void
     db_exec("INSERT INTO document_types (name, fee_amount, template_body, is_active, sort_order)
              VALUES ('ZZ B7 Matrix Certificate', NULL, 'Test certificate for {{full_name}}: {{purpose}}', 1, 9907)");
     $matrixTypeId = (int) db()->lastInsertId();
+
+    $badLegacyPurpose = 'ZZ B7 Legacy quantity validation test';
+    $badLegacyQuantity = post_as($clk, '/requests/form.php?resident=' . $residentId, '/requests/form.php?resident=' . $residentId, [
+        'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
+        'purpose' => $badLegacyPurpose, 'assigned_to' => '',
+        'requirements_status' => 'Not checked', 'requirements_note' => '',
+        'fee_rule_id' => '', 'fee_quantity' => '2',
+    ]);
+    $badLegacyQuantityBlocked = $badLegacyQuantity['status'] === 200
+        && str_contains($badLegacyQuantity['body'], 'Quantity must be 1 when using the per-document fee')
+        && (int) db_val('SELECT COUNT(*) FROM document_requests WHERE purpose = ?', [$badLegacyPurpose]) === 0;
+
     $feeRuleResponse = post_as($sec, '/admin/settings.php', '/admin/settings.php', [
         'do' => 'fee_rule_add', 'tab' => 'fee_matrix', 'type_id' => (string) $matrixTypeId,
         'fee_category' => 'ZZ B7 Fee Category', 'fee_tier' => 'ZZ B7 Fee Tier',
@@ -141,6 +153,16 @@ function run_b7(array $S, string $base): void
         'effective_from' => date('Y-m-d'), 'effective_to' => '',
     ]);
     $matrixRuleId = (int) db_val("SELECT fee_rule_id FROM fee_matrix WHERE type_id = ? AND fee_category = 'ZZ B7 Fee Category' AND fee_tier = 'ZZ B7 Fee Tier' AND is_active = 1", [$matrixTypeId]);
+    $badMatrixPurpose = 'ZZ B7 Fee matrix out-of-range test';
+    $badMatrixQuantity = post_as($clk, '/requests/form.php?resident=' . $residentId, '/requests/form.php?resident=' . $residentId, [
+        'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
+        'purpose' => $badMatrixPurpose, 'assigned_to' => '',
+        'requirements_status' => 'Not checked', 'requirements_note' => '',
+        'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '5',
+    ]);
+    $badMatrixQuantityBlocked = $badMatrixQuantity['status'] === 200
+        && str_contains($badMatrixQuantity['body'], 'Quantity does not fit the selected fee tier range')
+        && (int) db_val('SELECT COUNT(*) FROM document_requests WHERE purpose = ?', [$badMatrixPurpose]) === 0;
     $quotePurpose = 'ZZ B7 Fee matrix quote test';
     $quotePost = post_as($clk, '/requests/form.php?resident=' . $residentId, '/requests/form.php?resident=' . $residentId, [
         'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
@@ -150,8 +172,9 @@ function run_b7(array $S, string $base): void
     ]);
     $quoteRequestId = (int) db_val('SELECT request_id FROM document_requests WHERE purpose = ?', [$quotePurpose]);
     $quoteRow = $quoteRequestId > 0 ? db_one('SELECT fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, quoted_fee_amount FROM document_requests WHERE request_id = ?', [$quoteRequestId]) : null;
-    record('B7-11', 'A real request uses the approved fee rule and saves the category/tier snapshot and quantity-based quote',
-        $feeRuleResponse['status'] === 302 && $matrixRuleId > 0 && $quotePost['status'] === 302 && $quoteRow !== null
+    record('B7-11', 'Legacy per-document and matrix quantities are validated; a real request saves the approved category/tier snapshot and calculated quote',
+        $badLegacyQuantityBlocked && $badMatrixQuantityBlocked
+        && $feeRuleResponse['status'] === 302 && $matrixRuleId > 0 && $quotePost['status'] === 302 && $quoteRow !== null
         && (int) $quoteRow['fee_rule_id'] === $matrixRuleId
         && $quoteRow['fee_category_snapshot'] === 'ZZ B7 Fee Category'
         && $quoteRow['fee_tier_snapshot'] === 'ZZ B7 Fee Tier'
