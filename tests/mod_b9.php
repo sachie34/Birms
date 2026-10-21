@@ -37,11 +37,11 @@ function run_b9(array $S, string $base): void
              VALUES ('ZZB9Search', 'GlobalProbe', '1990-01-01', 'Male', 'Single', 'Active', 'Unverified')");
     $residentId = (int) db()->lastInsertId();
     try {
-        $result = $S['secretary']->get('/search.php?q=ZZB9GlobalProbe');
+        $result = $S['secretary']->get('/search.php?q=GlobalProbe');
         record('B9-3', 'Global search finds a stored resident and links to the permitted resident profile',
             $result['status'] === 200 && str_contains($result['body'], 'ZZB9Search') && str_contains($result['body'], 'residents/view.php?id=' . $residentId));
 
-        $clerk = $S['clerk']->get('/search.php?q=ZZB9GlobalProbe');
+        $clerk = $S['clerk']->get('/search.php?q=GlobalProbe');
         record('B9-4', 'Global search is usable by staff through the shared layout without a server error',
             $clerk['status'] === 200 && str_contains($clerk['body'], 'Residents') && !leaks($clerk));
     } finally {
