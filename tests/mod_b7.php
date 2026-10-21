@@ -273,7 +273,20 @@ function run_b7(array $S, string $base): void
 
     $periodicCsv = $sec->get('/reports/index.php?type=periodic&period=quarter&year=' . date('Y') . '&quarter=4&recipient=mayor&format=csv');
     $periodicCsvRaw = (string) $periodicCsv['body'];
-    $periodicCsvBody = str_starts_with($periodicCsvRaw, "\\xEF\\xBB\\xBF") ? substr($periodicCsvRaw, 3) : $periodicCsvRaw;
+    $periodicCsvBom = pack('CCC', 0xEF, 0xBB, 0xBF);
+    $periodicCsvBody = str_starts_with($periodicCsvRaw, $periodicCsvBom) ? substr($periodicCsvRaw, 3) : $periodicCsvRaw;
+    record('B7-16A', 'Periodic quarterly CSV response succeeds with a CSV content type',
+        $periodicCsv['status'] === 200
+        && str_contains(strtolower((string) ($periodicCsv['headers']['content-type'] ?? '')), 'text/csv'));
+    record('B7-16B', 'Periodic quarterly CSV identifies the selected recipient and draft template',
+        str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
+        && str_contains($periodicCsvBody, 'Template status')
+        && str_contains($periodicCsvBody, 'Report period'));
+    record('B7-16C', 'Periodic quarterly CSV distinguishes reconciled and pending cash-ledger amounts',
+        str_contains($periodicCsvBody, 'Reconciled cash-collection ledger amount')
+        && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
+    record('B7-16D', 'Periodic quarterly CSV distinguishes issuance fee snapshots from confirmed collections',
+        str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)'));
     record('B7-16', 'Periodic quarterly report can be exported for a named recipient and distinguishes reconciled collections from issuance fee amounts',
         $periodicCsv['status'] === 200
         && str_contains($periodicCsvBody, 'Prepared for,Office of the Mayor')
