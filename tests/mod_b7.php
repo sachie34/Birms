@@ -18,7 +18,7 @@ function run_b7(array $S, string $base): void
     db_exec("DELETE FROM lookups WHERE (list_key = 'employment_status' AND label = 'ZZ B7 Employment') OR (list_key = 'incident_type' AND label = 'ZZ B7 Incident') OR (list_key = 'purok' AND label = 'ZZ B7 Purok')");
 
     $bad = '';
-    foreach (['/reports/index.php' => 'reports.view'] as $path => $perm) {
+    foreach (['/reports/index.php' => 'reports.view', '/admin/backup.php' => 'backup.run'] as $path => $perm) {
         [$ok, $why] = rbac_page($S, $path, $perm);
         if (!$ok) { $bad .= $path . ': ' . $why; }
     }
@@ -110,6 +110,8 @@ function run_b7(array $S, string $base): void
         && str_contains($issuancePage['body'], 'ZZ B7 report test') === false
         && $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident')
         && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
+    $backupAdmin = $adm->get('/admin/backup.php');
+    record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
 
     // Clean child records first to respect the schema's restrictive foreign keys.
     db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
