@@ -135,9 +135,9 @@ if (is_post() && $resident !== null) {
         } elseif ($hasActiveMatrixForType) {
             $errors[] = 'This document type has an approved fee matrix. Select a category/tier and quantity before filing.';
         } else {
-            // No approved matrix rule applies: preserve the existing per-document fee-at-issuance flow.
+            // No approved matrix rule applies: the legacy per-document fee is a single-document amount.
+            if ($quantity !== 1) { $errors[] = 'Quantity must be 1 when using the per-document fee. Configure and select an approved fee-matrix rule to price multiple units.'; }
             $pricing['fee_quantity'] = 1;
-            $v['fee_quantity'] = '1';
         }
     }
 
