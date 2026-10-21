@@ -30,9 +30,13 @@ $requestCounts = can('requests.view') ? (db_one(
 ) ?? ['total_n' => 0, 'active_n' => 0, 'claimed_n' => 0, 'rejected_n' => 0]) : null;
 
 $monthlyIssuance = can('certificates.history') ? (db_one(
-    'SELECT COUNT(*) AS issued_n, COALESCE(SUM(fee_amount), 0) AS recorded_fees
-     FROM issuances WHERE issued_at >= ? AND issued_at < ?', [$monthStart, $nextMonth]
-) ?? ['issued_n' => 0, 'recorded_fees' => 0]) : null;
+    'SELECT COUNT(*) AS issued_n FROM issuances WHERE issued_at >= ? AND issued_at < ?',
+    [$monthStart, $nextMonth]
+) ?? ['issued_n' => 0]) : null;
+
+$monthlyCollections = can('reports.view')
+    ? report_cash_collections(['start' => $monthStart, 'end' => $nextMonth])
+    : null;
 
 $blotterCounts = can('blotters.view') ? (db_one(
     "SELECT COUNT(*) AS total_n,
@@ -69,8 +73,8 @@ render_header('Operations Overview', [['Operations Overview', null]], 'dashboard
   <?php if ($requestCounts !== null): ?>
   <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Active requests</h2><p>Pending, review or ready</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $requestCounts['active_n']) ?></div><div class="small text-muted"><?= number_format((int) $requestCounts['claimed_n']) ?> claimed · <?= number_format((int) $requestCounts['rejected_n']) ?> rejected</div></div></div></div>
   <?php endif; ?>
-  <?php if ($monthlyIssuance !== null): ?>
-  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Documents issued</h2><p><?= e($today->format('F Y')) ?></p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $monthlyIssuance['issued_n']) ?></div><div class="small text-muted">Recorded issuance fees: ₱<?= number_format((float) $monthlyIssuance['recorded_fees'], 2) ?></div></div></div></div>
+  <?php if ($monthlyCollections !== null): ?>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Revenue collected</h2><p><?= e($today->format('F Y')) ?> · reconciled ledger</p></div><div class="card-body-b"><div class="fs-2 fw-bold">₱<?= number_format((float) $monthlyCollections['collected_amount'], 2) ?></div><div class="small text-muted">Pending reconciliation: ₱<?= number_format((float) $monthlyCollections['pending_amount'], 2) ?><?php if ($monthlyIssuance !== null): ?> · <?= number_format((int) $monthlyIssuance['issued_n']) ?> document(s) issued<?php endif; ?></div></div></div></div>
   <?php endif; ?>
   <?php if ($blotterCounts !== null): ?>
   <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Open blotter cases</h2><p>Not archived or resolved</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $blotterCounts['pending_n'] + (int) $blotterCounts['active_n'] + (int) $blotterCounts['scheduled_n']) ?></div><div class="small text-muted"><?= number_format((int) $blotterCounts['pending_n']) ?> pending · <?= number_format((int) $blotterCounts['scheduled_n']) ?> scheduled</div></div></div></div>
