@@ -40,6 +40,9 @@ jobs:
         run: |
           find app public tests tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
+      - name: Check the XAMPP setup wizard
+        run: php tools/setup_xampp.php --check
+
       - name: Prepare local config
         run: cp app/config.local.php.example app/config.local.php
 
