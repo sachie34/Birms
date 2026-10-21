@@ -6,8 +6,8 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('residents.view');
 $id = get_int('id');
-$r = $id === null ? null : db_one('SELECT r.*, h.household_code, h.street_address, pk.label AS purok, cat.label AS category
-    FROM residents r LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id LEFT JOIN lookups cat ON cat.lookup_id = r.category_id WHERE r.resident_id = ?', [$id]);
+$r = $id === null ? null : db_one('SELECT r.*, h.household_code, h.street_address, pk.label AS purok, cat.label AS category, emp.label AS employment_status
+    FROM residents r LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id LEFT JOIN lookups cat ON cat.lookup_id = r.category_id LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status' WHERE r.resident_id = ?', [$id]);
 if ($r === null || ($r['archived_at'] !== null && !can('residents.archive'))) { abort(404, 'That resident was not found.'); }
 $members = $r['household_id'] ? db_all('SELECT resident_id, last_name, first_name, middle_name, suffix, is_household_head, residency_status FROM residents WHERE household_id = ? AND archived_at IS NULL AND resident_id <> ? ORDER BY last_name, first_name', [$r['household_id'], $id]) : [];
 $history = can('audit.view') ? db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'resident' AND entity_id = ? ORDER BY audit_id DESC LIMIT 15", [$id]) : [];
@@ -28,7 +28,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
   <div class="col-lg-7"><div class="card-b"><div class="card-h"><h2>Details</h2></div><div class="card-body-b"><table class="table table-sm mb-0"><tbody>
     <?= $row('Birthdate / age', e(date('d M Y', strtotime((string) $r['birthdate']))) . ' · ' . (int) age_on((string) $r['birthdate'])) ?>
     <?= $row('Sex', e((string) $r['sex'])) ?><?= $row('Civil status', e((string) $r['civil_status'])) ?>
-    <?= $row('Contact', e((string) ($r['contact_number'] ?? '—'))) ?><?= $row('Category', e((string) ($r['category'] ?? '—'))) ?>
+    <?= $row('Contact', e((string) ($r['contact_number'] ?? '—'))) ?><?= $row('Category', e((string) ($r['category'] ?? '—'))) ?><?= $row('Employment status', e((string) ($r['employment_status'] ?? 'Not specified'))) ?>
     <?= $row('Residency', residency_pill((string) $r['residency_status'])) ?><?= $row('Voter status', status_pill((string) $r['voter_status'])) ?>
     <?= $row('Household', $r['household_id'] ? e((string) $r['household_code']) . ' · ' . e((string) $r['street_address']) . ($r['purok'] ? ' · ' . e((string) $r['purok']) : '') . ((int) $r['is_household_head'] ? ' ' . pill('Head of household', 'blue') : '') : '—') ?>
     <?= $row('Registered', e(fmt_dt((string) $r['created_at']))) ?>
