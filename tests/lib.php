@@ -13,7 +13,11 @@ final class Http
         $ch = curl_init(($absolute ? '' : $this->base) . $path);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_COOKIEJAR => $this->jar, CURLOPT_COOKIEFILE => $this->jar, CURLOPT_TIMEOUT => 30, CURLOPT_CUSTOMREQUEST => $method]);
-        if ($method === 'POST') { curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data)); }
+        if ($method === 'POST') {
+            $multipart = false;
+            foreach ($data as $value) { if ($value instanceof CURLFile) { $multipart = true; break; } }
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $multipart ? $data : http_build_query($data));
+        }
         $raw = (string) curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $hs = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
@@ -27,6 +31,12 @@ final class Http
     }
     public function get(string $p): array { return $this->req('GET', $p); }
     public function post(string $p, array $d = []): array { return $this->req('POST', $p, $d); }
+    public function upload(string $p, array $d, string $field, string $filePath, string $clientName, string $mime = 'application/pdf'): array
+    {
+        if (!is_file($filePath)) { throw new RuntimeException('Upload test file does not exist.'); }
+        $d[$field] = new CURLFile($filePath, $mime, $clientName);
+        return $this->req('POST', $p, $d);
+    }
     public function token(string $page): string
     {
         $r = $this->get($page);
