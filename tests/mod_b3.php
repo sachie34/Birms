@@ -116,6 +116,15 @@ function run_b3(array $S, string $base): void
     $verifyRow = db_one("SELECT verification_subject, verification_method, outcome FROM resident_verifications WHERE resident_id = ? ORDER BY verification_id DESC LIMIT 1", [$rid]);
     $verifyView = $sec->get('/residents/view.php?id=' . $rid);
     $captainView = $cap->get('/residents/view.php?id=' . $rid);
+    $verifyStatus = (string) db_val('SELECT voter_status FROM residents WHERE resident_id = ?', [$rid]);
+    $verifyAuditCount = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_verification_recorded' AND entity_id = ?", [$rid]);
+    $verifyDebug = 'captain=' . $verifyCaptain['status'] . '; no-token=' . $verifyNoToken['status']
+        . '; invalid=' . $verifyInvalidMethod['status'] . '; identity=' . $identityCheck['status'] . '; voter=' . $voterCheck['status']
+        . '; count=' . $verifyCount . '/' . ($verifyBefore + 2) . '; last=' . json_encode($verifyRow)
+        . '; status=' . $verifyStatus . '; audit=' . $verifyAuditCount
+        . '; view-heading=' . (str_contains($verifyView['body'], 'Identity & voter verification') ? 'yes' : 'no')
+        . '; view-voter-method=' . (str_contains($verifyView['body'], 'Local barangay voter list checked') ? 'yes' : 'no')
+        . '; captain-form=' . (str_contains($captainView['body'], 'name="verification_subject"') ? 'present' : 'hidden');
     record('B3-18', 'Staff can record manual ID and voter-list checks with history/audit; local voter outcome updates voter status; invalid methods, missing CSRF and Captain write attempts are refused',
         $verifyCaptain['status'] === 403 && $verifyNoToken['status'] === 403
         && $verifyInvalidMethod['status'] === 302
@@ -123,11 +132,11 @@ function run_b3(array $S, string $base): void
         && $verifyCount === $verifyBefore + 2
         && $verifyRow !== null && $verifyRow['verification_subject'] === 'voter_registration'
         && $verifyRow['verification_method'] === 'barangay_voter_list' && $verifyRow['outcome'] === 'registered'
-        && db_val('SELECT voter_status FROM residents WHERE resident_id = ?', [$rid]) === 'Registered'
-        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_verification_recorded' AND entity_id = ?", [$rid]) >= 2
+        && $verifyStatus === 'Registered'
+        && $verifyAuditCount >= 2
         && str_contains($verifyView['body'], 'Identity & voter verification')
         && str_contains($verifyView['body'], 'Local barangay voter list checked')
-        && !str_contains($captainView['body'], 'name="verification_subject"'));
+        && !str_contains($captainView['body'], 'name="verification_subject"'), $verifyDebug);
 
     $need = ['resident_created', 'resident_updated', 'resident_archived', 'resident_restored', 'residency_status_changed', 'household_created', 'resident_rejected', 'resident_verification_recorded'];
     $miss = array_filter($need, fn($a) => (int) db_val('SELECT COUNT(*) FROM audit_log WHERE action = ?', [$a]) < 1);
@@ -137,6 +146,7 @@ function run_b3(array $S, string $base): void
     $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
     record('B3-21', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
 
+    db_exec("DELETE FROM resident_verifications WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTest%')");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM households WHERE street_address LIKE 'ZZ Test%' OR household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");
