@@ -4,7 +4,7 @@
 **Repository:** `sachie34/Birms`  
 **Audit branch:** `john/paper-code-compliance`  
 **Audit date:** 2026-10-22
-**Verification status (2026-10-22):** Latest [GitHub Actions run #309](https://github.com/sachie34/Birms/actions/runs/39644402597) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **142/142 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
+**Verification status (2026-10-22):** Verified by [GitHub Actions run #317](https://github.com/sachie34/Birms/actions/runs/39644766060) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **142/142 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
 
 ## Source-of-truth order
 
@@ -95,7 +95,7 @@ Server-generated PDFs are available, but output remains marked draft pending off
 
 ## Current audit conclusion
 
-The branch implements authentication/RBAC, resident management, certificate request/issuance, blotter/hearing management, data-backed reports, plus supplementary visitor intake, fee matrix/cash ledger, request queue, history, audit viewer, executive dashboard and backup/export. The latest verified run [#297](https://github.com/sachie34/Birms/actions/runs/39644402597) passed PHP syntax, migrations 001–011 on disposable MariaDB, **37 authentication/security/audit checks** and **142 module integration checks**, with zero failures or untested checks.
+The branch implements authentication/RBAC, resident management, certificate request/issuance, blotter/hearing management, data-backed reports, plus supplementary visitor intake, fee matrix/cash ledger, request queue, history, audit viewer, executive dashboard and backup/export. The latest verified run [#297](https://github.com/sachie34/Birms/actions/runs/39644766060) passed PHP syntax, migrations 001–011 on disposable MariaDB, **37 authentication/security/audit checks** and **142 module integration checks**, with zero failures or untested checks.
 
 Recent supplementary changes include private visitor/request attachments; server-generated draft PDF certificates; fee-matrix quotations and a separate cash-collection ledger; ledger-aware issuance history with transaction date and reconciliation filter; combined monthly/quarterly administrative reporting; dashboard collection figures sourced from reconciled ledger entries; and optional HTTPS WebDAV backup upload. Optional cloud upload is implemented but cannot be considered deployed or verified until an approved cloud destination and private credentials are supplied.
 
