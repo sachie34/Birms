@@ -50,6 +50,9 @@ if (is_post()) {
             db_transaction(function () use ($id, $date, $amount, $method, $notes): void {
                 $old = db_one('SELECT ledger_id, reconciliation_status FROM cash_collection_ledger WHERE ledger_id = ? FOR UPDATE', [$id]);
                 if ($old === null) { throw new RuntimeException('The ledger transaction was not found.'); }
+                if ($old['reconciliation_status'] !== 'pending') {
+                    throw new RuntimeException('Mark this transaction Pending before editing reconciled details.');
+                }
                 db_exec('UPDATE cash_collection_ledger SET transaction_date = ?, fee_amount = ?, payment_method = ?, notes = ? WHERE ledger_id = ?',
                     [$date, $amount, $method, $notes !== '' ? $notes : null, $id]);
                 audit('cash_ledger_updated', 'Cash Ledger', 'Success', 'Updated ledger transaction ' . $id, 'cash_ledger', $id);
