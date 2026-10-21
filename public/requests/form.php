@@ -60,19 +60,111 @@ if (is_post() && $resident !== null) {
     if (str_len($v['requirements_note']) > 1000) { $errors[] = 'Requirements notes are limited to 1,000 characters.'; }
     if ($v['requirements_status'] === 'Incomplete' && !v_len($v['requirements_note'], 3, 1000)) { $errors[] = 'Explain which requirements are missing (3-1,000 characters).'; }
     if ($v['requirements_status'] === 'Not checked') { $v['requirements_note'] = ''; }
+
+    // Apply the approved fee matrix only when configured for this document type.
+    // This records a quote/billing basis; it does not process online payments.
+    $pricing = [
+        'fee_rule_id' => null, 'fee_category_snapshot' => null, 'fee_tier_snapshot' => null,
+        'fee_quantity' => 1, 'fee_unit_rate' => null, 'quoted_fee_amount' => null,
+    ];
+    $quantityText = $v['fee_quantity'];
+    $quantity = ctype_digit($quantityText) ? (int) $quantityText : 0;
+    if ($quantity < 1 || $quantity > 1000000) {
+        $errors[] = 'Quantity must be a whole number from 1 to 1,000,000.';
+    }
+    $selectedRuleId = $v['fee_rule_id'] === '' ? null : (ctype_digit($v['fee_rule_id']) && (int) $v['fee_rule_id'] > 0 ? (int) $v['fee_rule_id'] : -1);
+    if ($selectedRuleId === -1) { $errors[] = 'Choose a valid approved fee category and tier.'; }
+
+    $currentRuleById = [];
+    foreach ($feeRules as $candidate) { $currentRuleById[(int) $candidate['fee_rule_id']] = $candidate; }
+    if ($existingFeeRule !== null) { $currentRuleById[(int) $existingFeeRule['fee_rule_id']] = $existingFeeRule; }
+    $hasActiveMatrixForType = false;
+    foreach ($feeRules as $candidate) {
+        if ((int) $candidate['type_id'] === (int) $v['type_id']) { $hasActiveMatrixForType = true; break; }
+    }
+
+    if ($selectedRuleId !== null && $selectedRuleId > 0) {
+        $rule = $currentRuleById[$selectedRuleId] ?? null;
+        if ($rule === null) {
+            $errors[] = 'That fee rule is no longer available. Select a currently effective approved rule.';
+        } elseif ((int) $rule['type_id'] !== (int) $v['type_id']) {
+            $errors[] = 'The selected fee rule belongs to a different document type.';
+        } else {
+            $sameSavedRule = $ex !== null
+                && (int) ($ex['fee_rule_id'] ?? 0) === $selectedRuleId
+                && (int) ($ex['fee_quantity'] ?? 1) === $quantity
+                && $ex['quoted_fee_amount'] !== null;
+            $isCurrentRule = (int) $rule['is_active'] === 1
+                && (string) $rule['effective_from'] <= date('Y-m-d')
+                && ($rule['effective_to'] === null || (string) $rule['effective_to'] >= date('Y-m-d'));
+            if (!$isCurrentRule && !$sameSavedRule) {
+                $errors[] = 'That fee rule is not currently effective. Existing saved quotes may be retained, but new pricing needs a currently effective rule.';
+            } elseif ($sameSavedRule && !$isCurrentRule) {
+                // Keep an older quote unchanged when editing a request after a rule expires or is disabled.
+                $pricing = [
+                    'fee_rule_id' => $selectedRuleId,
+                    'fee_category_snapshot' => (string) ($ex['fee_category_snapshot'] ?? $rule['fee_category']),
+                    'fee_tier_snapshot' => (string) ($ex['fee_tier_snapshot'] ?? $rule['fee_tier']),
+                    'fee_quantity' => $quantity,
+                    'fee_unit_rate' => $ex['fee_unit_rate'] ?? $rule['unit_rate'],
+                    'quoted_fee_amount' => $ex['quoted_fee_amount'],
+                ];
+            } else {
+                if ($quantity < (int) $rule['min_quantity'] || ($rule['max_quantity'] !== null && $quantity > (int) $rule['max_quantity'])) {
+                    $errors[] = 'Quantity does not fit the selected fee tier range.';
+                }
+                $quote = round((float) $rule['unit_rate'] * $quantity, 2);
+                if (!is_finite($quote) || $quote < 0 || $quote > 9999999999.99) {
+                    $errors[] = 'The calculated amount exceeds the supported billing range.';
+                }
+                $pricing = [
+                    'fee_rule_id' => $selectedRuleId,
+                    'fee_category_snapshot' => (string) $rule['fee_category'],
+                    'fee_tier_snapshot' => (string) $rule['fee_tier'],
+                    'fee_quantity' => $quantity,
+                    'fee_unit_rate' => (float) $rule['unit_rate'],
+                    'quoted_fee_amount' => $quote,
+                ];
+            }
+        }
+    } else {
+        if ($ex !== null && !empty($ex['fee_rule_id'])) {
+            $errors[] = 'This request already has a matrix quote. Keep the selected rule or choose another currently effective approved rule; do not clear the quote.';
+        } elseif ($hasActiveMatrixForType) {
+            $errors[] = 'This document type has an approved fee matrix. Select a category/tier and quantity before filing.';
+        } else {
+            // No approved matrix rule applies: preserve the existing per-document fee-at-issuance flow.
+            $pricing['fee_quantity'] = 1;
+            $v['fee_quantity'] = '1';
+        }
+    }
+
     if (!$errors) {
-        $rid = db_transaction(function () use ($v, $ex, $resident, $visit): int {
+        $rid = db_transaction(function () use ($v, $pricing, $ex, $resident, $visit): int {
             $assigned = $v['assigned_to'] !== '' ? (int) $v['assigned_to'] : null;
             if ($ex) {
-                db_exec('UPDATE document_requests SET type_id = ?, purpose = ?, assigned_to = ?, requirements_status = ?, requirements_note = ? WHERE request_id = ? AND status IN (\'Pending\',\'Review\')',
-                    [(int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null, $ex['request_id']]);
-                audit('request_updated', 'Requests', 'Success', $ex['reference_no'] . ' edited', 'request', (int) $ex['request_id']); return (int) $ex['request_id'];
+                db_exec('UPDATE document_requests
+                         SET type_id = ?, purpose = ?, assigned_to = ?, requirements_status = ?, requirements_note = ?,
+                             fee_rule_id = ?, fee_category_snapshot = ?, fee_tier_snapshot = ?, fee_quantity = ?, fee_unit_rate = ?, quoted_fee_amount = ?
+                         WHERE request_id = ? AND status IN (\'Pending\',\'Review\')',
+                    [(int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
+                     $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], $ex['request_id']]);
+                audit('request_updated', 'Requests', 'Success',
+                    $ex['reference_no'] . ' edited' . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
+                    'request', (int) $ex['request_id']);
+                return (int) $ex['request_id'];
             }
             $ref = new_request_reference();
-            db_exec('INSERT INTO document_requests (reference_no, visit_id, resident_id, type_id, purpose, assigned_to, requirements_status, requirements_note, requested_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
-                [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null, audit_actor()['user_id'] ?? null]);
+            db_exec('INSERT INTO document_requests
+                     (reference_no, visit_id, resident_id, type_id, purpose, assigned_to, requirements_status, requirements_note,
+                      fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, quoted_fee_amount, requested_at, created_by)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
+                [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
+                 $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
-            audit('request_created', 'Requests', 'Success', $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'], 'request', $new);
+            audit('request_created', 'Requests', 'Success',
+                $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'] . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
+                'request', $new);
             return $new;
         });
         flash_add('success', $ex ? 'Request updated.' : 'Request filed.');
