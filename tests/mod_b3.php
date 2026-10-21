@@ -13,7 +13,7 @@ function run_b3(array $S, string $base): void
     $create = fn(Http $h, array $o = []) => post_as($h, '/residents/form.php', '/residents/form.php', $mk($o));
 
     $bad = ''; foreach (['/residents/index.php' => 'residents.view', '/residents/households.php' => 'residents.view', '/residents/form.php' => 'residents.add', '/residents/export.php' => 'residents.export', '/residents/household_edit.php' => 'residents.add'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
-    record('B3-1', 'Resident pages: every role gets exactly what the permission map says (admin has no resident access)', $bad === '', $bad);
+    record('B3-1', 'Resident pages: access is enforced server-side for every role; administrator has full access', $bad === '', $bad);
 
     $before = $count();
     $r = post_as($cap, '/residents/index.php', '/residents/form.php', $mk());
