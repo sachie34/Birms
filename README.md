@@ -22,6 +22,12 @@ Source package: `birms_work_B1-B6.zip` from the uploaded `Claudecodebirms.zip` b
 
 The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files. Those were not mixed into this repository. The B1–B6 package was selected as the latest self-contained work package, while its existing documentation remains the source of truth for scope and pending decisions.
 
+## Download and run locally (XAMPP)
+
+For the presentation build, download the [paper-compliance branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/paper-code-compliance.zip), extract the entire folder under `C:\\xampp\\htdocs\\`, start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes a separate `barangay_db_work` database, applies migrations 001-011, writes the private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
+
+Read [the XAMPP setup guide](docs/README_XAMPP.md), [the paper-to-code alignment matrix](docs/PAPER_CODE_ALIGNMENT.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
+
 ## Local setup
 
 Follow [`docs/README_XAMPP.md`](docs/README_XAMPP.md) for the intended PHP, MariaDB/MySQL, Apache, and XAMPP setup. Copy `app/config.local.php.example` to `app/config.local.php` and provide local credentials outside Git.
