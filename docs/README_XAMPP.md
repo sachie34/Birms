@@ -3,8 +3,7 @@
 Barangay Wawa, Balagtas, Bulacan. This **working copy** starts from B1–B6 and adds database-derived reports/dashboard summaries, a request requirements-review gate, an effective-dated fee matrix, manual resident identity/voter verification history, and a local SQL export.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status:** GitHub Actions ran PHP 8.3, MariaDB 10.11, and the PHP built-in server. The **pre-remediation baseline** B1 authentication/security/audit suite passed **37 checks**; the B2–B7 module suite passed **119 checks**; no failures or untested checks were reported in that baseline run. Migration 011 and B8 integration checks have since been added, so verify the latest run in GitHub Actions before claiming this revision passed.
-> These are automated CI results, **not an office-XAMPP or browser user-acceptance test**. Section 6 gives you the tests to run on your XAMPP setup.
+> **Latest verified automated CI status for the application code:** [GitHub Actions run]( https://github.com/sachie34/Birms/actions/runs/39644996924 ) on commit `942ab4ae9b71f608d3f353dd29ba6949e447365b` passed PHP syntax validation, migrations 001–011 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **142/142 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
 
 ## 1. Requirements
 - XAMPP with **PHP 8.1 or newer** and MySQL/MariaDB (5.7+ / 10.3+). Check with `C:\xampp\php\php.exe -v`.
