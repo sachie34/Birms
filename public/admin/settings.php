@@ -184,6 +184,44 @@ if ($tab === 'general') {
         }
         card_end();
     }
+} elseif ($tab === 'fee_matrix') {
+    $rows = db_all('SELECT fm.fee_rule_id, fm.type_id, fm.fee_category, fm.fee_tier, fm.unit_rate, fm.min_quantity, fm.max_quantity, fm.effective_from, fm.effective_to, fm.is_active, fm.created_at, dt.name AS type_name, u.full_name AS created_by_name
+                    FROM fee_matrix fm JOIN document_types dt ON dt.type_id = fm.type_id
+                    LEFT JOIN users u ON u.user_id = fm.created_by
+                    ORDER BY dt.name, fm.fee_category, fm.fee_tier, fm.effective_from DESC, fm.fee_rule_id DESC');
+    card_start('Configured fee matrix', 'No fee rates are preloaded. Add only categories, tiers, dates, and rates approved by the barangay. Existing request and issuance fee snapshots are not changed when a rule is disabled.');
+    echo '<div class="alert alert-secondary">For a document type with an active rule effective today, a new request must select a fee category/tier and quantity. The system calculates the quoted amount as approved unit rate × quantity. If no effective matrix rule exists for a document type, the existing per-document fee setting remains available. This does not process online payments.</div>';
+    if (!$rows) { echo empty_state('bi-cash-stack', 'No fee-matrix rules have been entered yet.'); }
+    else {
+        echo '<div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document/service</th><th>Category</th><th>Tier</th><th class="text-end">Rate per unit</th><th>Quantity range</th><th>Effective dates</th><th>Status</th><th></th></tr></thead><tbody>';
+        foreach ($rows as $r) {
+            $range = (int) $r['min_quantity'] . '–' . ($r['max_quantity'] === null ? 'no limit' : (string) $r['max_quantity']);
+            $dates = (string) $r['effective_from'] . ' → ' . ($r['effective_to'] === null ? 'No end date' : (string) $r['effective_to']);
+            echo '<tr><td>' . e((string) $r['type_name']) . '</td><td>' . e((string) $r['fee_category']) . '</td><td>' . e((string) $r['fee_tier']) . '</td>'
+               . '<td class="text-end">' . e(money($r['unit_rate'])) . '</td><td>' . e($range) . '</td><td>' . e($dates) . '</td>'
+               . '<td>' . ((int) $r['is_active'] === 1 ? pill('Active', 'green') : pill('Disabled', 'grey')) . '</td><td class="text-end">'
+               . ($canEdit && (int) $r['is_active'] === 1 ? btn_post('admin/settings.php', ['do' => 'fee_rule_disable', 'tab' => 'fee_matrix', 'id' => $r['fee_rule_id']], 'Disable', 'btn-sm btn-light border') : '')
+               . '</td></tr>';
+        }
+        echo '</tbody></table></div>';
+    }
+    card_end();
+    if ($canEdit) {
+        $docOptions = [];
+        foreach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $dt) { $docOptions[(int) $dt['type_id']] = (string) $dt['name']; }
+        card_start('Add an approved fee rule', 'Use one row per document/service category and tier. Keep effective dates non-overlapping for the same document type, category, and tier.');
+        echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('fee_rule_add');
+        echo f_select('type_id', 'Document/service type', $docOptions, '', ['required' => true, 'col' => 'col-md-6']);
+        echo f_text('fee_category', 'Fee category', '', ['required' => true, 'maxlength' => 100, 'help' => 'Use a category approved by the barangay, such as a document/service classification.', 'col' => 'col-md-6']);
+        echo f_text('fee_tier', 'Fee tier', '', ['required' => true, 'maxlength' => 100, 'help' => 'Name the approved tier; do not assume one from a sample amount.', 'col' => 'col-md-6']);
+        echo f_text('unit_rate', 'Approved rate per unit (PHP)', '', ['required' => true, 'maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Enter the formally approved rate. 0 means free.', 'col' => 'col-md-6']);
+        echo f_text('min_quantity', 'Minimum quantity', '1', ['required' => true, 'type' => 'number', 'min' => 1, 'step' => 1, 'col' => 'col-md-3']);
+        echo f_text('max_quantity', 'Maximum quantity (optional)', '', ['type' => 'number', 'min' => 1, 'step' => 1, 'help' => 'Leave blank for no upper limit.', 'col' => 'col-md-3']);
+        echo f_text('effective_from', 'Effective from', date('Y-m-d'), ['required' => true, 'type' => 'date', 'col' => 'col-md-3']);
+        echo f_text('effective_to', 'Effective to (optional)', '', ['type' => 'date', 'help' => 'Leave blank if no end date is approved.', 'col' => 'col-md-3']);
+        echo '</div><button class="btn btn-primary" type="submit">Save fee rule</button></form>';
+        card_end();
+    }
 } elseif ($tab === 'documents') {
     $types = db_all('SELECT type_id, name, fee_amount, template_body, is_active FROM document_types ORDER BY sort_order, name');
     echo '<div class="alert alert-secondary">Placeholders for wording: ' . e('{{' . implode('}} {{', TEMPLATE_TOKENS) . '}}') . '. {{barangay}}, {{municipality}} and {{province}} insert only the name (for example Wawa). A document cannot be issued until its fee (0 means free) <strong>and</strong> wording are set.</div>';
