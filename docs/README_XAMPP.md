@@ -1,9 +1,9 @@
 # BIRMS working copy: install and run on XAMPP
 
-Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, and optional Semaphore SMS integration.
+Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, resident CSV import, and optional Semaphore/Infobip SMS integrations.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39845148883) on the final tested application-code revision before squash-merge passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (0 failures, 0 untested). The module run covers B1–B12, including reports, backup access, attachments, server-generated PDF, cash ledger, CSV import, demo-data seeding, and mocked Semaphore/Infobip provider checks. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
+> **Latest relevant automated CI status for the provider-enabled code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39845148883) tested the provider-integration change on its pull-request branch before it was merged to `main`. It passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (0 failures, 0 untested). The module run covers B1–B12, including reports, backup access, attachments, server-generated PDF, cash ledger, CSV import, demo-data seeding, and mocked Semaphore/Infobip provider checks. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
 
 ## Quick install (recommended)
 
@@ -37,7 +37,7 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   This applies migrations 001 to 012 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional Semaphore SMS delivery tracking. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
+   This applies migrations 001 to 012 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional SMS-provider tracking for Semaphore and Infobip. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
