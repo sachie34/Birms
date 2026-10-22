@@ -35,7 +35,8 @@ if (is_post()) {
         unset($_SESSION['resident_import_stage']);
         $file = $_FILES['csv_file'] ?? null;
 
-        if (!is_array($file) || !isset($file['error'], $file['tmp_name'], $file['name'])) {
+        if (!is_array($file) || !isset($file['error'], $file['tmp_name'], $file['name'], $file['size'])
+            || !is_string($file['tmp_name']) || !is_string($file['name']) || !is_numeric($file['size'])) {
             $errors[] = 'Choose a CSV file to preview.';
         } elseif ((int) $file['error'] !== UPLOAD_ERR_OK) {
             $errors[] = match ((int) $file['error']) {
