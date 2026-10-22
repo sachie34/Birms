@@ -30,7 +30,7 @@ function sms_log_ready(array $req): int
     $delivery = $number === '' ? 'No number' : 'Logged only'; // preserve legacy display behavior
     $enabled = sms_provider_is_enabled();
     $providerStatus = $number === '' ? 'no_number' : ($enabled ? 'not_attempted' : 'not_configured');
-    $providerName = ($number !== '' && $enabled) ? 'Semaphore' : null;
+    $providerName = ($number !== '' && $enabled) ? sms_provider_selected_name() : null;
     db_exec('INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [$number === '' ? null : $number, mb_substr_safe($msg, 480), 'request_ready', (int) $req['request_id'], $delivery, $providerName, $providerStatus]);
     return (int) db()->lastInsertId();
