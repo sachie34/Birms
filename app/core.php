@@ -31,6 +31,11 @@ function config(?string $path = null, mixed $default = null): mixed
             'backup' => [
                 'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
             ],
+            // Outbound SMS is disabled until an administrator supplies a private Semaphore API key.
+            'sms' => [
+                'semaphore_enabled' => false, 'semaphore_api_key' => '', 'semaphore_sendername' => '',
+                'connect_timeout' => 4, 'timeout' => 12,
+            ],
         ];
         $local = __DIR__ . '/config.local.php';
         if (is_file($local)) {
@@ -44,6 +49,9 @@ function config(?string $path = null, mixed $default = null): mixed
             'BIRMS_BACKUP_WEBDAV_URL' => ['backup', 'webdav_url'],
             'BIRMS_BACKUP_WEBDAV_USERNAME' => ['backup', 'webdav_username'],
             'BIRMS_BACKUP_WEBDAV_PASSWORD' => ['backup', 'webdav_password'],
+            'BIRMS_SEMAPHORE_ENABLED' => ['sms', 'semaphore_enabled'],
+            'BIRMS_SEMAPHORE_API_KEY' => ['sms', 'semaphore_api_key'],
+            'BIRMS_SEMAPHORE_SENDERNAME' => ['sms', 'semaphore_sendername'],
         ];
         foreach ($envMap as $name => [$a, $b]) {
             $v = getenv($name);
