@@ -3,3 +3,6 @@ storage/logs/*
 storage/backups/*
 storage/private_uploads/
 app/infobip.local.php
+
+# Old unreferenced root-level credential file; do not restore or commit it.
+/Api
