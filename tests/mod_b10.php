@@ -126,6 +126,7 @@ function run_b10(array $S, string $base): void
         $invalidRefs['status'] === 200
         && str_contains($invalidRefs['body'], 'does not match an existing household')
         && str_contains($invalidRefs['body'], 'Purok belongs to a household')
+        && str_contains($invalidRefs['body'], 'not an active configured Purok')
         && str_contains($invalidRefs['body'], 'not an active configured resident category')
         && str_contains($invalidRefs['body'], 'not an active configured employment status')
         && $errorDownloadOk);
