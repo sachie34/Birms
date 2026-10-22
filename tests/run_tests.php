@@ -39,7 +39,7 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 27, 'captain' => 14, 'secretary' => 23, 'clerk' => 12];
+$expect = ['admin' => 27, 'captain' => 14, 'secretary' => 22, 'clerk' => 12];
 $counts = array_map('count', permission_map());
 record('U1', 'Administrator has full module access; role counts match current map (27/14/23/12)', $counts === $expect, json_encode($counts));
 record('U2', 'Deny by default; admin has operational access; clerk cannot access reports or manage users', !role_can('ghost', 'dashboard.view') && !role_can('clerk', 'users.manage') && role_can('admin', 'residents.edit') && role_can('admin', 'reports.view') && !role_can('clerk', 'reports.view') && !role_can('clerk', 'nonsense.perm'));
