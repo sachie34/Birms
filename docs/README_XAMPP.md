@@ -1,16 +1,16 @@
 # BIRMS working copy: install and run on XAMPP
 
-Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search and local SQL export.
+Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, and optional Semaphore SMS integration.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39659718319) on the final tested application-code revision before squash-merge passed PHP syntax validation, migrations 001–011 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **146/146 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
+> **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39659718319) on the final tested application-code revision before squash-merge passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **146/146 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
 
 ## Quick install (recommended)
 
 1. Download the [one-click BIRMS ZIP from main](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `birms_work`. Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed. Renaming to `birms_work` makes the commands below work as written.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
-4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies migrations 001-011, writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` and does not seed official fees, certificate wording, Puroks or signatories.
+4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies migrations 001-012, writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` and does not seed official fees, certificate wording, Puroks or signatories.
 5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
@@ -37,7 +37,7 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   This applies migrations 001 to 011 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history.
+   This applies migrations 001 to 012 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional Semaphore SMS delivery tracking. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -81,7 +81,7 @@ cd C:\xampp\htdocs\birms_work
 C:\xampp\php\php.exe tests\run_tests.php http://localhost/birms_work/public --root=http://localhost/birms_work
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/birms_work/public
 ```
-- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, manual verification, request review, fee matrix, certificates, blotter, reports, backup-access, attachment, PDF, ledger and reconciliation checks (B2–B8).
+- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, manual verification, request review, fee matrix, certificates, blotter, reports, backup-access, attachment, PDF, ledger/reconciliation, demo seeder, and mocked Semaphore integration checks (B2–B12). Disable real SMS in private config before running tests on a database with real provider credentials.
 - If a run is interrupted it can leave test rows behind (names starting `ZZ`). Rebuild the **test** database
   (drop `barangay_db_work`, run `migrate.php up` again) before re-running.
 - Refuses to run unless the database name ends in `_work` or `_test`. Creates and deletes `zz_test_*` users.
