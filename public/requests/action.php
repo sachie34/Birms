@@ -44,7 +44,6 @@ if (!$done) {
     $flashType = 'success';
     $flashMessage = 'Status updated to ' . $to . '.';
     if ($to === 'Ready' && $smsId !== null) {
-        $smsProvider = (string) sms_provider_status_summary()['provider'];
         $smsResult = sms_send_outbox((int) $smsId);
         $smsStatus = (string) ($smsResult['status'] ?? 'unknown');
         if ($smsStatus === 'no_number') {
