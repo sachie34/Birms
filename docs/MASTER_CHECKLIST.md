@@ -10,7 +10,7 @@ Barangay Wawa, Balagtas, Bulacan. Updated 17 Oct 2026. Working copy, batches B1 
 | B1 | Accounts, sign-in lockout, roles (provisional), audit trail, user management, layout | Built. Sandbox-verified. XAMPP retest pending |
 | B2 | Settings: barangay details, Puroks and lists, document types with fee and wording, age brackets, SMS text | Built. Sandbox-verified. XAMPP retest pending |
 | B3 | Residents and households: register, edit, search, archive/restore, household head, CSV export | Built. Sandbox-verified. XAMPP retest pending |
-| B4 | Visitor log, document requests, request tracker, log-only SMS outbox | Built. Sandbox-verified. XAMPP retest pending |
+| B4 | Visitor log, document requests, request tracker and SMS outbox with optional Semaphore/Infobip adapters | Built and mocked-provider tested. Real XAMPP/SMS delivery check pending |
 | B5 | Certificate issue, print, issuance history and export, unique O.R. numbers | Built. Sandbox-verified. XAMPP retest pending |
 | B6 | Blotter: cases, parties, status, hearings with printable summons, case look-up, clearance background check | Built. Sandbox-verified. XAMPP retest pending |
 | B7 | Reports (monthly, quarterly), real dashboard figures, incident counts by Purok, demographic breakdown | NOT STARTED |
@@ -40,7 +40,7 @@ Barangay Wawa, Balagtas, Bulacan. Updated 17 Oct 2026. Working copy, batches B1 
 | 18 | Audit trail | Built (sandbox) | A1 to A6, B2-16, B3-18, B4-18, B5-8 |
 | 19 | Executive dashboard | Partial | Shell and recent activity only. Real figures in B7 |
 | 20 | Backup and export | NOT STARTED | CSV exports exist for audit, residents and history |
-| 21 | SMS notifications | Log-only by decision | B4-9, B4-10: messages are recorded, never sent |
+| 21 | SMS notifications | Optional provider integration; disabled by default | B12-01–B12-10 cover mocked provider behavior; real SMS submission/delivery remains unverified |
 
 ## 3. Test evidence (sandbox, 16 Oct 2026)
 | Suite | PASS | FAIL | NOT TESTED |

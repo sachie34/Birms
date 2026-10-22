@@ -1,9 +1,9 @@
 # BIRMS working copy: install and run on XAMPP
 
-Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, and optional Semaphore SMS integration.
+Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, resident CSV import, and optional Semaphore/Infobip SMS integrations.
 It never touches your original `barangay_db`.
 
-> **Latest verified automated CI status for the application code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39659718319) on the final tested application-code revision before squash-merge passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **146/146 module integration checks** (0 failures, 0 untested). The module run covers B1–B8, including reports, backup access, attachments, server-generated PDF, cash ledger and issuance-history reconciliation. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
+> **Latest successful CI for the current provider-enabled and role-approval code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39850703834) passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (0 failures, 0 untested). The module run covers B1–B12, including reports, backup access, attachments, server-generated PDF, cash ledger, CSV import, demo-data seeding, and mocked Semaphore/Infobip provider checks. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
 
 ## Quick install (recommended)
 
@@ -37,7 +37,7 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   This applies migrations 001 to 012 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional Semaphore SMS delivery tracking. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
+   This applies migrations 001 to 012 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional SMS-provider tracking for Semaphore and Infobip. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -81,7 +81,7 @@ cd C:\xampp\htdocs\birms_work
 C:\xampp\php\php.exe tests\run_tests.php http://localhost/birms_work/public --root=http://localhost/birms_work
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/birms_work/public
 ```
-- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, manual verification, request review, fee matrix, certificates, blotter, reports, backup-access, attachment, PDF, ledger/reconciliation, demo seeder, and mocked Semaphore integration checks (B2–B12). Disable real SMS in private config before running tests on a database with real provider credentials.
+- `run_tests.php` = accounts, security, audit (B1). `run_modules.php` = settings, residents, manual verification, request review, fee matrix, certificates, blotter, reports, backup-access, attachment, PDF, ledger/reconciliation, demo seeder, and mocked Semaphore and Infobip provider checks (B2–B12). Disable real SMS in private config before running tests on a database with real provider credentials.
 - If a run is interrupted it can leave test rows behind (names starting `ZZ`). Rebuild the **test** database
   (drop `barangay_db_work`, run `migrate.php up` again) before re-running.
 - Refuses to run unless the database name ends in `_work` or `_test`. Creates and deletes `zz_test_*` users.
@@ -97,11 +97,11 @@ mysqldump -u root -p --routines --triggers --events --single-transaction baranga
 Do not add `--databases`. Test the restore into a scratch database. Copy the project folder too.
 
 ## 8. Known limitations
-- **Available in the paper-compliance branch, pending XAMPP verification:** demographic/age/employment/voter/Purok reports; monthly, quarterly and annual issuance/request/blotter summaries; fee category/tier breakdowns; CSV export; current dashboard indicators; requirements review before request approval/issuance; manual verification history; configurable fee matrix; and an Administrator-only local SQL backup download.
+- **Implemented in current `main` code; pending XAMPP verification:** demographic/age/employment/voter/Purok reports; monthly, quarterly and annual issuance/request/blotter summaries; fee category/tier breakdowns; CSV export; current dashboard indicators; requirements review before request approval/issuance; manual verification history; configurable fee matrix; and an Administrator-only local SQL backup download.
 - Migrations 007–011 are required for the latest branch. Enter the barangay-approved employment-status and incident-type categories under Settings → Other lists and approved fee rules under Settings → Multi-tier fee matrix. No categories or rates are guessed.
 - Resident identity and voter-list checks can be recorded manually in the resident profile with actor/date/history. The system does not query COMELEC. The separate cash-collection ledger records staff-entered amounts and reconciliation state; this is not a payment gateway and not independent proof of a bank deposit. Issuance history totals use ledger entries and label missing entries.
 - The backup page downloads a local SQL file only. Cloud storage, scheduled backups, automatic restore verification, and a completed restoration test are not included.
-- SMS is **log-only** by decision (nothing is ever sent).
+- SMS providers are optional and disabled by default. When one is explicitly configured/enabled, the code can submit a Ready-for-pickup notification through Semaphore or Infobip. CI uses mocked provider calls; real-phone delivery must still be tested on the local system.
 - Blotter look-up shows matching parties' information to roles with blotter lookup access. The role matrix is still provisional and needs approval by the Barangay Secretary / system owner.
 - Visitor and request attachments accept PDF/JPG/PNG up to 10 MB, are stored in `storage/private_uploads` with randomized names (outside `public/`), and are served only through an authenticated, permission-checked download endpoint. Confirm the folder is writable by Apache and not served directly by the web server.
 - Paid certificate issuance records a Pending item in the cash-collection ledger. Ledger management is Administrator-only; reconciled entries should be supported by the office's approved evidence process.
