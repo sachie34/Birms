@@ -1512,6 +1512,48 @@
                 "nullable": false,
                 "default": "logged only",
                 "extra": ""
+            },
+            "provider_name": {
+                "type": "varchar(30)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "provider_message_id": {
+                "type": "varchar(80)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "provider_status": {
+                "type": "enum('not_configured','no_number','not_attempted','sending','queued','pending','sent','failed','refunded','unknown')",
+                "nullable": false,
+                "default": "'not_configured'",
+                "extra": ""
+            },
+            "provider_error": {
+                "type": "varchar(1000)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "attempt_count": {
+                "type": "smallint unsigned",
+                "nullable": false,
+                "default": "0",
+                "extra": ""
+            },
+            "last_attempt_at": {
+                "type": "datetime",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "updated_at": {
+                "type": "timestamp",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": "on update CURRENT_TIMESTAMP"
             }
         },
         "indexes": {
@@ -1531,6 +1573,19 @@
                 "unique": true,
                 "columns": [
                     "sms_id"
+                ]
+            },
+            "idx_sms_provider_status_time": {
+                "unique": false,
+                "columns": [
+                    "provider_status",
+                    "created_at"
+                ]
+            },
+            "idx_sms_provider_message": {
+                "unique": false,
+                "columns": [
+                    "provider_message_id"
                 ]
             }
         },

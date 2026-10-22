@@ -23,5 +23,14 @@ return [
         'webdav_username' => '',
         'webdav_password' => '',
     ],
+    // Optional Semaphore SMS gateway. This section stays disabled until explicitly configured.
+    // Keep the real API key ONLY in this private file or BIRMS_SEMAPHORE_API_KEY environment variable.
+    'sms' => [
+        'semaphore_enabled' => false, // enable only after testing with an authorized phone and available credits
+        'semaphore_api_key' => '',
+        'semaphore_sendername' => '', // optional: blank uses the default Sender Name registered in Semaphore
+        'connect_timeout' => 4,
+        'timeout' => 12,
+    ],
     // 'base_url' => '/birms_work/public', // only if page links come out wrong
 ];
