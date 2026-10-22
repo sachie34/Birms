@@ -30,13 +30,13 @@ foreach ($requiredFiles as $relative) {
     }
 }
 
-function check_include_target(string $file, string $base, string $literal, string $root): ?string
+function check_include_target(string $base, string $literal, string $root): ?string
 {
     // Only check static paths. Dynamic includes cannot be resolved reliably without execution.
-    if ($literal === '' || str_contains($literal, '$') || str_contains($literal, '\\0')) {
+    if ($literal === '' || str_contains($literal, '$') || str_contains($literal, "\0")) {
         return null;
     }
-    $combined = str_replace('\\\\', '/', $base . '/' . $literal);
+    $combined = str_replace('\\', '/', $base . '/' . $literal);
     $parts = [];
     foreach (explode('/', $combined) as $part) {
         if ($part === '' || $part === '.') {
@@ -76,7 +76,7 @@ foreach (['app', 'public', 'tests', 'tools'] as $directory) {
             continue;
         }
         $absolute = $info->getPathname();
-        $file = str_replace('\\\\', '/', substr($absolute, strlen($root) + 1));
+        $file = str_replace('\\', '/', substr($absolute, strlen($root) + 1));
         $source = file_get_contents($absolute);
         if ($source === false) {
             $errors[] = "Could not read PHP source file: {$file}";
@@ -90,12 +90,10 @@ foreach (['app', 'public', 'tests', 'tools'] as $directory) {
             }
             foreach ($matches as $match) {
                 $literal = $match[2];
-                $base = $kind === 'root'
-                    ? ''
-                    : str_replace('\\\\', '/', dirname($file));
-                $missing = check_include_target($file, $base, $literal, $root);
+                $base = $kind === 'root' ? '' : dirname($file);
+                $missing = check_include_target($base, $literal, $root);
                 if ($missing !== null) {
-                    $line = substr_count(substr($source, 0, (int) strpos($source, $match[0])), "\\n") + 1;
+                    $line = substr_count(substr($source, 0, (int) strpos($source, $match[0])), "\n") + 1;
                     $errors[] = "{$file}:{$line} references missing file '{$missing}'";
                 }
                 $checked++;
