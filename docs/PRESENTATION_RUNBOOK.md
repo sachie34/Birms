@@ -2,9 +2,9 @@
 
 ## Which version to present
 
-Use the current `main` branch downloaded from GitHub for the demo. It contains the B1–B8 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, cash-collection ledger, and global record search.
+Use the current `main` branch downloaded from GitHub for the demo. It contains the B1–B8 core application plus B9 shared UI/global search, B10 resident CSV import, B11 demo-data seeder, and B12 optional SMS-provider integration, alongside reports/dashboard, visitor/request attachments, PDF generation, fee matrix and cash ledger.
 
-The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39845148883) before the squash merge to `main` passed PHP syntax, migrations 001-012 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (zero failures/untested). It includes the dashboard labels, shared UI shell check and global-search tests.
+The [latest successful CI run for the current code and role-permission correction](https://github.com/sachie34/Birms/actions/runs/39850703834) ran on the pull-request branch and passed PHP syntax, migrations 001–012 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (zero failures/untested). It includes the dashboard labels, shared UI shell check and global-search tests.
 
 CI is not the same as running the app on the target office PC. Target-PC XAMPP/browser UAT remains required. The automated test results do not replace local browser/print checks.
 
