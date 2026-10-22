@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [john/paper-code-compliance]
+    branches: [john/paper-code-compliance, john/presentation-readiness]
 
 permissions:
   contents: read
