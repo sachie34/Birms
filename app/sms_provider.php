@@ -233,7 +233,7 @@ function sms_send_outbox(
     $claimed = db_exec(
         "UPDATE sms_outbox
          SET provider_name = 'Semaphore', provider_status = 'sending', provider_error = NULL,
-             attempt_count = attempt_count + 1, last_attempt_at = NOW()
+             provider_message_id = NULL, attempt_count = attempt_count + 1, last_attempt_at = NOW()
          WHERE sms_id = ? AND provider_status IN {$allowedStatuses}",
         [$smsId]
     );
