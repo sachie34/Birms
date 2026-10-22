@@ -2,3 +2,4 @@ app/config.local.php
 storage/logs/*
 storage/backups/*
 storage/private_uploads/
+app/infobip.local.php
