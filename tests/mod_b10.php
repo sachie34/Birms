@@ -103,10 +103,15 @@ function run_b10(array $S, string $base): void
 
     $badReference = b10_row([
         'first_name' => 'CsvBadRef', 'birthdate' => '1992-01-12',
-        'household_code' => 'NO-SUCH-HOUSEHOLD', 'purok' => 'NO SUCH PUROK',
+        'household_code' => 'NO-SUCH-HOUSEHOLD', 'purok' => '',
         'category' => 'NO SUCH CATEGORY', 'employment_status' => 'NO SUCH EMPLOYMENT',
     ]);
-    $invalidRefs = b10_upload_preview($S['secretary'], $headers, [$badReference]);
+    $badPurok = b10_row([
+        'first_name' => 'CsvBadPurok', 'birthdate' => '1992-03-12',
+        'household_code' => '', 'purok' => 'NO SUCH PUROK',
+        'category' => '', 'employment_status' => '',
+    ]);
+    $invalidRefs = b10_upload_preview($S['secretary'], $headers, [$badReference, $badPurok]);
     $errorDownloadOk = false;
     if (preg_match('/href="([^"]*import_errors\.php\?token=[a-f0-9]+)"/', $invalidRefs['body'], $link) === 1) {
         $path = html_entity_decode($link[1], ENT_QUOTES, 'UTF-8');
