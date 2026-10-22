@@ -21,14 +21,17 @@ function new_request_reference(): string
     return sprintf('REQ-%d-%04d', $y, next_counter('request', $y));
 }
 
-/** Record (never send) the "ready for pickup" text. Returns the delivery state. Call inside the same transaction. */
-function sms_log_ready(array $req): string
+/** Create the outbox record inside the request transaction. The network send happens after commit. */
+function sms_log_ready(array $req): int
 {
     $default = 'Your request {{reference_no}} ({{document_name}}) is ready for pickup at the barangay office.';
     $msg = render_template((string) setting('sms_ready_text', $default), ['reference_no' => $req['reference_no'], 'document_name' => $req['type_name']]);
     $number = trim((string) ($req['contact_number'] ?? ''));
-    $delivery = $number === '' ? 'No number' : 'Logged only';
-    db_exec('INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery) VALUES (?, ?, ?, ?, ?)',
-        [$number === '' ? null : $number, mb_substr_safe($msg, 480), 'request_ready', (int) $req['request_id'], $delivery]);
-    return $delivery;
+    $delivery = $number === '' ? 'No number' : 'Logged only'; // preserve legacy display behavior
+    $enabled = sms_provider_is_enabled();
+    $providerStatus = $number === '' ? 'no_number' : ($enabled ? 'not_attempted' : 'not_configured');
+    $providerName = ($number !== '' && $enabled) ? 'Semaphore' : null;
+    db_exec('INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [$number === '' ? null : $number, mb_substr_safe($msg, 480), 'request_ready', (int) $req['request_id'], $delivery, $providerName, $providerStatus]);
+    return (int) db()->lastInsertId();
 }
