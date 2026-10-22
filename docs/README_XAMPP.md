@@ -89,7 +89,7 @@ C:\xampp\php\php.exe tests\run_modules.php http://localhost/birms_work/public
 - Refuses to run unless the database name ends in `_work` or `_test`. Creates and deletes `zz_test_*` users.
 - Expect `FAIL 0`. `NOT TESTED` means a check could not run. Send me the full output, including any FAIL lines.
 - The `--root` check confirms private folders are not downloadable through Apache. `app`, `storage`, and other project folders use `.htaccess` deny rules; the PHP built-in server ignores `.htaccess`, so run that particular protection check under Apache on XAMPP.
-  It depends on Apache's `AllowOverride All` (the XAMPP default). Under Apache, also verify that direct requests to `http://localhost/birms_work/.git/config` (if using a Git clone), `README.md`, `MANIFEST.txt`, `SETUP_XAMPP.bat`, `/.gitignore`, and `/Api` return 403/404. The last URL should remain blocked even if the file exists in an older extracted folder.
+  It depends on Apache's `AllowOverride All` (the XAMPP default). Under Apache, also verify that these URLs return 403/404: `http://localhost/birms_work/.git/config` (if using a Git clone), `http://localhost/birms_work/README.md`, `http://localhost/birms_work/MANIFEST.txt`, `http://localhost/birms_work/SETUP_XAMPP.bat`, `http://localhost/birms_work/.gitignore`, and `http://localhost/birms_work/Api`. The last URL should remain blocked even if the file exists in an older extracted folder.
 
 ## 7. Backup before any change
 ```
