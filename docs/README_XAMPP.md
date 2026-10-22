@@ -3,7 +3,7 @@
 Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B12 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, resident CSV import, and optional Semaphore/Infobip SMS integrations.
 It never touches your original `barangay_db`.
 
-> **Latest successful CI for the current provider-enabled and role-approval code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39850703834) passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (0 failures, 0 untested). The module run covers B1–B12, including reports, backup access, attachments, server-generated PDF, cash ledger, CSV import, demo-data seeding, and mocked Semaphore/Infobip provider checks. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
+> **Latest verified CI:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39861937756) passed PHP syntax validation, the repository-wide PHP include-path integrity check, setup preflight, migrations 001–012 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (0 failures, 0 untested). Module tests include reports, backup access, attachments, generated PDF, cash ledger, CSV import, demo-data seeding, and mocked Semaphore/Infobip provider checks. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live SMS delivery, live cloud transfer, and successful restore still require separate local verification.
 
 ## Quick install (recommended)
 
@@ -15,6 +15,26 @@ It never touches your original `barangay_db`.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
 The wizard refuses a pre-existing non-empty `barangay_db_work` without migration history. It will not overwrite a manually created `app/config.local.php`; if its own generated config exists after an interrupted setup, it can resume using that local configuration.
+
+## Repair an incomplete or outdated local project folder
+
+If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The current `main` branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
+
+1. Back up the current project folder. Keep your MySQL database as it is.
+2. Download a fresh ZIP from the [current main branch](https://github.com/sachie34/Birms/archive/refs/heads/main.zip) and extract it into a **new folder**, for example `C:\\xampp\\htdocs\\Birms-main-fixed`. Do not extract over the old folder.
+3. From the old project, copy only the private local files that exist: `app\\config.local.php` and `app\\infobip.local.php`, placing each into the matching `app` folder in the new copy. Do **not** copy the old `app` folder over the new one. Preserve `storage\\private_uploads` and any backups you need. Never copy or restore the old root-level `Api` file.
+4. Open Command Prompt and run these checks from the **new** project path:
+   ```bat
+   cd /d C:\\xampp\\htdocs\\Birms-main-fixed
+   C:\\xampp\\php\\php.exe tools\\check_php_includes.php
+   C:\\xampp\\php\\php.exe tools\\setup_xampp.php --check
+   ```
+   Both should finish successfully. The include check is read-only: it checks that required source files exist and that statically referenced local include paths resolve.
+5. Open `http://localhost/Birms-main-fixed/public/`. Use your existing Administrator account if `app\\config.local.php` still points to the same `barangay_db_work` database. Do not run `SETUP_XAMPP.bat` again just to replace missing source files, and do not drop/recreate the database.
+6. If the local config has a manually set `base_url` pointing to the old folder, update it to `/Birms-main-fixed/public`; otherwise leave an auto-detected/null base URL unchanged. Keep the Infobip key only in the private `app\\infobip.local.php` file.
+
+This process fixes a missing/mixed local source tree without replacing your database. It does not prove that all interactive flows work; complete the browser/print tests and automated test suite below.
+
 
 **Credentials warning:** BIRMS no longer includes the old root-level `Api` file. It was not used by application code and contained an unexplained credential-looking value. If you are extracting this ZIP over an older copy of the project, delete that old `Api` file manually. If it held a real API key/token, revoke and replace it because Git history retains earlier committed versions.
 
