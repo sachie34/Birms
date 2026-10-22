@@ -58,6 +58,9 @@ jobs:
       - name: Prepare local config
         run: cp app/config.local.php.example app/config.local.php
 
+      - name: Generate checksum manifest while excluding local secrets/runtime data
+        run: php tools/generate_manifest.php
+
       - name: Apply migrations to the disposable CI database
         env:
           BIRMS_DB_HOST: 127.0.0.1
