@@ -26,6 +26,26 @@ function b10_row(array $overrides = []): array
         'voter_status' => 'Unverified', 'residency_status' => 'Active', 'is_household_head' => '0',
     ], $overrides);
 }
+/**
+ * Convert a Location/href URL into a path relative to the HTTP client's base URL.
+ * The app may return /Birms-main/public/... while Http::get() already prefixes
+ * http://localhost/Birms-main/public, so keep only the path beneath that prefix.
+ */
+function b10_request_target(string $url, string $base): string
+{
+    $path = (string) (parse_url($url, PHP_URL_PATH) ?: '/');
+    $query = (string) (parse_url($url, PHP_URL_QUERY) ?: '');
+    $basePath = rtrim((string) (parse_url($base, PHP_URL_PATH) ?: ''), '/');
+
+    if ($basePath !== '' && ($path === $basePath || str_starts_with($path, $basePath . '/'))) {
+        $path = substr($path, strlen($basePath));
+    }
+    if ($path === '' || $path[0] !== '/') {
+        $path = '/' . $path;
+    }
+    return $path . ($query !== '' ? '?' . $query : '');
+}
+
 function b10_upload_preview(Http $client, array $headers, array $records, string $filename = 'residents.csv'): array
 {
     $path = b10_csv_file($headers, $records);
@@ -114,10 +134,8 @@ function run_b10(array $S, string $base): void
     $invalidRefs = b10_upload_preview($S['secretary'], $headers, [$badReference, $badPurok]);
     $errorDownloadOk = false;
     if (preg_match('/href="([^"]*import_errors\.php\?token=[a-f0-9]+)"/', $invalidRefs['body'], $link) === 1) {
-        $path = html_entity_decode($link[1], ENT_QUOTES, 'UTF-8');
-        $urlPath = (string) (parse_url($path, PHP_URL_PATH) ?: '/residents/import_errors.php');
-        $query = (string) (parse_url($path, PHP_URL_QUERY) ?: '');
-        $download = $S['secretary']->get($urlPath . ($query !== '' ? '?' . $query : ''));
+        $target = b10_request_target(html_entity_decode($link[1], ENT_QUOTES, 'UTF-8'), $base);
+        $download = $S['secretary']->get($target);
         $errorDownloadOk = $download['status'] === 200
             && str_contains(strtolower((string) ($download['headers']['content-type'] ?? '')), 'text/csv')
             && str_contains($download['body'], 'Rejected');
@@ -178,9 +196,8 @@ function run_b10(array $S, string $base): void
             'action' => 'commit', 'import_token' => $tokenMatch[1],
         ]);
         $location = (string) ($committed['location'] ?? '');
-        $path = (string) (parse_url($location, PHP_URL_PATH) ?: '/residents/import.php');
-        $query = (string) (parse_url($location, PHP_URL_QUERY) ?: '');
-        $summary = $S['secretary']->get($path . ($query !== '' ? '?' . $query : ''));
+        $target = b10_request_target($location !== '' ? $location : '/residents/import.php', $base);
+        $summary = $S['secretary']->get($target);
     }
     $saved = db_one('SELECT resident_id, household_id, category_id, employment_status_id, created_by FROM residents WHERE first_name = ? AND last_name = ? AND birthdate = ?', ['CsvValidPerson', 'ZZ Importer', '1993-06-15']);
     $secretaryId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_secretary'");
