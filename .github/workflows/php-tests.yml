@@ -55,6 +55,9 @@ jobs:
         run: |
           find app public tests tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
+      - name: Check repository-wide PHP include paths
+        run: php tools/check_php_includes.php
+
       - name: Check the XAMPP setup wizard
         run: php tools/setup_xampp.php --check
 
