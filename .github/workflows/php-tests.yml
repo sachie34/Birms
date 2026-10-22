@@ -2,7 +2,7 @@ name: BIRMS PHP and MySQL checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, john/paper-code-compliance]
   push:
     branches: [john/paper-code-compliance, john/presentation-readiness]
 
