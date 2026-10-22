@@ -1,1 +1,27 @@
 Options -Indexes
+
+# Block hidden files in the project root (including .gitignore and .htaccess).
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\\.">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "^(Api|MANIFEST\\.txt|README\\.md|SETUP_XAMPP\\.bat|\\.gitignore)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\\.">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "^(Api|MANIFEST\\.txt|README\\.md|SETUP_XAMPP\\.bat|\\.gitignore)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# Prevent direct HTTP access to Git metadata if the project was cloned under htdocs.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\\.git(?:/|$) - [F,L]
+</IfModule>
