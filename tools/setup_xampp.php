@@ -20,6 +20,20 @@ if (PHP_SAPI !== 'cli') {
     exit(2);
 }
 
+// Fail early on an incomplete or mixed-version project folder. This check runs before
+// loading application code so a missing bootstrap/core/provider file gets a clear message.
+$includeChecker = __DIR__ . '/check_php_includes.php';
+if (!is_file($includeChecker)) {
+    fwrite(STDERR, "ERROR: tools/check_php_includes.php is missing. Download a fresh ZIP of the current main branch before running setup.\n");
+    exit(2);
+}
+$includeCheckCommand = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($includeChecker);
+passthru($includeCheckCommand, $includeCheckExit);
+if ($includeCheckExit !== 0) {
+    fwrite(STDERR, "ERROR: This BIRMS folder failed its PHP include-path integrity check. Do not continue setup with an incomplete copy. Download a fresh ZIP of the current main branch, preserve private local configuration, and retry.\n");
+    exit(2);
+}
+
 require_once __DIR__ . '/../app/core.php';
 
 function setup_out(string $message): void
@@ -62,12 +76,23 @@ function setup_check(): int
         setup_out('FAIL: Required PHP extension(s) missing: ' . implode(', ', $missing));
         return 1;
     }
-    if (!is_file(APP_ROOT . '/database/migrations/001_core.sql')
-        || !is_file(APP_ROOT . '/app/config.local.php.example')
-        || !is_file(APP_ROOT . '/tools/migrate.php')
-        || !is_file(APP_ROOT . '/tools/create_admin.php')) {
-        setup_out('FAIL: One or more required BIRMS setup files are missing.');
-        return 1;
+    $requiredFiles = [
+        '/database/migrations/001_core.sql',
+        '/app/bootstrap.php',
+        '/app/core.php',
+        '/app/sms_provider.php',
+        '/app/infobip_sms_provider.php',
+        '/app/config.local.php.example',
+        '/tools/check_php_includes.php',
+        '/tools/test_infobip_sms.php',
+        '/tools/migrate.php',
+        '/tools/create_admin.php',
+    ];
+    foreach ($requiredFiles as $relative) {
+        if (!is_file(APP_ROOT . $relative)) {
+            setup_out('FAIL: Required BIRMS file is missing: ' . ltrim($relative, '/'));
+            return 1;
+        }
     }
     setup_out('PASS: PHP ' . PHP_VERSION . ' and required extensions are available.');
     setup_out('PASS: Database migrations and local configuration template are present.');
