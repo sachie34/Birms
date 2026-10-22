@@ -55,6 +55,7 @@ Keep the browser ready and use a dedicated demo account for each role.
 - Start Apache and MySQL and sign in once before the presentation.
 - Re-open the dashboard, resident search, request queue, certificate print/PDF, history, blotter/hearing, and report export in the browser.
 - Confirm sample files can be uploaded and downloaded, the PDF opens in a PDF reader, and the physical printer/page layout is acceptable if printing is part of the demonstration.
+- Under Apache/XAMPP, verify requests to the project-root `README.md`, `MANIFEST.txt`, `SETUP_XAMPP.bat`, `.git/config` (if a Git clone exists), `.gitignore`, and `Api` return 403/404. The PHP built-in test server does not apply `.htaccess` rules.
 - Check every demo account can only access its intended functions. The current role matrix is **provisional**, so describe it as the implemented access matrix, not as final barangay-approved permissions.
 - Confirm the demo settings are already entered. Certificate issuance is intentionally blocked when required wording or fees are unset, required request checks are incomplete, a Captain name is missing, or the selected resident/request is ineligible.
 - Remove or avoid displaying real personal information, private credentials, SQL backups, error logs, and browser/devtools data containing secrets.
