@@ -195,7 +195,7 @@ function run_b7(array $S, string $base): void
         'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
     ]);
     $quoteReview = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
-    $quoteReady = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
+    $quoteReady = post_as($cap, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
     $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
         'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
