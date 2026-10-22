@@ -98,7 +98,7 @@ if (!$rows) {
                 . '<button class="btn btn-sm btn-light border mb-1" type="submit">Refresh</button></form> ';
         }
         if ($summary['enabled'] && in_array($status, ['failed', 'refunded'], true)) {
-            echo '<form method="post" action="' . e(base_url('admin/sms.php')) . '" class="d-inline" onsubmit="return confirm(\'Retry this SMS? This may incur another SMS charge.\')">'
+            echo '<form method="post" action="' . e(base_url('admin/sms.php')) . '" class="d-inline" data-confirm="Retry this SMS? This may incur another SMS charge.">'
                 . csrf_field() . '<input type="hidden" name="do" value="retry"><input type="hidden" name="sms_id" value="' . (int) $r['sms_id'] . '">'
                 . '<button class="btn btn-sm btn-outline-danger mb-1" type="submit">Retry</button></form>';
         } elseif ($status === 'unknown') {
