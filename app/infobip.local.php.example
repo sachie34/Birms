@@ -1,0 +1,10 @@
+<?php
+/**
+ * Copy this file to app/infobip.local.php and add your real API key there.
+ * Never commit app/infobip.local.php or share its contents.
+ */
+return [
+    'api_key' => '', // Paste your Infobip API key here, locally only.
+    'base_url' => 'https://x1yr6e.api.infobip.com', // Use the exact Base URL from your Infobip account.
+    'sender' => '447491163443', // Use a sender that Infobip has allowed for your account.
+];
