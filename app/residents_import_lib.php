@@ -28,7 +28,7 @@ function resident_import_parse_csv(string $path): array
             return ['ok' => false, 'error' => 'The CSV is empty or has no header row.', 'rows' => []];
         }
         $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]) ?? (string) $header[0];
-        $actual = array_map(static fn($v): string => strtolower(trim((string) $v),), $header);
+        $actual = array_map(static fn($v): string => strtolower(trim((string) $v)), $header);
         if ($actual !== resident_import_headers()) {
             return [
                 'ok' => false,
