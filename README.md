@@ -2,14 +2,14 @@
 
 Barangay Information and Records Management System.
 
-This repository contains the BIRMS application for Barangay Wawa, Balagtas, Bulacan, including the B1–B8 presentation modules, safe demo data seeder, resident CSV import, and optional Semaphore or Infobip SMS delivery (both disabled unless explicitly configured). The paper-alignment and presentation-readiness changes have been merged into `main`: data-derived reports/dashboard figures, request requirements review, fee matrix/cash ledger, manual identity/voter verification history, private attachments/PDF output, local SQL export, global record search, UI consistency checks, and a guided XAMPP setup. The PowerPoint is a design reference; its sample content is not live system data.
+This repository contains the BIRMS application for Barangay Wawa, Balagtas, Bulacan, including the B1–B12 presentation modules, safe demo data seeder, resident CSV import, and optional Semaphore or Infobip SMS delivery (both disabled unless explicitly configured). The paper-alignment and presentation-readiness changes have been merged into `main`: data-derived reports/dashboard figures, request requirements review, fee matrix/cash ledger, manual identity/voter verification history, private attachments/PDF output, local SQL export, global record search, UI consistency checks, and a guided XAMPP setup. The PowerPoint is a design reference; its sample content is not live system data.
 
 ## Repository layout
 
 - `app/` — shared PHP bootstrap, authentication, permissions, database helpers, layout, and module libraries.
 - `public/` — Apache web entry point and module pages. `public/index.php` handles sign-in; `public/assets/css/birms.css` holds the shared theme; `public/assets/js/app.js` holds shared browser behavior; `public/assets/vendor/` contains local Bootstrap and Bootstrap Icons files.
 - `database/` — migrations and expected schema snapshot. Migrations 007–012 add reporting fields, request requirements review, fee matrix/quote snapshots, resident verification history, private attachment metadata, typed signatory snapshots, the cash-collection ledger, and optional SMS provider tracking.
-- `tools/` — migration, administrator, schema verification and `benchmark.php` timing tools (the benchmark is read-only and refuses databases not named `*_work` or `*_test`).
+- `tools/` — migration, administrator, schema verification, checksum-manifest generation, and `benchmark.php` timing tools (the benchmark is read-only and refuses databases not named `*_work` or `*_test`).
 - `tests/` — module and application test runners, including fee matrix, requirements review, manual verification, reports, backup access, private attachments/PDF, ledger reconciliation, global search and shared UI checks.
 - `docs/` — design decisions, implementation notes, setup guidance, and the [project structure review](docs/PROJECT_STRUCTURE.md).
 - `storage/` — runtime storage locations; logs and backups are ignored by Git.
@@ -48,6 +48,12 @@ php tests/run_modules.php
 ```
 
 The test suite may require a configured local database. Run it only against a separate working database, never against an original or production database.
+
+## Security note
+
+The current code does not read a root-level file named `Api`; it was removed because it contained an unexplained credential-looking value and had no application use. If that value was a real API key or token, revoke it and create a replacement: removing a file in a later commit does not remove its earlier copies from Git history. Use only the ignored `app/config.local.php`, `app/infobip.local.php`, or protected server environment variables for credentials. If you are extracting over an older folder instead of using a clean folder, manually delete the old `Api` file.
+
+After extracting the repository, refresh the local SHA-256 manifest with `C:\\xampp\\php\\php.exe tools\\generate_manifest.php` if you need a checksum snapshot of that working copy.
 
 ## Scope boundary
 
