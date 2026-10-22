@@ -1,5 +1,5 @@
 <?php
-/** Protected Semaphore delivery log, status refresh and explicit retry for confirmed failures. */
+/** Protected SMS delivery log, status refresh and explicit retry for confirmed failures. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
@@ -46,11 +46,11 @@ $rows = db_all(
 );
 
 render_header('SMS Delivery', [['Settings', 'admin/settings.php?tab=sms'], ['SMS Delivery', null]], 'sms');
-page_head('SMS Delivery', 'Semaphore delivery history, provider statuses and controlled retry for confirmed failures.');
+page_head('SMS Delivery', $summary['provider'] . ' delivery history, provider statuses and controlled retry for confirmed failures.');
 if ($summary['enabled']) {
-    echo '<div class="alert alert-success"><strong>Semaphore enabled.</strong> ' . e($summary['reason']) . ' Requests marked Ready with a valid mobile number may incur SMS charges.</div>';
+    echo '<div class="alert alert-success"><strong>' . e($summary['provider']) . ' enabled.</strong> ' . e($summary['reason']) . ' Requests marked Ready with a valid mobile number may incur SMS charges.</div>';
 } else {
-    echo '<div class="alert alert-secondary"><strong>Semaphore is not sending messages.</strong> ' . e($summary['reason']) . '. BIRMS will keep readiness notifications in the outbox until the provider is explicitly enabled and configured.</div>';
+    echo '<div class="alert alert-secondary"><strong>' . e($summary['provider']) . ' is not sending messages.</strong> ' . e($summary['reason']) . '. BIRMS will keep readiness notifications in the outbox until the provider is explicitly enabled and configured.</div>';
 }
 echo '<div class="alert alert-warning">Queued or pending means the provider has accepted the message for processing, not that the resident has read it. If a result is <strong>Unknown</strong>, check the provider portal before any retry because the SMS may already have been accepted. Only confirmed Failed/Refunded messages can be retried here.</div>';
 
@@ -111,5 +111,5 @@ if (!$rows) {
     echo '</tbody></table></div>';
 }
 card_end();
-echo '<p class="small text-muted">Status refresh calls Semaphore only for records with a provider message ID. Retry is manual and restricted to provider-confirmed Failed/Refunded results. BIRMS never auto-retries an Unknown result.</p>';
+echo '<p class="small text-muted">Status refresh calls the selected provider for records with a provider message ID. Retry is manual and restricted to provider-confirmed Failed/Refunded results. BIRMS never auto-retries an Unknown result.</p>';
 render_footer();
