@@ -1,6 +1,6 @@
 # BIRMS working copy: install and run on XAMPP
 
-Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B8 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, resident CSV import, and optional Semaphore/Infobip SMS integrations.
+Barangay Wawa, Balagtas, Bulacan. The **current main branch** contains the B1–B12 presentation build, data-derived reports/dashboard, request requirements review, fee matrix/cash ledger, manual resident verification history, private attachments/PDF output, global record search, local SQL export, demo-data seeder, resident CSV import, and optional Semaphore/Infobip SMS integrations.
 It never touches your original `barangay_db`.
 
 > **Latest successful CI for the current provider-enabled and role-approval code:** [GitHub Actions run](https://github.com/sachie34/Birms/actions/runs/39850703834) passed PHP syntax validation, migrations 001–012 on a disposable MariaDB 10.11 database, **37/37 authentication/security/audit checks**, and **173/173 module integration checks** (0 failures, 0 untested). The module run covers B1–B12, including reports, backup access, attachments, server-generated PDF, cash ledger, CSV import, demo-data seeding, and mocked Semaphore/Infobip provider checks. This is automated CI evidence only. Target-office XAMPP/browser UAT, actual printer/PDF-reader behavior, official settings approval, live cloud transfer, and successful restore remain unverified.
@@ -15,6 +15,8 @@ It never touches your original `barangay_db`.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
 The wizard refuses a pre-existing non-empty `barangay_db_work` without migration history. It will not overwrite a manually created `app/config.local.php`; if its own generated config exists after an interrupted setup, it can resume using that local configuration.
+
+**Credentials warning:** BIRMS no longer includes the old root-level `Api` file. It was not used by application code and contained an unexplained credential-looking value. If you are extracting this ZIP over an older copy of the project, delete that old `Api` file manually. If it held a real API key/token, revoke and replace it because Git history retains earlier committed versions.
 
 ## 1. Requirements
 - XAMPP with **PHP 8.1 or newer** and a local MySQL/MariaDB server (MySQL 5.7+ or MariaDB 10.3+). Check PHP with `C:\xampp\php\php.exe -v`.
