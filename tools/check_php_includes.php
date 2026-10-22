@@ -58,8 +58,8 @@ function check_include_target(string $base, string $literal, string $root): ?str
 $scanned = 0;
 $checked = 0;
 $patterns = [
-    'dir' => '~\\b(?:require|include)(?:_once)?\\s*\\(?\\s*__DIR__\\s*\\.\\s*([\\'"])([^\\'"]+)\\1~',
-    'root' => '~\\b(?:require|include)(?:_once)?\\s*\\(?\\s*APP_ROOT\\s*\\.\\s*([\\'"])([^\\'"]+)\\1~',
+    'dir' => '~\\b(?:require|include)(?:_once)?\\s*\\(?\\s*__DIR__\\s*\\.\\s*([\'"])([^\'"]+)\\1~',
+    'root' => '~\\b(?:require|include)(?:_once)?\\s*\\(?\\s*APP_ROOT\\s*\\.\\s*([\'"])([^\'"]+)\\1~',
 ];
 
 foreach (['app', 'public', 'tests', 'tools'] as $directory) {
