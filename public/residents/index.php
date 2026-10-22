@@ -14,6 +14,8 @@ $puroks = lookup_list('purok', false); $cats = lookup_list('resident_category', 
 
 render_header('Residents', [['Residents', null]], 'residents');
 $actions = (can('residents.export') ? btn_link('residents/export.php' . ($query ? '?' . http_build_query($query) : ''), 'Export CSV', 'btn-light border', 'bi-download') : '')
+         . (can('residents.add') ? btn_link('residents/import_template.php', 'CSV template', 'btn-light border', 'bi-filetype-csv') : '')
+         . (can('residents.add') ? btn_link('residents/import.php', 'Import CSV', 'btn-light border', 'bi-upload') : '')
          . (can('residents.add') ? btn_link('residents/form.php', 'Add resident', 'btn-primary', 'bi-plus-lg') : '');
 page_head($f['show'] === 'archived' ? 'Archived residents' : 'Residents', 'Search by name or household code. Residents are archived, never deleted.', $actions);
 ?>

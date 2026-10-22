@@ -14,6 +14,7 @@ require __DIR__ . '/layout.php';
 require __DIR__ . '/lookups.php';
 require __DIR__ . '/ui.php';
 require __DIR__ . '/residents_lib.php';
+require __DIR__ . '/residents_import_lib.php';
 require __DIR__ . '/requests_lib.php';
 require __DIR__ . '/certificates_lib.php';
 require __DIR__ . '/blotters_lib.php';
