@@ -30,7 +30,7 @@ For the presentation build, download the [one-click BIRMS ZIP from main](https:/
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme were tested across 50 role-accessible menu routes. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 
-Read [the XAMPP setup guide](docs/README_XAMPP.md), [the resident CSV import guide](docs/RESIDENT_CSV_IMPORT.md), [the paper-to-code alignment matrix](docs/PAPER_CODE_ALIGNMENT.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
+Read [the XAMPP setup guide](docs/README_XAMPP.md), [the demo-data seeder guide](docs/DEMO_DATA.md), [the resident CSV import guide](docs/RESIDENT_CSV_IMPORT.md), [the external-guidance scope review](docs/EXTERNAL_GUIDANCE_REVIEW.md), [the paper-to-code alignment matrix](docs/PAPER_CODE_ALIGNMENT.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
 
 ## Local setup
 
