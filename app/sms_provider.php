@@ -45,6 +45,11 @@ function sms_provider_config(?array $testOverride = null): array
     ];
 }
 
+function sms_provider_is_enabled(): bool
+{
+    return (bool) sms_provider_config()['enabled'];
+}
+
 /** Safe status for display; never returns the API key. */
 function sms_provider_status_summary(): array
 {
