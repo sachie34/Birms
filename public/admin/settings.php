@@ -258,7 +258,13 @@ if ($tab === 'general') {
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
     card_end();
 } else {
-    card_start('SMS text', 'SMS is log-only in this version: messages are recorded, never sent. Blank uses a plain default.');
+    $smsStatus = sms_provider_status_summary();
+    echo '<div class="alert alert-' . ($smsStatus['enabled'] ? 'success' : 'secondary') . '"><strong>Semaphore SMS: ' . ($smsStatus['enabled'] ? 'Enabled' : 'Disabled') . '</strong><br>' . e((string) $smsStatus['reason']) . '. The API key is read only from private server configuration and is never stored in this Settings page.</div>';
+    echo '<div class="alert alert-warning">When enabled, changing a request to Ready can send a real SMS and incur provider charges. Network failures do not undo the saved request status. Unknown outcomes are not retried automatically.</div>';
+    if ($canEdit) {
+        echo '<p>' . btn_link('admin/sms.php', 'Open SMS Delivery Log', 'btn-primary', 'bi-chat-dots') . '</p>';
+    }
+    card_start('SMS text', 'Template for the ready-for-pickup notification. Messages are recorded in the outbox; Semaphore sends them only when explicitly enabled in private config.');
     echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('sms_save');
     echo f_textarea('sms_ready_text', 'Message when a request is ready (placeholders: {{reference_no}} {{document_name}})', (string) setting('sms_ready_text', ''), ['rows' => 3, 'maxlength' => 300, 'help' => 'Default: Your request {{reference_no}} ({{document_name}}) is ready for pickup at the barangay office.']);
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
