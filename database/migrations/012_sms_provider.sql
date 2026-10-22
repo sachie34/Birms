@@ -1,5 +1,5 @@
 -- 012_sms_provider.sql
--- Adds delivery audit fields for the optional, explicitly enabled Semaphore SMS provider.
+-- Adds delivery audit fields for the optional, explicitly enabled Semaphore or Infobip SMS provider.
 -- Existing log-only rows and their legacy delivery values are preserved.
 
 ALTER TABLE sms_outbox

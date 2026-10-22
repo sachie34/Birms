@@ -29,6 +29,21 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Verify local credentials are not tracked
+        run: |
+          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php Api)"
+          if [ -n "$tracked_private" ]; then
+            echo "ERROR: private local configuration or the removed legacy Api file is tracked:"
+            printf '%s\n' "$tracked_private"
+            exit 1
+          fi
+          grep -Fxq 'app/config.local.php' .gitignore
+          grep -Fxq 'app/infobip.local.php' .gitignore
+          grep -Fxq '/Api' .gitignore
+          grep -Fq '<FilesMatch "^\."' .htaccess
+          grep -Fq 'Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
+          grep -Fq 'RewriteRule (^|/)\.git(?:/|$) - [F,L]' .htaccess
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -45,6 +60,9 @@ jobs:
 
       - name: Prepare local config
         run: cp app/config.local.php.example app/config.local.php
+
+      - name: Generate checksum manifest while excluding local secrets/runtime data
+        run: php tools/generate_manifest.php
 
       - name: Apply migrations to the disposable CI database
         env:

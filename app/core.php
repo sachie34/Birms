@@ -21,7 +21,7 @@ function config(?string $path = null, mixed $default = null): mixed
             'db' => [
                 'host' => '127.0.0.1', 'port' => 3306,
                 'name' => 'barangay_db_work',    // WORKING COPY. Never point tests at your original database.
-                'user' => 'root', 'pass' => '', 'charset' => 'utf8mb4',
+                'user' => 'birms_app', 'pass' => '', 'charset' => 'utf8mb4',
             ],
             'session'  => ['name' => 'BIRMSSESS', 'idle_minutes' => 30, 'secure' => null], // secure null = auto (HTTPS only)
             'security' => [

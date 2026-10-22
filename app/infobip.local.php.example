@@ -6,5 +6,5 @@
 return [
     'api_key' => '', // Paste your Infobip API key here, locally only.
     'base_url' => 'https://x1yr6e.api.infobip.com', // Use the exact Base URL from your Infobip account.
-    'sender' => '447491163443', // Use a sender that Infobip has allowed for your account.
+    'sender' => 'ServiceSMS', // Common Infobip trial sender; change only to a sender your account permits.
 ];
