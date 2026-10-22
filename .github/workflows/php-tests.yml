@@ -40,6 +40,9 @@ jobs:
           grep -Fxq 'app/config.local.php' .gitignore
           grep -Fxq 'app/infobip.local.php' .gitignore
           grep -Fxq '/Api' .gitignore
+          grep -Fq '<FilesMatch "^\\.">' .htaccess
+          grep -Fq 'Api|MANIFEST\\.txt|README\\.md|SETUP_XAMPP\\.bat|\\.gitignore' .htaccess
+          grep -Fq 'RewriteRule (^|/)\\.git(?:/|$) - [F,L]' .htaccess
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
