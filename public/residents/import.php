@@ -251,7 +251,7 @@ page_head('Import residents', 'Upload a CSV, review every row, then confirm. Exi
             </tbody>
           </table></div>
           <?php if ($counts['ready'] > 0): ?>
-            <form method="post" action="<?= e(base_url('residents/import.php')) ?>" onsubmit="return true;">
+            <form method="post" action="<?= e(base_url('residents/import.php')) ?>">
               <?= csrf_field() ?>
               <input type="hidden" name="action" value="commit">
               <input type="hidden" name="import_token" value="<?= e((string) $stage['token']) ?>">
