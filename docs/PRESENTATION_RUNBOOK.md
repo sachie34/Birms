@@ -4,7 +4,7 @@
 
 Use the current `main` branch downloaded from GitHub for the demo. It contains the B1–B8 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, cash-collection ledger, and global record search.
 
-The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319) before the squash merge to `main` passed PHP syntax, migrations 001-011 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **146/146 module integration checks** (zero failures/untested). It includes the dashboard labels, shared UI shell check and global-search tests.
+The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319) before the squash merge to `main` passed PHP syntax, migrations 001-012 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **146/146 module integration checks** (zero failures/untested). It includes the dashboard labels, shared UI shell check and global-search tests.
 
 CI is not the same as running the app on the target office PC. Target-PC XAMPP/browser UAT remains required. The automated test results do not replace local browser/print checks.
 
@@ -66,7 +66,7 @@ Do not claim any of the following as complete unless you have separately configu
 
 - **Official certificates or summons:** current output is prominently marked draft pending official layout/wording approval. The typed signatory is not a cryptographically verified digital signature.
 - **Official DILG/Mayor/PNP template compliance:** reports are data-backed draft summaries; official agency formats and exact required fields were not supplied/approved.
-- **SMS sending:** SMS is log-only; the app does not send real messages to a phone.
+- **SMS sending:** the optional Semaphore integration is disabled by default. It submits SMS only when an Administrator configures a private API key, explicitly enables the provider, and an authorized user moves a request to Ready. CI uses mocks only; a real-phone send/delivery has not been verified unless you perform the controlled test described in [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md). Do not claim a live delivery before that test.
 - **COMELEC integration:** resident identity/voter checks are staff-recorded manual checks; the app does not query COMELEC or an external database.
 - **Cloud backup/restore:** local SQL download is implemented; optional WebDAV upload needs a private approved HTTPS destination. Live upload and successful restoration are not verified by CI.
 - **Final office workflow/policy:** official Purok list, fee tier mapping, requirement checklists, payment reconciliation policy, and the Captain/Secretary/Clerk role matrix still require barangay/system-owner confirmation.
