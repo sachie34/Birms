@@ -109,6 +109,7 @@ function resident_import_analyze_rows(array $rows): array
 {
     $categories = resident_import_lookup_map('resident_category');
     $employment = resident_import_lookup_map('employment_status');
+    $puroks = resident_import_lookup_map('purok');
     $householdRows = db_all(
         'SELECT h.household_id, h.household_code, h.purok_id, h.street_address, p.label AS purok
          FROM households h LEFT JOIN lookups p ON p.lookup_id = h.purok_id'
@@ -176,6 +177,14 @@ function resident_import_analyze_rows(array $rows): array
 
         $householdCode = trim((string) ($v['household_code'] ?? ''));
         $purokText = trim((string) ($v['purok'] ?? ''));
+        if ($purokText !== '') {
+            if (!isset($puroks[resident_import_normalize($purokText)])) {
+                $errors[] = 'Purok "' . $purokText . '" is not an active configured Purok.';
+            }
+            if ($householdCode === '') {
+                $errors[] = 'Purok belongs to a household. Provide an existing household_code or leave Purok blank.';
+            }
+        }
         if ($householdCode !== '') {
             $h = $households[resident_import_normalize($householdCode)] ?? null;
             if ($h === null) {
@@ -186,8 +195,6 @@ function resident_import_analyze_rows(array $rows): array
                     $errors[] = 'Purok does not match the selected household. Use its existing Purok label or leave the Purok cell blank.';
                 }
             }
-        } elseif ($purokText !== '') {
-            $errors[] = 'Purok belongs to a household. Provide an existing household_code or leave Purok blank.';
         }
         if ($resolved['is_household_head'] === 1 && $resolved['household_id'] === null) {
             $errors[] = 'A household head must reference an existing household.';
