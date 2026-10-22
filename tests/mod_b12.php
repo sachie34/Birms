@@ -206,4 +206,4 @@ function run_b12(array $S, string $base): void
         && db_val('SELECT provider_status FROM sms_outbox WHERE sms_id = ?', [$infobipId]) === 'sent');
 
     b12_clean_outbox();
-
+}
