@@ -116,7 +116,7 @@ function run_b12(array $S, string $base): void
         && $refreshCalls[0]['method'] === 'GET'
         && str_ends_with($refreshCalls[0]['url'], '/b12-queued-123')
         && ($refreshCalls[0]['params']['apikey'] ?? '') === $testConfig['api_key']
-        && db_val('SELECT attempt_count FROM sms_outbox WHERE sms_id = ?', [$refreshId]) === 1);
+        && (int) db_val('SELECT attempt_count FROM sms_outbox WHERE sms_id = ?', [$refreshId]) === 1);
 
     $disabledId = b12_make_outbox('disabled');
     $disabledCalls = 0;
