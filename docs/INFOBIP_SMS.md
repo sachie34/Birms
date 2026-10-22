@@ -5,7 +5,7 @@ BIRMS can optionally submit a ready-for-pickup notification to Infobip when an a
 Official references:
 - [Send your first SMS using Infobip API](https://www.infobip.com/docs/tutorials/send-your-first-sms-message-using-infobip-api)
 - [Infobip API authentication](https://www.infobip.com/docs/essentials/api-essentials/api-authentication)
-- [Infobip Base URL guide](https://www.infobip.com/docs/essentials/base-url)
+- [Infobip Base URL guide](https://www.infobip.com/docs/essentials/api-essentials/base-url)
 
 ## What BIRMS does
 
