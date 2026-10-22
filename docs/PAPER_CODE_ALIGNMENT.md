@@ -6,7 +6,7 @@
 
 ## Overall finding
 
-The current source code implements the main application flows for the five core functional areas in the compiled Chapters 1-3 paper, plus record searching/retrieval (FR6). The latest relevant CI run for the provider-enabled code ([run #39845148883](https://github.com/sachie34/Birms/actions/runs/39845148883), executed on the PR branch before merge) passed PHP syntax, migrations 001–012 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **173/173 module integration checks**, including global search, CSV import, demo seeding, and mocked Semaphore/Infobip behavior. This is automated evidence, not local XAMPP UAT or proof of live SMS delivery.
+The current source code implements the main application flows for the five core functional areas in the compiled Chapters 1-3 paper, plus record searching/retrieval (FR6). The latest successful CI run for the current code and final-approval permission correction ([run #39850703834](https://github.com/sachie34/Birms/actions/runs/39850703834), executed on the PR branch) passed PHP syntax, migrations 001–012 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **173/173 module integration checks**, including global search, CSV import, demo seeding, and mocked Semaphore/Infobip behavior. This is automated evidence, not local XAMPP UAT or proof of live SMS delivery.
 
 That does **not** mean every sentence in every provided document is an exact match. Some uploaded documents describe different or supplementary requirements. Those conflicts are listed below rather than represented as completed functionality. The actual XAMPP/browser test on the presentation computer is still required.
 
