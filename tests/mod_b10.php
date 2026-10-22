@@ -161,7 +161,7 @@ function run_b10(array $S, string $base): void
     }
     record('B10-07', 'Malformed/header-mismatched file fails safely without inserting residents',
         $badHeader['status'] === 200 && str_contains($badHeader['body'], 'header does not match')
-        && (int) db_val('SELECT COUNT(*) FROM residents') === $beforeCount + 1);
+        && (int) db_val('SELECT COUNT(*) FROM residents') === $beforeCount);
 
     $valid = b10_row([
         'first_name' => 'CsvValidPerson', 'birthdate' => '1993-06-15',
