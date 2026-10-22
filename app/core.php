@@ -44,6 +44,24 @@ function config(?string $path = null, mixed $default = null): mixed
             $o = require $local;
             if (is_array($o)) { $cfg = array_replace_recursive($cfg, $o); }
         }
+        // Optional dedicated, Git-ignored Infobip credentials file. This file stays outside
+        // the public web root and only provides the key, Base URL, and sender value.
+        $infobipLocal = __DIR__ . '/infobip.local.php';
+        if (is_file($infobipLocal)) {
+            $infobip = require $infobipLocal;
+            if (is_array($infobip)) {
+                if (array_key_exists('api_key', $infobip)) {
+                    $cfg['sms']['infobip_api_key'] = is_string($infobip['api_key']) ? trim($infobip['api_key']) : '';
+                }
+                if (array_key_exists('base_url', $infobip)) {
+                    $cfg['sms']['infobip_base_url'] = is_string($infobip['base_url']) ? trim($infobip['base_url']) : '';
+                }
+                if (array_key_exists('sender', $infobip)) {
+                    $cfg['sms']['infobip_sender'] = is_string($infobip['sender']) ? trim($infobip['sender']) : '';
+                }
+            }
+        }
+
         $envMap = [
             'BIRMS_DB_HOST' => ['db', 'host'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
             'BIRMS_DB_USER' => ['db', 'user'], 'BIRMS_DB_PASS' => ['db', 'pass'], 'BIRMS_ENV' => ['env', null],

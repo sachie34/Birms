@@ -63,6 +63,24 @@ Alternative environment variables:
 
 Environment variables override local-file values. Never store the API key in tracked source files or commit it.
 
+## Quick standalone API-key test
+
+The repository includes a command-line-only test script so you can check the API key before trying a full BIRMS request. It does not connect to MySQL, change BIRMS records, or expose an HTTP endpoint.
+
+1. Copy `app/infobip.local.php.example` to `app/infobip.local.php`.
+2. Open `app/infobip.local.php` and put your key in `api_key`. Confirm that the Base URL is your exact account URL and that `sender` is allowed by your Infobip account. Do not upload this private file; it is ignored by Git.
+3. Open Command Prompt and run:
+
+   ```bat
+   cd C:\xampp\htdocs\birms_work
+   C:\xampp\php\php.exe tools\test_infobip_sms.php
+   ```
+
+4. Enter a mobile number that you own or are authorized to test. The tool normalizes common Philippine number formats and asks you to type `SEND` before it makes one real SMS request.
+5. Check the HTTP result, message ID/status and the phone. A successful API response means Infobip accepted the message; it is not proof that the recipient received it. Check the Infobip portal for delivery information.
+
+This test does not require a database migration. It uses the private API key file but does not change the live BIRMS `infobip_enabled` setting. An SMS may consume trial quota or be chargeable, and trial accounts usually require a verified recipient and an allowed test sender.
+
 ## Controlled end-to-end test
 
 1. Pull the provider code after the Infobip support change is merged. Do not point BIRMS at the original `barangay_db`; use the existing working copy `barangay_db_work`.
