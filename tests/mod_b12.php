@@ -148,5 +148,62 @@ function run_b12(array $S, string $base): void
     }
     record('B12-08', 'SMS delivery and retry page follows the existing Settings edit permission', $bad === '', $bad);
 
+    // Infobip adapter: mocked only; no credentials are live and no external call is made.
+    $infobipConfig = [
+        'provider' => 'infobip',
+        'enabled' => true,
+        'api_key' => 'BIRMS-FAKE-INFOBIP-KEY-NOT-A-REAL-SECRET',
+        'base_url' => 'https://api.infobip.com',
+        'sender' => 'ServiceSMS',
+        'connect_timeout' => 1,
+        'timeout' => 3,
+    ];
+    $infobipId = b12_make_outbox('infobip-success', '09171230001');
+    $infobipCalls = [];
+    $infobipTransport = static function (string $method, string $url, array $params) use (&$infobipCalls): array {
+        $infobipCalls[] = ['method' => $method, 'url' => $url, 'params' => $params];
+        return b12_mock_response(200, [
+            'messages' => [[
+                'messageId' => 'infobip-b12-queued-789',
+                'status' => ['groupName' => 'PENDING', 'name' => 'PENDING_ACCEPTED'],
+                'destination' => '639171230001',
+            ]],
+        ]);
+    };
+    $infobipSent = sms_send_outbox($infobipId, false, $infobipTransport, $infobipConfig);
+    $infobipSaved = db_one('SELECT provider_name, provider_status, provider_message_id, attempt_count, provider_error FROM sms_outbox WHERE sms_id = ?', [$infobipId]);
+    record('B12-09', 'Mocked Infobip send uses the SMS v3 endpoint, normalizes PH mobile number and saves only safe provider metadata',
+        $infobipSent['status'] === 'queued' && count($infobipCalls) === 1
+        && $infobipCalls[0]['method'] === 'POST'
+        && $infobipCalls[0]['url'] === 'https://api.infobip.com/sms/3/messages'
+        && (($infobipCalls[0]['params']['messages'][0]['destinations'][0]['to'] ?? '') === '639171230001')
+        && (($infobipCalls[0]['params']['messages'][0]['sender'] ?? '') === 'ServiceSMS')
+        && ($infobipSaved['provider_name'] ?? '') === 'Infobip'
+        && ($infobipSaved['provider_status'] ?? '') === 'queued'
+        && ($infobipSaved['provider_message_id'] ?? '') === 'infobip-b12-queued-789'
+        && (int) ($infobipSaved['attempt_count'] ?? -1) === 1
+        && !str_contains((string) ($infobipSaved['provider_error'] ?? ''), $infobipConfig['api_key']),
+        'status=' . ($infobipSaved['provider_status'] ?? 'missing') . '; calls=' . count($infobipCalls));
+
+    $infobipRefreshCalls = [];
+    $infobipRefreshTransport = static function (string $method, string $url, array $params) use (&$infobipRefreshCalls): array {
+        $infobipRefreshCalls[] = ['method' => $method, 'url' => $url, 'params' => $params];
+        return b12_mock_response(200, [
+            'results' => [[
+                'messageId' => 'infobip-b12-queued-789',
+                'status' => ['groupName' => 'DELIVERED', 'name' => 'DELIVERED_TO_HANDSET'],
+            ]],
+        ]);
+    };
+    $infobipRefreshed = sms_refresh_outbox_status($infobipId, $infobipRefreshTransport, $infobipConfig);
+    record('B12-10', 'Mocked Infobip delivery report changes status to Sent without resending the SMS',
+        $infobipRefreshed['status'] === 'sent'
+        && count($infobipRefreshCalls) === 1
+        && $infobipRefreshCalls[0]['method'] === 'GET'
+        && $infobipRefreshCalls[0]['url'] === 'https://api.infobip.com/sms/3/reports'
+        && ($infobipRefreshCalls[0]['params']['messageId'] ?? '') === 'infobip-b12-queued-789'
+        && (int) db_val('SELECT attempt_count FROM sms_outbox WHERE sms_id = ?', [$infobipId]) === 1
+        && db_val('SELECT provider_status FROM sms_outbox WHERE sms_id = ?', [$infobipId]) === 'sent');
+
     b12_clean_outbox();
 }

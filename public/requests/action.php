@@ -36,7 +36,7 @@ $done = db_transaction(function () use ($r, $to, $note, $id, &$smsId): bool {
     return true;
 });
 
-// The status change and outbox row are committed before calling Semaphore.
+// The status change and outbox row are committed before calling the selected SMS provider.
 // Provider/network failures cannot roll back an approval and cannot create a duplicate transition.
 if (!$done) {
     flash_add('warning', 'Someone else changed this request first. Check its current status.');
@@ -51,15 +51,15 @@ if (!$done) {
             $flashMessage .= ' No mobile number is saved, so no SMS was sent.';
         } elseif ($smsStatus === 'not_configured') {
             $flashType = 'info';
-            $flashMessage .= ' The notification was recorded only; Semaphore SMS is disabled or not fully configured.';
+            $flashMessage .= ' The notification was recorded only; the selected SMS provider is disabled or not fully configured.';
         } elseif (in_array($smsStatus, ['queued', 'pending', 'sent'], true)) {
             $flashMessage .= ' SMS provider status: ' . sms_provider_status_label($smsStatus) . '.';
         } elseif ($smsStatus === 'failed') {
             $flashType = 'warning';
-            $flashMessage .= ' Semaphore rejected the SMS. Check Settings → SMS Delivery before retrying.';
+            $flashMessage .= ' The SMS provider rejected the message. Check Settings → SMS Delivery before retrying.';
         } else {
             $flashType = 'warning';
-            $flashMessage .= ' SMS delivery could not be confirmed. Check Settings → SMS Delivery and the Semaphore dashboard before retrying to avoid duplicates.';
+            $flashMessage .= ' SMS delivery could not be confirmed. Check Settings → SMS Delivery and the selected provider dashboard before retrying to avoid duplicates.';
         }
     }
     flash_add($flashType, $flashMessage);
