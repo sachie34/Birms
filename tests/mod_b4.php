@@ -79,9 +79,11 @@ function run_b4(array $S, string $base): void
         && str_contains($blockedPage['body'], 'requirements review');
     $markedComplete = $completeRequirements($clk, $id1);
     $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
+    $secretaryTry = $move($sec, $id1, 'Ready');
+    $secretaryDenied = $secretaryTry['status'] === 403 && $status($id1) === 'Review';
     $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
-    record('B4-8b', 'Incomplete requirements need a note; approval is blocked until marked Complete; Captain can then approve, and a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $d && $e);
+    record('B4-8b', 'Incomplete requirements block approval; Secretary is denied final approval; Captain can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
     record('B4-9', 'With SMS provider disabled, approval records a log-only outbox entry: recipient, default text and reference', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
     $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $completeRequirements($sec, $id2); $move($cap, $id2, 'Ready');
