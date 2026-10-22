@@ -143,7 +143,7 @@ function run_b10(array $S, string $base): void
     $wrongType = b10_upload_preview($S['secretary'], $headers, [b10_row(['first_name' => 'CsvWrongFile'])], 'residents.txt');
     record('B10-06', 'Non-CSV extension is rejected before preview or database changes',
         $wrongType['status'] === 200 && str_contains($wrongType['body'], 'Only files with a .csv extension')
-        && (int) db_val('SELECT COUNT(*) FROM residents') === $beforeCount + 1);
+        && (int) db_val('SELECT COUNT(*) FROM residents') === $beforeCount);
 
     $wrongHeaderPath = b10_csv_file(['last_name', 'first_name'], [['last_name' => 'ZZ Importer', 'first_name' => 'CsvWrongHeader']]);
     try {
