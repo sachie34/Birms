@@ -84,18 +84,19 @@ function run_b4(array $S, string $base): void
     record('B4-8b', 'Incomplete requirements need a note; approval is blocked until marked Complete; Captain can then approve, and a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
     record('B4-9', 'Approving logs (never sends) an SMS: recipient, default text with the reference, "Logged only"', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
-    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $completeRequirements($sec, $id2); $move($sec, $id2, 'Ready');
+    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $completeRequirements($sec, $id2); $move($cap, $id2, 'Ready');
     $o2 = db_one('SELECT recipient_number, delivery FROM sms_outbox WHERE request_id = ?', [$id2]);
     $oldTxt = db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'"); db_exec("UPDATE settings SET setting_value = 'Custom: {{reference_no}} / {{document_name}}' WHERE setting_key = 'sms_ready_text'");
-    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($clk, $id3, 'Review'); $completeRequirements($sec, $id3); $move($sec, $id3, 'Ready');
+    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($clk, $id3, 'Review'); $completeRequirements($sec, $id3); $move($cap, $id3, 'Ready');
     $o3 = (string) db_val('SELECT message FROM sms_outbox WHERE request_id = ?', [$id3]); db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'sms_ready_text'", [$oldTxt]);
     record('B4-10', 'No phone number: logged as "No number"; a custom SMS text from Settings is used', $o2 !== null && $o2['recipient_number'] === null && $o2['delivery'] === 'No number' && str_starts_with($o3, 'Custom: REQ-') && str_contains($o3, 'Barangay Clearance'));
 
     $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject'); $move($clk, $id4, 'Review');
-    $noReason = $move($sec, $id4, 'Rejected', ''); $still = $status($id4) === 'Review';
-    $withReason = $move($sec, $id4, 'Rejected', 'Incomplete requirements'); $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === 'Incomplete requirements';
-    $after = $move($sec, $id4, 'Review'); $term = $status($id4) === 'Rejected';
-    record('B4-11', 'Reject needs a reason; a rejected request cannot be reopened', $still && $rejected && $term);
+    $secretaryReject = $move($sec, $id4, 'Rejected', 'Incomplete requirements'); $secretaryDenied = $secretaryReject['status'] === 403 && $status($id4) === 'Review';
+    $noReason = $move($cap, $id4, 'Rejected', ''); $still = $noReason['status'] === 302 && $status($id4) === 'Review';
+    $withReason = $move($cap, $id4, 'Rejected', 'Incomplete requirements'); $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === 'Incomplete requirements';
+    $after = $move($cap, $id4, 'Review'); $term = $status($id4) === 'Rejected';
+    record('B4-11', 'Only Captain/Admin can reject; Secretary is denied; rejection requires a reason and cannot be reopened', $secretaryDenied && $still && $rejected && $term);
     $filed('ZZ Test purpose cancel', $rita); $id5 = $rid('ZZ Test purpose cancel');
     $capCancel = $move($cap, $id5, 'Cancelled'); $clkCancel = $move($clk, $id5, 'Cancelled', 'Resident left');
     record('B4-12', 'Cancel: captain refused (403); clerk allowed', $capCancel['status'] === 403 && $clkCancel['status'] === 302 && $status($id5) === 'Cancelled');
