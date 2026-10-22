@@ -89,7 +89,7 @@ function sms_provider_status_label(string $status): string
         'sending' => 'Sending / result not confirmed',
         'queued' => 'Queued by provider',
         'pending' => 'Pending with provider',
-        'sent' => 'Sent to mobile network',
+        'sent' => 'Sent / delivery confirmed by provider',
         'failed' => 'Failed',
         'refunded' => 'Refunded by provider',
         'unknown' => 'Unknown — verify before retry',
