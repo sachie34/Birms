@@ -45,14 +45,32 @@ function sms_provider_config(?array $testOverride = null): array
     ];
 }
 
+function sms_provider_selected_name(): string
+{
+    return strtolower(trim((string) config('sms.provider', 'semaphore'))) === 'infobip' ? 'Infobip' : 'Semaphore';
+}
+
 function sms_provider_is_enabled(): bool
 {
+    if (sms_provider_selected_name() === 'Infobip') {
+        return (bool) infobip_sms_config()['enabled'];
+    }
     return (bool) sms_provider_config()['enabled'];
 }
 
 /** Safe status for display; never returns the API key. */
 function sms_provider_status_summary(): array
 {
+    if (sms_provider_selected_name() === 'Infobip') {
+        $cfg = infobip_sms_config();
+        return [
+            'provider' => 'Infobip',
+            'enabled' => $cfg['enabled'],
+            'reason' => $cfg['reason'],
+            'sendername_configured' => $cfg['sender'] !== '',
+            'base_url_configured' => $cfg['base_url'] !== '',
+        ];
+    }
     $cfg = sms_provider_config();
     return [
         'provider' => 'Semaphore',
@@ -208,7 +226,7 @@ function sms_provider_save_result(
  * Retrying a failed/refunded message requires an explicit caller action. Unknown
  * delivery outcomes are never retried automatically because the provider may have accepted them.
  */
-function sms_send_outbox(
+function sms_send_outbox_semaphore(
     int $smsId,
     bool $explicitRetry = false,
     ?callable $transport = null,
@@ -300,7 +318,7 @@ function sms_send_outbox(
 }
 
 /** Query Semaphore for a saved provider message ID; this never resends an SMS. */
-function sms_refresh_outbox_status(
+function sms_refresh_outbox_status_semaphore(
     int $smsId,
     ?callable $transport = null,
     ?array $testConfig = null
@@ -343,4 +361,33 @@ function sms_refresh_outbox_status(
         error_log('BIRMS SMS status refresh failed for outbox #' . $smsId . ' (' . get_class($e) . ').');
         return ['ok' => false, 'status' => (string) $row['provider_status'], 'message' => 'Could not refresh the provider status. The last saved status was retained.'];
     }
+}
+
+
+/* Infobip is optional and independently disabled by default. Provider selection is config-only. */
+require_once __DIR__ . '/infobip_sms_provider.php';
+
+function sms_send_outbox(
+    int $smsId,
+    bool $explicitRetry = false,
+    ?callable $transport = null,
+    ?array $testConfig = null
+): array {
+    $provider = strtolower(trim((string) ($testConfig['provider'] ?? config('sms.provider', 'semaphore'))));
+    if ($provider === 'infobip') {
+        return sms_send_outbox_infobip($smsId, $explicitRetry, $transport, $testConfig);
+    }
+    return sms_send_outbox_semaphore($smsId, $explicitRetry, $transport, $testConfig);
+}
+
+function sms_refresh_outbox_status(
+    int $smsId,
+    ?callable $transport = null,
+    ?array $testConfig = null
+): array {
+    $provider = strtolower(trim((string) ($testConfig['provider'] ?? config('sms.provider', 'semaphore'))));
+    if ($provider === 'infobip') {
+        return sms_refresh_outbox_status_infobip($smsId, $transport, $testConfig);
+    }
+    return sms_refresh_outbox_status_semaphore($smsId, $transport, $testConfig);
 }
