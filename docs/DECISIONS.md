@@ -38,6 +38,10 @@
 - Summons wording is **not shipped**. A summons cannot be printed until the Secretary enters it; it also refuses to print without a respondent or when a placeholder it uses (such as the venue) is empty. Layout is provisional.
 - Incident counts by Purok (module 15) are part of the Reports batch.
 
+## Update (23 Oct 2026)
+- The owner requested SMS API PH as the preferred optional notification provider. It is selected in the new configuration example, but outbound sending remains disabled until a private API key is configured and the owner performs a controlled test.
+- The supplied quick-start describes provider-managed SMS → Email → Push fallback but does not show a response example or delivery-status endpoint. BIRMS marks unrecognized responses Unknown and does not claim delivery without provider confirmation. This optional external notification call sends the recipient number and message text to the provider; obtain office approval before using real resident data.
+
 ## Still pending (not invented)
-Official Purok list, certificate fees and wording, resident categories, government report formats, signatory names,
+Official Purok list, certificate fees and wording, resident categories, government report formats, signatory names, SMS API PH response-schema/live-delivery verification,
 SMS provider, voter-check method, HTTPS setup, Barangay Secretary's validation of permissions.
