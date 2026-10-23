@@ -47,20 +47,36 @@ function sms_provider_config(?array $testOverride = null): array
 
 function sms_provider_selected_name(): string
 {
-    return strtolower(trim((string) config('sms.provider', 'semaphore'))) === 'infobip' ? 'Infobip' : 'Semaphore';
+    $provider = strtolower(trim((string) config('sms.provider', 'smsapiph')));
+    return match ($provider) {
+        'smsapiph' => 'SMS API PH',
+        'infobip' => 'Infobip',
+        default => 'Semaphore',
+    };
 }
 
 function sms_provider_is_enabled(): bool
 {
-    if (sms_provider_selected_name() === 'Infobip') {
-        return (bool) infobip_sms_config()['enabled'];
-    }
-    return (bool) sms_provider_config()['enabled'];
+    return match (sms_provider_selected_name()) {
+        'SMS API PH' => (bool) smsapiph_sms_config()['enabled'],
+        'Infobip' => (bool) infobip_sms_config()['enabled'],
+        default => (bool) sms_provider_config()['enabled'],
+    };
 }
 
 /** Safe status for display; never returns the API key. */
 function sms_provider_status_summary(): array
 {
+    if (sms_provider_selected_name() === 'SMS API PH') {
+        $cfg = smsapiph_sms_config();
+        return [
+            'provider' => 'SMS API PH',
+            'enabled' => $cfg['enabled'],
+            'reason' => $cfg['reason'],
+            'sendername_configured' => false,
+            'can_refresh' => false,
+        ];
+    }
     if (sms_provider_selected_name() === 'Infobip') {
         $cfg = infobip_sms_config();
         return [
@@ -69,6 +85,7 @@ function sms_provider_status_summary(): array
             'reason' => $cfg['reason'],
             'sendername_configured' => $cfg['sender'] !== '',
             'base_url_configured' => $cfg['base_url'] !== '',
+            'can_refresh' => true,
         ];
     }
     $cfg = sms_provider_config();
@@ -77,6 +94,7 @@ function sms_provider_status_summary(): array
         'enabled' => $cfg['enabled'],
         'reason' => $cfg['reason'],
         'sendername_configured' => $cfg['sendername'] !== '',
+        'can_refresh' => true,
     ];
 }
 
@@ -364,8 +382,9 @@ function sms_refresh_outbox_status_semaphore(
 }
 
 
-/* Infobip is optional and independently disabled by default. Provider selection is config-only. */
+/* Optional provider adapters are disabled unless private configuration explicitly enables one. */
 require_once __DIR__ . '/infobip_sms_provider.php';
+require_once __DIR__ . '/smsapiph_sms_provider.php';
 
 function sms_send_outbox(
     int $smsId,
@@ -373,7 +392,10 @@ function sms_send_outbox(
     ?callable $transport = null,
     ?array $testConfig = null
 ): array {
-    $provider = strtolower(trim((string) ($testConfig['provider'] ?? config('sms.provider', 'semaphore'))));
+    $provider = strtolower(trim((string) ($testConfig['provider'] ?? config('sms.provider', 'smsapiph'))));
+    if ($provider === 'smsapiph') {
+        return sms_send_outbox_smsapiph($smsId, $explicitRetry, $transport, $testConfig);
+    }
     if ($provider === 'infobip') {
         return sms_send_outbox_infobip($smsId, $explicitRetry, $transport, $testConfig);
     }
@@ -385,7 +407,10 @@ function sms_refresh_outbox_status(
     ?callable $transport = null,
     ?array $testConfig = null
 ): array {
-    $provider = strtolower(trim((string) ($testConfig['provider'] ?? config('sms.provider', 'semaphore'))));
+    $provider = strtolower(trim((string) ($testConfig['provider'] ?? config('sms.provider', 'smsapiph'))));
+    if ($provider === 'smsapiph') {
+        return sms_refresh_outbox_status_smsapiph($smsId, $transport, $testConfig);
+    }
     if ($provider === 'infobip') {
         return sms_refresh_outbox_status_infobip($smsId, $transport, $testConfig);
     }

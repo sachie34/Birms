@@ -31,7 +31,7 @@ jobs:
 
       - name: Verify local credentials are not tracked
         run: |
-          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php Api)"
+          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php app/smsapiph.local.php Api)"
           if [ -n "$tracked_private" ]; then
             echo "ERROR: private local configuration or the removed legacy Api file is tracked:"
             printf '%s\n' "$tracked_private"
@@ -39,6 +39,7 @@ jobs:
           fi
           grep -Fxq 'app/config.local.php' .gitignore
           grep -Fxq 'app/infobip.local.php' .gitignore
+          grep -Fxq 'app/smsapiph.local.php' .gitignore
           grep -Fxq '/Api' .gitignore
           grep -Fq '<FilesMatch "^\."' .htaccess
           grep -Fq 'Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess

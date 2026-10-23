@@ -92,7 +92,7 @@ if (!$rows) {
             . '<td>' . (int) $r['attempt_count'] . '</td>'
             . '<td class="text-nowrap">' . e($r['last_attempt_at'] !== null ? fmt_dt((string) $r['last_attempt_at']) : '—') . '</td>'
             . '<td class="text-nowrap">';
-        if ($summary['enabled'] && in_array($status, ['queued', 'pending', 'sent', 'failed', 'refunded'], true) && (string) ($r['provider_message_id'] ?? '') !== '') {
+        if ($summary['enabled'] && !empty($summary['can_refresh']) && in_array($status, ['queued', 'pending', 'sent', 'failed', 'refunded'], true) && (string) ($r['provider_message_id'] ?? '') !== '') {
             echo '<form method="post" action="' . e(base_url('admin/sms.php')) . '" class="d-inline">'
                 . csrf_field() . '<input type="hidden" name="do" value="refresh"><input type="hidden" name="sms_id" value="' . (int) $r['sms_id'] . '">'
                 . '<button class="btn btn-sm btn-light border mb-1" type="submit">Refresh</button></form> ';
@@ -111,5 +111,9 @@ if (!$rows) {
     echo '</tbody></table></div>';
 }
 card_end();
-echo '<p class="small text-muted">Status refresh calls the selected provider for records with a provider message ID. Retry is manual and restricted to provider-confirmed Failed/Refunded results. BIRMS never auto-retries an Unknown result.</p>';
+if (!empty($summary['can_refresh'])) {
+    echo '<p class="small text-muted">Status refresh calls the selected provider for records with a provider message ID. Retry is manual and restricted to provider-confirmed Failed/Refunded results. BIRMS never auto-retries an Unknown result.</p>';
+} else {
+    echo '<p class="small text-muted">The supplied SMS API PH endpoint documents sending only, not delivery-status lookup. BIRMS keeps the last saved status and does not offer a refresh action for this provider. Unknown outcomes must be checked in the provider dashboard before retrying.</p>';
+}
 render_footer();
