@@ -24,7 +24,7 @@ return [
         'webdav_password' => '',
     ],
     // Optional SMS gateway. Only one provider is active at a time; sending is disabled by default.
-    // Keep real keys ONLY in ignored app/config.local.php or private server environment variables.
+    // Keep real keys ONLY in ignored app/config.local.php, app/smsapiph.local.php, or private server environment variables.
     'sms' => [
         'provider' => 'smsapiph', // SMS API PH is selected, but remains disabled until enabled below
         'smsapiph_enabled' => false, // keep false until a controlled test with an authorized number
