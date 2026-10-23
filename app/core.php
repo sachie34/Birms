@@ -31,9 +31,10 @@ function config(?string $path = null, mixed $default = null): mixed
             'backup' => [
                 'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
             ],
-            // Outbound SMS remains disabled until an operator explicitly selects and configures a provider.
+            // Outbound notifications remain disabled until an operator explicitly configures a provider.
             'sms' => [
-                'provider' => 'semaphore',
+                'provider' => 'smsapiph',
+                'smsapiph_enabled' => false, 'smsapiph_api_key' => '',
                 'semaphore_enabled' => false, 'semaphore_api_key' => '', 'semaphore_sendername' => '',
                 'infobip_enabled' => false, 'infobip_api_key' => '', 'infobip_base_url' => '', 'infobip_sender' => 'ServiceSMS',
                 'connect_timeout' => 4, 'timeout' => 12,
@@ -62,6 +63,17 @@ function config(?string $path = null, mixed $default = null): mixed
             }
         }
 
+        // Optional dedicated, Git-ignored SMS API PH credentials file. A blank example key
+        // must not erase a key explicitly entered in config.local.php.
+        $smsapiphLocal = __DIR__ . '/smsapiph.local.php';
+        if (is_file($smsapiphLocal)) {
+            $smsapiph = require $smsapiphLocal;
+            if (is_array($smsapiph) && isset($smsapiph['api_key']) && is_string($smsapiph['api_key'])
+                && trim($smsapiph['api_key']) !== '') {
+                $cfg['sms']['smsapiph_api_key'] = trim($smsapiph['api_key']);
+            }
+        }
+
         $envMap = [
             'BIRMS_DB_HOST' => ['db', 'host'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
             'BIRMS_DB_USER' => ['db', 'user'], 'BIRMS_DB_PASS' => ['db', 'pass'], 'BIRMS_ENV' => ['env', null],
@@ -73,6 +85,8 @@ function config(?string $path = null, mixed $default = null): mixed
             'BIRMS_SEMAPHORE_API_KEY' => ['sms', 'semaphore_api_key'],
             'BIRMS_SEMAPHORE_SENDERNAME' => ['sms', 'semaphore_sendername'],
             'BIRMS_SMS_PROVIDER' => ['sms', 'provider'],
+            'BIRMS_SMSAPIPH_ENABLED' => ['sms', 'smsapiph_enabled'],
+            'BIRMS_SMSAPIPH_API_KEY' => ['sms', 'smsapiph_api_key'],
             'BIRMS_INFOBIP_ENABLED' => ['sms', 'infobip_enabled'],
             'BIRMS_INFOBIP_API_KEY' => ['sms', 'infobip_api_key'],
             'BIRMS_INFOBIP_BASE_URL' => ['sms', 'infobip_base_url'],
