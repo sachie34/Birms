@@ -26,11 +26,13 @@ return [
     // Optional SMS gateway. Only one provider is active at a time; sending is disabled by default.
     // Keep real keys ONLY in ignored app/config.local.php or private server environment variables.
     'sms' => [
-        'provider' => 'semaphore', // change to 'infobip' to use Infobip
+        'provider' => 'smsapiph', // SMS API PH is selected, but remains disabled until enabled below
+        'smsapiph_enabled' => false, // keep false until a controlled test with an authorized number
+        'smsapiph_api_key' => '', // optional; alternatively use ignored app/smsapiph.local.php
         'semaphore_enabled' => false,
         'semaphore_api_key' => '',
         'semaphore_sendername' => '',
-        'infobip_enabled' => false, // enable only for a controlled test with an authorized/verified number
+        'infobip_enabled' => false, // legacy/alternative provider; disabled unless explicitly selected
         'infobip_api_key' => '',
         'infobip_base_url' => '', // use the exact HTTPS Base URL shown in your Infobip account
         'infobip_sender' => 'ServiceSMS', // Infobip trial test sender; use only a sender allowed by your account
