@@ -256,9 +256,58 @@ function run_b12(array $S, string $base): void
         && $unknownApiCalls === 1
         && db_val('SELECT provider_status FROM sms_outbox WHERE sms_id = ?', [$unknownApiId]) === 'unknown');
 
+    $diagnostics = [
+        smsapiph_transport_diagnostic(28, 'operation timed out with api key and recipient details'),
+        smsapiph_transport_diagnostic(6, 'could not resolve host'),
+        smsapiph_transport_diagnostic(60, 'SSL certificate problem'),
+        smsapiph_transport_diagnostic(7, 'failed to connect'),
+        smsapiph_transport_diagnostic(999, 'unexpected provider detail with api key and recipient'),
+    ];
+    record('B12-13', 'Transport diagnostics classify timeout, DNS, TLS/certificate, connection and other errors without raw details',
+        $diagnostics === [
+            'SMS API PH transport error: timeout (cURL 28).',
+            'SMS API PH transport error: dns (cURL 6).',
+            'SMS API PH transport error: tls/certificate (cURL 60).',
+            'SMS API PH transport error: connection (cURL 7).',
+            'SMS API PH transport error: other (cURL 999).',
+        ]
+        && !str_contains(implode(' ', $diagnostics), 'api key')
+        && !str_contains(implode(' ', $diagnostics), 'recipient'));
+
+    $timeoutApiId = b12_make_outbox('smsapiph-timeout', '09171230003');
+    $timeoutApiCalls = 0;
+    $timeoutApiTransport = static function () use (&$timeoutApiCalls): array {
+        $timeoutApiCalls++;
+        return b12_mock_response(0, '', 'simulated timeout; api key=private; recipient=+639171230003; cURL 28');
+    };
+    $timeoutApi = sms_send_outbox($timeoutApiId, false, $timeoutApiTransport, $smsapiphConfig);
+    $timeoutApiRetry = sms_send_outbox($timeoutApiId, true, $timeoutApiTransport, $smsapiphConfig);
+    $timeoutApiSaved = db_one('SELECT provider_status, provider_error, attempt_count FROM sms_outbox WHERE sms_id = ?', [$timeoutApiId]);
+
+    $otherApiId = b12_make_outbox('smsapiph-other-transport', '09171230004');
+    $otherApiTransport = static function (): array {
+        return b12_mock_response(0, '', 'unexpected provider detail; api key=private; recipient=+639171230004');
+    };
+    $otherApi = sms_send_outbox($otherApiId, false, $otherApiTransport, $smsapiphConfig);
+    $otherApiSaved = db_one('SELECT provider_status, provider_error FROM sms_outbox WHERE sms_id = ?', [$otherApiId]);
+    record('B12-14', 'Mocked timeout and other transport errors remain Unknown, save only sanitized diagnostics, and are not retried',
+        $timeoutApi['status'] === 'unknown'
+        && $timeoutApiRetry['status'] === 'unknown'
+        && $timeoutApiCalls === 1
+        && ($timeoutApiSaved['provider_status'] ?? '') === 'unknown'
+        && str_contains((string) ($timeoutApiSaved['provider_error'] ?? ''), 'transport error: timeout')
+        && !str_contains((string) ($timeoutApiSaved['provider_error'] ?? ''), 'api key')
+        && !str_contains((string) ($timeoutApiSaved['provider_error'] ?? ''), 'recipient')
+        && (int) ($timeoutApiSaved['attempt_count'] ?? -1) === 1
+        && $otherApi['status'] === 'unknown'
+        && ($otherApiSaved['provider_status'] ?? '') === 'unknown'
+        && str_contains((string) ($otherApiSaved['provider_error'] ?? ''), 'transport error: other')
+        && !str_contains((string) ($otherApiSaved['provider_error'] ?? ''), 'api key')
+        && !str_contains((string) ($otherApiSaved['provider_error'] ?? ''), 'recipient'));
+
     $refreshCallsBefore = count($smsapiphCalls);
     $unsupportedRefresh = sms_refresh_outbox_status($smsapiphId, $smsapiphTransport, $smsapiphConfig);
-    record('B12-13', 'SMS API PH status refresh stays unavailable without a documented status endpoint',
+    record('B12-15', 'SMS API PH status refresh stays unavailable without a documented status endpoint',
         !$unsupportedRefresh['ok']
         && str_contains(strtolower($unsupportedRefresh['message']), 'does not document')
         && count($smsapiphCalls) === $refreshCallsBefore

@@ -63,6 +63,32 @@ function smsapiph_normalize_number(string $raw): ?string
     return null;
 }
 
+/** Return a safe, category-only diagnostic; never expose raw cURL text or request data. */
+function smsapiph_transport_diagnostic(int $curlErrno, string $curlError): string
+{
+    $text = strtolower($curlError);
+    $category = match (true) {
+        $curlErrno === 6 || str_contains($text, 'could not resolve host') || str_contains($text, 'name or service not known') => 'dns',
+        $curlErrno === 28 || str_contains($text, 'timed out') || str_contains($text, 'timeout') => 'timeout',
+        in_array($curlErrno, [35, 51, 58, 60, 77], true)
+            || str_contains($text, 'certificate') || str_contains($text, 'ssl') || str_contains($text, 'tls') => 'tls/certificate',
+        in_array($curlErrno, [7, 52, 55, 56], true)
+            || str_contains($text, 'connection') || str_contains($text, 'connect') => 'connection',
+        default => 'other',
+    };
+    return 'SMS API PH transport error: ' . $category . ($curlErrno > 0 ? ' (cURL ' . $curlErrno . ').' : '.');
+}
+
+/** Normalize mocked or legacy transport diagnostics into the same safe categories. */
+function smsapiph_sanitize_transport_diagnostic(string $diagnostic): string
+{
+    $errno = 0;
+    if (preg_match('/\bcurl\s+(\d+)\b/i', $diagnostic, $matches) === 1) {
+        $errno = (int) $matches[1];
+    }
+    return smsapiph_transport_diagnostic($errno, strtolower($diagnostic));
+}
+
 /**
  * Send exactly one JSON POST to the fixed HTTPS vendor endpoint.
  * The mock transport is CLI-only. Request credentials are never returned or logged.
@@ -131,8 +157,10 @@ function smsapiph_http_request(
         CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
     ]);
     $body = curl_exec($ch);
+    $curlErrno = $body === false ? curl_errno($ch) : 0;
+    $curlError = $body === false ? curl_error($ch) : '';
     $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $error = $body === false ? 'The HTTPS request did not return a complete response.' : '';
+    $error = $body === false ? smsapiph_transport_diagnostic($curlErrno, $curlError) : '';
     curl_close($ch);
     return [
         'http_status' => $code,
@@ -245,7 +273,8 @@ function sms_send_outbox_smsapiph(
         $http = smsapiph_http_request('POST', SMSAPIPH_SEND_URL, $payload, $cfg, $transport);
         $code = (int) $http['http_status'];
         if ($http['transport_error'] !== '') {
-            sms_provider_save_result($smsId, 'unknown', null, 'Network/transport error; provider acceptance cannot be confirmed. Check the SMS API PH dashboard before retrying.');
+            $diagnostic = smsapiph_sanitize_transport_diagnostic((string) $http['transport_error']);
+            sms_provider_save_result($smsId, 'unknown', null, $diagnostic . ' Provider acceptance cannot be confirmed; check the SMS API PH dashboard before retrying.');
             return ['ok' => false, 'status' => 'unknown', 'message' => 'The result could not be confirmed. Check SMS API PH before retrying to avoid a duplicate.'];
         }
         if ($code < 200 || $code >= 300) {
