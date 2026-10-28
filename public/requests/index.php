@@ -3,17 +3,29 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
-require_login();
+ $me = require_login();
 require_permission('requests.view');
-$tabs = ['all' => 'All requests', 'Pending' => 'Pending', 'Review' => 'Under Review', 'Ready' => 'Ready for Pickup', 'Claimed' => 'Issued', 'closed' => 'Closed'];
+$myLabel = in_array($me['role'], ['admin', 'captain'], true) ? 'Pending Final Approval' : ($me['role'] === 'secretary' ? 'Needs Review' : 'My Requests');
+$tabs = ['all' => 'All requests', 'my' => $myLabel, 'Pending' => 'Pending', 'Review' => 'Under Review', 'Ready' => 'Ready for Pickup', 'Claimed' => 'Issued', 'closed' => 'Closed'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'all';
 $q = get_str('q'); $page = max(1, get_int('page') ?? 1); $per = 25;
 
 $counts = ['all' => 0]; foreach (db_all('SELECT status, COUNT(*) AS n FROM document_requests GROUP BY status') as $c) {
     $counts[$c['status']] = (int) $c['n']; $counts['all'] += (int) $c['n']; if (in_array($c['status'], ['Rejected', 'Cancelled'], true)) { $counts['closed'] = ($counts['closed'] ?? 0) + (int) $c['n']; }
 }
+$myParams = [];
+if (in_array($me['role'], ['admin', 'captain'], true)) {
+    $myCondition = "dr.status = 'Review'";
+} elseif ($me['role'] === 'secretary') {
+    $myCondition = "(dr.status = 'Pending' OR (dr.status = 'Review' AND dr.requirements_status <> 'Complete'))";
+} else {
+    $myCondition = '(dr.created_by = ? OR dr.assigned_to = ?)';
+    $myParams = [(int) $me['user_id'], (int) $me['user_id']];
+}
+$counts['my'] = (int) db_val('SELECT COUNT(*) FROM document_requests dr WHERE ' . $myCondition, $myParams);
 $w = []; $p = [];
-if ($tab === 'closed') { $w[] = "dr.status IN ('Rejected','Cancelled')"; } elseif ($tab !== 'all') { $w[] = 'dr.status = ?'; $p[] = $tab; }
+if ($tab === 'my') { $w[] = '(' . $myCondition . ')'; array_push($p, ...$myParams); }
+elseif ($tab === 'closed') { $w[] = "dr.status IN ('Rejected','Cancelled')"; } elseif ($tab !== 'all') { $w[] = 'dr.status = ?'; $p[] = $tab; }
 foreach (preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $tok) { $like = '%' . addcslashes($tok, '%_\\') . '%'; $w[] = '(dr.reference_no LIKE ? OR r.last_name LIKE ? OR r.first_name LIKE ?)'; array_push($p, $like, $like, $like); }
 $where = $w ? 'WHERE ' . implode(' AND ', $w) : '';
 $from = "FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id LEFT JOIN users u ON u.user_id = dr.assigned_to $where";
