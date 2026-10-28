@@ -83,6 +83,26 @@ function run_b4(array $S, string $base): void
         && str_contains($secQueue['body'], (string) $row['reference_no'])
         && !str_contains($capQueue['body'], (string) $row['reference_no'])
         && str_contains($clkQueue['body'], (string) $row['reference_no']));
+
+    // A Clerk may not discover or change another user's request by swapping an ID or tab.
+    $foreignPurpose = 'ZZ Test foreign-owned request';
+    $foreignCreate = post_as($sec, '/requests/form.php?resident=' . $rita, '/requests/form.php?resident=' . $rita, [
+        'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => $foreignPurpose,
+        'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+    ]);
+    $foreignId = $rid($foreignPurpose);
+    $foreignRef = (string) db_val('SELECT reference_no FROM document_requests WHERE request_id = ?', [$foreignId]);
+    $clerkAll = $clk->get('/requests/index.php?tab=all');
+    $clerkForeignView = $clk->get('/requests/view.php?id=' . $foreignId);
+    $clerkForeignEdit = $clk->get('/requests/form.php?id=' . $foreignId);
+    $clerkForeignCancel = $move($clk, $foreignId, 'Cancelled', 'Not my request');
+    record('B4-8g', 'Clerk list, direct detail, edit and state-change routes are scoped to filed/assigned requests',
+        $foreignCreate['status'] === 302 && $foreignRef !== ''
+        && !str_contains($clerkAll['body'], $foreignRef)
+        && $clerkForeignView['status'] === 404
+        && $clerkForeignEdit['status'] === 404
+        && $clerkForeignCancel['status'] === 404
+        && $status($foreignId) === 'Pending');
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
