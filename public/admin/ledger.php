@@ -1,16 +1,18 @@
 <?php
-/** Administrator-only cash collection ledger. Reconciled transactions are retained for auditability. */
+/** Cash collection ledger: viewing is separate from administrator-only ledger changes. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
-require_permission('backup.run');
+require_permission('cash_ledger.view');
+$canManage = can('cash_ledger.manage');
 $actor = audit_actor();
 $errors = [];
 $methods = ['cash' => 'Cash', 'bank_transfer' => 'Bank transfer', 'other' => 'Other'];
 
 if (is_post()) {
     require_csrf();
+    require_permission('cash_ledger.manage');
     $do = post_str('do');
     $id = post_int('id');
     try {
@@ -132,6 +134,7 @@ echo errors_box($errors);
   <div class="col-md-4"><div class="card-b p-3"><div class="text-muted small">Reconciled amount</div><div class="fs-4 fw-bold"><?= e(money($totals['reconciled_total'] ?? 0)) ?></div></div></div>
   <div class="col-md-4"><div class="card-b p-3"><div class="text-muted small">Pending reconciliation</div><div class="fs-4 fw-bold"><?= e(money($totals['pending_total'] ?? 0)) ?></div></div></div>
 </div>
+<?php if ($canManage): ?>
 <div class="card-b mb-3">
   <div class="card-h"><h2>Record a missing transaction</h2><p>Paid certificates issued before the ledger was enabled can be added once. Enter the actual transaction date and actual collector from the receipt/office record; the Administrator entering the backfill is not automatically recorded as the collector. New paid issuances create a pending entry automatically.</p></div>
   <div class="card-body-b">
@@ -145,6 +148,7 @@ echo errors_box($errors);
     </form><?php endif; ?>
   </div>
 </div>
+<?php endif; ?>
 <div class="card-b">
   <form method="get" class="filters" action="<?= e(base_url('admin/ledger.php')) ?>">
     <div><label class="form-label" for="q">Search</label><input class="form-control" id="q" name="q" value="<?= e($q) ?>" placeholder="Requester, reference or O.R."></div>
@@ -155,21 +159,21 @@ echo errors_box($errors);
   </form>
   <?php if (!$rows): ?><?= empty_state('bi-cash-stack', 'No ledger transactions match this filter.') ?><?php else: ?>
   <div class="px-3 py-2 border-bottom small text-muted"><?= (int) ($totals['transaction_count'] ?? 0) ?> transaction(s) · recorded ledger amount <?= e(money($totals['recorded_total'] ?? 0)) ?></div>
-  <div class="table-responsive"><table class="table table-b align-middle"><thead><tr><th>Date</th><th>Requester / certificate</th><th>Amount</th><th>Method</th><th>Collector</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  <div class="table-responsive"><table class="table table-b align-middle"><thead><tr><th>Date</th><th>Requester / certificate</th><th>Amount</th><th>Method</th><th>Collector</th><th>Status</th><?php if ($canManage): ?><th>Actions</th><?php endif; ?></tr></thead><tbody>
   <?php foreach ($rows as $row): $dateValue = date('Y-m-d\TH:i', strtotime((string) $row['transaction_date'])); ?>
     <tr>
       <td class="text-nowrap"><?= e(fmt_dt((string) $row['transaction_date'])) ?></td>
       <td><strong><?= e((string) $row['requester_name']) ?></strong><div class="small text-muted"><?= e((string) $row['reference_no']) ?> · O.R. <?= e((string) ($row['or_number'] ?? '—')) ?></div></td>
       <td><?= e(money($row['fee_amount'])) ?></td><td><?= e($methods[(string) $row['payment_method']] ?? (string) $row['payment_method']) ?></td><td><?= e((string) $row['collector_name']) ?></td>
       <td><?= $row['reconciliation_status'] === 'reconciled' ? pill('Reconciled', 'green') : pill('Pending', 'grey') ?><?php if ($row['reconciliation_status'] === 'reconciled' && $row['reconciled_by_name']): ?><div class="small text-muted">By <?= e((string) $row['reconciled_by_name']) ?></div><?php endif; ?></td>
-      <td><details><summary class="small">Edit</summary><form method="post" action="<?= e(base_url('admin/ledger.php')) ?>" class="mt-2 ledger-editor"><?= csrf_field() ?><input type="hidden" name="do" value="update"><input type="hidden" name="id" value="<?= (int) $row['ledger_id'] ?>">
+      <?php if ($canManage): ?><td><details><summary class="small">Edit</summary><form method="post" action="<?= e(base_url('admin/ledger.php')) ?>" class="mt-2 ledger-editor"><?= csrf_field() ?><input type="hidden" name="do" value="update"><input type="hidden" name="id" value="<?= (int) $row['ledger_id'] ?>">
         <label class="form-label small">Transaction date</label><input class="form-control form-control-sm mb-2" type="datetime-local" name="transaction_date" value="<?= e($dateValue) ?>" required>
         <label class="form-label small">Recorded amount (PHP)</label><input class="form-control form-control-sm mb-2" name="fee_amount" inputmode="decimal" value="<?= e(number_format((float) $row['fee_amount'], 2, '.', '')) ?>" required>
         <label class="form-label small">Method</label><select class="form-select form-select-sm mb-2" name="payment_method"><?php foreach ($methods as $k => $label): ?><option value="<?= e($k) ?>"<?= $row['payment_method'] === $k ? ' selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?></select>
         <label class="form-label small">Notes</label><textarea class="form-control form-control-sm mb-2" name="notes" maxlength="500"><?= e((string) ($row['notes'] ?? '')) ?></textarea><button class="btn btn-sm btn-primary" type="submit">Save edit</button></form>
         <form method="post" action="<?= e(base_url('admin/ledger.php')) ?>" class="mt-2"><?= csrf_field() ?><input type="hidden" name="do" value="reconcile"><input type="hidden" name="id" value="<?= (int) $row['ledger_id'] ?>"><input type="hidden" name="to" value="<?= $row['reconciliation_status'] === 'reconciled' ? 'pending' : 'reconciled' ?>"><button class="btn btn-sm btn-light border w-100" type="submit"><?= $row['reconciliation_status'] === 'reconciled' ? 'Mark pending' : 'Mark reconciled' ?></button></form>
         <?php if ($row['reconciliation_status'] === 'pending'): ?><form method="post" action="<?= e(base_url('admin/ledger.php')) ?>" class="mt-2" data-confirm="Delete this pending ledger record? The action is audited."><?= csrf_field() ?><input type="hidden" name="do" value="delete"><input type="hidden" name="id" value="<?= (int) $row['ledger_id'] ?>"><button class="btn btn-sm btn-outline-danger w-100" type="submit">Delete pending record</button></form><?php endif; ?>
-      </details></td>
+      </details></td><?php endif; ?>
     </tr>
   <?php endforeach; ?></tbody></table></div><?php endif; ?>
 </div>
