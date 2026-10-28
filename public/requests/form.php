@@ -9,7 +9,7 @@ $id = get_int('id'); $ex = null;
 if ($id !== null) {
     require_permission('requests.edit');
     $ex = db_one('SELECT * FROM document_requests WHERE request_id = ?', [$id]);
-    if ($ex === null) { abort(404, 'That request was not found.'); }
+    if ($ex === null || !request_visible_to_current_user($ex)) { abort(404, 'That request was not found.'); }
     if (!in_array($ex['status'], ['Pending', 'Review'], true)) { abort(403, 'Only Pending or In-review requests can be edited.'); }
 } else { require_permission('requests.add'); require_permission('residents.view'); }
 
