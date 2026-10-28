@@ -5,7 +5,7 @@ require_once __DIR__ . '/../app/certificates_lib.php';
 
 function run_b8(array $S, string $base): void
 {
-    $clk = $S['clerk']; $sec = $S['secretary']; $adm = $S['admin'];
+    $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $tmp = tempnam(sys_get_temp_dir(), 'birms-b8-pdf');
     if ($tmp === false) { record('B8-1', 'Test fixture for PDF upload created', false); return; }
     file_put_contents($tmp, "%PDF-1.4\n1 0 obj <<>> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
@@ -138,13 +138,30 @@ function run_b8(array $S, string $base): void
             && (int) $ledger['collector_id'] === $secretaryId
             && (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) === 1);
 
-        record('B8-7', 'Cash ledger page is available to Administrator and denied to Secretary',
-            $adm->get('/admin/ledger.php')['status'] === 200
+         $adminLedger = $adm->get('/admin/ledger.php');
+        $captainLedger = $cap->get('/admin/ledger.php');
+        record('B8-7', 'Captain has read-only cash ledger access; secretary and clerk are denied',
+            $adminLedger['status'] === 200 && $captainLedger['status'] === 200
             && $sec->get('/admin/ledger.php')['status'] === 403
-            && str_contains($adm->get('/admin/ledger.php')['body'], 'Cash Collection Ledger'));
+            && $clk->get('/admin/ledger.php')['status'] === 403
+            && str_contains($adminLedger['body'], 'Cash Collection Ledger')
+            && !str_contains($captainLedger['body'], 'Record a missing transaction')
+            && !str_contains($captainLedger['body'], 'Save edit')
+            && !str_contains($captainLedger['body'], '<th>Actions</th>'));
 
         if ($ledger !== null && $paidIssuanceId !== null) {
             $ledgerId = (int) $ledger['ledger_id'];
+            $beforeCaptainAttempt = db_one('SELECT fee_amount, payment_method, notes FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]);
+            $captainAttempt = $cap->post('/admin/ledger.php', [
+                '_csrf' => $cap->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) $ledgerId,
+                'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '999.00',
+                'payment_method' => 'other', 'notes' => 'Captain must not edit',
+            ]);
+            $afterCaptainAttempt = db_one('SELECT fee_amount, payment_method, notes FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]);
+            record('B8-7a', 'Captain direct POST cannot edit the ledger; values remain unchanged',
+                $captainAttempt['status'] === 403
+                && $beforeCaptainAttempt === $afterCaptainAttempt);
+
             $edit = $adm->post('/admin/ledger.php', [
                 '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) $ledgerId,
                 'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '27.50',
