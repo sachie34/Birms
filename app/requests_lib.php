@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 /** current status => [new status => permission needed]. Ready -> Claimed happens only when a certificate is issued (B5). */
 const REQUEST_TRANSITIONS = [
-    'Pending' => ['Review' => 'requests.review', 'Rejected' => 'requests.approve', 'Cancelled' => 'requests.edit'],
+    // A final decision cannot be made before requirements review has begun.
+    'Pending' => ['Review' => 'requests.review', 'Cancelled' => 'requests.edit'],
     'Review'  => ['Ready' => 'requests.approve', 'Rejected' => 'requests.approve', 'Cancelled' => 'requests.edit'],
 ];
 const REQUEST_STATUSES = ['Pending', 'Review', 'Ready', 'Claimed', 'Rejected', 'Cancelled'];
 
-function request_allowed_moves(string $status): array
+function request_allowed_moves(string $status, ?string $requirementsStatus = null): array
 {
     $out = [];
-    foreach (REQUEST_TRANSITIONS[$status] ?? [] as $to => $perm) { if (can($perm)) { $out[] = $to; } }
+    foreach (REQUEST_TRANSITIONS[$status] ?? [] as $to => $perm) {
+        // The UI must never offer approval/rejection unless the requirements were checked and completed.
+        if (in_array($to, ['Ready', 'Rejected'], true) && $requirementsStatus !== 'Complete') {
+            continue;
+        }
+        if (can($perm)) { $out[] = $to; }
+    }
     return $out;
 }
 
