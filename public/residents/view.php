@@ -23,7 +23,8 @@ if (!$archived && can('residents.edit')) {
     $actions .= btn_link('residents/form.php?id=' . $id, 'Edit', 'btn-primary', 'bi-pencil');
     $actions .= btn_post('residents/action.php', ['id' => $id, 'action' => $r['residency_status'] === 'Active' ? 'set_relocated' : 'set_active'], $r['residency_status'] === 'Active' ? 'Mark as relocated' : 'Mark as active', 'btn-light border', 'Change the residency status of this resident?');
 }
-if (can('residents.archive')) { $actions .= $archived ? btn_post('residents/action.php', ['id' => $id, 'action' => 'restore'], 'Restore', 'btn-light border') : btn_post('residents/action.php', ['id' => $id, 'action' => 'archive'], 'Archive', 'btn-outline-danger', 'Archive this resident? They disappear from normal lists but nothing is deleted.'); }
+if (!$archived && can('residents.archive')) { $actions .= btn_post('residents/action.php', ['id' => $id, 'action' => 'archive'], 'Archive', 'btn-outline-danger', 'Archive this resident? They disappear from normal lists but nothing is deleted.'); }
+if ($archived && can('residents.restore')) { $actions .= btn_post('residents/action.php', ['id' => $id, 'action' => 'restore'], 'Restore', 'btn-light border'); }
 page_head(resident_name($r), ($archived ? 'ARCHIVED · ' : '') . 'Record #' . $id, $actions);
 $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' . e($k) . '</th><td>' . $v . '</td></tr>';
 ?>
