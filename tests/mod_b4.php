@@ -48,6 +48,7 @@ function run_b4(array $S, string $base): void
     // request filing
     $fs = $clk->get('/requests/form.php?q=ZZTest4');
     $pre = $clk->get('/requests/form.php?visit=' . $vid);
+    record('B4-4a', 'Clerk sees disabled requirements-review controls on request intake', preg_match('~<select[^>]*name="requirements_status"[^>]*disabled~', $pre['body']) === 1 && preg_match('~<textarea[^>]*name="requirements_note"[^>]*disabled~', $pre['body']) === 1);
     record('B4-4', 'Resident search lists active residents with a Select link and hides archived ones', str_contains($fs['body'], 'ZZTest4, Rita') && str_contains($fs['body'], 'resident=' . $rita) && !str_contains($fs['body'], 'ZZTest4, Gone') && str_contains($pre['body'], 'value="ZZTest Visitor"'));
     $r = $filed('ZZ Test purpose 1'); $id1 = $rid('ZZ Test purpose 1');
     $row = db_one('SELECT reference_no, status FROM document_requests WHERE request_id = ?', [$id1]);
@@ -75,7 +76,7 @@ function run_b4(array $S, string $base): void
         str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
         && str_contains($clkQueue['body'], 'My Requests')
         && str_contains($secQueue['body'], (string) $row['reference_no'])
-        && str_contains($capQueue['body'], (string) $row['reference_no'])
+        && !str_contains($capQueue['body'], (string) $row['reference_no'])
         && str_contains($clkQueue['body'], (string) $row['reference_no']));
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
@@ -91,6 +92,11 @@ function run_b4(array $S, string $base): void
         && str_contains($blockedPage['body'], 'requirements review');
     $markedComplete = $completeRequirements($sec, $id1);
     $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
+    $secQueueAfterReview = $sec->get('/requests/index.php?tab=my');
+    $capQueueAfterReview = $cap->get('/requests/index.php?tab=my');
+    record('B4-8d', 'Complete requirements removes request from Secretary queue and moves it to final approver queue',
+        !str_contains($secQueueAfterReview['body'], (string) $row['reference_no'])
+        && str_contains($capQueueAfterReview['body'], (string) $row['reference_no']));
     $secretaryTry = $move($sec, $id1, 'Ready');
     $secretaryDenied = $secretaryTry['status'] === 403 && $status($id1) === 'Review';
     $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
