@@ -155,8 +155,9 @@ function run_b4(array $S, string $base): void
     $completed = $markComplete['status'] === 302
         && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id4]) === 'Complete';
     $noReason = $move($cap, $id4, 'Rejected', ''); $still = $status($id4) === 'Review';
-    $withReason = $move($cap, $id4, 'Rejected', 'Incomplete requirements');
-    $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === 'Incomplete requirements';
+    $finalReason = 'Eligibility criteria not met';
+    $withReason = $move($cap, $id4, 'Rejected', $finalReason);
+    $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === $finalReason;
     $after = $move($cap, $id4, 'Review'); $term = $status($id4) === 'Rejected';
     record('B4-11', 'Final rejection requires a completed requirements review; Secretary cannot reject; Captain must give a reason; rejected requests cannot be reopened',
         $pendingReject['status'] === 302 && $pendingStill && $secretaryDenied && $hiddenFinalActions
