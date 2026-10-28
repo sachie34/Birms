@@ -140,12 +140,27 @@ function run_b4(array $S, string $base): void
     $o3 = (string) db_val('SELECT message FROM sms_outbox WHERE request_id = ?', [$id3]); db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'sms_ready_text'", [$oldTxt]);
     record('B4-10', 'No phone number: logged as "No number"; a custom SMS text from Settings is used', $o2 !== null && $o2['recipient_number'] === null && $o2['delivery'] === 'No number' && str_starts_with($o3, 'Custom: REQ-') && str_contains($o3, 'Barangay Clearance'));
 
-    $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject'); $move($sec, $id4, 'Review');
-    $secretaryReject = $move($sec, $id4, 'Rejected', 'Incomplete requirements'); $secretaryDenied = $secretaryReject['status'] === 403 && $status($id4) === 'Review';
+    $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject');
+    $pendingReject = $move($cap, $id4, 'Rejected', 'Attempt before review');
+    $pendingStill = $status($id4) === 'Pending';
+    $move($sec, $id4, 'Review');
+    $secretaryReject = $move($sec, $id4, 'Rejected', 'Incomplete requirements');
+    $secretaryDenied = $secretaryReject['status'] === 403 && $status($id4) === 'Review';
+    $incompleteView = $cap->get('/requests/view.php?id=' . $id4);
+    $hiddenFinalActions = !str_contains($incompleteView['body'], 'name="to" value="Rejected"')
+        && !str_contains($incompleteView['body'], 'name="to" value="Ready"');
+    $rejectBeforeComplete = $move($cap, $id4, 'Rejected', 'Incomplete requirements');
+    $blockedUntilComplete = $rejectBeforeComplete['status'] === 302 && $status($id4) === 'Review';
+    $markComplete = $completeRequirements($sec, $id4);
+    $completed = $markComplete['status'] === 302
+        && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id4]) === 'Complete';
     $noReason = $move($cap, $id4, 'Rejected', ''); $still = $status($id4) === 'Review';
-    $withReason = $move($cap, $id4, 'Rejected', 'Incomplete requirements'); $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === 'Incomplete requirements';
+    $withReason = $move($cap, $id4, 'Rejected', 'Incomplete requirements');
+    $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === 'Incomplete requirements';
     $after = $move($cap, $id4, 'Review'); $term = $status($id4) === 'Rejected';
-    record('B4-11', 'Secretary cannot reject; Captain must give a reason; a rejected request cannot be reopened', $secretaryDenied && $still && $rejected && $term);
+    record('B4-11', 'Final rejection requires a completed requirements review; Secretary cannot reject; Captain must give a reason; rejected requests cannot be reopened',
+        $pendingReject['status'] === 302 && $pendingStill && $secretaryDenied && $hiddenFinalActions
+        && $blockedUntilComplete && $completed && $still && $rejected && $term);
     $filed('ZZ Test purpose cancel', $rita); $id5 = $rid('ZZ Test purpose cancel');
     $capCancel = $move($cap, $id5, 'Cancelled'); $clkCancel = $move($clk, $id5, 'Cancelled', 'Resident left');
     record('B4-12', 'Cancel: captain refused (403); clerk allowed', $capCancel['status'] === 403 && $clkCancel['status'] === 302 && $status($id5) === 'Cancelled');
