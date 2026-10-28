@@ -56,7 +56,9 @@ The successful GitHub Actions runs for the role-workflow PR and dashboard quick-
 
 After both PRs were merged into `main`, the combined source was tested together on [GitHub Actions run #477](https://github.com/sachie34/Birms/actions/runs/40642029005) from verification PR #18, based on the updated `main` snapshot. That combined run passed PHP syntax/include/setup checks, disposable MariaDB migrations, **37/37 authentication/security/audit checks** and **179/179 module integration checks** (216 total; zero failures and zero untested checks). PR #16 and PR #17 also had their own successful CI runs.
 
-These remote tests do not verify the target office PC's browser, upload permissions, PDF reader or physical printer. No live SMS send or real WebDAV upload/restore is claimed. The combined CI pass is not a substitute for target-PC UAT or official policy/template approval.
+The most recent workflow verification for the code merged by PR #19 was run on its PR-head commit in [GitHub Actions run #488](https://github.com/sachie34/Birms/actions/runs/40644611339) on 2026-10-28. It passed **37/37 authentication/security/audit checks** and **180/180 module integration checks** (217 total; zero failures and zero untested checks). The additional module test covers Clerk attempts to view, edit, or cancel another user's request through changed URLs or POST requests. The tested PR was squash-merged into `main` as commit `a04c4f6ed6a0571d2d702be468c1e44742f88851`.
+
+These remote tests do not verify the target office PC's browser, upload permissions, PDF reader or physical printer. No live SMS send or real WebDAV upload/restore is claimed. The combined CI passes are not a substitute for target-PC UAT or official policy/template approval.
 
 ## Defense sign-off blockers
 
