@@ -9,7 +9,7 @@ $id = get_int('id');
 $r = $id === null ? null : db_one('SELECT dr.*, r.last_name, r.first_name, r.middle_name, r.suffix, r.contact_number, r.residency_status, dt.name AS type_name, u.full_name AS assigned, c.full_name AS creator
     FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id
     LEFT JOIN users u ON u.user_id = dr.assigned_to LEFT JOIN users c ON c.user_id = dr.created_by WHERE dr.request_id = ?', [$id]);
-if ($r === null) { abort(404, 'That request was not found.'); }
+if ($r === null || !request_visible_to_current_user($r)) { abort(404, 'That request was not found.'); }
 $moves = request_allowed_moves((string) $r['status']);
 $iss = db_one('SELECT issuance_id, reference_no FROM issuances WHERE request_id = ?', [$id]);
 $attachments = attachments_for_parent('request', $id);

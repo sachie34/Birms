@@ -73,15 +73,36 @@ function run_b4(array $S, string $base): void
     $clerkRequirements = $completeRequirements($clk, $id1);
     $clerkCannotComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
-    $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
+    $adminQueue = $adm->get('/requests/index.php?tab=my'); $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
     record('B4-8a', 'Only Secretary can start review; Clerk cannot forge requirements completion or approve',
         $a && $clerkBlocked && $b && $clerkCannotComplete && $c && $reviewStepOk);
     record('B4-8c', 'Each role gets a role-labeled work queue containing the right request',
-        str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
+        str_contains($adminQueue['body'], 'Needs Action') && str_contains($adminQueue['body'], (string) $row['reference_no'])
+        && str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
         && str_contains($clkQueue['body'], 'My Requests')
         && str_contains($secQueue['body'], (string) $row['reference_no'])
         && !str_contains($capQueue['body'], (string) $row['reference_no'])
         && str_contains($clkQueue['body'], (string) $row['reference_no']));
+
+    // A Clerk may not discover or change another user's request by swapping an ID or tab.
+    $foreignPurpose = 'ZZ Test foreign-owned request';
+    $foreignCreate = post_as($sec, '/requests/form.php?resident=' . $rita, '/requests/form.php?resident=' . $rita, [
+        'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => $foreignPurpose,
+        'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+    ]);
+    $foreignId = $rid($foreignPurpose);
+    $foreignRef = (string) db_val('SELECT reference_no FROM document_requests WHERE request_id = ?', [$foreignId]);
+    $clerkAll = $clk->get('/requests/index.php?tab=all');
+    $clerkForeignView = $clk->get('/requests/view.php?id=' . $foreignId);
+    $clerkForeignEdit = $clk->get('/requests/form.php?id=' . $foreignId);
+    $clerkForeignCancel = $move($clk, $foreignId, 'Cancelled', 'Not my request');
+    record('B4-8g', 'Clerk list, direct detail, edit and state-change routes are scoped to filed/assigned requests',
+        $foreignCreate['status'] === 302 && $foreignRef !== ''
+        && !str_contains($clerkAll['body'], $foreignRef)
+        && $clerkForeignView['status'] === 404
+        && $clerkForeignEdit['status'] === 404
+        && $clerkForeignCancel['status'] === 404
+        && $status($foreignId) === 'Pending');
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
