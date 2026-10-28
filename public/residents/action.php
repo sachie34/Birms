@@ -7,7 +7,9 @@ require_login();
 $action = post_str('action'); $id = post_int('id');
 if (!in_array($action, ['archive', 'restore', 'set_active', 'set_relocated'], true) || $id === null) { abort(404, 'Unknown action.'); }
 require_csrf();
-require_permission(in_array($action, ['archive', 'restore'], true) ? 'residents.archive' : 'residents.edit');
+if ($action === 'archive') { require_permission('residents.archive'); }
+elseif ($action === 'restore') { require_permission('residents.restore'); }
+else { require_permission('residents.edit'); }
 $r = db_one('SELECT resident_id, last_name, first_name, residency_status, archived_at FROM residents WHERE resident_id = ?', [$id]);
 if ($r === null) { abort(404, 'That resident was not found.'); }
 

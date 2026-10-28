@@ -25,6 +25,26 @@ if ($iss && can('certificates.history')) {
     $actions .= btn_link('certificates/pdf.php?id=' . (int) $iss['issuance_id'], 'Download PDF', 'btn-light border', 'bi-file-earmark-pdf');
 }
 page_head((string) $r['reference_no'], $r['type_name'] . ' for ' . resident_name($r), $actions);
+$currentStatus = (string) $r['status'];
+if (in_array($currentStatus, ['Rejected', 'Cancelled'], true)) {
+    echo '<section class="card-b mb-3" aria-labelledby="request-progress-title"><div class="card-h"><h2 id="request-progress-title">Request progress</h2><p>Current workflow outcome</p></div><div class="card-body-b"><div class="alert alert-danger mb-0" role="status"><strong>Workflow stopped: ' . e($currentStatus) . '.</strong>' . ($r['status_note'] ? ' ' . e((string) $r['status_note']) : '') . '</div></div></section>';
+} else {
+    $stepCurrent = 1; // index of the step currently awaiting action
+    if ($currentStatus === 'Review') { $stepCurrent = $r['requirements_status'] === 'Complete' ? 2 : 1; }
+    elseif ($currentStatus === 'Ready') { $stepCurrent = 3; }
+    elseif ($currentStatus === 'Claimed') { $stepCurrent = 4; } // all steps complete
+    $workflowSteps = ['Request submitted', 'Secretary requirements review', 'Captain/Administrator final decision', 'Certificate issuance'];
+    echo '<section class="card-b mb-3" aria-labelledby="request-progress-title"><div class="card-h"><h2 id="request-progress-title">Request progress</h2><p>Follow each step from submission to certificate issuance.</p></div><div class="card-body-b"><ol class="row g-2 list-unstyled mb-0" aria-label="Request progress">';
+    foreach ($workflowSteps as $stepIndex => $stepLabel) {
+        $isDone = $stepCurrent === 4 || $stepIndex < $stepCurrent;
+        $isCurrent = $stepIndex === $stepCurrent && $stepCurrent < 4;
+        $stepState = $isDone ? 'Complete' : ($isCurrent ? 'Current step' : 'Next');
+        $stepClass = $isDone ? 'border-success' : ($isCurrent ? 'border-primary bg-light' : 'border-secondary');
+        $icon = $isDone ? 'bi-check-circle-fill' : ($isCurrent ? 'bi-arrow-right-circle' : 'bi-circle');
+        echo '<li class="col-12 col-sm-6 col-xl-3"' . ($isCurrent ? ' aria-current="step"' : '') . '><div class="h-100 border rounded p-3 ' . $stepClass . '"><div class="small text-muted">Step ' . ($stepIndex + 1) . ' of 4 · ' . $stepState . '</div><div class="fw-semibold"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . e($stepLabel) . '</div></div></li>';
+    }
+    echo '</ol></div></section>';
+}
 if ($blockers) { echo '<div class="alert alert-warning"><strong>Cannot be issued yet:</strong><ul class="mb-0">'; foreach ($blockers as $bk) { echo '<li>' . e($bk) . '</li>'; } echo '</ul></div>'; }
 // Background check for clearances: possible blotter records under this name. A hint only; it never blocks the request.
 if (can('blotters.view') && stripos((string) $r['type_name'], 'clearance') !== false) {

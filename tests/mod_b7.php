@@ -188,16 +188,16 @@ function run_b7(array $S, string $base): void
         && abs((float) $quoteRow['fee_unit_rate'] - 18.50) < 0.001
         && abs((float) $quoteRow['quoted_fee_amount'] - 55.50) < 0.001);
 
-    $quoteComplete = post_as($clk, '/requests/form.php?id=' . $quoteRequestId, '/requests/form.php?id=' . $quoteRequestId, [
+    $quoteComplete = post_as($sec, '/requests/form.php?id=' . $quoteRequestId, '/requests/form.php?id=' . $quoteRequestId, [
         'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
         'purpose' => $quotePurpose, 'assigned_to' => '',
         'requirements_status' => 'Complete', 'requirements_note' => '',
         'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
     ]);
-    $quoteReview = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
+    $quoteReview = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
     $quoteReady = post_as($cap, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
-    $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
+    $quoteIssue = post_as($sec, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
         'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
     ]);
     $quoteIssuance = db_one('SELECT issuance_id, fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, body_text FROM issuances WHERE request_id = ?', [$quoteRequestId]);

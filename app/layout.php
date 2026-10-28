@@ -68,6 +68,7 @@ function render_header(string $title, array $crumbs = [], string $active = ''): 
       <div class="dropdown user-chip">
         <button class="btn-reset d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" type="button">
           <span class="avatar"><?= e(initials((string) $user['full_name'])) ?></span>
+          <span class="d-inline d-md-none badge rounded-pill text-bg-secondary"><?= e(role_label((string) $user['role'])) ?></span>
           <span class="text-start d-none d-md-block"><span class="uname"><?= e((string) $user['full_name']) ?></span><span class="urole"><?= e(role_label((string) $user['role'])) ?></span></span>
           <i class="bi bi-chevron-down small"></i>
         </button>

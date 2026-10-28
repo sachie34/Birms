@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /** current status => [new status => permission needed]. Ready -> Claimed happens only when a certificate is issued (B5). */
 const REQUEST_TRANSITIONS = [
-    'Pending' => ['Review' => 'requests.edit', 'Rejected' => 'requests.approve', 'Cancelled' => 'requests.edit'],
+    'Pending' => ['Review' => 'requests.review', 'Rejected' => 'requests.approve', 'Cancelled' => 'requests.edit'],
     'Review'  => ['Ready' => 'requests.approve', 'Rejected' => 'requests.approve', 'Cancelled' => 'requests.edit'],
 ];
 const REQUEST_STATUSES = ['Pending', 'Review', 'Ready', 'Claimed', 'Rejected', 'Cancelled'];

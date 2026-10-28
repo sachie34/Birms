@@ -50,7 +50,7 @@ function f_textarea(string $name, string $label, string $value = '', array $o = 
 {
     $req = !empty($o['required']); $id = 'f_' . $name;
     return '<div class="' . e((string) ($o['col'] ?? 'col-12')) . ' mb-3"><label class="form-label' . ($req ? ' req' : '') . '" for="' . e($id) . '">' . e($label) . '</label>'
-         . '<textarea class="form-control" id="' . e($id) . '" name="' . e($name) . '" rows="' . (int) ($o['rows'] ?? 4) . '"' . (isset($o['maxlength']) ? ' maxlength="' . (int) $o['maxlength'] . '"' : '') . ($req ? ' required' : '') . '>' . e($value) . '</textarea>'
+         . '<textarea class="form-control" id="' . e($id) . '" name="' . e($name) . '" rows="' . (int) ($o['rows'] ?? 4) . '"' . (isset($o['maxlength']) ? ' maxlength="' . (int) $o['maxlength'] . '"' : '') . ($req ? ' required' : '') . (!empty($o['disabled']) ? ' disabled' : '') . '>' . e($value) . '</textarea>'
          . (isset($o['help']) ? '<div class="form-text">' . e((string) $o['help']) . '</div>' : '') . '</div>';
 }
 function f_check(string $name, string $label, bool $checked = false, string $col = 'col-12'): string
