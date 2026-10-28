@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
+$canReview = can('requests.review');
 $id = get_int('id'); $ex = null;
 if ($id !== null) {
     require_permission('requests.edit');
@@ -58,6 +59,13 @@ if (is_post() && $resident !== null) {
         // Legacy request-form clients may omit fee quantity. Quantity 1 preserves the prior workflow.
         'fee_quantity' => post_str('fee_quantity') !== '' ? post_str('fee_quantity') : '1',
     ];
+    // Intake staff cannot assign requests or change the requirements decision by crafting a POST.
+    // Preserve existing review fields when editing; new requests always start unchecked.
+    if (!$canReview) {
+        $v['assigned_to'] = $ex !== null ? (string) ($ex['assigned_to'] ?? '') : (string) (audit_actor()['user_id'] ?? '');
+        $v['requirements_status'] = $ex !== null ? (string) ($ex['requirements_status'] ?? 'Not checked') : 'Not checked';
+        $v['requirements_note'] = $ex !== null ? (string) ($ex['requirements_note'] ?? '') : '';
+    }
     if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
     if ($v['assigned_to'] !== '' && !isset($staff[(int) $v['assigned_to']])) { $errors[] = 'Choose a valid staff member or leave it blank.'; }
@@ -223,11 +231,11 @@ if ($resident === null) {
            . ' · ' . (int) ($ex['fee_quantity'] ?? 1) . ' × ' . e(money($ex['fee_unit_rate'] ?? null))
            . '. The quote is saved with the request and does not record a payment.</div></div>';
     }
-    echo f_select('assigned_to', 'Assigned to', $staff, $v['assigned_to'], ['blank' => 'Nobody yet']);
+    echo f_select('assigned_to', 'Assigned to', $staff, $v['assigned_to'], ['blank' => 'Nobody yet', 'disabled' => !$canReview]);
     echo f_select('requirements_status', 'Requirements review', [
         'Not checked' => 'Not checked yet', 'Incomplete' => 'Incomplete — needs follow-up', 'Complete' => 'Complete',
-    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => 'Review supporting information before approving a request as Ready. No specific supporting documents are assumed by the system.']);
-    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => 'Required when marking the requirements as incomplete.']);
+    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => 'Review supporting information before approving a request as Ready. No specific supporting documents are assumed by the system.', 'disabled' => !$canReview]);
+    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => 'Required when marking the requirements as incomplete.', 'disabled' => !$canReview]);
     echo f_textarea('purpose', 'Purpose / request details', $v['purpose'], ['required' => true, 'rows' => 3, 'maxlength' => 255]);
     echo '<div class="col-12 mb-3"><label class="form-label" for="attachment">Supporting document (optional)</label><input class="form-control" id="attachment" name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div class="form-text">PDF, JPG or PNG; maximum 10 MB. Uploads are private and available to authorized staff.</div></div>';
     echo '</div><button class="btn btn-primary" type="submit">' . ($ex ? 'Save changes' : 'File request') . '</button> <a class="btn btn-light border" href="' . e(base_url('requests/index.php')) . '">Cancel</a></form>';
