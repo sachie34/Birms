@@ -68,12 +68,14 @@ function run_b4(array $S, string $base): void
     $clerkReview = $move($clk, $id1, 'Review');
     $clerkBlocked = $clerkReview['status'] === 403 && $status($id1) === 'Pending';
     $x2 = $move($sec, $id1, 'Review'); $b = $status($id1) === 'Review' && db_val('SELECT assigned_to FROM document_requests WHERE request_id = ?', [$id1]) !== null;
+    $reviewDetail = $sec->get('/requests/view.php?id=' . $id1);
+    $reviewStepOk = str_contains($reviewDetail['body'], 'Request progress') && str_contains($reviewDetail['body'], 'Secretary requirements review') && str_contains($reviewDetail['body'], 'aria-current="step"');
     $clerkRequirements = $completeRequirements($clk, $id1);
     $clerkCannotComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
     $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
     record('B4-8a', 'Only Secretary can start review; Clerk cannot forge requirements completion or approve',
-        $a && $clerkBlocked && $b && $clerkCannotComplete && $c);
+        $a && $clerkBlocked && $b && $clerkCannotComplete && $c && $reviewStepOk);
     record('B4-8c', 'Each role gets a role-labeled work queue containing the right request',
         str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
         && str_contains($clkQueue['body'], 'My Requests')
@@ -94,6 +96,8 @@ function run_b4(array $S, string $base): void
         && str_contains($blockedPage['body'], 'requirements review');
     $markedComplete = $completeRequirements($sec, $id1);
     $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
+    $reviewedDetail = $sec->get('/requests/view.php?id=' . $id1);
+    record('B4-8e', 'Progress tracker advances to final decision when Secretary completes requirements', str_contains($reviewedDetail['body'], 'Captain/Administrator final decision') && str_contains($reviewedDetail['body'], 'aria-current="step"'));
     $secQueueAfterReview = $sec->get('/requests/index.php?tab=my');
     $capQueueAfterReview = $cap->get('/requests/index.php?tab=my');
     record('B4-8d', 'Complete requirements removes request from Secretary queue and moves it to final approver queue',
@@ -102,6 +106,8 @@ function run_b4(array $S, string $base): void
     $secretaryTry = $move($sec, $id1, 'Ready');
     $secretaryDenied = $secretaryTry['status'] === 403 && $status($id1) === 'Review';
     $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
+    $readyDetail = $cap->get('/requests/view.php?id=' . $id1);
+    record('B4-8f', 'Approved request shows certificate issuance as the current next step', str_contains($readyDetail['body'], 'Certificate issuance') && str_contains($readyDetail['body'], 'aria-current="step"'));
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
     record('B4-8b', 'Incomplete requirements block approval; Secretary is denied final approval; Captain can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
