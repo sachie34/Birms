@@ -73,11 +73,12 @@ function run_b4(array $S, string $base): void
     $clerkRequirements = $completeRequirements($clk, $id1);
     $clerkCannotComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
-    $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
+    $adminQueue = $adm->get('/requests/index.php?tab=my'); $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
     record('B4-8a', 'Only Secretary can start review; Clerk cannot forge requirements completion or approve',
         $a && $clerkBlocked && $b && $clerkCannotComplete && $c && $reviewStepOk);
     record('B4-8c', 'Each role gets a role-labeled work queue containing the right request',
-        str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
+        str_contains($adminQueue['body'], 'Needs Action') && str_contains($adminQueue['body'], (string) $row['reference_no'])
+        && str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
         && str_contains($clkQueue['body'], 'My Requests')
         && str_contains($secQueue['body'], (string) $row['reference_no'])
         && !str_contains($capQueue['body'], (string) $row['reference_no'])
