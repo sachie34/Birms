@@ -6,10 +6,14 @@ This guide follows the current repository code. Dashboard shortcuts are filtered
 
 1. **Find the resident first.** Open **Residents** and search by name or household code. Check the profile before creating another record. If the resident is missing, an authorized user can register the profile and assign its household/Purok.
 2. **Create the request.** Open **Request Tracker → New request**, choose an existing active resident and document type, enter the purpose, and save. A visitor entry is optional; after saving a visitor log, use **Start a document request** to continue.
-3. **Review requirements.** Open the request and check the barangay-approved checklist. Add follow-up notes and permitted attachments as needed. Mark requirements **Complete** only when they have actually been checked. An incomplete request cannot move to Ready for Pickup or be issued.
-4. **Approve or reject.** In the current code permission map, only **Administrator** and **Barangay Captain** can do final approval/rejection. Secretary/Clerk users can intake and edit requests but cannot approve. Approval moves a request directly to **Ready for Pickup**; there is no separate saved **Approved** status.
-5. **Issue and print.** An authorized issuer opens **Certificate Generation**, selects a ready request, checks the resident, approved template/fee/signatory details, and enters the O.R. number when a fee is charged. Issuing saves the certificate, creates issuance history and changes the request's stored status to `Claimed`, displayed to users as **Issued**. PDF output remains draft until official wording/layout and signatory rules are approved.
+3. **Review requirements.** The Secretary (or Administrator) opens **Request Tracker → Needs Review**, checks the barangay-approved checklist, and records missing items. Clerks can submit requests and see their status, but cannot change the requirements decision or assignment. Mark requirements **Complete** only after checking the documents; an incomplete request cannot move to Ready for Pickup or be issued.
+4. **Make the final decision.** The **Barangay Captain** or **Administrator** opens **Request Tracker → Pending Final Approval**. Only requests with requirements marked **Complete** appear in that queue. They can approve the request for Ready for Pickup or reject it with a reason. There is no separate saved **Approved** status.
+5. **Issue and print.** The **Secretary** or **Administrator** opens **Certificate Generation**, selects a ready request, checks the resident, approved template/fee/signatory details, and enters the O.R. number when a fee is charged. Issuing saves the certificate, creates issuance history and changes the request's stored status to `Claimed`, displayed to users as **Issued**. The **Clerk can print or download an already-issued certificate but cannot issue it**. PDF output remains draft until official wording/layout and signatory rules are approved.
 6. **Find the result later.** Use **Issuance History** to search by resident name, reference number or O.R. number. Use the audit trail, when permitted, to review recorded actions.
+
+## Role-specific request queues and progress
+
+All roles use the same **Request Tracker**, with a queue shortcut matched to their work: Clerk — **My Requests**; Secretary — **Needs Review**; Captain/Administrator — **Pending Final Approval**. Each request detail page shows a four-step progress tracker. Status is shown with text and icons, not color alone. The queue badge counts are based on role-relevant requests, not just all requests in a status.
 
 ## Other common tasks
 
@@ -38,10 +42,10 @@ Before using official records, the system owner must confirm the barangay detail
 
 | Role | Typical functions available in the current code |
 |---|---|
-| Administrator | All currently defined permissions, including accounts, settings, approvals, issuance, reports, audit and backup. |
-| Barangay Captain | View residents/requests, approve/reject requests, view issuance history, review/edit blotter/hearing items where permitted, view reports and audit. |
-| Barangay Secretary | Register/edit residents, intake/edit requests, issue eligible ready certificates, manage current settings, work on blotter/hearing records and reports. No final request-approval permission in this map. |
-| Barangay Staff / Clerk | Register/edit residents, intake/edit requests, issue eligible ready certificates, file blotter cases and view hearings. Other menus are hidden when permission is absent. |
+| Administrator | All defined permissions, including account/role management, operational settings, request review and final decisions, certificate issuance/printing, resident restoration, cash-ledger management, reports, audit and backup. |
+| Barangay Captain | View residents/requests and issuance history, make final request decisions, view the cash ledger without changing it, review/edit permitted blotter/hearing items, and view reports/audit. Cannot issue certificates or manage the ledger. |
+| Barangay Secretary | Register/edit residents, soft-archive (but not restore) residents, intake requests, review requirements, issue eligible ready certificates, edit operational settings, work on blotter/hearing records and reports. Cannot make the final request decision or manage user accounts. |
+| Barangay Staff / Clerk | Register/edit residents, submit/edit requests, see My Requests, and print/download already-issued certificates. Cannot change requirements decisions, start formal review, approve/reject requests, issue certificates, restore residents, or manage settings/accounts. |
 
 This table describes the current code, not an approved barangay policy. Confirm the access matrix against the final paper with the system owner.
 
