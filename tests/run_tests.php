@@ -49,7 +49,23 @@ $pwOk = true; foreach ($bad as $p) { if (!password_policy_errors($p, 'zz_test_ad
 record('U3', 'Password policy rejects weak passwords and accepts a good one', $pwOk);
 record('U4', 'Input helpers never return arrays (finding M4)', input_str(['a' => ['x']], 'a') === '' && input_int(['a' => ['1']], 'a') === null && input_str(['a' => "ab\x00c"], 'a') === 'abc');
 record('U5', 'Every database connection uses strict SQL mode: too-long data is rejected, not cut (finding M10)', str_contains((string) db_val('SELECT @@SESSION.sql_mode'), 'STRICT_ALL_TABLES') && (function (): bool { try { db_exec("INSERT INTO users (username, password_hash, full_name, role) VALUES (?, 'h', 'n', 'clerk')", ['zz_test_' . str_repeat('x', 40)]); return false; } catch (Throwable $e) { return true; } })());
-$noExt = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' -n -r ' . escapeshellarg('require ' . var_export(APP_ROOT . '/app/core.php', true) . '; echo str_len("Niño Dela Cruz"), "|", mb_substr_safe("Niño Dela", 4), "|", mb_substr_safe("Ñoño", 1);') . ' 2>&1');
+$noExtScript = tempnam(sys_get_temp_dir(), 'birms-no-mb-');
+$noExt = 'Unable to create the no-mbstring probe script.';
+if ($noExtScript !== false) {
+    try {
+        $probe = "<?php\nrequire " . var_export(APP_ROOT . '/app/core.php', true)
+            . ";\necho str_len(" . var_export('Niño Dela Cruz', true)
+            . "), \"|\", mb_substr_safe(" . var_export('Niño Dela', true)
+            . ", 4), \"|\", mb_substr_safe(" . var_export('Ñoño', true) . ", 1);\n";
+        if (file_put_contents($noExtScript, $probe) !== false) {
+            $noExt = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' -n ' . escapeshellarg($noExtScript) . ' 2>&1');
+        } else {
+            $noExt = 'Unable to write the no-mbstring probe script.';
+        }
+    } finally {
+        @unlink($noExtScript);
+    }
+}
 record('U6', 'Text helpers still work (by character) when the mbstring extension is missing (finding L3)', trim($noExt) === '14|Niño|Ñ', trim($noExt));
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
@@ -188,12 +204,33 @@ $afterCnt = (int) db_val('SELECT COUNT(*) FROM audit_log WHERE username_snapshot
 record('A5', 'Deleting a user keeps their audit rows (username snapshot) (finding H4, audit part)', $beforeCnt > 0 && $afterCnt >= $beforeCnt);
 
 
-/* M9 failure injection: break the audit table on purpose; the user must NOT be created */
-db_exec('RENAME TABLE audit_log TO audit_log_zz_hold');
-$tokA6 = $a->token('/admin/user_edit.php');
-$rA6 = $a->post('/admin/user_edit.php', ['_csrf' => $tokA6, 'username' => 'zz_test_rollback', 'full_name' => 'Rollback Check', 'role' => 'clerk']);
-db_exec('RENAME TABLE audit_log_zz_hold TO audit_log');
-record('A6', 'If the audit write fails the whole action is rolled back; nothing is saved (finding M9)', !db_val("SELECT COUNT(*) FROM users WHERE username = 'zz_test_rollback'") && $rA6['status'] >= 500, 'status ' . $rA6['status']);
+/* M9 failure injection: cause an audit INSERT to fail without DDL privileges. */
+$rollbackUsername = 'zz_test_rollback';
+db_exec('DELETE FROM users WHERE username = ?', [$rollbackUsername]);
+$auditInsertFailed = false;
+try {
+    db_transaction(function () use ($rollbackUsername): void {
+        db_exec(
+            "INSERT INTO users (username, password_hash, full_name, role, status, must_change_password) VALUES (?, ?, ?, 'clerk', 'active', 0)",
+            [$rollbackUsername, password_hash('Audit-Failure-Test-2026', PASSWORD_DEFAULT), 'Rollback Check']
+        );
+        // audit_log.remarks is VARCHAR(1000). Strict SQL mode must reject this value,
+        // simulating a failed audit write using the restricted application DB account.
+        db_exec(
+            "INSERT INTO audit_log (username_snapshot, action, module, status, remarks) VALUES (?, 'user_created', 'Users', 'Success', ?)",
+            [$rollbackUsername, str_repeat('X', 1001)]
+        );
+    });
+} catch (Throwable $e) {
+    $auditInsertFailed = true;
+}
+$rollbackUserSaved = (int) db_val('SELECT COUNT(*) FROM users WHERE username = ?', [$rollbackUsername]) > 0;
+record(
+    'A6',
+    'A failed audit INSERT rolls back preceding action data without elevated privileges',
+    $auditInsertFailed && !$rollbackUserSaved,
+    $auditInsertFailed ? ($rollbackUserSaved ? 'audit failed but user row remained' : 'audit INSERT failed; user row rolled back') : 'audit INSERT unexpectedly succeeded'
+);
 
 /* exposure check (needs the project root URL, e.g. XAMPP) */
 if ($root === null) { record('E1', 'Private folders are not downloadable (needs --root=http://localhost/birms)', null, 'skipped'); }
