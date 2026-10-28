@@ -15,7 +15,8 @@ $counts = ['all' => 0]; foreach (db_all('SELECT status, COUNT(*) AS n FROM docum
 }
 $myParams = [];
 if (in_array($me['role'], ['admin', 'captain'], true)) {
-    $myCondition = "dr.status = 'Review'";
+    // Final approvers see only reviewed requests with requirements marked Complete.
+    $myCondition = "dr.status = 'Review' AND dr.requirements_status = 'Complete'";
 } elseif ($me['role'] === 'secretary') {
     $myCondition = "(dr.status = 'Pending' OR (dr.status = 'Review' AND dr.requirements_status <> 'Complete'))";
 } else {
