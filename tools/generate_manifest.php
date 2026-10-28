@@ -28,6 +28,7 @@ $excludedExact = [
     'Api',
     'app/config.local.php',
     'app/infobip.local.php',
+    'app/smsapiph.local.php',
 ];
 $excludedPrefixes = [
     '.git/',

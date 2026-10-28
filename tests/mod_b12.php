@@ -1,5 +1,5 @@
 <?php
-/** B12 checks for the opt-in Semaphore provider using a mock transport only. */
+/** B12 checks for optional SMS providers using mock transports only. */
 declare(strict_types=1);
 require_once __DIR__ . '/../app/sms_provider.php';
 
@@ -26,6 +26,7 @@ function run_b12(array $S, string $base): void
 {
     b12_clean_outbox();
     $testConfig = [
+        'provider' => 'semaphore',
         'enabled' => true,
         'api_key' => 'BIRMS-FAKE-TEST-KEY-NOT-A-REAL-SECRET',
         'sendername' => 'BIRMSMock',
@@ -204,6 +205,64 @@ function run_b12(array $S, string $base): void
         && ($infobipRefreshCalls[0]['params']['messageId'] ?? '') === 'infobip-b12-queued-789'
         && (int) db_val('SELECT attempt_count FROM sms_outbox WHERE sms_id = ?', [$infobipId]) === 1
         && db_val('SELECT provider_status FROM sms_outbox WHERE sms_id = ?', [$infobipId]) === 'sent');
+
+    // SMS API PH adapter: mocked only; no real endpoint call or API credits are used.
+    $smsapiphConfig = [
+        'provider' => 'smsapiph',
+        'enabled' => true,
+        'api_key' => 'BIRMS-FAKE-SMSAPIPH-KEY-NOT-A-REAL-SECRET',
+        'connect_timeout' => 1,
+        'timeout' => 3,
+    ];
+    $smsapiphId = b12_make_outbox('smsapiph-success', '09171230001');
+    $smsapiphCalls = [];
+    $smsapiphTransport = static function (string $method, string $url, array $request) use (&$smsapiphCalls): array {
+        $smsapiphCalls[] = ['method' => $method, 'url' => $url, 'request' => $request];
+        return b12_mock_response(200, [
+            'success' => true,
+            'data' => ['batch_id' => 'smsapiph-b12-123'],
+            'error' => null,
+        ]);
+    };
+    $smsapiphSent = sms_send_outbox($smsapiphId, false, $smsapiphTransport, $smsapiphConfig);
+    $smsapiphSaved = db_one('SELECT provider_name, provider_status, provider_message_id, attempt_count, provider_error FROM sms_outbox WHERE sms_id = ?', [$smsapiphId]);
+    record('B12-11', 'Mocked SMS API PH send uses x-api-key + JSON, normalizes a PH number, and stores only safe metadata',
+        $smsapiphSent['status'] === 'queued'
+        && count($smsapiphCalls) === 1
+        && $smsapiphCalls[0]['method'] === 'POST'
+        && $smsapiphCalls[0]['url'] === SMSAPIPH_SEND_URL
+        && (($smsapiphCalls[0]['request']['headers']['x-api-key'] ?? '') === $smsapiphConfig['api_key'])
+        && (($smsapiphCalls[0]['request']['headers']['Content-Type'] ?? '') === 'application/json')
+        && (($smsapiphCalls[0]['request']['payload']['recipient'] ?? '') === '+639171230001')
+        && (($smsapiphCalls[0]['request']['payload']['message'] ?? '') !== '')
+        && ($smsapiphSaved['provider_name'] ?? '') === 'SMS API PH'
+        && ($smsapiphSaved['provider_status'] ?? '') === 'queued'
+        && ($smsapiphSaved['provider_message_id'] ?? '') === 'smsapiph-b12-123'
+        && (int) ($smsapiphSaved['attempt_count'] ?? -1) === 1
+        && !str_contains((string) ($smsapiphSaved['provider_error'] ?? ''), $smsapiphConfig['api_key']),
+        'status=' . ($smsapiphSaved['provider_status'] ?? 'missing') . '; calls=' . count($smsapiphCalls));
+
+    $unknownApiId = b12_make_outbox('smsapiph-unknown-response', '09171230002');
+    $unknownApiCalls = 0;
+    $unknownApiTransport = static function () use (&$unknownApiCalls): array {
+        $unknownApiCalls++;
+        return b12_mock_response(200, ['message' => 'response shape not documented']);
+    };
+    $unknownApi = sms_send_outbox($unknownApiId, false, $unknownApiTransport, $smsapiphConfig);
+    $unknownApiRetry = sms_send_outbox($unknownApiId, true, $unknownApiTransport, $smsapiphConfig);
+    record('B12-12', 'An unrecognized HTTP 2xx response is Unknown and cannot be blindly retried',
+        $unknownApi['status'] === 'unknown'
+        && $unknownApiRetry['status'] === 'unknown'
+        && $unknownApiCalls === 1
+        && db_val('SELECT provider_status FROM sms_outbox WHERE sms_id = ?', [$unknownApiId]) === 'unknown');
+
+    $refreshCallsBefore = count($smsapiphCalls);
+    $unsupportedRefresh = sms_refresh_outbox_status($smsapiphId, $smsapiphTransport, $smsapiphConfig);
+    record('B12-13', 'SMS API PH status refresh stays unavailable without a documented status endpoint',
+        !$unsupportedRefresh['ok']
+        && str_contains(strtolower($unsupportedRefresh['message']), 'does not document')
+        && count($smsapiphCalls) === $refreshCallsBefore
+        && db_val('SELECT provider_status FROM sms_outbox WHERE sms_id = ?', [$smsapiphId]) === 'queued');
 
     b12_clean_outbox();
 }

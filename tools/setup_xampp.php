@@ -82,6 +82,8 @@ function setup_check(): int
         '/app/core.php',
         '/app/sms_provider.php',
         '/app/infobip_sms_provider.php',
+        '/app/smsapiph_sms_provider.php',
+        '/tools/test_smsapiph_sms.php',
         '/app/config.local.php.example',
         '/tools/check_php_includes.php',
         '/tools/test_infobip_sms.php',

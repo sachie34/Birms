@@ -45,6 +45,12 @@ All role restrictions must remain enforced server-side; hiding buttons alone is 
 
 **Attachment-access hardening (verified):** The request list, detail, edit, status-change routes, and private request-attachment download endpoint enforce Clerk ownership/assignment. Visitor-log attachments retain the shared-office access model for authorized staff. Regression test `B8-4a` in `tests/mod_b8.php` verifies that the filing Clerk can download a request attachment while a different Clerk receives 404. This change passed the PR #20 workflow run and was squash-merged into `main` as commit `f7a333f3fe604b9e15bf48bfe32f662c1984e797`.
 
+## Supporting integration readiness: SMS notifications
+
+The readiness candidate includes the optional SMS API PH adapter in `app/smsapiph_sms_provider.php`, provider routing in `app/sms_provider.php`, and the operator page in `public/admin/sms.php`. `tests/mod_b12.php` includes mocked checks B12-11 through B12-13 for the HTTPS endpoint/request shape, Philippine number normalization, safe metadata, an unrecognized response, duplicate-send protection, and the lack of a documented status-refresh endpoint.
+
+The provider remains disabled by default. Live notifications require a private API key, an authorized test number, and a controlled real-provider test. The supplied quick-start lacks an exact response schema and status-lookup endpoint; unrecognized responses must remain **Unknown**, not be described as delivered, and not be blindly retried. The CLI test `tools/test_smsapiph_sms.php` sends only after the operator explicitly types `SEND`.
+
 ## Automated verification evidence
 
 The successful GitHub Actions runs for the role-workflow PR and dashboard quick-workflow PR each completed:
@@ -59,6 +65,8 @@ The successful GitHub Actions runs for the role-workflow PR and dashboard quick-
 After both PRs were merged into `main`, the combined source was tested together on [GitHub Actions run #477](https://github.com/sachie34/Birms/actions/runs/40642029005) from verification PR #18, based on the updated `main` snapshot. That combined run passed PHP syntax/include/setup checks, disposable MariaDB migrations, **37/37 authentication/security/audit checks** and **179/179 module integration checks** (216 total; zero failures and zero untested checks). PR #16 and PR #17 also had their own successful CI runs.
 
 The most recent security/workflow verification was run on PR #21's tested head commit in [GitHub Actions run #491](https://github.com/sachie34/Birms/actions/runs/40645784329) on 2026-10-28. It passed PHP syntax/include/setup checks, disposable MariaDB migrations, **37/37 authentication/security/audit checks** and **181/181 module integration checks** (**218 total; zero failures and zero untested checks**). Coverage includes `B8-4a` (a different Clerk cannot download another Clerk's private request attachment) and `B4-11` (final rejection is blocked before requirements are complete; rejection reasons are required; rejected requests cannot be reopened). The tested code was squash-merged into `main` as commit `c6f728431af4602e450ae9131afc6b6fcf326978`.
+
+The combined readiness candidate was tested on [GitHub Actions run #40656039601](https://github.com/sachie34/Birms/actions/runs/40656039601), commit `eb41f90ce88e3363e0f98f6fa2579a7cc142fdd4`, on 2026-10-28. It passed PHP syntax validation, repository-wide include checks, the XAMPP setup preflight, manifest generation, migrations 001–012 on disposable MariaDB, **37/37 authentication/security/audit checks** and **184/184 module checks** (**221 total, zero failures and zero untested checks**). This candidate includes the Windows-safe U6 probe, transaction rollback test A6, XAMPP nested-path coverage B10-04 and B10-08, and mocked SMS API PH checks B12-11–B12-13.
 
 These remote tests do not verify the target office PC's browser, upload permissions, PDF reader or physical printer. No live SMS send or real WebDAV upload/restore is claimed. The combined CI passes are not a substitute for target-PC UAT or official policy/template approval.
 

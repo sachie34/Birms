@@ -1,0 +1,8 @@
+<?php
+/**
+ * Copy to app/smsapiph.local.php and add your SMS API PH key locally.
+ * Never commit or share app/smsapiph.local.php.
+ */
+return [
+    'api_key' => '', // Paste the sk-... key from your SMS API PH dashboard here, locally only.
+];
