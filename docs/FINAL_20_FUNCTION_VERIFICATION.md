@@ -45,6 +45,12 @@ All role restrictions must remain enforced server-side; hiding buttons alone is 
 
 **Attachment-access hardening (verified):** The request list, detail, edit, status-change routes, and private request-attachment download endpoint enforce Clerk ownership/assignment. Visitor-log attachments retain the shared-office access model for authorized staff. Regression test `B8-4a` in `tests/mod_b8.php` verifies that the filing Clerk can download a request attachment while a different Clerk receives 404. This change passed the PR #20 workflow run and was squash-merged into `main` as commit `f7a333f3fe604b9e15bf48bfe32f662c1984e797`.
 
+## Supporting integration readiness: SMS notifications
+
+The readiness candidate includes the optional SMS API PH adapter in `app/smsapiph_sms_provider.php`, provider routing in `app/sms_provider.php`, and the operator page in `public/admin/sms.php`. `tests/mod_b12.php` includes mocked checks B12-11 through B12-13 for the HTTPS endpoint/request shape, Philippine number normalization, safe metadata, an unrecognized response, duplicate-send protection, and the lack of a documented status-refresh endpoint.
+
+The provider remains disabled by default. Live notifications require a private API key, an authorized test number, and a controlled real-provider test. The supplied quick-start lacks an exact response schema and status-lookup endpoint; unrecognized responses must remain **Unknown**, not be described as delivered, and not be blindly retried. The CLI test `tools/test_smsapiph_sms.php` sends only after the operator explicitly types `SEND`.
+
 ## Automated verification evidence
 
 The successful GitHub Actions runs for the role-workflow PR and dashboard quick-workflow PR each completed:
