@@ -10,7 +10,7 @@ $r = $id === null ? null : db_one('SELECT dr.*, r.last_name, r.first_name, r.mid
     FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id
     LEFT JOIN users u ON u.user_id = dr.assigned_to LEFT JOIN users c ON c.user_id = dr.created_by WHERE dr.request_id = ?', [$id]);
 if ($r === null || !request_visible_to_current_user($r)) { abort(404, 'That request was not found.'); }
-$moves = request_allowed_moves((string) $r['status']);
+$moves = request_allowed_moves((string) $r['status'], (string) ($r['requirements_status'] ?? ''));
 $iss = db_one('SELECT issuance_id, reference_no FROM issuances WHERE request_id = ?', [$id]);
 $attachments = attachments_for_parent('request', $id);
 $blockers = [];
@@ -25,6 +25,11 @@ if ($iss && can('certificates.history')) {
     $actions .= btn_link('certificates/pdf.php?id=' . (int) $iss['issuance_id'], 'Download PDF', 'btn-light border', 'bi-file-earmark-pdf');
 }
 page_head((string) $r['reference_no'], $r['type_name'] . ' for ' . resident_name($r), $actions);
+if (in_array($r['status'], ['Pending', 'Review'], true)
+    && ($r['requirements_status'] ?? '') !== 'Complete'
+    && can('requests.approve')) {
+    echo '<div class="alert alert-info" role="status">Final approval or rejection is unavailable until the Secretary or Administrator completes the requirements review.</div>';
+}
 $currentStatus = (string) $r['status'];
 if (in_array($currentStatus, ['Rejected', 'Cancelled'], true)) {
     echo '<section class="card-b mb-3" aria-labelledby="request-progress-title"><div class="card-h"><h2 id="request-progress-title">Request progress</h2><p>Current workflow outcome</p></div><div class="card-body-b"><div class="alert alert-danger mb-0" role="status"><strong>Workflow stopped: ' . e($currentStatus) . '.</strong>' . ($r['status_note'] ? ' ' . e((string) $r['status_note']) : '') . '</div></div></section>';
