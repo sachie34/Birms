@@ -19,7 +19,7 @@ Help each user answer three questions quickly: **What can I do in this role? Wha
 5. Use empty states that explain there is no work in the selected view and provide a route to other requests/history.
 6. Use explicit action labels and keep status names consistent across tabs, trackers, notifications and documents.
 7. Keep status text and icons alongside color, preserve keyboard focus/navigation, and use accessible labels.
-8. Hide actions the signed-in role cannot perform. Enforce every permission again on the server; UI visibility is not a security control.
+8. Hide actions the signed-in role cannot perform. Enforce every permission again on the server; UI visibility is not a security control. Scope Clerk request lists, detail pages, edits, and status-change POSTs to requests they filed or that are assigned to them.
 9. Keep the existing role-aware dashboard shortcuts and quick user workflow guide as the main onboarding entry point.
 
 ### Phase 2 — After browser/UAT confirms Phase 1
