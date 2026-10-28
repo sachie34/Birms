@@ -87,7 +87,7 @@ The current stored statuses are `Pending`, `Review`, `Ready`, `Claimed`, `Reject
 - [ ] Confirm each role sees the correct queue label, next-step guidance and count.
 - [ ] Confirm the Captain's queue excludes requests whose requirements are not complete.
 - [ ] Confirm the Administrator's queue includes both review-stage work and eligible final-decision work.
-- [ ] Confirm Clerk cannot modify review fields or approve/issue by direct URL or forged POST.
+- [ ] Confirm Clerk cannot open/edit/cancel another person's request by direct URL or forged POST, cannot modify review fields, and cannot approve/issue.
 - [ ] Confirm elapsed-time wording matches the original submission timestamp.
 - [ ] Test empty states, search, pagination, mobile layout, keyboard navigation, PDF/print and access-denied behavior.
 - [ ] Obtain approval of the candidate permission matrix and official templates before production use.
