@@ -1,6 +1,8 @@
 # BIRMS Master Checklist
 
-Barangay Wawa, Balagtas, Bulacan. Updated 17 Oct 2026. Working copy, batches B1 to B6.
+Barangay Wawa, Balagtas, Bulacan. Original baseline: 17 Oct 2026.
+
+> **Historical checklist — superseded for current status.** This file preserves the earlier B1–B6 snapshot and test counts. Do not treat its older B7/B8/B9 “NOT STARTED” rows or old test totals as the present state. The current source has report/dashboard and SQL export/optional WebDAV configuration flows with automated coverage; the latest combined CI run passed 37/37 authentication/security/audit checks and 184/184 module checks (221 total). See [the current 20-function verification checklist](FINAL_20_FUNCTION_VERIFICATION.md) and [paper-to-code alignment](PAPER_CODE_ALIGNMENT.md) for current status. Local XAMPP/browser/PDF/printer checks, approval of official templates/fees/role policy, live SMS confirmation and live cloud upload/restore remain separate acceptance tasks.
 **Rule:** nothing is "verified" until its test passes on the owner's XAMPP. "Sandbox" below means my test environment
 (PHP 8.3.6, MariaDB 10.11, PHP built-in server), which is **not** the owner's XAMPP.
 
