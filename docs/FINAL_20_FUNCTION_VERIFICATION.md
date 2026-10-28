@@ -43,7 +43,7 @@
 
 All role restrictions must remain enforced server-side; hiding buttons alone is not a security control.
 
-**Attachment-access hardening:** The request list, detail, edit, and status-change routes enforce Clerk ownership/assignment. The private attachment download endpoint now applies that same ownership check to request attachments while retaining the shared-office access model for visitor-log attachments. Regression coverage is added as `B8-4a` in `tests/mod_b8.php`; treat this change as verified only after its CI run passes.
+**Attachment-access hardening (verified):** The request list, detail, edit, status-change routes, and private request-attachment download endpoint enforce Clerk ownership/assignment. Visitor-log attachments retain the shared-office access model for authorized staff. Regression test `B8-4a` in `tests/mod_b8.php` verifies that the filing Clerk can download a request attachment while a different Clerk receives 404. This change passed the PR #20 workflow run and was squash-merged into `main` as commit `f7a333f3fe604b9e15bf48bfe32f662c1984e797`.
 
 ## Automated verification evidence
 
@@ -58,7 +58,7 @@ The successful GitHub Actions runs for the role-workflow PR and dashboard quick-
 
 After both PRs were merged into `main`, the combined source was tested together on [GitHub Actions run #477](https://github.com/sachie34/Birms/actions/runs/40642029005) from verification PR #18, based on the updated `main` snapshot. That combined run passed PHP syntax/include/setup checks, disposable MariaDB migrations, **37/37 authentication/security/audit checks** and **179/179 module integration checks** (216 total; zero failures and zero untested checks). PR #16 and PR #17 also had their own successful CI runs.
 
-The most recent workflow verification for the code merged by PR #19 was run on its PR-head commit in [GitHub Actions run #488](https://github.com/sachie34/Birms/actions/runs/40644611339) on 2026-10-28. It passed **37/37 authentication/security/audit checks** and **180/180 module integration checks** (217 total; zero failures and zero untested checks). The additional module test covers Clerk attempts to view, edit, or cancel another user's request through changed URLs or POST requests. The tested PR was squash-merged into `main` as commit `a04c4f6ed6a0571d2d702be468c1e44742f88851`.
+The most recent security-hardening verification was run on PR #20's tested head commit in [GitHub Actions run #489](https://github.com/sachie34/Birms/actions/runs/40645341504) on 2026-10-28. It passed PHP syntax/include/setup checks, disposable MariaDB migrations, **37/37 authentication/security/audit checks** and **181/181 module integration checks** (**218 total; zero failures and zero untested checks**). The added `B8-4a` test verifies that a different Clerk cannot download another Clerk's private request attachment, while the filing Clerk can. The tested code was squash-merged into `main` as commit `f7a333f3fe604b9e15bf48bfe32f662c1984e797`.
 
 These remote tests do not verify the target office PC's browser, upload permissions, PDF reader or physical printer. No live SMS send or real WebDAV upload/restore is claimed. The combined CI passes are not a substitute for target-PC UAT or official policy/template approval.
 
