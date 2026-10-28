@@ -43,6 +43,8 @@
 
 All role restrictions must remain enforced server-side; hiding buttons alone is not a security control.
 
+**Open security follow-up:** The request list, detail, edit, and status-change routes now enforce Clerk ownership/assignment. The private attachment download endpoint (`public/files/download.php`) still uses the broad `requests.view` permission and has not yet adopted the same row-level ownership check. Before claiming request attachments are isolated by Clerk ownership or using real private attachments, add and test the corresponding download check.
+
 ## Automated verification evidence
 
 The successful GitHub Actions runs for the role-workflow PR and dashboard quick-workflow PR each completed:
