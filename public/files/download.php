@@ -6,8 +6,17 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('requests.view');
 $id = get_int('id');
-$att = $id === null ? null : db_one('SELECT attachment_id, original_name, storage_path, mime_type, byte_size, sha256 FROM document_attachments WHERE attachment_id = ?', [$id]);
+$att = $id === null ? null : db_one('SELECT attachment_id, request_id, original_name, storage_path, mime_type, byte_size, sha256 FROM document_attachments WHERE attachment_id = ?', [$id]);
 if ($att === null) { abort(404, 'That attachment was not found.'); }
+
+// Request attachments follow the same row-level visibility rule as their parent request.
+// Visitor-log attachments remain available to authorized staff on the shared office logbook.
+if ($att['request_id'] !== null) {
+    $parent = db_one('SELECT created_by, assigned_to FROM document_requests WHERE request_id = ?', [(int) $att['request_id']]);
+    if ($parent === null || !request_visible_to_current_user($parent)) {
+        abort(404, 'That attachment was not found.');
+    }
+}
 $privateRoot = realpath(APP_ROOT . '/storage/private_uploads');
 $path = realpath(APP_ROOT . '/' . ltrim((string) $att['storage_path'], '/\\'));
 if ($privateRoot === false || $path === false || !str_starts_with($path, $privateRoot . DIRECTORY_SEPARATOR) || !is_file($path)) {

@@ -43,7 +43,7 @@
 
 All role restrictions must remain enforced server-side; hiding buttons alone is not a security control.
 
-**Open security follow-up:** The request list, detail, edit, and status-change routes now enforce Clerk ownership/assignment. The private attachment download endpoint (`public/files/download.php`) still uses the broad `requests.view` permission and has not yet adopted the same row-level ownership check. Before claiming request attachments are isolated by Clerk ownership or using real private attachments, add and test the corresponding download check.
+**Attachment-access hardening:** The request list, detail, edit, and status-change routes enforce Clerk ownership/assignment. The private attachment download endpoint now applies that same ownership check to request attachments while retaining the shared-office access model for visitor-log attachments. Regression coverage is added as `B8-4a` in `tests/mod_b8.php`; treat this change as verified only after its CI run passes.
 
 ## Automated verification evidence
 

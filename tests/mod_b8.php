@@ -26,6 +26,8 @@ function run_b8(array $S, string $base): void
         db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST-B8%'");
         db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ-B8%'");
         db_exec("DELETE FROM lookups WHERE label = 'ZZ-B8 Purok'");
+        db_exec("DELETE FROM login_failures WHERE username = 'zz_test_clerk_stranger'");
+        db_exec("DELETE FROM users WHERE username = 'zz_test_clerk_stranger'");
     };
 
     try {
@@ -92,6 +94,30 @@ function run_b8(array $S, string $base): void
         record('B8-4', 'Document request form uploads supporting documents and shows them in request details',
             $requestForm['status'] === 302 && $requestId !== null && $requestAttachment !== null
             && $requestView['status'] === 200 && str_contains($requestView['body'], 'ZZ-B8 request-form.pdf'));
+
+        // A different Clerk must not gain access to a private request attachment by guessing its id.
+        db_exec("DELETE FROM login_failures WHERE username = 'zz_test_clerk_stranger'");
+        db_exec("DELETE FROM users WHERE username = 'zz_test_clerk_stranger'");
+        db_exec("INSERT INTO users (username, password_hash, full_name, role, status, must_change_password)
+                 VALUES (?, ?, ?, 'clerk', 'active', 0)",
+            ['zz_test_clerk_stranger', password_hash(TP, PASSWORD_DEFAULT), 'Other Test Clerk']);
+        $otherClerk = new Http($base);
+        $otherLogin = $otherClerk->login('zz_test_clerk_stranger', TP);
+        $ownerDownload = $requestAttachment
+            ? $clk->get('/files/download.php?id=' . (int) $requestAttachment['attachment_id'])
+            : ['status' => 0, 'headers' => [], 'body' => ''];
+        $strangerDownload = $requestAttachment
+            ? $otherClerk->get('/files/download.php?id=' . (int) $requestAttachment['attachment_id'])
+            : ['status' => 0, 'headers' => [], 'body' => ''];
+        $strangerView = $requestId
+            ? $otherClerk->get('/requests/view.php?id=' . $requestId)
+            : ['status' => 0, 'body' => ''];
+        record('B8-4a', 'Request attachment downloads are limited to the filing/assigned Clerk; shared visitor attachments remain accessible to authorized staff',
+            $otherLogin['status'] === 302
+            && $ownerDownload['status'] === 200 && str_starts_with($ownerDownload['body'], '%PDF-')
+            && $strangerDownload['status'] === 404
+            && $strangerView['status'] === 404
+            && $download['status'] === 200);
 
         $freePost = ['status' => 0, 'location' => null];
         $freeIssuanceId = null;
