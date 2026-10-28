@@ -54,7 +54,9 @@ The successful GitHub Actions runs for the role-workflow PR and dashboard quick-
 - **179/179 module integration checks**;
 - zero failures and zero untested checks in each run.
 
-These PR runs are useful automated evidence, but they were performed separately. After both changes were merged into `main`, the final combined `main` snapshot still requires a combined CI/UAT run before sign-off. The target office PC's browser, upload permissions, PDF reader and physical printer have not been verified by these remote tests. No live SMS send or real WebDAV upload/restore is claimed.
+After both PRs were merged into `main`, the combined source was tested together on [GitHub Actions run #477](https://github.com/sachie34/Birms/actions/runs/40642029005) from verification PR #18, based on the updated `main` snapshot. That combined run passed PHP syntax/include/setup checks, disposable MariaDB migrations, **37/37 authentication/security/audit checks** and **179/179 module integration checks** (216 total; zero failures and zero untested checks). PR #16 and PR #17 also had their own successful CI runs.
+
+These remote tests do not verify the target office PC's browser, upload permissions, PDF reader or physical printer. No live SMS send or real WebDAV upload/restore is claimed. The combined CI pass is not a substitute for target-PC UAT or official policy/template approval.
 
 ## Defense sign-off blockers
 
