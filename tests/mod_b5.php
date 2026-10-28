@@ -80,7 +80,6 @@ function run_b5(array $S, string $base): void
     // printing
     $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]); $capView = $cap->get('/certificates/print.php?id=' . $row['issuance_id']); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     $clkView = $clk->get('/certificates/print.php?id=' . $row['issuance_id']); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     $secView = $sec->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c4 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     record('B5-13', 'Captain can preview without counting; Clerk, Secretary and Administrator may print and printing is tracked', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $secView['status'] === 200 && $c3 === $c2 + 1 && $admView['status'] === 200 && $c4 === $c3 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
