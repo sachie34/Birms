@@ -14,7 +14,7 @@ Help each user answer three questions quickly: **What can I do in this role? Wha
 
 1. Keep the role visible in the application header and on the Request Tracker.
 2. Explain the next step for each role at the top of the Request Tracker.
-3. Use role-specific work queues: Administrator — **Needs Action**; Captain — **Pending Final Approval**; Secretary — **Needs Review**; Clerk — **My Requests**.
+3. Use role-specific work queues: Administrator — **Needs Action**; Captain — **Pending Final Approval**; Secretary — **Needs Review**; Clerk — **My Requests**. The server must enforce the same eligibility rules as the queue, including blocking approval and rejection before requirements are marked **Complete**.
 4. Show the age since original submission. Label it accurately; do not imply it measures time at the current approval step unless stage-transition timestamps are stored.
 5. Use empty states that explain there is no work in the selected view and provide a route to other requests/history.
 6. Use explicit action labels and keep status names consistent across tabs, trackers, notifications and documents.
