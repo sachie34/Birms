@@ -62,11 +62,23 @@ function run_b4(array $S, string $base): void
 
     // transitions
     $x = $move($cap, $id1, 'Ready'); $a = $status($id1) === 'Pending';
-    $x2 = $move($clk, $id1, 'Review'); $b = $status($id1) === 'Review' && db_val('SELECT assigned_to FROM document_requests WHERE request_id = ?', [$id1]) !== null;
+    $clerkReview = $move($clk, $id1, 'Review');
+    $clerkBlocked = $clerkReview['status'] === 403 && $status($id1) === 'Pending';
+    $x2 = $move($sec, $id1, 'Review'); $b = $status($id1) === 'Review' && db_val('SELECT assigned_to FROM document_requests WHERE request_id = ?', [$id1]) !== null;
+    $clerkRequirements = $completeRequirements($clk, $id1);
+    $clerkCannotComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
-    record('B4-8a', 'Illegal jump Pending to Ready refused; clerk can start review; clerk cannot approve (403)', $a && $b && $c);
+    $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
+    record('B4-8a', 'Only Secretary can start review; Clerk cannot forge requirements completion or approve',
+        $a && $clerkBlocked && $b && $clerkCannotComplete && $c);
+    record('B4-8c', 'Each role gets a role-labeled work queue containing the right request',
+        str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
+        && str_contains($clkQueue['body'], 'My Requests')
+        && str_contains($secQueue['body'], (string) $row['reference_no'])
+        && str_contains($capQueue['body'], (string) $row['reference_no'])
+        && str_contains($clkQueue['body'], (string) $row['reference_no']));
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
-    $incompleteNoNote = post_as($clk, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
+    $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
         'assigned_to' => '', 'requirements_status' => 'Incomplete', 'requirements_note' => '',
     ]);
@@ -77,7 +89,7 @@ function run_b4(array $S, string $base): void
     $blockedPage = $cap->get('/requests/view.php?id=' . $id1);
     $blocked = $status($id1) === 'Review' && $notComplete['status'] === 302
         && str_contains($blockedPage['body'], 'requirements review');
-    $markedComplete = $completeRequirements($clk, $id1);
+    $markedComplete = $completeRequirements($sec, $id1);
     $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
     $secretaryTry = $move($sec, $id1, 'Ready');
     $secretaryDenied = $secretaryTry['status'] === 403 && $status($id1) === 'Review';
@@ -86,14 +98,14 @@ function run_b4(array $S, string $base): void
     record('B4-8b', 'Incomplete requirements block approval; Secretary is denied final approval; Captain can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
     record('B4-9', 'With SMS provider disabled, approval records a log-only outbox entry: recipient, default text and reference', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
-    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($clk, $id2, 'Review'); $completeRequirements($sec, $id2); $move($cap, $id2, 'Ready');
+    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($cap, $id2, 'Ready');
     $o2 = db_one('SELECT recipient_number, delivery FROM sms_outbox WHERE request_id = ?', [$id2]);
     $oldTxt = db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'"); db_exec("UPDATE settings SET setting_value = 'Custom: {{reference_no}} / {{document_name}}' WHERE setting_key = 'sms_ready_text'");
-    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($clk, $id3, 'Review'); $completeRequirements($sec, $id3); $move($cap, $id3, 'Ready');
+    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($sec, $id3, 'Review'); $completeRequirements($sec, $id3); $move($cap, $id3, 'Ready');
     $o3 = (string) db_val('SELECT message FROM sms_outbox WHERE request_id = ?', [$id3]); db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'sms_ready_text'", [$oldTxt]);
     record('B4-10', 'No phone number: logged as "No number"; a custom SMS text from Settings is used', $o2 !== null && $o2['recipient_number'] === null && $o2['delivery'] === 'No number' && str_starts_with($o3, 'Custom: REQ-') && str_contains($o3, 'Barangay Clearance'));
 
-    $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject'); $move($clk, $id4, 'Review');
+    $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject'); $move($sec, $id4, 'Review');
     $secretaryReject = $move($sec, $id4, 'Rejected', 'Incomplete requirements'); $secretaryDenied = $secretaryReject['status'] === 403 && $status($id4) === 'Review';
     $noReason = $move($cap, $id4, 'Rejected', ''); $still = $status($id4) === 'Review';
     $withReason = $move($cap, $id4, 'Rejected', 'Incomplete requirements'); $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === 'Incomplete requirements';
