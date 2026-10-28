@@ -18,7 +18,7 @@ function permission_map(): array
         // The map remains provisional until the barangay validates all role assignments.
         'admin' => [
             'dashboard.view',
-            'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
+            'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.restore', 'residents.export',
             'requests.view', 'requests.add', 'requests.edit', 'requests.review', 'requests.approve',
             'certificates.history', 'certificates.issue', 'certificates.print',
             'settings.view', 'settings.edit',
