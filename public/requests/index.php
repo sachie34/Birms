@@ -23,8 +23,14 @@ $tabs = ['all' => 'All requests', 'my' => $myLabel, 'Pending' => 'Pending', 'Rev
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'all';
 $q = get_str('q'); $page = max(1, get_int('page') ?? 1); $per = 25;
 
+$countScope = '';
+$countParams = [];
+if ($role === 'clerk') {
+    $countScope = ' WHERE (created_by = ? OR assigned_to = ?)';
+    $countParams = [(int) $me['user_id'], (int) $me['user_id']];
+}
 $counts = ['all' => 0];
-foreach (db_all('SELECT status, COUNT(*) AS n FROM document_requests GROUP BY status') as $c) {
+foreach (db_all('SELECT status, COUNT(*) AS n FROM document_requests' . $countScope . ' GROUP BY status', $countParams) as $c) {
     $counts[$c['status']] = (int) $c['n'];
     $counts['all'] += (int) $c['n'];
     if (in_array($c['status'], ['Rejected', 'Cancelled'], true)) {
@@ -47,9 +53,16 @@ if ($role === 'admin') {
 $counts['my'] = (int) db_val('SELECT COUNT(*) FROM document_requests dr WHERE ' . $myCondition, $myParams);
 
 $w = []; $p = [];
+// Restrict every Clerk view (all/status/search/pagination), not only the My Requests tab.
+if ($role === 'clerk') {
+    $w[] = '(dr.created_by = ? OR dr.assigned_to = ?)';
+    array_push($p, (int) $me['user_id'], (int) $me['user_id']);
+}
 if ($tab === 'my') {
-    $w[] = '(' . $myCondition . ')';
-    array_push($p, ...$myParams);
+    if ($role !== 'clerk') {
+        $w[] = '(' . $myCondition . ')';
+        array_push($p, ...$myParams);
+    }
 } elseif ($tab === 'closed') {
     $w[] = "dr.status IN ('Rejected','Cancelled')";
 } elseif ($tab !== 'all') {
