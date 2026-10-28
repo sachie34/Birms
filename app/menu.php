@@ -25,7 +25,7 @@ function menu_definition(): array
         ['group' => 'Administration', 'key' => 'sms', 'label' => 'SMS Delivery', 'icon' => 'bi-chat-dots', 'path' => 'admin/sms.php', 'perm' => 'settings.edit', 'built' => true],
         ['group' => 'Administration', 'key' => 'audit',    'label' => 'Audit Trail',      'icon' => 'bi-journal-check','path' => 'admin/audit.php',     'perm' => 'audit.view',     'built' => true],
         ['group' => 'Administration', 'key' => 'backup',   'label' => 'Backup',           'icon' => 'bi-download',     'path' => 'admin/backup.php',    'perm' => 'backup.run',     'built' => true],
-        ['group' => 'Administration', 'key' => 'ledger',   'label' => 'Cash Collection Ledger', 'icon' => 'bi-cash-stack', 'path' => 'admin/ledger.php', 'perm' => 'backup.run', 'built' => true],
+        ['group' => 'Administration', 'key' => 'ledger',   'label' => 'Cash Collection Ledger', 'icon' => 'bi-cash-stack', 'path' => 'admin/ledger.php', 'perm' => 'cash_ledger.view', 'built' => true],
     ];
 }
 
