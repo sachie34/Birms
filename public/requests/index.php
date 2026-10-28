@@ -33,7 +33,7 @@ $total = (int) db_val("SELECT COUNT(*) $from", $p);
 $rows = db_all("SELECT dr.request_id, dr.reference_no, dr.requested_at, dr.status, r.last_name, r.first_name, r.middle_name, r.suffix, dt.name AS type_name, u.full_name AS assigned $from ORDER BY dr.requested_at DESC, dr.request_id DESC LIMIT " . (int) $per . ' OFFSET ' . (int) (($page - 1) * $per), $p);
 
 render_header('Request Tracker', [['Request Tracker', null]], 'requests');
-page_head('Request Tracker', 'Keep every request visible from intake to completion.', can('requests.add') ? btn_link('requests/form.php', 'New request', 'btn-primary', 'bi-plus-lg') : '');
+page_head('Request Tracker', 'Viewing as ' . role_label((string) $me['role']) . '. Use “' . $myLabel . '” for the requests needing your attention.', can('requests.add') ? btn_link('requests/form.php', 'New request', 'btn-primary', 'bi-plus-lg') : '');
 echo '<ul class="nav nav-pills mb-3">';
 foreach ($tabs as $k => $lab) { echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('requests/index.php?tab=' . $k)) . '">' . e($lab) . ' <span class="badge text-bg-light">' . (int) ($counts[$k] ?? 0) . '</span></a></li>'; }
 echo '</ul>';
