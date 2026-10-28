@@ -47,9 +47,11 @@ function run_b3(array $S, string $base): void
     $arch = db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$rid]) !== null;
     $clkList = $clk->get('/residents/index.php?q=ZZTest&show=archived'); $clkView = $clk->get('/residents/view.php?id=' . $rid);
     $secList = $sec->get('/residents/index.php?q=ZZTest&show=archived');
-    record('B3-8', 'Only the Secretary can archive; archived residents are hidden from clerks even with ?show=archived', $denied && $arch && $clkView['status'] === 404 && !str_contains($clkList['body'], 'view.php?id=' . $rid . '"') && str_contains($secList['body'], 'view.php?id=' . $rid . '"'));
-    post_as($sec, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'restore']);
-    record('B3-9', 'Restore brings the resident back', db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$rid]) === null && $clk->get('/residents/view.php?id=' . $rid)['status'] === 200);
+    record('B3-8', 'Clerk cannot archive; Secretary soft-archives; archived residents are hidden from clerks even with ?show=archived', $denied && $arch && $clkView['status'] === 404 && !str_contains($clkList['body'], 'view.php?id=' . $rid . '"') && str_contains($secList['body'], 'view.php?id=' . $rid . '"'));
+    $secretaryRestore = post_as($sec, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'restore']);
+    $stillArchived = $secretaryRestore['status'] === 403 && db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$rid]) !== null;
+    $adminRestore = post_as($adm, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'restore']);
+    record('B3-9', 'Secretary cannot restore; Administrator restores an archived resident', $stillArchived && $adminRestore['status'] === 302 && db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$rid]) === null && $clk->get('/residents/view.php?id=' . $rid)['status'] === 200);
     $tg = post_as($sec, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'set_active']);
     $okToggle = db_val('SELECT residency_status FROM residents WHERE resident_id = ?', [$rid]) === 'Active';
     record('B3-9b', 'Marking a resident active works and is audited (Relocated -> Active)', $tg['status'] === 302 && $okToggle && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'residency_status_changed' AND entity_id = ?", [$rid]) === 1);
@@ -57,7 +59,7 @@ function run_b3(array $S, string $base): void
     post_as($sec, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'archive']);
     $st = post_as($sec, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'set_active']);
     record('B3-10', 'Changing the status of an ARCHIVED resident is refused gracefully (no crash, nothing changed)', $st['status'] === 302 && db_val('SELECT residency_status FROM residents WHERE resident_id = ?', [$rid]) === 'Relocated');
-    post_as($sec, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'restore']);
+    post_as($adm, '/residents/view.php?id=' . $rid, '/residents/action.php', ['id' => (string) $rid, 'action' => 'restore']);
 
     $a = $mk(['first_name' => 'Pedro', 'birthdate' => '1985-03-03', 'is_head' => '1', 'new_address' => 'ZZ Test Street 3']); $create($clk, $a);
     $pid = (int) db_val("SELECT resident_id FROM residents WHERE first_name = 'Pedro' AND last_name = 'ZZTest'"); $phh = (int) db_val('SELECT household_id FROM residents WHERE resident_id = ?', [$pid]);
