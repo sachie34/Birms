@@ -18,9 +18,9 @@ if ($perm === null) {
     redirect('requests/view.php', ['id' => $id]);
 }
 require_permission($perm);
-if ($to === 'Ready' && $r['requirements_status'] !== 'Complete') {
-    audit_best_effort('request_move_refused', 'Requests', 'Failed', $r['reference_no'] . ': cannot approve before requirements are marked Complete');
-    flash_add('danger', 'Complete the requirements review before approving this request as Ready. Edit the request and save its requirements status first.');
+if (in_array($to, ['Ready', 'Rejected'], true) && $r['requirements_status'] !== 'Complete') {
+    audit_best_effort('request_move_refused', 'Requests', 'Failed', $r['reference_no'] . ': cannot make a final decision before requirements are marked Complete');
+    flash_add('danger', 'Complete the requirements review before approving or rejecting this request. The Secretary or Administrator must check the requirements and record Complete first.');
     redirect('requests/view.php', ['id' => $id]);
 }
 if ($to === 'Rejected' && !v_len($note, 3, 255)) { flash_add('danger', 'Give a reason (3-255 characters) when rejecting.'); redirect('requests/view.php', ['id' => $id]); }
