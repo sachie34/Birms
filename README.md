@@ -40,14 +40,13 @@ Do not commit database passwords, generated logs, backups, or local configuratio
 
 ## Verification commands
 
-```bash
-php -l public/index.php
-php -l public/dashboard.php
-php tests/run_tests.php
-php tests/run_modules.php
+```bat
+cd /d C:\xampp\htdocs\Birms-main
+C:\xampp\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main
+C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 ```
 
-The test suite may require a configured local database. Run it only against a separate working database, never against an original or production database.
+Start Apache and MySQL first. These commands are for the example XAMPP folder above; adjust the URL if your folder name differs. The test harness refuses to run unless the configured database name ends in `_work` or `_test`. Never run the integration suites against the original or production database.
 
 ## Security note
 
