@@ -97,7 +97,7 @@ function run_b5(array $S, string $base): void
     record('B5-16', 'Request view links the certificate; a Ready request shows the Issue button; the resident view lists the document', str_contains($rv['body'], (string) $row['reference_no']) && str_contains($rReady2['body'], 'Issue certificate') && str_contains($rr['body'], 'ZZ Test Cert Paid'));
 
     // safety
-    $nt = $clk->post('/certificates/issue.php?request=' . $r2, ['request_id' => (string) $r2, 'or_number' => 'ZZOR-NT']); $cp = $issue($cap, $r2, ['or_number' => 'ZZOR-CAP']); $clerkDirect = $issue($clk, $r2, ['or_number' => 'ZZOR-CLERK']);
+    $nt = $sec->post('/certificates/issue.php?request=' . $r2, ['request_id' => (string) $r2, 'or_number' => 'ZZOR-NT']); $cp = $issue($cap, $r2, ['or_number' => 'ZZOR-CAP']); $clerkDirect = $issue($clk, $r2, ['or_number' => 'ZZOR-CLERK']);
     $odd = [$clk->get('/certificates/issue.php?request[]=1'), $clk->get('/certificates/issue.php?request=99999999'), $sec->get('/certificates/print.php?id[]=1'), $sec->get('/certificates/print.php?id=99999999'), $sec->get('/certificates/history.php?q[]=x&type[]=1&from[]=a&to=garbage&page[]=2'),
             $clk->post('/certificates/issue.php', ['_csrf' => $clk->token('/certificates/issue.php'), 'request_id' => ['1'], 'or_number' => ['x']])];
     $bad = []; foreach ($odd as $i => $o) { if ($o['status'] >= 500 || leaks($o)) { $bad[] = $i . ':' . $o['status']; } }
