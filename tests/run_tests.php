@@ -73,17 +73,22 @@ $csvGuardOk = csv_safe_cell('=1+1') === "'=1+1"
     && csv_safe_cell('ordinary text') === 'ordinary text'
     && csv_safe_cell(42) === 42;
 record('U7', 'CSV formula guard neutralizes leading whitespace/control characters and preserves ordinary values', $csvGuardOk);
-$guardEnvNames = ['BIRMS_SMS_PROVIDER', 'BIRMS_SMSAPIPH_ENABLED', 'BIRMS_DB_NAME'];
-$oldGuardEnv = []; foreach ($guardEnvNames as $name) { $oldGuardEnv[$name] = getenv($name); }
-$guardOutput = []; $guardExit = 0;
-try {
-    putenv('BIRMS_SMS_PROVIDER=smsapiph');
-    putenv('BIRMS_SMSAPIPH_ENABLED=true');
-    putenv('BIRMS_DB_NAME=barangay_db_work');
-    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tests/run_modules.php') . ' 2>&1', $guardOutput, $guardExit);
-} finally {
-    foreach ($oldGuardEnv as $name => $value) {
-        if ($value === false) { putenv($name); } else { putenv($name . '=' . $value); }
+$guardScript = tempnam(sys_get_temp_dir(), 'birms-sms-guard-');
+$guardOutput = []; $guardExit = 99;
+if ($guardScript !== false) {
+    try {
+        $guardProbe = "<?php\n"
+            . "putenv('BIRMS_SMS_PROVIDER=smsapiph');\n"
+            . "putenv('BIRMS_SMSAPIPH_ENABLED=true');\n"
+            . "putenv('BIRMS_DB_NAME=barangay_db_work');\n"
+            . "require " . var_export(APP_ROOT . '/tests/run_modules.php', true) . ";\n";
+        if (file_put_contents($guardScript, $guardProbe) !== false) {
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($guardScript) . ' 2>&1', $guardOutput, $guardExit);
+        } else {
+            $guardOutput[] = 'Unable to write the SMS-preflight probe.';
+        }
+    } finally {
+        @unlink($guardScript);
     }
 }
 $guardText = implode("\n", $guardOutput);
