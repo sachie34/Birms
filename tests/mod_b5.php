@@ -77,19 +77,36 @@ function run_b5(array $S, string $base): void
     record('B5-12', 'Issued certificates are permanent: later changes to wording, fee or Captain do not alter them', str_contains($pr['body'], 'ANA MID ZZTEST5') && !str_contains($pr['body'], 'CHANGED WORDING') && str_contains($pr['body'], 'Test Captain Name') && !str_contains($pr['body'], 'Someone Else') && str_contains($pr['body'], '₱50.00'));
     db_exec("UPDATE document_types SET template_body = ?, fee_amount = 50 WHERE type_id = ?", [$body, $tPaid]); db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
 
-    // printing
-    $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]); $capView = $cap->get('/certificates/print.php?id=' . $row['issuance_id']); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $clkView = $clk->get('/certificates/print.php?id=' . $row['issuance_id']); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $secView = $sec->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c4 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    record('B5-13', 'Captain can preview without counting; Clerk, Secretary and Administrator may print and printing is tracked', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $secView['status'] === 200 && $c3 === $c2 + 1 && $admView['status'] === 200 && $c4 === $c3 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
-    $capPdf = $cap->get('/certificates/pdf.php?id=' . $row['issuance_id']);
-    record('B5-21', 'Captain can preview an issued certificate but cannot print or download a PDF; print-authorized roles receive controls',
+    // Viewing a certificate must not count as a print action; only the CSRF-protected POST does.
+    $iid = (int) $row['issuance_id']; $url = '/certificates/print.php?id=' . $iid;
+    $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $capView = $cap->get($url); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $clkView = $clk->get($url); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $capPrint = post_as($cap, $url, $url, ['do' => 'print']);
+    $afterCapPrint = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $clkPrint = post_as($clk, $url, $url, ['do' => 'print']);
+    $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $secView = $sec->get($url); $c4 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $secPrint = post_as($sec, $url, $url, ['do' => 'print']);
+    $c5 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $admView = $adm->get($url); $c6 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    $admPrint = post_as($adm, $url, $url, ['do' => 'print']);
+    $c7 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$iid]);
+    record('B5-13', 'Previews do not change print counts; Clerk, Secretary and Administrator must submit a print action that is counted and audited',
+        $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0
+        && $capPrint['status'] === 403 && $afterCapPrint === $c0
+        && $clkPrint['status'] === 302 && str_contains(loc($clkPrint), 'print=1') && $c3 === $c0 + 1
+        && $secView['status'] === 200 && $c4 === $c3 && $secPrint['status'] === 302 && $c5 === $c3 + 1
+        && $admView['status'] === 200 && $c6 === $c5 && $admPrint['status'] === 302 && $c7 === $c5 + 1
+        && str_contains($clkView['body'], 'Republic of the Philippines')
+        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_print_requested'") >= 3);
+    $capPdf = $cap->get('/certificates/pdf.php?id=' . $iid);
+    record('B5-21', 'Captain can preview an issued certificate but cannot submit a print action or download a PDF; print-authorized roles receive controls',
         $capView['status'] === 200
         && str_contains($capView['body'], 'Preview only')
-        && !str_contains($capView['body'], 'data-print')
+        && !str_contains($capView['body'], 'name="do" value="print"')
         && !str_contains($capView['body'], 'Download PDF')
-        && str_contains($clkView['body'], 'data-print')
+        && str_contains($clkView['body'], 'name="do" value="print"')
         && str_contains($clkView['body'], 'Download PDF')
         && $capPdf['status'] === 403);
 

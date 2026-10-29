@@ -9,6 +9,42 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__));
 define('PUBLIC_ROOT', APP_ROOT . '/public');
 
+/**
+ * Return a user-safe reason when the active PHP runtime has not reached the
+ * security patch level required for BIRMS. PHP 8.2 is accepted only at its
+ * latest critical patch while that branch is still supported.
+ */
+function php_runtime_security_issue(int $versionId): ?string
+{
+    if (($versionId >= 80235 && $versionId < 80300)
+        || ($versionId >= 80336 && $versionId < 80400)
+        || ($versionId >= 80427 && $versionId < 80500)
+        || ($versionId >= 80512 && $versionId < 80600)) {
+        return null;
+    }
+
+    if ($versionId >= 80500 && $versionId < 80600) {
+        return 'PHP 8.5 must be updated to 8.5.12 or later within the 8.5 branch.';
+    }
+    if ($versionId >= 80400 && $versionId < 80500) {
+        return 'PHP 8.4 must be updated to 8.4.27 or later within the 8.4 branch.';
+    }
+    if ($versionId >= 80300 && $versionId < 80400) {
+        return 'PHP 8.3 must be updated to 8.3.36 or later within the 8.3 branch.';
+    }
+    if ($versionId >= 80200 && $versionId < 80300) {
+        return 'PHP 8.2 must be updated to 8.2.35 or later. PHP 8.2 support ends on 31 December 2026; upgrading to PHP 8.3 or newer is recommended.';
+    }
+    return 'Use a supported stable PHP 8.2, 8.3, 8.4, or 8.5 release at its required security patch level. See https://www.php.net/supported-versions.php.';
+}
+
+function php_runtime_upgrade_notice(int $versionId): ?string
+{
+    return ($versionId >= 80200 && $versionId < 80300)
+        ? 'WARNING: PHP 8.2 security support ends on 31 December 2026. Upgrade to PHP 8.3 or newer.'
+        : null;
+}
+
 function config(?string $path = null, mixed $default = null): mixed
 {
     static $cfg = null;
@@ -254,6 +290,107 @@ function db_transaction(callable $fn): mixed
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) { $pdo->rollBack(); }
         throw $e;
+    }
+}
+
+/**
+ * Serialize critical administrative invariants across concurrent requests.
+ * MySQL/MariaDB named locks are connection-scoped and released in finally.
+ */
+function with_named_lock(string $name, callable $fn, int $timeoutSeconds = 5): mixed
+{
+    if (preg_match('/^[A-Za-z0-9:_-]{1,64}$/D', $name) !== 1) {
+        throw new InvalidArgumentException('Invalid application lock name.');
+    }
+    $timeoutSeconds = max(0, min(30, $timeoutSeconds));
+    if ((int) db_val('SELECT GET_LOCK(?, ?)', [$name, $timeoutSeconds]) !== 1) {
+        throw new RuntimeException('The requested operation is busy. Please try again.');
+    }
+    try {
+        return $fn();
+    } finally {
+        try {
+            db_val('SELECT RELEASE_LOCK(?)', [$name]);
+        } catch (Throwable $e) {
+            error_log('BIRMS named-lock release failed for ' . $name . ': ' . $e->getMessage());
+        }
+    }
+}
+
+/**
+ * Atomically consume one fixed-window rate-limit bucket without storing raw user identifiers.
+ * The action/scope/identity are combined into a SHA-256 key; expired buckets are pruned occasionally.
+ */
+function rate_limit_bucket_hit(
+    string $action,
+    string $scope,
+    string $identity,
+    int $limit,
+    int $windowSeconds,
+    ?int $now = null
+): array {
+    if ($limit < 1 || $windowSeconds < 1) {
+        throw new InvalidArgumentException('Rate limits must use positive limits and windows.');
+    }
+    $now ??= time();
+    $action = substr($action, 0, 120);
+    $scope = substr($scope, 0, 20);
+    $identity = substr($identity, 0, 255);
+    $start = intdiv($now, $windowSeconds) * $windowSeconds;
+    $startAt = date('Y-m-d H:i:s', $start);
+    $bucketHash = hash('sha256', "BIRMS-rate-limit-v1\0" . $action . "\0" . $scope . "\0" . $identity);
+
+    db_exec(
+        'INSERT INTO rate_limit_buckets (bucket_hash, window_started_at, hit_count) VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE hit_count = hit_count + 1',
+        [$bucketHash, $startAt]
+    );
+    $hits = (int) db_val(
+        'SELECT hit_count FROM rate_limit_buckets WHERE bucket_hash = ? AND window_started_at = ?',
+        [$bucketHash, $startAt]
+    );
+    // Cleanup is deliberately occasional, indexed and bounded to expired windows.
+    if (random_int(1, 100) === 1) {
+        db_exec('DELETE FROM rate_limit_buckets WHERE window_started_at < ?', [date('Y-m-d H:i:s', $now - 86400)]);
+    }
+    return [
+        'allowed' => $hits <= $limit,
+        'hits' => $hits,
+        'retry_after' => max(1, $start + $windowSeconds - $now),
+        'bucket_hash' => $bucketHash,
+        'window_started_at' => $startAt,
+    ];
+}
+
+/**
+ * Enforce the same per-action limit for both the signed-in user and their IP.
+ * An optional target key creates a narrower budget (for example, retries for one SMS record).
+ */
+function rate_limit_enforce(
+    string $action,
+    int $perUserLimit,
+    int $windowSeconds,
+    ?string $target = null,
+    ?int $perIpLimit = null
+): void {
+    $bucketAction = $target === null ? $action : $action . ':target:' . substr($target, 0, 80);
+    $user = auth_user();
+    $checks = [];
+    if ($user !== null && isset($user['user_id'])) {
+        $checks[] = ['user', (string) $user['user_id'], $perUserLimit];
+    }
+    $checks[] = ['ip', client_ip(), $perIpLimit ?? $perUserLimit];
+
+    foreach ($checks as [$scope, $identity, $limit]) {
+        $state = rate_limit_bucket_hit($bucketAction, $scope, (string) $identity, (int) $limit, $windowSeconds);
+        if (!$state['allowed']) {
+            header('Retry-After: ' . (int) $state['retry_after']);
+            if ((int) $state['hits'] === (int) $limit + 1) {
+                audit_best_effort('rate_limit_exceeded', 'Security', 'Failed',
+                    'Rate limit exceeded for ' . substr($action, 0, 100) . ' (' . $scope . ' scope)');
+            }
+            abort(429, 'Too many requests. Wait ' . (int) $state['retry_after'] . ' seconds before trying again.');
+        }
     }
 }
 

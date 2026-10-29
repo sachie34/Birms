@@ -8,6 +8,7 @@ $errors = [];
 
 if (is_post()) {
     require_csrf();
+    rate_limit_enforce('password_change', 10, 3600, null, 100);
     $cur = post_raw('current_password'); $new = post_raw('new_password'); $conf = post_raw('confirm_password');
     $hash = (string) db_val('SELECT password_hash FROM users WHERE user_id = ?', [$user['user_id']]);
     if (!password_verify($cur, $hash)) { $errors[] = 'Your current password is not correct.'; }

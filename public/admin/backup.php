@@ -12,6 +12,7 @@ if (is_post()) {
     require_csrf();
     $action = post_str('do');
     if (!in_array($action, ['download', 'cloud_upload'], true)) { abort(400, 'Unknown backup action.'); }
+    rate_limit_enforce('database_backup', 1, 600, null, 10);
     if ($action === 'cloud_upload' && !$cloudConfigured) {
         abort(400, 'Cloud upload is not configured. Set the WebDAV URL and credentials in protected local configuration before trying again.');
     }

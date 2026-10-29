@@ -13,6 +13,9 @@ if (is_post()) {
     require_permission('requests.add');
     $v = ['visitor_name' => post_str('visitor_name'), 'purpose' => post_str('purpose'), 'class_id' => post_str('class_id'), 'visited_at' => post_str('visited_at')];
     $file = $_FILES['attachment'] ?? null;
+    if (is_array($file) && isset($file['error']) && is_numeric($file['error']) && (int) $file['error'] !== UPLOAD_ERR_NO_FILE) {
+        rate_limit_enforce('attachment_upload', 10, 300, null, 50);
+    }
     $when = v_datetime_local($v['visited_at']);
     if (!v_person_name($v['visitor_name'])) { $errors[] = 'Enter the visitor\'s full name (letters, spaces, . \' - only).'; }
     if (!v_len($v['purpose'], 3, 150)) { $errors[] = 'Purpose of visit must be 3-150 characters.'; }

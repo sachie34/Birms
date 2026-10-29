@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('residents.export');
+rate_limit_enforce('csv_export', 10, 300, null, 50);
 $f = resident_filters($_GET, can('residents.archive'));
 [$q, $p] = resident_query_parts($f);
 $rows = db_all('SELECT r.*, h.household_code, h.street_address, pk.label AS purok, cat.label AS category ' . $q . ' ORDER BY r.last_name, r.first_name LIMIT 20000', $p);

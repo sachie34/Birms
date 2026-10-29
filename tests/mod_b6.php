@@ -105,6 +105,20 @@ function run_b6(array $S, string $base): void
         $stat === [403, 403, 302] && $hn === 0 && $r['status'] === 302 && $H1 > 0 && $status($A) === 'Scheduled' && $okBad && $extra === 2 && $aw['status'] < 500
         && $audit('hearing_scheduled') >= 2 && $nHear($B) === 0 && $sched($sec, $B, $future(4))['status'] === 302 && $nHear($B) === 0);
 
+    // Database-level guard: a concurrent request cannot create a second active slot for the same case/time.
+    $scheduledSlot = (string) db_val('SELECT scheduled_at FROM hearings WHERE hearing_id = ?', [$H1]);
+    $secretaryId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_secretary'");
+    $duplicateBlocked = false; $unexpectedDuplicateId = 0;
+    try {
+        db_exec("INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, status, created_by)
+                 VALUES (?, ?, 'ZZ duplicate slot', NULL, 'Scheduled', ?)", [$A, $scheduledSlot, $secretaryId]);
+        $unexpectedDuplicateId = (int) db()->lastInsertId();
+    } catch (PDOException $e) {
+        $duplicateBlocked = $e->getCode() === '23000';
+    }
+    if ($unexpectedDuplicateId > 0) { db_exec('DELETE FROM hearings WHERE hearing_id = ?', [$unexpectedDuplicateId]); }
+    record('B6-24', 'Database constraint rejects duplicate Scheduled hearings for the same case and time', $duplicateBlocked);
+
     /* ---- hearings: outcomes ---- */
     $H2 = $hid($A);  // the later one (+9 days) is the newest
     $o0 = $outc($sec, $A, $H1, 'Held'); $s0 = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);

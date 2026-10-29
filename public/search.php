@@ -10,6 +10,7 @@ $results = ['residents' => [], 'requests' => [], 'issuances' => [], 'blotters' =
 $searched = str_len($q) >= 2;
 
 if ($searched) {
+    rate_limit_enforce('global_search', 60, 60, null, 180);
     // Treat %, _ and backslash as ordinary characters rather than broad wildcard input.
     $like = '%' . addcslashes($q, '%_\\') . '%';
 
@@ -27,6 +28,17 @@ if ($searched) {
         );
     }
     if (can('requests.view')) {
+        // Global search must apply the same row-level privacy as the Request Tracker.
+        // Clerks can only discover requests they filed or that are assigned to them.
+        $requestVisibilitySql = '';
+        $requestParams = [$like, $like, $like, $like, $like];
+        $viewer = auth_user();
+        if ($viewer !== null && ($viewer['role'] ?? '') === 'clerk') {
+            $requestVisibilitySql = ' AND (dr.created_by = ? OR dr.assigned_to = ?)';
+            $requestParams[] = (int) $viewer['user_id'];
+            $requestParams[] = (int) $viewer['user_id'];
+        }
+
         $results['requests'] = db_all(
             "SELECT dr.request_id, dr.reference_no, dr.status, dr.purpose, dr.requested_at,
                     CONCAT_WS(' ', r.first_name, r.middle_name, r.last_name, r.suffix) AS resident_name,
@@ -34,12 +46,14 @@ if ($searched) {
              FROM document_requests dr
              JOIN residents r ON r.resident_id = dr.resident_id
              JOIN document_types dt ON dt.type_id = dr.type_id
-             WHERE dr.reference_no LIKE ? OR dr.purpose LIKE ?
+             WHERE (
+                dr.reference_no LIKE ? OR dr.purpose LIKE ?
                 OR CONCAT_WS(' ', r.first_name, r.middle_name, r.last_name, r.suffix) LIKE ?
                 OR CONCAT_WS(' ', r.last_name, r.first_name, r.middle_name, r.suffix) LIKE ?
                 OR dt.name LIKE ?
+             ) {$requestVisibilitySql}
              ORDER BY dr.requested_at DESC, dr.request_id DESC LIMIT 10",
-            [$like, $like, $like, $like, $like]
+            $requestParams
         );
     }
     if (can('certificates.history')) {

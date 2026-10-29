@@ -16,8 +16,11 @@ if (is_post()) {
     }
 
     if ($action === 'retry') {
+        rate_limit_enforce('sms_retry', 20, 3600, null, 60);
+        rate_limit_enforce('sms_retry_per_message', 3, 86400, (string) $id, 60);
         $result = sms_send_outbox($id, true);
     } elseif ($action === 'refresh') {
+        rate_limit_enforce('sms_status_refresh', 30, 3600, null, 90);
         $result = sms_refresh_outbox_status($id);
     } else {
         abort(400, 'Unknown SMS action.');

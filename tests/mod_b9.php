@@ -52,6 +52,57 @@ function run_b9(array $S, string $base): void
         db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     }
 
+    // Regression test: the Clerk global-search result set must match row-level request access.
+    $tag = 'ZZB9P' . strtoupper(bin2hex(random_bytes(4)));
+    $foreignId = $ownId = $assignedId = 0;
+    $residentId = 0;
+    try {
+        db_exec("INSERT INTO residents (last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status)
+                 VALUES (?, 'PrivacyProbe', '1990-01-01', 'Male', 'Single', 'Active', 'Unverified')", [$tag]);
+        $residentId = (int) db()->lastInsertId();
+        $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'");
+        $adminId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_admin'");
+        $clerkId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
+        $foreignRef = $tag . '-F';
+        $ownRef = $tag . '-O';
+        $assignedRef = $tag . '-A';
+
+        db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at, created_by)
+                 VALUES (?, ?, ?, ?, 'Pending', NOW(), ?)",
+            [$foreignRef, $residentId, $typeId, $tag . ' foreign request', $adminId]);
+        $foreignId = (int) db()->lastInsertId();
+        db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at, created_by)
+                 VALUES (?, ?, ?, ?, 'Pending', NOW(), ?)",
+            [$ownRef, $residentId, $typeId, $tag . ' own request', $clerkId]);
+        $ownId = (int) db()->lastInsertId();
+        db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at, created_by, assigned_to)
+                 VALUES (?, ?, ?, ?, 'Pending', NOW(), ?, ?)",
+            [$assignedRef, $residentId, $typeId, $tag . ' assigned request', $adminId, $clerkId]);
+        $assignedId = (int) db()->lastInsertId();
+
+        $search = $S['clerk']->get('/search.php?q=' . urlencode($tag));
+        $foreignDetails = $S['clerk']->get('/requests/view.php?id=' . $foreignId);
+        $assignedDetails = $S['clerk']->get('/requests/view.php?id=' . $assignedId);
+        $privacyOk = $search['status'] === 200
+            && !str_contains($search['body'], 'requests/view.php?id=' . $foreignId)
+            && !str_contains($search['body'], $foreignRef)
+            && str_contains($search['body'], 'requests/view.php?id=' . $ownId)
+            && str_contains($search['body'], 'requests/view.php?id=' . $assignedId)
+            && $foreignDetails['status'] === 404
+            && $assignedDetails['status'] === 200;
+        record('B9-6', 'Clerk global search hides foreign requests but shows own/assigned requests; direct access remains enforced',
+            $privacyOk,
+            'search=' . $search['status'] . ', foreign-link=' . (str_contains($search['body'], 'requests/view.php?id=' . $foreignId) ? 'visible' : 'hidden')
+            . ', own-link=' . (str_contains($search['body'], 'requests/view.php?id=' . $ownId) ? 'visible' : 'hidden')
+            . ', assigned-link=' . (str_contains($search['body'], 'requests/view.php?id=' . $assignedId) ? 'visible' : 'hidden')
+            . ', foreign-detail=' . $foreignDetails['status'] . ', assigned-detail=' . $assignedDetails['status']);
+    } finally {
+        if ($foreignId || $ownId || $assignedId) {
+            db_exec('DELETE FROM document_requests WHERE request_id IN (?, ?, ?)', [$foreignId ?: 0, $ownId ?: 0, $assignedId ?: 0]);
+        }
+        if ($residentId > 0) { db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]); }
+    }
+
     $expectedHelp = [
         'admin' => 'Use the queue that matches the task you need to complete.',
         'captain' => 'Your main task here is the final decision on eligible requests.',

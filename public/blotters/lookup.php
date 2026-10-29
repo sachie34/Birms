@@ -7,6 +7,7 @@ require_login();
 require_permission('blotters.view');
 $q = get_str('q'); $tokens = name_tokens($q); $rows = [];
 if ($q !== '' && $tokens) {
+    rate_limit_enforce('blotter_person_lookup', 20, 60, null, 60);
     $rows = blotter_people_search($tokens);
     audit_best_effort('blotter_lookup', 'Blotter', 'Success', 'Searched: ' . mb_substr_safe($q, 100) . ' (' . count($rows) . ' found)');
 }

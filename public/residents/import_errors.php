@@ -14,6 +14,7 @@ if (!is_array($report) || !is_string($report['token'] ?? null)
     || !is_array($report['rows'] ?? null) || !$report['rows']) {
     abort(404, 'That import error report expired or is not available for this sign-in.');
 }
+rate_limit_enforce('csv_export', 10, 300, null, 50);
 
 audit('resident_import_errors_downloaded', 'Residents', 'Success', count($report['rows']) . ' import-error rows downloaded');
 header('Content-Type: text/csv; charset=utf-8');

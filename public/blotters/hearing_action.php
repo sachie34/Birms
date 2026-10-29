@@ -33,11 +33,35 @@ if ($do === 'schedule') {
     if ($notes !== '' && !v_len($notes, 3, 500)) { $errs[] = 'Notes must be 3-500 characters.'; }
     if (!$errs && $at !== null && db_val("SELECT COUNT(*) FROM hearings WHERE blotter_id = ? AND status = 'Scheduled' AND scheduled_at = ?", [$id, $at])) { $errs[] = 'A hearing is already scheduled for that time.'; }
     if ($errs) { $fail(implode(' ', $errs), (int) $id, (string) $c['case_no']); }
-    db_transaction(function () use ($c, $at, $venue, $notes): void {
-        db_exec('INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, created_by) VALUES (?, ?, ?, ?, ?)', [$c['blotter_id'], $at, $venue !== '' ? $venue : null, $notes !== '' ? $notes : null, audit_actor()['user_id'] ?? null]);
-        db_exec("UPDATE blotters SET status = 'Scheduled' WHERE blotter_id = ? AND status IN ('Pending', 'Active')", [$c['blotter_id']]);
-        audit('hearing_scheduled', 'Blotter', 'Success', $c['case_no'] . ': hearing on ' . date('j M Y g:i A', strtotime((string) $at)) . ($venue !== '' ? ' at ' . $venue : ''), 'blotter', (int) $c['blotter_id']);
-    });
+    try {
+        db_transaction(function () use ($id, $at, $venue, $notes): void {
+            // Lock the parent case so duplicate checks and inserts serialize for this case.
+            $lockedCase = db_one('SELECT blotter_id, case_no, status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE', [$id]);
+            if ($lockedCase === null || !case_is_open($lockedCase)) { throw new RuntimeException('case-closed'); }
+            if (db_val("SELECT COUNT(*) FROM hearings WHERE blotter_id = ? AND status = 'Scheduled' AND scheduled_at = ?", [$id, $at])) {
+                throw new RuntimeException('duplicate-hearing');
+            }
+            db_exec('INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, created_by) VALUES (?, ?, ?, ?, ?)',
+                [$lockedCase['blotter_id'], $at, $venue !== '' ? $venue : null, $notes !== '' ? $notes : null, audit_actor()['user_id'] ?? null]);
+            db_exec("UPDATE blotters SET status = 'Scheduled' WHERE blotter_id = ? AND status IN ('Pending', 'Active')", [$lockedCase['blotter_id']]);
+            audit('hearing_scheduled', 'Blotter', 'Success', $lockedCase['case_no'] . ': hearing on ' . date('j M Y g:i A', strtotime((string) $at)) . ($venue !== '' ? ' at ' . $venue : ''), 'blotter', (int) $lockedCase['blotter_id']);
+        });
+    } catch (RuntimeException $e) {
+        if ($e->getMessage() === 'duplicate-hearing') {
+            $fail('A hearing is already scheduled for that time. Refresh the case and try another time.', (int) $id, (string) $c['case_no']);
+        }
+        if ($e->getMessage() === 'case-closed') {
+            $fail('Hearings can only be scheduled for a case that is not resolved or archived.', (int) $id, (string) $c['case_no']);
+        }
+        throw $e;
+    } catch (PDOException $e) {
+        // Database uniqueness is the final defense for simultaneous requests, including clients
+        // that do not use this application-level case lock.
+        if ($e->getCode() === '23000') {
+            $fail('A hearing is already scheduled for that case and time. Refresh the case before retrying.', (int) $id, (string) $c['case_no']);
+        }
+        throw $e;
+    }
     flash_add('success', 'Hearing scheduled.'); redirect('blotters/view.php', ['id' => (int) $id]);
 }
 
