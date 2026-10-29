@@ -13,13 +13,12 @@ $rows = db_all("SELECT i.reference_no, i.resident_name, i.type_name, i.purpose, 
     FROM issuances i LEFT JOIN cash_collection_ledger cc ON cc.issuance_id = i.issuance_id $where
     ORDER BY i.issued_at DESC LIMIT 20000", $p);
 audit('issuances_exported', 'Certificates', 'Success', count($rows) . ' rows exported');
-$safe = fn($s): string => ($s !== null && $s !== '' && strpos('=+-@', (string) $s[0]) !== false) ? "'" . $s : (string) $s;
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="issuances_' . date('Ymd_His') . '.csv"');
 $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
 fputcsv($out, ['Reference', 'Resident', 'Document', 'Purpose', 'Date issued', 'Issued by', 'Issuance fee snapshot', 'Cash ledger amount', 'Reconciliation status', 'Payment method', 'Transaction date', 'Collector', 'OR number']);
 foreach ($rows as $r) {
-    fputcsv($out, [$r['reference_no'], $safe($r['resident_name']), $safe($r['type_name']), $safe($r['purpose']), $r['issued_at'], $safe($r['issued_by_name']),
-        $r['issuance_fee_snapshot'], $r['ledger_amount'], $r['reconciliation_status'] ?? 'missing ledger entry', $r['payment_method'] ?? '', $r['transaction_date'] ?? '', $safe($r['collector_name'] ?? ''), $safe($r['or_number'])]);
+    fputcsv($out, array_map('csv_safe_cell', [$r['reference_no'], $r['resident_name'], $r['type_name'], $r['purpose'], $r['issued_at'], $r['issued_by_name'],
+        $r['issuance_fee_snapshot'], $r['ledger_amount'], $r['reconciliation_status'] ?? 'missing ledger entry', $r['payment_method'] ?? '', $r['transaction_date'] ?? '', $r['collector_name'] ?? '', $r['or_number']]));
 }
 fclose($out);
