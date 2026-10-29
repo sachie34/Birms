@@ -69,14 +69,14 @@ function certificate_pdf_bytes(array $issuance): string
         . '.head{text-align:center;line-height:1.65}.title{text-align:center;font-size:20px;font-weight:bold;margin:28px 0;}'
         . '.body{font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:220px;}'
         . '.sign{margin:48px 0 8px;text-align:center;font-weight:bold;text-decoration:underline;}'
-        . '.muted{font-size:10px;color:#555;margin-top:28px;border-top:1px solid #aaa;padding-top:8px;}'
+        . '.muted{font-size:10px;color:#555;margin-top:28px;border-top:1px solid #aaa;padding-top:8px;}.signature-note{text-align:center;font-size:10px;color:#555;}'
         . '</style></head><body><div class="draft">' . $draft . '</div>'
         . '<div class="head">Republic of the Philippines<br>Province of ' . $esc((string) setting('province', ''))
         . '<br>Municipality of ' . $esc((string) setting('municipality', '')) . '<br><strong>' . $esc(barangay_title()) . '</strong></div>'
         . '<div class="title">' . $esc((string) ($issuance['type_name'] ?? 'Certificate')) . '</div>'
         . '<div class="body">' . $esc($body) . '</div>'
         . '<div class="sign">' . $esc($signature !== '' ? $signature : 'Authorized signatory') . '</div>'
-        . '<div style="text-align:center">Typed signature field — not a verified cryptographic digital signature.</div>'
+        . '<div class="signature-note">Typed signature field — not a verified cryptographic digital signature.</div>'
         . '<div class="muted">Reference: ' . $esc((string) ($issuance['reference_no'] ?? ''))
         . ' | Issued: ' . $esc(isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'))
         . ' | Recorded issuance fee: PHP ' . $esc(number_format((float) ($issuance['fee_amount'] ?? 0), 2))
