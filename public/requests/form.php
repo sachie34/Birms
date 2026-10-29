@@ -11,6 +11,9 @@ if ($id !== null) {
     $ex = db_one('SELECT * FROM document_requests WHERE request_id = ?', [$id]);
     if ($ex === null || !request_visible_to_current_user($ex)) { abort(404, 'That request was not found.'); }
     if (!in_array($ex['status'], ['Pending', 'Review'], true)) { abort(403, 'Only Pending or In-review requests can be edited.'); }
+    if ($ex['status'] === 'Review' && !$canReview) {
+        abort(403, 'A request under review can only be edited by the Secretary or Administrator.');
+    }
 } else { require_permission('requests.add'); require_permission('residents.view'); }
 
 $types = []; foreach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $t) { $types[(int) $t['type_id']] = (string) $t['name']; }
@@ -38,7 +41,10 @@ $visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name FROM visitor_
 $residentId = $ex ? (int) $ex['resident_id'] : (get_int('resident') ?? post_int('resident_id'));
 $resident = $residentId !== null ? db_one('SELECT resident_id, last_name, first_name, middle_name, suffix, residency_status, archived_at FROM residents WHERE resident_id = ?', [$residentId]) : null;
 if ($resident !== null && $resident['archived_at'] !== null) { $resident = null; }
-$errors = []; $v = [
+$errors = [];
+$requirementsReset = false;
+$requirementsResetMessage = '';
+$v = [
     'type_id' => (string) ($ex['type_id'] ?? ''), 'purpose' => $ex['purpose'] ?? '',
     'assigned_to' => (string) ($ex['assigned_to'] ?? (audit_actor()['user_id'] ?? '')),
     'requirements_status' => (string) ($ex['requirements_status'] ?? 'Not checked'),
@@ -65,6 +71,30 @@ if (is_post() && $resident !== null) {
         $v['assigned_to'] = $ex !== null ? (string) ($ex['assigned_to'] ?? '') : (string) (audit_actor()['user_id'] ?? '');
         $v['requirements_status'] = $ex !== null ? (string) ($ex['requirements_status'] ?? 'Not checked') : 'Not checked';
         $v['requirements_note'] = $ex !== null ? (string) ($ex['requirements_note'] ?? '') : '';
+    }
+
+    // Intake is not the formal requirements-review step. A checklist may only be completed
+    // after the request has entered Review, and material changes invalidate a previous check.
+    if ($ex === null || $ex['status'] === 'Pending') {
+        $requirementsReset = $v['requirements_status'] !== 'Not checked' || $v['requirements_note'] !== '';
+        $v['requirements_status'] = 'Not checked';
+        $v['requirements_note'] = '';
+        if ($requirementsReset) {
+            $requirementsResetMessage = 'Requirements remain Not checked during intake. Start the formal review before marking them complete.';
+        }
+    } elseif ($ex['status'] === 'Review') {
+        $materialChanged =
+            (string) $v['type_id'] !== (string) $ex['type_id']
+            || (string) $v['purpose'] !== (string) $ex['purpose']
+            || (string) $v['fee_rule_id'] !== (string) ($ex['fee_rule_id'] ?? '')
+            || (int) $v['fee_quantity'] !== (int) ($ex['fee_quantity'] ?? 1)
+            || ($file !== null && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK);
+        if ($materialChanged) {
+            $v['requirements_status'] = 'Not checked';
+            $v['requirements_note'] = '';
+            $requirementsReset = true;
+            $requirementsResetMessage = 'Request details or supporting documents changed. Requirements were reset to Not checked; review the updated request again before making a final decision.';
+        }
     }
     if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
@@ -182,7 +212,11 @@ if (is_post() && $resident !== null) {
                 'request', $new);
             return $new;
         });
-        flash_add('success', $ex ? 'Request updated.' : 'Request filed.');
+        if ($requirementsReset) {
+            flash_add('warning', ($ex ? 'Request updated. ' : 'Request filed. ') . $requirementsResetMessage);
+        } else {
+            flash_add('success', $ex ? 'Request updated.' : 'Request filed.');
+        }
         redirect('requests/view.php', ['id' => $rid]);
     }
     audit_best_effort('request_rejected', 'Requests', 'Failed', 'Validation failed (' . count($errors) . ' problem(s))');
