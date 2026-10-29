@@ -35,6 +35,7 @@ if ($includeCheckExit !== 0) {
 }
 
 require_once __DIR__ . '/../app/core.php';
+require_once __DIR__ . '/cli_prompt.php';
 
 function setup_out(string $message): void
 {
@@ -68,9 +69,13 @@ function setup_require_extensions(): array
 function setup_check(): int
 {
     $missing = setup_require_extensions();
-    if (PHP_VERSION_ID < 80100) {
-        setup_out('FAIL: PHP 8.1 or newer is required. Current version: ' . PHP_VERSION);
+    $runtimeIssue = php_runtime_security_issue(PHP_VERSION_ID);
+    if ($runtimeIssue !== null) {
+        setup_out('FAIL: ' . $runtimeIssue . ' Current version: ' . PHP_VERSION);
         return 1;
+    }
+    if ($notice = php_runtime_upgrade_notice(PHP_VERSION_ID)) {
+        setup_out($notice);
     }
     if ($missing) {
         setup_out('FAIL: Required PHP extension(s) missing: ' . implode(', ', $missing));
@@ -89,6 +94,7 @@ function setup_check(): int
         '/tools/test_infobip_sms.php',
         '/tools/migrate.php',
         '/tools/create_admin.php',
+        '/tools/cli_prompt.php',
     ];
     foreach ($requiredFiles as $relative) {
         if (!is_file(APP_ROOT . $relative)) {
@@ -116,9 +122,9 @@ if (in_array('--help', $argv, true)) {
 }
 
 $missing = setup_require_extensions();
-if (PHP_VERSION_ID < 80100 || $missing) {
+if (php_runtime_security_issue(PHP_VERSION_ID) !== null || $missing) {
     setup_check();
-    setup_fail('Fix the PHP version/extensions listed above before continuing.');
+    setup_fail('Fix the PHP security patch level/extensions listed above before continuing.');
 }
 
 $configPath = APP_ROOT . '/app/config.local.php';
@@ -151,8 +157,12 @@ $rootPassword = getenv('BIRMS_MYSQL_ROOT_PASSWORD');
 if ($rootPassword === false) {
     setup_out('Target database: ' . $dbName);
     setup_out('Enter the MySQL root password for this local XAMPP installation.');
-    setup_out('On a fresh XAMPP installation this is often blank; press Enter if you have not set one.');
-    $rootPassword = setup_prompt('MySQL root password (input is visible): ');
+    setup_out('On a fresh XAMPP installation this is often blank; submit an empty value if it has not been set.');
+    try {
+        $rootPassword = cli_prompt_secret('MySQL root password (blank if none)');
+    } catch (Throwable $e) {
+        setup_fail($e->getMessage());
+    }
 }
 
 try {
@@ -278,8 +288,12 @@ if (!$hasAdmin) {
     if (!v_person_name($fullName)) {
         setup_fail('Enter a valid full name. Configuration/migrations remain in place.');
     }
-    $adminPassword = setup_prompt('Administrator password (input is visible; use 10+ characters with letters and numbers): ');
-    $adminConfirm = setup_prompt('Re-enter administrator password: ');
+    try {
+        $adminPassword = cli_prompt_secret('Administrator password (10+ characters with letters and numbers)');
+        $adminConfirm = cli_prompt_secret('Re-enter administrator password');
+    } catch (Throwable $e) {
+        setup_fail($e->getMessage());
+    }
     if (!hash_equals($adminPassword, $adminConfirm)) {
         setup_fail('The passwords did not match. Configuration/migrations remain in place; rerun tools/create_admin.php after correcting the password.');
     }

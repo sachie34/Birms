@@ -6,6 +6,21 @@
 declare(strict_types=1);
 
 require __DIR__ . '/core.php';
+
+// Fail closed before loading application routes on a known-unpatched runtime.
+// This does not replace updating Apache's PHP package; a runtime vulnerability
+// may be exploitable before userland PHP code is reached.
+$phpRuntimeIssue = php_runtime_security_issue(PHP_VERSION_ID);
+if ($phpRuntimeIssue !== null) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=UTF-8');
+    header('Cache-Control: no-store');
+    echo "BIRMS is temporarily disabled because the active PHP runtime needs a security update.\n"
+        . $phpRuntimeIssue . "\n"
+        . "Check both the CLI PHP version and the PHP version loaded by Apache in XAMPP.\n";
+    exit;
+}
+
 require __DIR__ . '/auth.php';
 require __DIR__ . '/permissions.php';
 require __DIR__ . '/attachments_lib.php';

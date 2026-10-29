@@ -9,6 +9,42 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__));
 define('PUBLIC_ROOT', APP_ROOT . '/public');
 
+/**
+ * Return a user-safe reason when the active PHP runtime has not reached the
+ * security patch level required for BIRMS. PHP 8.2 is accepted only at its
+ * latest critical patch while that branch is still supported.
+ */
+function php_runtime_security_issue(int $versionId): ?string
+{
+    if (($versionId >= 80235 && $versionId < 80300)
+        || ($versionId >= 80336 && $versionId < 80400)
+        || ($versionId >= 80427 && $versionId < 80500)
+        || ($versionId >= 80512 && $versionId < 80600)) {
+        return null;
+    }
+
+    if ($versionId >= 80500 && $versionId < 80600) {
+        return 'PHP 8.5 must be updated to 8.5.12 or later within the 8.5 branch.';
+    }
+    if ($versionId >= 80400 && $versionId < 80500) {
+        return 'PHP 8.4 must be updated to 8.4.27 or later within the 8.4 branch.';
+    }
+    if ($versionId >= 80300 && $versionId < 80400) {
+        return 'PHP 8.3 must be updated to 8.3.36 or later within the 8.3 branch.';
+    }
+    if ($versionId >= 80200 && $versionId < 80300) {
+        return 'PHP 8.2 must be updated to 8.2.35 or later. PHP 8.2 support ends on 31 December 2026; upgrading to PHP 8.3 or newer is recommended.';
+    }
+    return 'Use a supported stable PHP 8.2, 8.3, 8.4, or 8.5 release at its required security patch level. See https://www.php.net/supported-versions.php.';
+}
+
+function php_runtime_upgrade_notice(int $versionId): ?string
+{
+    return ($versionId >= 80200 && $versionId < 80300)
+        ? 'WARNING: PHP 8.2 security support ends on 31 December 2026. Upgrade to PHP 8.3 or newer.'
+        : null;
+}
+
 function config(?string $path = null, mixed $default = null): mixed
 {
     static $cfg = null;

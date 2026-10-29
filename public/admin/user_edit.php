@@ -26,6 +26,7 @@ function other_active_admins(int $exceptId): int
 
 if (is_post()) {
     require_csrf();
+    if ($target === null) { rate_limit_enforce('user_account_create', 10, 3600, null, 60); }
     $v['full_name'] = post_str('full_name');
     $v['email'] = post_str('email');
     $v['contact_number'] = post_str('contact_number');

@@ -9,6 +9,10 @@ require_permission('users.manage');
 
 $id = post_int('id'); $action = post_str('action');
 if ($id === null || !in_array($action, ['reset_password', 'unlock', 'deactivate', 'activate'], true)) { abort(404, 'Unknown action.'); }
+rate_limit_enforce('admin_user_action', 30, 3600, null, 120);
+if ($action === 'reset_password') {
+    rate_limit_enforce('admin_password_reset_target', 3, 86400, (string) $id, 60);
+}
 $t = db_one('SELECT user_id, username, role, status FROM users WHERE user_id = ?', [$id]);
 if ($t === null) { abort(404, 'That user does not exist.'); }
 if ((int) $t['user_id'] === (int) $me['user_id']) {

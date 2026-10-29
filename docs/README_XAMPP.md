@@ -9,8 +9,8 @@ It never touches your original `barangay_db`.
 
 1. Download the [one-click BIRMS ZIP from main](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `birms_work`. Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed. Renaming to `birms_work` makes the commands below work as written.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
-3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
-4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies migrations 001-012, writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` and does not seed official fees, certificate wording, Puroks or signatories.
+3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. enter the local MySQL root password at the hidden-input prompt (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
+4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies migrations 001-014, writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` and does not seed official fees, certificate wording, Puroks or signatories.
 5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
@@ -39,8 +39,8 @@ This process fixes a missing/mixed local source tree without replacing your data
 **Credentials warning:** BIRMS no longer includes the old root-level `Api` file. It was not used by application code and contained an unexplained credential-looking value. If you are extracting this ZIP over an older copy of the project, delete that old `Api` file manually. If it held a real API key/token, revoke and replace it because Git history retains earlier committed versions.
 
 ## 1. Requirements
-- XAMPP with **PHP 8.1 or newer** and a local MySQL/MariaDB server (MySQL 5.7+ or MariaDB 10.3+). Check PHP with `C:\xampp\php\php.exe -v`.
-- PHP extensions: `pdo_mysql` and `fileinfo` (required); `curl` for the automated HTTP tests; `mbstring` is optional (the application has a fallback).
+- XAMPP with security-patched PHP (**8.3.36+**, **8.4.27+**, or **8.5.12+**; PHP 8.2 requires **8.2.35+** and should be upgraded before its support ends on 31 December 2026) and a local MySQL/MariaDB server (MySQL 5.7+ or MariaDB 10.3+). Check PHP with `C:\xampp\php\php.exe -v`.
+- PHP extensions: `pdo_mysql` and `fileinfo` (required); `curl` for the automated HTTP tests; `mbstring` is optional (the application has a fallback). For uploads, set `upload_max_filesize` and `post_max_size` appropriately in `php.ini`; application rate limits run after PHP receives a request and do not replace PHP/web-server ingress-size limits.
 - Keep BIRMS on the trusted local office network. **Do not expose it to the public internet.**
 
 ## 2. Install manually (advanced)
@@ -59,7 +59,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   This applies migrations 001 to 012 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional SMS-provider tracking for Semaphore and Infobip. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
+   This applies migrations 001 to 014 to the new, empty `barangay_db_work` database. Migration 007 adds resident employment status and incident type fields for reports; migration 008 adds request requirements status/notes; migration 009 adds the configurable fee matrix and quote/issuance snapshots; migration 010 adds a manual resident identity/voter verification history; migration 012 adds optional SMS-provider tracking; migration 013 prevents duplicate scheduled hearing slots; migration 014 adds hashed fixed-window rate-limit buckets for high-cost operations. See [SEMAPHORE_SMS.md](SEMAPHORE_SMS.md) before enabling the provider.
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -67,7 +67,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    ```
    C:\xampp\php\php.exe tools\create_admin.php --username=admin --name="Your Full Name"
    ```
-   Type a password when asked (it is visible on Windows). Minimum 10 characters, with a letter and a number.
+   Type a password at the hidden-input prompt. Minimum 10 characters, with a letter and a number.
 8. Open `http://localhost/birms_work/public/` and sign in.
 9. Go to **Fees and Puroks** (Settings) and enter the official details **yourself**: Captain and Secretary names, the Purok list, each document's approved wording, and SMS text. They are blank on purpose. For fees, either set the per-document fee or enter formally approved rules under **Multi-tier fee matrix**. No fee rates are preloaded. If an active matrix rule applies to a document type, a new request must select an approved category/tier and valid quantity; the saved quote is carried onto the issuance. Paid certificates still require a receipt/O.R. number at issuance. Certificates cannot be issued until required wording and any referenced official/household details are available.
    Hearing summons work the same way: the Secretary enters approved text under **Settings → Hearing summons**; a summons cannot be printed until then.
