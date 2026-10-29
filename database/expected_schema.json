@@ -761,6 +761,14 @@
                 "columns": [
                     "hearing_id"
                 ]
+            },
+            "uq_hearing_case_time_status": {
+                "unique": true,
+                "columns": [
+                    "blotter_id",
+                    "scheduled_at",
+                    "status"
+                ]
             }
         },
         "fks": {

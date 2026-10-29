@@ -257,6 +257,30 @@ function db_transaction(callable $fn): mixed
     }
 }
 
+/**
+ * Serialize critical administrative invariants across concurrent requests.
+ * MySQL/MariaDB named locks are connection-scoped and released in finally.
+ */
+function with_named_lock(string $name, callable $fn, int $timeoutSeconds = 5): mixed
+{
+    if (preg_match('/^[A-Za-z0-9:_-]{1,64}$/D', $name) !== 1) {
+        throw new InvalidArgumentException('Invalid application lock name.');
+    }
+    $timeoutSeconds = max(0, min(30, $timeoutSeconds));
+    if ((int) db_val('SELECT GET_LOCK(?, ?)', [$name, $timeoutSeconds]) !== 1) {
+        throw new RuntimeException('The requested operation is busy. Please try again.');
+    }
+    try {
+        return $fn();
+    } finally {
+        try {
+            db_val('SELECT RELEASE_LOCK(?)', [$name]);
+        } catch (Throwable $e) {
+            error_log('BIRMS named-lock release failed for ' . $name . ': ' . $e->getMessage());
+        }
+    }
+}
+
 /* ---------------------------------------------------------------- validators */
 
 function v_len(string $s, int $min, int $max): bool

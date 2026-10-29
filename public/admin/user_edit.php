@@ -61,16 +61,45 @@ if (is_post()) {
             flash_add('success', 'User created. Temporary password (shown once, give it to the user): ' . $plain);
             redirect('admin/user_edit.php', ['id' => $newId]);
         }
-        db_transaction(function () use ($v, $email, $phone, $target): void {
-            $changes = [];
-            foreach (['full_name', 'role', 'status'] as $f) { if ((string) $target[$f] !== (string) $v[$f]) { $changes[] = $f . ': ' . $target[$f] . ' -> ' . $v[$f]; } }
-            if ((string) $target['email'] !== (string) ($email ?? '')) { $changes[] = 'email changed'; }
-            if ((string) $target['contact_number'] !== (string) ($phone ?? '')) { $changes[] = 'contact number changed'; }
-            db_exec('UPDATE users SET full_name = ?, role = ?, status = ?, email = ?, contact_number = ? WHERE user_id = ?', [$v['full_name'], $v['role'], $v['status'], $email, $phone, $target['user_id']]);
-            audit('user_updated', 'Users', 'Success', ($changes ? implode('; ', $changes) : 'No field changed') . ' [' . $target['username'] . ']', 'user', (int) $target['user_id']);
-        });
-        flash_add('success', 'User updated.');
-        redirect('admin/user_edit.php', ['id' => (int) $target['user_id']]);
+        try {
+            with_named_lock('birms_active_admin_guard', function () use ($v, $email, $phone, $target): void {
+                db_transaction(function () use ($v, $email, $phone, $target): void {
+                    $current = db_one('SELECT user_id, username, full_name, role, status, email, contact_number FROM users WHERE user_id = ? FOR UPDATE', [(int) $target['user_id']]);
+                    if ($current === null) { throw new RuntimeException('missing-user'); }
+                    if ((string) $current['role'] !== (string) $target['role'] || (string) $current['status'] !== (string) $target['status']) {
+                        throw new RuntimeException('stale-user');
+                    }
+                    // The named lock serializes this check with every other role/status mutation.
+                    if ($current['role'] === 'admin' && $current['status'] === 'active'
+                        && ($v['role'] !== 'admin' || $v['status'] !== 'active')) {
+                        $activeAdmins = db_all("SELECT user_id FROM users WHERE role = 'admin' AND status = 'active' ORDER BY user_id FOR UPDATE");
+                        $remaining = 0;
+                        foreach ($activeAdmins as $adminRow) {
+                            if ((int) $adminRow['user_id'] !== (int) $current['user_id']) { $remaining++; }
+                        }
+                        if ($remaining < 1) { throw new RuntimeException('last-admin'); }
+                    }
+                    $changes = [];
+                    foreach (['full_name', 'role', 'status'] as $f) { if ((string) $current[$f] !== (string) $v[$f]) { $changes[] = $f . ': ' . $current[$f] . ' -> ' . $v[$f]; } }
+                    if ((string) $current['email'] !== (string) ($email ?? '')) { $changes[] = 'email changed'; }
+                    if ((string) $current['contact_number'] !== (string) ($phone ?? '')) { $changes[] = 'contact number changed'; }
+                    db_exec('UPDATE users SET full_name = ?, role = ?, status = ?, email = ?, contact_number = ? WHERE user_id = ?',
+                        [$v['full_name'], $v['role'], $v['status'], $email, $phone, $current['user_id']]);
+                    audit('user_updated', 'Users', 'Success', ($changes ? implode('; ', $changes) : 'No field changed') . ' [' . $current['username'] . ']', 'user', (int) $current['user_id']);
+                });
+            });
+        } catch (RuntimeException $e) {
+            $errors[] = match ($e->getMessage()) {
+                'last-admin' => 'At least one active Administrator must remain.',
+                'stale-user' => 'This account changed while you were editing it. Reload the page and try again.',
+                'missing-user' => 'That user no longer exists. Reload the page.',
+                default => 'The account could not be updated right now. Please try again.',
+            };
+        }
+        if (!$errors) {
+            flash_add('success', 'User updated.');
+            redirect('admin/user_edit.php', ['id' => (int) $target['user_id']]);
+        }
     }
 }
 

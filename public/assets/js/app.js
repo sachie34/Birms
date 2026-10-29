@@ -34,8 +34,10 @@
     });
   }
 
-  // Print buttons (no inline scripts are allowed)
+  // Print buttons (no inline scripts are allowed). Certificate print actions are recorded by the server first.
   document.querySelectorAll('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); });
+  var autoPrintPage = document.querySelector('body[data-auto-print="1"]');
+  if (autoPrintPage) { window.addEventListener('load', function () { window.print(); }); }
 
   // Client-side checks (convenience only: the server always re-validates)
   document.querySelectorAll('form.needs-validation').forEach(function (f) {
