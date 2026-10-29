@@ -237,7 +237,7 @@ function page_help_html(): string
 {
     $help = current_page_help();
     if ($help === null) { return ''; }
-    $html = '<details class="card-b mb-3 page-help" open><summary class="card-h" style="cursor:pointer;list-style-position:inside">'
+    $html = '<details class="card-b mb-3 page-help" open><summary class="card-h">'
         . '<strong><i class="bi bi-info-circle me-2" aria-hidden="true"></i>How to use this page</strong>'
         . '<span class="text-muted small ms-2">Click to show or hide</span></summary><div class="card-body-b">';
     if (!empty($help['intro'])) { $html .= '<p class="mb-2">' . e((string) $help['intro']) . '</p>'; }
