@@ -43,7 +43,7 @@ Before using official records, the system owner must confirm the barangay detail
 | Role | Typical functions available in the current code |
 |---|---|
 | Administrator | All defined permissions, including account/role management, operational settings, request review and final decisions, certificate issuance/printing, resident restoration, cash-ledger management, reports, audit and backup. |
-| Barangay Captain | View residents/requests and issuance history, make final request decisions, view the cash ledger without changing it, review/edit permitted blotter/hearing items, and view reports/audit. Cannot issue certificates or manage the ledger. |
+| Barangay Captain | View residents/requests and issuance history, preview issued certificates without print/PDF controls, make final request decisions, view the cash ledger without changing it, review/edit permitted blotter/hearing items, and view reports/audit. Cannot issue certificates, print/download certificate copies, or manage the ledger. |
 | Barangay Secretary | Register/edit residents, soft-archive (but not restore) residents, intake requests, review requirements, issue eligible ready certificates, edit operational settings, work on blotter/hearing records and reports. Cannot make the final request decision or manage user accounts. |
 | Barangay Staff / Clerk | Register/edit residents, submit/edit requests, see My Requests, and print/download already-issued certificates. Cannot change requirements decisions, start formal review, approve/reject requests, issue certificates, restore residents, or manage settings/accounts. |
 
