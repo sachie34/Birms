@@ -51,4 +51,20 @@ function run_b9(array $S, string $base): void
     } finally {
         db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     }
+
+    $expectedHelp = [
+        'admin' => 'Use the queue that matches the task you need to complete.',
+        'captain' => 'Your main task here is the final decision on eligible requests.',
+        'secretary' => 'Your main task here is to check request requirements.',
+        'clerk' => 'Use My Requests to follow requests you filed or are assigned to.',
+    ];
+    $helpProblems = [];
+    foreach ($expectedHelp as $role => $expectedText) {
+        $page = $S[$role]->get('/requests/index.php');
+        if ($page['status'] !== 200 || !str_contains($page['body'], 'class="page-help"')
+            || !str_contains($page['body'], 'How to use this page') || !str_contains($page['body'], $expectedText)) {
+            $helpProblems[] = $role . ': status=' . $page['status'] . ', help=' . (str_contains($page['body'], 'class="page-help"') ? 'yes' : 'no');
+        }
+    }
+    record('B9-5', 'Page-help panel and role-specific Request Tracker instructions render for all four roles', !$helpProblems, implode(', ', $helpProblems));
 }
