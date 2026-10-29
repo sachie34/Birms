@@ -83,6 +83,15 @@ function run_b5(array $S, string $base): void
     $secView = $sec->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c4 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     record('B5-13', 'Captain can preview without counting; Clerk, Secretary and Administrator may print and printing is tracked', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $secView['status'] === 200 && $c3 === $c2 + 1 && $admView['status'] === 200 && $c4 === $c3 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
+    $capPdf = $cap->get('/certificates/pdf.php?id=' . $row['issuance_id']);
+    record('B5-21', 'Captain can preview an issued certificate but cannot print or download a PDF; print-authorized roles receive controls',
+        $capView['status'] === 200
+        && str_contains($capView['body'], 'Preview only')
+        && !str_contains($capView['body'], 'data-print')
+        && !str_contains($capView['body'], 'Download PDF')
+        && str_contains($clkView['body'], 'data-print')
+        && str_contains($clkView['body'], 'Download PDF')
+        && $capPdf['status'] === 403);
 
     // history
     $h = $sec->get('/certificates/history.php?q=ZZOR-1'); $h2 = $sec->get('/certificates/history.php?q=ZZTest5&type=' . $tFree); $h3 = $sec->get('/certificates/history.php?from=' . date('Y-m-d') . '&to=' . date('Y-m-d') . '&q=ZZTest5'); $h4 = $sec->get('/certificates/history.php?to=2000-01-01&q=ZZTest5');

@@ -29,7 +29,13 @@ if (str_len($note) > 255) { flash_add('danger', 'The note is too long.'); redire
 $smsId = null;
 $done = db_transaction(function () use ($r, $to, $note, $id, &$smsId): bool {
     $assign = ($to === 'Review' && $r['assigned_to'] === null) ? (audit_actor()['user_id'] ?? null) : $r['assigned_to'];
-    $n = db_exec('UPDATE document_requests SET status = ?, status_note = ?, assigned_to = ? WHERE request_id = ? AND status = ?', [$to, $note !== '' ? $note : null, $assign, $id, $r['status']]);
+    $sql = 'UPDATE document_requests SET status = ?, status_note = ?, assigned_to = ?';
+    // Intake cannot pre-complete requirements: starting formal review resets the checklist.
+    if ($to === 'Review') { $sql .= ", requirements_status = 'Not checked', requirements_note = NULL"; }
+    $sql .= ' WHERE request_id = ? AND status = ?';
+    // Re-check requirements in the UPDATE itself so a concurrent requirements change cannot race a final decision.
+    if (in_array($to, ['Ready', 'Rejected'], true)) { $sql .= " AND requirements_status = 'Complete'"; }
+    $n = db_exec($sql, [$to, $note !== '' ? $note : null, $assign, $id, $r['status']]);
     if ($n !== 1) { return false; }      // someone else moved it first
     audit('request_status_changed', 'Requests', 'Success', $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''), 'request', $id);
     if ($to === 'Ready') { $smsId = sms_log_ready($r); }

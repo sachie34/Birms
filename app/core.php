@@ -264,6 +264,12 @@ function v_len(string $s, int $min, int $max): bool
     $n = str_len($s);
     return $n >= $min && $n <= $max;
 }
+/** Preserve CSV values while preventing spreadsheet formulas after leading ASCII whitespace/control characters. */
+function csv_safe_cell(mixed $value): mixed
+{
+    if (!is_string($value) || $value === '') { return $value; }
+    return preg_match('/^[\x00-\x20]*[=+\-@]/', $value) === 1 ? "'" . $value : $value;
+}
 function v_username(string $u): bool       { return preg_match('/^[a-z0-9._-]{3,30}$/', $u) === 1; }
 function v_person_name(string $n): bool    { return v_len($n, 2, 100) && preg_match("/^[\\p{L}\\p{M}][\\p{L}\\p{M} .'-]*$/u", $n) === 1; }
 function v_email(string $e): bool          { return v_len($e, 3, 100) && filter_var($e, FILTER_VALIDATE_EMAIL) !== false; }

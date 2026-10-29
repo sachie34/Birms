@@ -67,10 +67,37 @@ if ($noExtScript !== false) {
     }
 }
 record('U6', 'Text helpers still work (by character) when the mbstring extension is missing (finding L3)', trim($noExt) === '14|Niño|Ñ', trim($noExt));
+$csvGuardOk = csv_safe_cell('=1+1') === "'=1+1"
+    && csv_safe_cell("\t=1+1") === "'\t=1+1"
+    && csv_safe_cell('  @SUM(1,1)') === "'  @SUM(1,1)"
+    && csv_safe_cell('ordinary text') === 'ordinary text'
+    && csv_safe_cell(42) === 42;
+record('U7', 'CSV formula guard neutralizes leading whitespace/control characters and preserves ordinary values', $csvGuardOk);
+$guardScript = tempnam(sys_get_temp_dir(), 'birms-sms-guard-');
+$guardOutput = []; $guardExit = 99;
+if ($guardScript !== false) {
+    try {
+        $guardProbe = "<?php\n"
+            . "putenv('BIRMS_SMS_PROVIDER=smsapiph');\n"
+            . "putenv('BIRMS_SMSAPIPH_ENABLED=true');\n"
+            . "putenv('BIRMS_DB_NAME=barangay_db_work');\n"
+            . "require " . var_export(APP_ROOT . '/tests/run_modules.php', true) . ";\n";
+        if (file_put_contents($guardScript, $guardProbe) !== false) {
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($guardScript) . ' 2>&1', $guardOutput, $guardExit);
+        } else {
+            $guardOutput[] = 'Unable to write the SMS-preflight probe.';
+        }
+    } finally {
+        @unlink($guardScript);
+    }
+}
+$guardText = implode("\n", $guardOutput);
+record('U8', 'Module test runner refuses before tests when a real SMS provider is enabled', $guardExit === 2 && str_contains($guardText, 'REFUSED: the selected SMS provider is enabled.') && !str_contains($guardText, 'BIRMS module tests  base='));
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
-$inline = array_filter(array_merge($phpFiles, [APP_ROOT . '/app/layout.php']), fn($f) => preg_match('/\sstyle="|\son[a-z]+="|<script(?![^>]*\ssrc=)/i', (string) file_get_contents($f)));
+$appPhpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/app', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $appPhpFiles[] = (string) $f; } }
+$inline = array_filter(array_merge($phpFiles, $appPhpFiles), fn($f) => preg_match('/\sstyle="|\son[a-z]+="|<script(?![^>]*\ssrc=)/i', (string) file_get_contents($f)));
 record('S2', 'No inline styles or scripts (strict Content-Security-Policy)', !$inline, $inline ? implode(',', array_map('basename', $inline)) : '');
 
 /* ------------------------------------------------------------ http: access control */
@@ -186,9 +213,10 @@ record('H19', 'Every sidebar link opens for every role; no dead links or error t
 
 /* audit trail */
 db_exec("INSERT INTO audit_log (username_snapshot, action, module, status, remarks) VALUES ('@sneaky', '=SUM(1+1)', 'Test', 'Success', '+cmd|calc')");
+db_exec('INSERT INTO audit_log (username_snapshot, action, module, status, remarks) VALUES (?, ?, ?, ?, ?)', ["\t@control_formula", "\t=SUM(1+1)", 'Test', 'Success', "\t+cmd|calc"]);
 $csv = $a->get('/admin/audit_export.php');
 $lines = preg_split('/\r?\n/', ltrim($csv['body'], "\xEF\xBB\xBF")) ?: []; $formula = false;
-foreach ($lines as $ln) { foreach (str_getcsv($ln, ',', '"', '\\') as $cell) { if (is_string($cell) && $cell !== '' && strpos('=+-@', $cell[0]) !== false) { $formula = true; } } }
+foreach ($lines as $ln) { foreach (str_getcsv($ln, ',', '"', '\\') as $cell) { if (is_string($cell) && preg_match('/^[\x00-\x20]*[=+\-@]/', $cell) === 1) { $formula = true; } } }
 record('A1', 'CSV export works for the admin and neutralizes spreadsheet formulas', $csv['status'] === 200 && str_contains($csv['headers']['content-type'] ?? '', 'text/csv') && str_starts_with($csv['body'], "\xEF\xBB\xBFWhen,User") && !$formula);
 $av = $a->get('/admin/audit.php?status=Failed'); $av2 = $a->get('/admin/audit.php?from=2023-02-31&to=garbage');
 record('A2', 'Audit viewer filters work; impossible dates are ignored', $av['status'] === 200 && str_contains($av['body'], 'pill-red') && $av2['status'] === 200);

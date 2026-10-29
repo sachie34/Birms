@@ -1,10 +1,12 @@
+> **Current status pointer (2026-10-29):** This document preserves an earlier paper-compliance audit snapshot. For current code/test readiness, see [FINAL_20_FUNCTION_VERIFICATION.md](FINAL_20_FUNCTION_VERIFICATION.md), [PAPER_CODE_ALIGNMENT.md](PAPER_CODE_ALIGNMENT.md), and [QUICK_USER_WORKFLOW.md](QUICK_USER_WORKFLOW.md). Do not use the historical test totals below as the latest run.
+
 # Paper-to-Code Compliance Audit — BIRMS
 
 **Auditor:** John — BIRMS Paper-to-Code Compliance & Functionality Auditor  
 **Repository:** `sachie34/Birms`  
 **Merged into:** `main` via pull request #2  
 **Audit date:** 2026-10-22
-**Verification status (2026-10-22):** The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **146/146 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
+**Historical verification snapshot (2026-10-22; superseded for current readiness/test totals):** The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39659718319) passed PHP syntax validation, migrations 001–011 on disposable MariaDB, **37/37 authentication/security/audit checks**, and **146/146 module integration checks**, with zero failures or untested checks. Target-office XAMPP/browser UAT remains **NOT RUN**. Real HTTPS WebDAV upload and restoration remain unverified until an approved destination and private credentials are supplied.
 
 ## Source-of-truth order
 

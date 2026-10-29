@@ -52,6 +52,8 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 .card-b { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
 .card-b .card-h { padding: 1.1rem 1.25rem .6rem; } .card-b .card-h h2 { font-size: 1.05rem; font-weight: 700; margin: 0; } .card-b .card-h p { margin: .15rem 0 0; color: var(--muted); font-size: .85rem; }
 .card-b .card-body-b { padding: .75rem 1.25rem 1.25rem; }
+.page-help > summary { cursor: pointer; list-style-position: inside; }
+.page-help > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .btn-primary { background: var(--primary); border-color: var(--primary); } .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
 .form-label { font-weight: 600; font-size: .85rem; } .form-text { color: var(--muted); }
 .form-control, .form-select { border-color: #d0d7e2; } .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 .2rem rgba(21,101,192,.15); }
@@ -101,6 +103,10 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 .cert-sign { margin-top: 90px; text-align: right; } .cert-sign .name { display: inline-block; min-width: 260px; border-top: 1px solid #000; text-align: center; padding-top: 4px; font-weight: 700; text-transform: uppercase; } .cert-sign .role { display: block; text-align: center; font-size: 13px; }
 .cert-foot { position: absolute; left: 64px; right: 64px; bottom: 36px; font-size: 12px; display: flex; justify-content: space-between; border-top: 1px solid #999; padding-top: 6px; }
 @media print { .cert-wrap { background: #fff; padding: 0; } .cert-sheet { box-shadow: none; max-width: none; padding: 40px 56px; } .cert-bar { display: none !important; } @page { size: A4; margin: 12mm; } }
+@media print {
+  body.certificate-preview-only .cert-sheet { display: none !important; }
+  body.certificate-preview-only::after { content: "PREVIEW ONLY — this account does not have permission to print or download this certificate."; display: block; font-size: 12pt; padding: 20mm; }
+}
 
 /* Draft-state and ledger editor styles (kept in the stylesheet to satisfy the strict CSP). */
 .cert-draft { border: 2px solid #9b2c2c; color: #9b2c2c; font-weight: 700; text-align: center; padding: 8px; margin-bottom: 18px; }

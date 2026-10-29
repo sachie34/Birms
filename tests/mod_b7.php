@@ -188,13 +188,14 @@ function run_b7(array $S, string $base): void
         && abs((float) $quoteRow['fee_unit_rate'] - 18.50) < 0.001
         && abs((float) $quoteRow['quoted_fee_amount'] - 55.50) < 0.001);
 
+    // Formal review must start before requirements can be marked Complete.
+    $quoteReview = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
     $quoteComplete = post_as($sec, '/requests/form.php?id=' . $quoteRequestId, '/requests/form.php?id=' . $quoteRequestId, [
         'resident_id' => (string) $residentId, 'type_id' => (string) $matrixTypeId,
         'purpose' => $quotePurpose, 'assigned_to' => '',
         'requirements_status' => 'Complete', 'requirements_note' => '',
         'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
     ]);
-    $quoteReview = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
     $quoteReady = post_as($cap, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
     $quoteIssue = post_as($sec, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [

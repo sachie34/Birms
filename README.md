@@ -46,7 +46,7 @@ C:\xampp\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --ro
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 ```
 
-Start Apache and MySQL first. These commands are for the example XAMPP folder above; adjust the URL if your folder name differs. The test harness refuses to run unless the configured database name ends in `_work` or `_test`. Never run the integration suites against the original or production database.
+Start Apache and MySQL first. These commands are for the example XAMPP folder above; adjust the URL if your folder name differs. The test harness refuses to run unless the configured database name ends in `_work` or `_test`. The module test runner also refuses to run while the selected SMS provider is enabled, because test workflows can transition requests to Ready. Disable real SMS in the local config/environment before testing. Never run the integration suites against the original or production database.
 
 ## Security note
 

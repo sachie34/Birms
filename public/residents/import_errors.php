@@ -16,10 +16,6 @@ if (!is_array($report) || !is_string($report['token'] ?? null)
 }
 
 audit('resident_import_errors_downloaded', 'Residents', 'Success', count($report['rows']) . ' import-error rows downloaded');
-$safe = static function ($value): string {
-    $s = (string) ($value ?? '');
-    return preg_match('/^[\s\x00-\x1F]*[=+\-@]/u', $s) ? "'" . $s : $s;
-};
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="birms_resident_import_errors_' . date('Ymd_His') . '.csv"');
 $out = fopen('php://output', 'w');
@@ -27,9 +23,9 @@ fwrite($out, "\xEF\xBB\xBF");
 fputcsv($out, ['CSV row', 'Result', 'Last name', 'First name', 'Birthdate', 'Reason']);
 foreach ($report['rows'] as $row) {
     fputcsv($out, [
-        (int) ($row['line'] ?? 0), $safe($row['status'] ?? ''),
-        $safe($row['last_name'] ?? ''), $safe($row['first_name'] ?? ''),
-        $safe($row['birthdate'] ?? ''), $safe($row['details'] ?? ''),
+        (int) ($row['line'] ?? 0), csv_safe_cell($row['status'] ?? ''),
+        csv_safe_cell($row['last_name'] ?? ''), csv_safe_cell($row['first_name'] ?? ''),
+        csv_safe_cell($row['birthdate'] ?? ''), csv_safe_cell($row['details'] ?? ''),
     ]);
 }
 fclose($out);

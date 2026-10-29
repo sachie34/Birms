@@ -22,10 +22,11 @@ function run_b4(array $S, string $base): void
     $status = fn(int $id) => (string) db_val('SELECT status FROM document_requests WHERE request_id = ?', [$id]);
     $move = fn(Http $h, int $id, string $to, string $note = '') => post_as($h, '/requests/view.php?id=' . $id, '/requests/action.php', ['id' => (string) $id, 'to' => $to, 'note' => $note]);
     $completeRequirements = function (Http $h, int $id) {
-        $row = db_one('SELECT resident_id, type_id, purpose, assigned_to FROM document_requests WHERE request_id = ?', [$id]);
+        $row = db_one('SELECT resident_id, type_id, purpose, assigned_to, fee_rule_id, fee_quantity FROM document_requests WHERE request_id = ?', [$id]);
         return post_as($h, '/requests/form.php?id=' . $id, '/requests/form.php?id=' . $id, [
             'resident_id' => (string) $row['resident_id'], 'type_id' => (string) $row['type_id'],
             'purpose' => (string) $row['purpose'], 'assigned_to' => (string) ($row['assigned_to'] ?? ''),
+            'fee_rule_id' => (string) ($row['fee_rule_id'] ?? ''), 'fee_quantity' => (string) ($row['fee_quantity'] ?? 1),
             'requirements_status' => 'Complete', 'requirements_note' => '',
         ]);
     };
@@ -177,6 +178,42 @@ function run_b4(array $S, string $base): void
     $e1 = post_as($clk, '/requests/form.php?id=' . $ide, '/requests/form.php?id=' . $ide, ['resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose edited', 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '']);
     $e2 = $clk->get('/requests/form.php?id=' . $id1); $e3 = $cap->get('/requests/form.php?id=' . $ide);
     record('B4-15', 'Editing: clerk can edit a Pending request; a Ready request and a captain are refused (403)', $e1['status'] === 302 && db_val('SELECT purpose FROM document_requests WHERE request_id = ?', [$ide]) === 'ZZ Test purpose edited' && $e2['status'] === 403 && $e3['status'] === 403);
+
+    // Requests under review are protected from intake edits, and material edits invalidate old checklist decisions.
+    $filed('ZZ Test purpose checklist lock');
+    $idLock = $rid('ZZ Test purpose checklist lock');
+    $move($sec, $idLock, 'Review');
+    $completeRequirements($sec, $idLock);
+    $clerkEditReview = post_as($clk, '/requests/view.php?id=' . $idLock, '/requests/form.php?id=' . $idLock, [
+        'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test clerk changed review',
+        'assigned_to' => '', 'requirements_status' => 'Complete', 'requirements_note' => '',
+        'fee_rule_id' => '', 'fee_quantity' => '1',
+    ]);
+    $clerkEditLink = $clk->get('/requests/view.php?id=' . $idLock);
+    $reviewRow = db_one('SELECT resident_id, type_id, purpose, assigned_to, fee_rule_id, fee_quantity FROM document_requests WHERE request_id = ?', [$idLock]);
+    $changedDuringReview = post_as($sec, '/requests/view.php?id=' . $idLock, '/requests/form.php?id=' . $idLock, [
+        'resident_id' => (string) $reviewRow['resident_id'], 'type_id' => (string) $reviewRow['type_id'],
+        'purpose' => 'ZZ Test purpose checklist changed', 'assigned_to' => (string) ($reviewRow['assigned_to'] ?? ''),
+        'requirements_status' => 'Complete', 'requirements_note' => '',
+        'fee_rule_id' => (string) ($reviewRow['fee_rule_id'] ?? ''), 'fee_quantity' => (string) ($reviewRow['fee_quantity'] ?? 1),
+    ]);
+    $afterChange = db_one('SELECT purpose, status, requirements_status, requirements_note FROM document_requests WHERE request_id = ?', [$idLock]);
+    $blockedStaleDecision = $move($cap, $idLock, 'Ready');
+    $staleStillReview = $status($idLock) === 'Review';
+    $recomplete = $completeRequirements($sec, $idLock);
+    $readyAfterRecheck = $move($cap, $idLock, 'Ready');
+    record('B4-20', 'Review-only edits are role-protected and material changes reset requirements before final approval',
+        $clerkEditReview['status'] === 403
+        && !str_contains($clerkEditLink['body'], 'href="' . e(base_url('requests/form.php?id=' . $idLock)) . '"')
+        && $changedDuringReview['status'] === 302
+        && $afterChange['purpose'] === 'ZZ Test purpose checklist changed'
+        && $afterChange['status'] === 'Review'
+        && $afterChange['requirements_status'] === 'Not checked'
+        && $afterChange['requirements_note'] === null
+        && $blockedStaleDecision['status'] === 302 && $staleStillReview
+        && $recomplete['status'] === 302
+        && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$idLock]) === 'Complete'
+        && $readyAfterRecheck['status'] === 302 && $status($idLock) === 'Ready');
 
     $filed('ZZ Test <script>alert(1)</script>'); $idx = $rid('ZZ Test <script>alert(1)</script>');
     $pages = [$sec->get('/requests/view.php?id=' . $idx), $sec->get('/requests/index.php?q=ZZTest4')];

@@ -36,7 +36,7 @@ set_exception_handler(function (Throwable $e): void {
     if (!headers_sent()) { http_response_code(500); }
     echo config('env') === 'development'
         ? '<pre>' . e((string) $e) . '</pre>'
-        : '<!doctype html><meta charset="utf-8"><title>Error</title><p style="font-family:sans-serif">Something went wrong. Please try again or contact the administrator.</p>';
+        : '<!doctype html><meta charset="utf-8"><title>Error</title><p>Something went wrong. Please try again or contact the administrator.</p>';
 });
 
 function send_security_headers(): void

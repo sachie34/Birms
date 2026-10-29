@@ -8,7 +8,8 @@ require_permission('certificates.history');
 $id = get_int('id');
 $c = $id === null ? null : db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$id]);
 if ($c === null) { abort(404, 'That certificate was not found.'); }
-if (can('certificates.print') || can('certificates.issue')) {
+$canPrint = can('certificates.print');
+if ($canPrint) {
     db_exec('UPDATE issuances SET print_count = print_count + 1, last_printed_at = NOW() WHERE issuance_id = ?', [$id]);
     audit_best_effort('certificate_printed', 'Certificates', 'Success', $c['reference_no'] . ' opened for printing', null);
     $c['print_count'] = (int) $c['print_count'] + 1;
@@ -21,12 +22,16 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e((string) $c['reference_no']) ?> | <?= e((string) config('app_name')) ?></title>
 <link rel="stylesheet" href="<?= $asset('vendor/bootstrap/css/bootstrap.min.css') ?>"><link rel="stylesheet" href="<?= $asset('vendor/bootstrap-icons/bootstrap-icons.min.css') ?>"><link rel="stylesheet" href="<?= $asset('css/birms.css') ?>"></head>
-<body><div class="cert-wrap">
+<body class="<?= $canPrint ? '' : 'certificate-preview-only' ?>"><div class="cert-wrap">
   <div class="cert-bar no-print">
     <a class="btn btn-light border" href="<?= e(base_url('certificates/history.php')) ?>"><i class="bi bi-arrow-left me-1"></i>Back</a>
-    <a class="btn btn-light border" href="<?= e(base_url('certificates/pdf.php?id=' . (int) $c['issuance_id'])) ?>"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
-    <span class="text-muted small align-self-center">Printed <?= (int) $c['print_count'] ?> time(s). Letterhead and layout are a provisional default until approved by the Barangay Secretary.</span>
-    <button type="button" class="btn btn-primary" data-print><i class="bi bi-printer me-1"></i>Print</button>
+    <?php if ($canPrint): ?>
+      <a class="btn btn-light border" href="<?= e(base_url('certificates/pdf.php?id=' . (int) $c['issuance_id'])) ?>"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
+      <span class="text-muted small align-self-center">Printed <?= (int) $c['print_count'] ?> time(s). Letterhead and layout are a provisional default until approved by the Barangay Secretary.</span>
+      <button type="button" class="btn btn-primary" data-print><i class="bi bi-printer me-1"></i>Print</button>
+    <?php else: ?>
+      <span class="text-muted small align-self-center"><i class="bi bi-eye me-1"></i>Preview only. Printing and PDF download are not available for this role.</span>
+    <?php endif; ?>
   </div>
   <div class="cert-sheet">
     <div class="cert-draft">DRAFT — PENDING OFFICIAL LAYOUT APPROVAL</div>

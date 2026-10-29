@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
-require_permission('certificates.history');
+require_permission('certificates.print');
 $id = get_int('id');
 $c = $id === null ? null : db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$id]);
 if ($c === null) { abort(404, 'That certificate was not found.'); }
