@@ -2,7 +2,7 @@
 
 **Review date:** 2026-10-28  
 **Repository:** `sachie34/Birms`  
-**Final-audit note (2026-10-29):** Additional checks now cover inline-style/CSP regressions, spreadsheet formula injection in CSV output, page-help rendering for all four roles, request-review invalidation after material edits, and certificate preview/print/PDF permissions. The latest run passed **38 security/authentication/audit checks and 187 module checks** (225 total, zero failures or untested checks): [GitHub Actions run #40816446358](https://github.com/sachie34/Birms/actions/runs/40816446358). Local XAMPP UAT, barangay policy/template approvals, live SMS and live backup/restore remain separate acceptance tasks.
+**Final-audit note (2026-10-29):** Additional checks now cover inline-style/CSP regressions, spreadsheet formula injection in CSV output, page-help rendering for all four roles, request-review invalidation after material edits, and certificate preview/print/PDF permissions. The latest run passed **38 security/authentication/audit checks and 187 module checks** (225 total, zero failures or untested checks): [GitHub Actions run #40816687381](https://github.com/sachie34/Birms/actions/runs/40816687381). Local XAMPP UAT, barangay policy/template approvals, live SMS and live backup/restore remain separate acceptance tasks.
 
 ## How to read this checklist
 
