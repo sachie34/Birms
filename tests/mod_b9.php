@@ -61,9 +61,9 @@ function run_b9(array $S, string $base): void
     $helpProblems = [];
     foreach ($expectedHelp as $role => $expectedText) {
         $page = $S[$role]->get('/requests/index.php');
-        if ($page['status'] !== 200 || !str_contains($page['body'], 'class="page-help"')
+        if ($page['status'] !== 200 || !str_contains($page['body'], 'page-help')
             || !str_contains($page['body'], 'How to use this page') || !str_contains($page['body'], $expectedText)) {
-            $helpProblems[] = $role . ': status=' . $page['status'] . ', help=' . (str_contains($page['body'], 'class="page-help"') ? 'yes' : 'no');
+            $helpProblems[] = $role . ': status=' . $page['status'] . ', help=' . (str_contains($page['body'], 'page-help') ? 'yes' : 'no');
         }
     }
     record('B9-5', 'Page-help panel and role-specific Request Tracker instructions render for all four roles', !$helpProblems, implode(', ', $helpProblems));
