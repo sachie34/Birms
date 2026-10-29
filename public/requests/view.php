@@ -22,8 +22,15 @@ $canEditRequest = can('requests.edit') && ($r['status'] === 'Pending' || ($r['st
 $actions = $canEditRequest ? btn_link('requests/form.php?id=' . $id, 'Edit', 'btn-light border', 'bi-pencil') : '';
 if ($r['status'] === 'Ready' && can('certificates.issue')) { $actions .= btn_link('certificates/issue.php?request=' . $id, 'Issue certificate', 'btn-primary', 'bi-file-earmark-check'); }
 if ($iss && can('certificates.history')) {
-    $actions .= btn_link('certificates/print.php?id=' . (int) $iss['issuance_id'], 'Open certificate ' . $iss['reference_no'], 'btn-light border', 'bi-printer');
-    $actions .= btn_link('certificates/pdf.php?id=' . (int) $iss['issuance_id'], 'Download PDF', 'btn-light border', 'bi-file-earmark-pdf');
+    $actions .= btn_link(
+        'certificates/print.php?id=' . (int) $iss['issuance_id'],
+        (can('certificates.print') ? 'Open certificate ' : 'Preview certificate ') . $iss['reference_no'],
+        'btn-light border',
+        can('certificates.print') ? 'bi-printer' : 'bi-eye'
+    );
+    if (can('certificates.print')) {
+        $actions .= btn_link('certificates/pdf.php?id=' . (int) $iss['issuance_id'], 'Download PDF', 'btn-light border', 'bi-file-earmark-pdf');
+    }
 }
 page_head((string) $r['reference_no'], $r['type_name'] . ' for ' . resident_name($r), $actions);
 if (in_array($r['status'], ['Pending', 'Review'], true)
