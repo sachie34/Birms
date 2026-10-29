@@ -46,11 +46,7 @@ if ($isCsv) {
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
     $write = static function (array $row) use ($out): void {
-        $safe = array_map(static function ($v) {
-            if (!is_string($v)) { return $v; }
-            return preg_match('/^[\x00-\x20]*[=+\-@]/', $v) ? "'" . $v : $v;
-        }, $row);
-        fputcsv($out, $safe, ',', '"', '\\');
+        fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\');
     };
     $write(['Prepared for', $recipientLabel]);
     $write(['Template status', 'Draft standardized BIRMS summary; official agency-specific format pending recipient approval']);
