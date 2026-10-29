@@ -14,6 +14,22 @@ require __DIR__ . '/lib.php';
 if (!function_exists('curl_init')) { fwrite(STDERR, "The PHP curl extension is required.\n"); exit(2); }
 $dbName = (string) config('db.name');
 if (!preg_match('/(_work|_test)$/', $dbName)) { fwrite(STDERR, "REFUSED: database '{$dbName}' does not end in _work or _test.\n"); exit(2); }
+
+// Module tests intentionally move synthetic requests to Ready; an enabled real provider could send paid SMS.
+$selectedSmsProvider = strtolower(trim((string) config('sms.provider', 'smsapiph')));
+$smsEnabledFlag = match ($selectedSmsProvider) {
+    'smsapiph' => config('sms.smsapiph_enabled', false),
+    'infobip' => config('sms.infobip_enabled', false),
+    'semaphore' => config('sms.semaphore_enabled', false),
+    default => config('sms.semaphore_enabled', false),
+};
+$smsEnabled = is_bool($smsEnabledFlag)
+    ? $smsEnabledFlag
+    : filter_var($smsEnabledFlag, FILTER_VALIDATE_BOOLEAN);
+if ($smsEnabled) {
+    fwrite(STDERR, "REFUSED: the selected SMS provider is enabled. Disable it in app/config.local.php/environment before running module tests; test requests can transition to Ready. Use tools/test_smsapiph_sms.php only for an intentional, authorized live-send test.\\n");
+    exit(2);
+}
 $base = rtrim('http://127.0.0.1:8080', '/');
 foreach (array_slice($argv, 1) as $a) { if (!str_starts_with($a, '--')) { $base = rtrim($a, '/'); } }
 define('TP', 'Test-Pass-2026a');
