@@ -2,7 +2,7 @@
 
 **Review date:** 2026-10-28  
 **Repository:** `sachie34/Birms`  
-**Branch context:** the role-aware workflow changes and dashboard quick-workflow guide have been merged into `main`.
+**Branch context:** the role-aware workflow and dashboard quick-workflow guide are merged into `main`. The subsequent final-audit fixes are under review in PR #24 and are not part of `main` until that PR is merged.
 
 ## How to read this checklist
 
