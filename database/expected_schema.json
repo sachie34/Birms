@@ -2299,5 +2299,49 @@
                 "on_update": "CASCADE"
             }
         }
+    },
+    "rate_limit_buckets": {
+        "columns": {
+            "bucket_hash": {
+                "type": "char(64)",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "window_started_at": {
+                "type": "datetime",
+                "nullable": false,
+                "default": "NULL",
+                "extra": ""
+            },
+            "hit_count": {
+                "type": "int unsigned",
+                "nullable": false,
+                "default": "1",
+                "extra": ""
+            },
+            "updated_at": {
+                "type": "timestamp",
+                "nullable": false,
+                "default": "current_timestamp",
+                "extra": "on update current_timestamp"
+            }
+        },
+        "indexes": {
+            "idx_rate_limit_window": {
+                "unique": false,
+                "columns": [
+                    "window_started_at"
+                ]
+            },
+            "primary": {
+                "unique": true,
+                "columns": [
+                    "bucket_hash",
+                    "window_started_at"
+                ]
+            }
+        },
+        "fks": {}
     }
 }

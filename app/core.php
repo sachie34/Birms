@@ -281,6 +281,83 @@ function with_named_lock(string $name, callable $fn, int $timeoutSeconds = 5): m
     }
 }
 
+/**
+ * Atomically consume one fixed-window rate-limit bucket without storing raw user identifiers.
+ * The action/scope/identity are combined into a SHA-256 key; expired buckets are pruned occasionally.
+ */
+function rate_limit_bucket_hit(
+    string $action,
+    string $scope,
+    string $identity,
+    int $limit,
+    int $windowSeconds,
+    ?int $now = null
+): array {
+    if ($limit < 1 || $windowSeconds < 1) {
+        throw new InvalidArgumentException('Rate limits must use positive limits and windows.');
+    }
+    $now ??= time();
+    $action = substr($action, 0, 120);
+    $scope = substr($scope, 0, 20);
+    $identity = substr($identity, 0, 255);
+    $start = intdiv($now, $windowSeconds) * $windowSeconds;
+    $startAt = date('Y-m-d H:i:s', $start);
+    $bucketHash = hash('sha256', "BIRMS-rate-limit-v1\0" . $action . "\0" . $scope . "\0" . $identity);
+
+    db_exec(
+        'INSERT INTO rate_limit_buckets (bucket_hash, window_started_at, hit_count) VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE hit_count = hit_count + 1',
+        [$bucketHash, $startAt]
+    );
+    $hits = (int) db_val(
+        'SELECT hit_count FROM rate_limit_buckets WHERE bucket_hash = ? AND window_started_at = ?',
+        [$bucketHash, $startAt]
+    );
+    // Cleanup is deliberately occasional, indexed and bounded to expired windows.
+    if (random_int(1, 100) === 1) {
+        db_exec('DELETE FROM rate_limit_buckets WHERE window_started_at < ?', [date('Y-m-d H:i:s', $now - 86400)]);
+    }
+    return [
+        'allowed' => $hits <= $limit,
+        'hits' => $hits,
+        'retry_after' => max(1, $start + $windowSeconds - $now),
+        'bucket_hash' => $bucketHash,
+        'window_started_at' => $startAt,
+    ];
+}
+
+/**
+ * Enforce the same per-action limit for both the signed-in user and their IP.
+ * An optional target key creates a narrower budget (for example, retries for one SMS record).
+ */
+function rate_limit_enforce(
+    string $action,
+    int $perUserLimit,
+    int $windowSeconds,
+    ?string $target = null,
+    ?int $perIpLimit = null
+): void {
+    $bucketAction = $target === null ? $action : $action . ':target:' . substr($target, 0, 80);
+    $user = auth_user();
+    $checks = [];
+    if ($user !== null && isset($user['user_id'])) {
+        $checks[] = ['user', (string) $user['user_id'], $perUserLimit];
+    }
+    $checks[] = ['ip', client_ip(), $perIpLimit ?? $perUserLimit];
+
+    foreach ($checks as [$scope, $identity, $limit]) {
+        $state = rate_limit_bucket_hit($bucketAction, $scope, (string) $identity, (int) $limit, $windowSeconds);
+        if (!$state['allowed']) {
+            header('Retry-After: ' . (int) $state['retry_after']);
+            if ((int) $state['hits'] === (int) $limit + 1) {
+                audit_best_effort('rate_limit_exceeded', 'Security', 'Failed',
+                    'Rate limit exceeded for ' . substr($action, 0, 100) . ' (' . $scope . ' scope)');
+            }
+            abort(429, 'Too many requests. Wait ' . (int) $state['retry_after'] . ' seconds before trying again.');
+        }
+    }
+}
+
 /* ---------------------------------------------------------------- validators */
 
 function v_len(string $s, int $min, int $max): bool

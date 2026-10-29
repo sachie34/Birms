@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('reports.export');
+rate_limit_enforce('csv_export', 10, 300, null, 50);
 require __DIR__ . '/history.php';          // reuses the filter functions only (it returns early)
 $f = history_filters($_GET); [$where, $p] = history_where($f);
 $rows = db_all("SELECT i.reference_no, i.resident_name, i.type_name, i.purpose, i.issued_at, i.issued_by_name,

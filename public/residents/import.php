@@ -30,6 +30,9 @@ function resident_import_save_error_report(array $items, int $userId): ?string
 if (is_post()) {
     require_csrf();
     $action = post_str('action');
+    if (in_array($action, ['preview', 'commit'], true)) {
+        rate_limit_enforce('resident_csv_import', 10, 300, null, 50);
+    }
 
     if ($action === 'preview') {
         unset($_SESSION['resident_import_stage']);

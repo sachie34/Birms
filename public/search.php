@@ -10,6 +10,7 @@ $results = ['residents' => [], 'requests' => [], 'issuances' => [], 'blotters' =
 $searched = str_len($q) >= 2;
 
 if ($searched) {
+    rate_limit_enforce('global_search', 60, 60, null, 180);
     // Treat %, _ and backslash as ordinary characters rather than broad wildcard input.
     $like = '%' . addcslashes($q, '%_\\') . '%';
 

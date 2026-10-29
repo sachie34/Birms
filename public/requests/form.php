@@ -56,6 +56,9 @@ $v = [
 if (is_post() && $resident !== null) {
     require_csrf();
     $file = $_FILES['attachment'] ?? null;
+    if (is_array($file) && isset($file['error']) && is_numeric($file['error']) && (int) $file['error'] !== UPLOAD_ERR_NO_FILE) {
+        rate_limit_enforce('attachment_upload', 10, 300, null, 50);
+    }
     $uploadError = attachment_upload_error($file);
     if ($uploadError !== null) { $errors[] = $uploadError; }
     $v = [

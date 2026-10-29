@@ -24,6 +24,7 @@ if (!isset($recipients[$recipient])) { $recipient = 'internal'; }
 $recipientLabel = $recipients[$recipient];
 $isCsv = get_str('format') === 'csv';
 require_permission($isCsv ? 'reports.export' : 'reports.view');
+if ($isCsv) { rate_limit_enforce('csv_export', 10, 300, null, 50); }
 
 $range = report_period_range(get_str('period'), get_int('year'), get_int('month'), get_int('quarter'));
 $data = match ($type) {

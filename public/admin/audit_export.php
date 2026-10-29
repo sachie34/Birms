@@ -6,6 +6,7 @@ require __DIR__ . '/../../app/audit_query.php';
 
 require_login();
 require_permission('audit.export');
+rate_limit_enforce('csv_export', 10, 300, null, 50);
 
 [$where, $params] = audit_build_query($_GET);
 $rows = db_all("SELECT a.occurred_at, a.username_snapshot, a.action, a.module, a.status, a.remarks, a.ip_address FROM audit_log a $where ORDER BY a.audit_id DESC LIMIT 20000", $params);

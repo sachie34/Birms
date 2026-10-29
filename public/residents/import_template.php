@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('residents.add');
+rate_limit_enforce('csv_export', 10, 300, null, 50);
 audit('resident_import_template_downloaded', 'Residents', 'Success', 'Downloaded resident CSV import template');
 
 header('Content-Type: text/csv; charset=utf-8');
