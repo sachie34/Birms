@@ -18,7 +18,8 @@ if ($r['status'] === 'Ready' && can('certificates.issue')) { $ir = issuable_requ
 $history = db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'request' AND entity_id = ? ORDER BY audit_id DESC LIMIT 20", [$id]);
 
 render_header((string) $r['reference_no'], [['Request Tracker', 'requests/index.php'], [(string) $r['reference_no'], null]], 'requests');
-$actions = (can('requests.edit') && in_array($r['status'], ['Pending', 'Review'], true)) ? btn_link('requests/form.php?id=' . $id, 'Edit', 'btn-light border', 'bi-pencil') : '';
+$canEditRequest = can('requests.edit') && ($r['status'] === 'Pending' || ($r['status'] === 'Review' && can('requests.review')));
+$actions = $canEditRequest ? btn_link('requests/form.php?id=' . $id, 'Edit', 'btn-light border', 'bi-pencil') : '';
 if ($r['status'] === 'Ready' && can('certificates.issue')) { $actions .= btn_link('certificates/issue.php?request=' . $id, 'Issue certificate', 'btn-primary', 'bi-file-earmark-check'); }
 if ($iss && can('certificates.history')) {
     $actions .= btn_link('certificates/print.php?id=' . (int) $iss['issuance_id'], 'Open certificate ' . $iss['reference_no'], 'btn-light border', 'bi-printer');
