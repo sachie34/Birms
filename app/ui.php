@@ -18,7 +18,7 @@ function current_page_help(): ?array
     $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
     $marker = '/public/';
     $pos = strripos($script, $marker);
-    $route = $pos === false ? basename($script) : substr($script, $pos + strlen($marker));
+    $route = $pos === false ? ltrim($script, '/') : substr($script, $pos + strlen($marker));
     $user = function_exists('auth_user') ? auth_user() : null;
     $role = (string) ($user['role'] ?? '');
 
