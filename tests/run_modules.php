@@ -27,7 +27,7 @@ $smsEnabled = is_bool($smsEnabledFlag)
     ? $smsEnabledFlag
     : filter_var($smsEnabledFlag, FILTER_VALIDATE_BOOLEAN);
 if ($smsEnabled) {
-    fwrite(STDERR, "REFUSED: the selected SMS provider is enabled. Disable it in app/config.local.php/environment before running module tests; test requests can transition to Ready. Use tools/test_smsapiph_sms.php only for an intentional, authorized live-send test.\\n");
+    fwrite(STDERR, "REFUSED: the selected SMS provider is enabled. Disable it in app/config.local.php/environment before running module tests; test requests can transition to Ready. Use tools/test_smsapiph_sms.php only for an intentional, authorized live-send test.\n");
     exit(2);
 }
 $base = rtrim('http://127.0.0.1:8080', '/');
