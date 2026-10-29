@@ -70,7 +70,8 @@ record('U6', 'Text helpers still work (by character) when the mbstring extension
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
-$inline = array_filter(array_merge($phpFiles, [APP_ROOT . '/app/layout.php']), fn($f) => preg_match('/\sstyle="|\son[a-z]+="|<script(?![^>]*\ssrc=)/i', (string) file_get_contents($f)));
+$appPhpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/app', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $appPhpFiles[] = (string) $f; } }
+$inline = array_filter(array_merge($phpFiles, $appPhpFiles), fn($f) => preg_match('/\sstyle="|\son[a-z]+="|<script(?![^>]*\ssrc=)/i', (string) file_get_contents($f)));
 record('S2', 'No inline styles or scripts (strict Content-Security-Policy)', !$inline, $inline ? implode(',', array_map('basename', $inline)) : '');
 
 /* ------------------------------------------------------------ http: access control */
