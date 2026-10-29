@@ -73,6 +73,21 @@ $csvGuardOk = csv_safe_cell('=1+1') === "'=1+1"
     && csv_safe_cell('ordinary text') === 'ordinary text'
     && csv_safe_cell(42) === 42;
 record('U7', 'CSV formula guard neutralizes leading whitespace/control characters and preserves ordinary values', $csvGuardOk);
+$guardEnvNames = ['BIRMS_SMS_PROVIDER', 'BIRMS_SMSAPIPH_ENABLED', 'BIRMS_DB_NAME'];
+$oldGuardEnv = []; foreach ($guardEnvNames as $name) { $oldGuardEnv[$name] = getenv($name); }
+$guardOutput = []; $guardExit = 0;
+try {
+    putenv('BIRMS_SMS_PROVIDER=smsapiph');
+    putenv('BIRMS_SMSAPIPH_ENABLED=true');
+    putenv('BIRMS_DB_NAME=barangay_db_work');
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tests/run_modules.php') . ' 2>&1', $guardOutput, $guardExit);
+} finally {
+    foreach ($oldGuardEnv as $name => $value) {
+        if ($value === false) { putenv($name); } else { putenv($name . '=' . $value); }
+    }
+}
+$guardText = implode("\n", $guardOutput);
+record('U8', 'Module test runner refuses before tests when a real SMS provider is enabled', $guardExit === 2 && str_contains($guardText, 'REFUSED: the selected SMS provider is enabled.') && !str_contains($guardText, 'BIRMS module tests  base='));
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
