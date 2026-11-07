@@ -144,9 +144,12 @@ function run_b8(array $S, string $base): void
         }
         $freeIssuance = $freeIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$freeIssuanceId]) : null;
         $pdf = $freeIssuanceId ? $sec->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
-        record('B8-5', 'Issuance saves a typed-signatory snapshot and returns a server-generated PDF',
+        $preview = $freeIssuanceId ? $sec->get('/certificates/print.php?id=' . $freeIssuanceId) : ['status' => 0, 'body' => ''];
+        record('B8-5', 'Issuance preview and server-generated PDF include the school demo branding and return a valid PDF',
             $freePost['status'] === 302 && $freeIssuance !== null
             && (string) ($freeIssuance['signature_text'] ?? '') === 'ZZ B8 Typed Signatory'
+            && $preview['status'] === 200 && str_contains($preview['body'], 'birms-demo-logo.svg')
+            && str_contains($preview['body'], 'NOT AN OFFICIAL BARANGAY SEAL')
             && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-')
             && strtolower((string) ($pdf['headers']['content-type'] ?? '')) === 'application/pdf'
             && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf'));
