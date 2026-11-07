@@ -145,12 +145,13 @@ function run_b8(array $S, string $base): void
         $freeIssuance = $freeIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$freeIssuanceId]) : null;
         $pdf = $freeIssuanceId ? $sec->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
         $preview = $freeIssuanceId ? $sec->get('/certificates/print.php?id=' . $freeIssuanceId) : ['status' => 0, 'body' => ''];
+        $pdfHasDemoMark = class_exists('Dompdf\\Dompdf') || (str_contains($pdf['body'], 'BIRMS DEMO - SCHOOL PROJECT') && str_contains($pdf['body'], '0.07 0.25 0.22 rg'));
         record('B8-5', 'Issuance preview and server-generated PDF include the school demo branding and return a valid PDF',
             $freePost['status'] === 302 && $freeIssuance !== null
             && (string) ($freeIssuance['signature_text'] ?? '') === 'ZZ B8 Typed Signatory'
             && $preview['status'] === 200 && str_contains($preview['body'], 'birms-demo-logo.svg')
             && str_contains($preview['body'], 'NOT AN OFFICIAL BARANGAY SEAL')
-            && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-')
+            && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-') && $pdfHasDemoMark
             && strtolower((string) ($pdf['headers']['content-type'] ?? '')) === 'application/pdf'
             && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf'));
 
