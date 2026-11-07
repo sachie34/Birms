@@ -57,7 +57,8 @@ function run_b8(array $S, string $base): void
             : ['status' => 0, 'headers' => [], 'body' => ''];
         record('B8-2', 'Private attachment download checks authorization and returns the stored file',
             $download['status'] === 200 && str_starts_with($download['body'], '%PDF-')
-            && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf');
+            && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf'
+            && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'attachment_downloaded' AND entity_type = 'attachment' AND entity_id = ?", [(int) $visitorAttachment['attachment_id']]) === 1);
 
         $invalidPost = $clk->upload('/visitors/index.php', [
             '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
