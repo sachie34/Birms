@@ -4,7 +4,7 @@
 
 Use the `john/paper-code-compliance` branch for the expanded demo. It contains the current B1–B9 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, and cash-collection ledger. These additions are not yet merged to `main`.
 
-The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/42340926579) before the final documentation changes passed PHP syntax, migrations through 018 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **158/158 module integration checks** (zero failures/untested). The dashboard and visible request-status label changes were included in that passing run.
+The [final audited application-code CI run](https://github.com/sachie34/Birms/actions/runs/42342197300) for the final audited code revision passed PHP syntax, migrations through 019 on disposable MariaDB 10.4 and 10.11, **37/37 authentication/security/audit checks**, and **160/160 module integration checks** (zero failures/untested). The run also checks Certified True Copy from visitor intake through linked request and the school-demo certificate wording labels.
 
 CI is not the same as running the app on the target office PC. Target-PC XAMPP/browser UAT remains required. Also check the latest [GitHub Actions runs](https://github.com/sachie34/Birms/actions) for the setup-wizard preflight run triggered by the final workflow update.
 
