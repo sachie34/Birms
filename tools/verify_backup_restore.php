@@ -28,6 +28,7 @@ $restorePass = (string) (getenv('BIRMS_RESTORE_DB_PASS') ?: ($db['pass'] ?? ''))
 $host = (string) ($db['host'] ?? '127.0.0.1');
 $port = (int) ($db['port'] ?? 3306);
 $admin = null;
+$restore = null;
 $restoreCreated = false;
 $exitCode = 0;
 
@@ -91,6 +92,7 @@ try {
     fwrite(STDERR, 'FAIL: Backup restore verification: ' . $e->getMessage() . "\n");
     $exitCode = 1;
 } finally {
+    $restore = null;
     if ($admin instanceof PDO && $restoreCreated) {
         try { $admin->exec('DROP DATABASE IF EXISTS `birms_restore_work`'); }
         catch (Throwable $cleanupError) { fwrite(STDERR, 'WARNING: Could not remove disposable restore database: ' . $cleanupError->getMessage() . "\n"); $exitCode = 1; }
