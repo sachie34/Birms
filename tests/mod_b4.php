@@ -35,20 +35,36 @@ function run_b4(array $S, string $base): void
 
     // visitors
     $vb = (int) db_val('SELECT COUNT(*) FROM visitor_log');
-    $visit = fn(Http $h, array $o = []) => post_as($h, '/visitors/index.php', '/visitors/index.php', $o + ['visitor_name' => 'ZZTest Visitor', 'visited_at' => date('Y-m-d\TH:i'), 'purpose' => 'Needs a clearance', 'class_id' => '']);
+    $visit = fn(Http $h, array $o = []) => post_as($h, '/visitors/index.php', '/visitors/index.php', $o + ['visitor_name' => 'ZZTest Visitor', 'visited_at' => date('Y-m-d\TH:i'), 'purpose' => 'Needs a clearance', 'class_id' => '', 'document_type_id' => (string) $typeId]);
     $variants = ['empty name' => ['visitor_name' => ''], 'digits in name' => ['visitor_name' => 'Bob9'], 'bad time' => ['visited_at' => 'tomorrow'], 'future' => ['visited_at' => date('Y-m-d\TH:i', strtotime('+2 days'))],
-                 'over a year ago' => ['visited_at' => date('Y-m-d\TH:i', strtotime('-2 years'))], 'short purpose' => ['purpose' => 'x'], 'array' => ['purpose' => ['a']]];
+                 'over a year ago' => ['visited_at' => date('Y-m-d\TH:i', strtotime('-2 years'))], 'short purpose' => ['purpose' => 'x'], 'missing service' => ['document_type_id' => ''], 'inactive service' => ['document_type_id' => (string) $inactive], 'array' => ['purpose' => ['a']]];
     $notRej = []; foreach ($variants as $n => $o) { $r = $visit($clk, $o); if ($r['status'] !== 200 || ($n !== 'array' && !str_contains($r['body'], 'alert-danger'))) { $notRej[] = $n; } }
     $r = $visit($clk); $cr = $visit($cap); $nt = $clk->post('/visitors/index.php', ['visitor_name' => 'ZZTest NoToken', 'visited_at' => date('Y-m-d\TH:i'), 'purpose' => 'No token here']);
-    record('B4-2', 'Visitor log: 7 bad entries rejected; clerk saves a good one; captain (view only) refused; no-token refused', !$notRej && $r['status'] === 302 && $cr['status'] === 403 && $nt['status'] === 403 && (int) db_val('SELECT COUNT(*) FROM visitor_log') === $vb + 1, implode(',', $notRej));
+    record('B4-2', 'Visitor log: 9 bad entries rejected, including missing/inactive service; clerk saves a good one; captain (view only) refused; no-token refused', !$notRej && $r['status'] === 302 && $cr['status'] === 403 && $nt['status'] === 403 && (int) db_val('SELECT COUNT(*) FROM visitor_log') === $vb + 1, implode(',', $notRej));
     $vid = (int) db_val("SELECT visit_id FROM visitor_log WHERE visitor_name = 'ZZTest Visitor' ORDER BY visit_id DESC LIMIT 1");
     $l = $sec->get('/visitors/index.php?q=ZZTest+Vis');
-    record('B4-3', 'Visitor search finds the entry and offers "New request"', str_contains($l['body'], 'ZZTest Visitor') && str_contains($l['body'], 'requests/form.php?visit=' . $vid));
+    record('B4-3', 'Visitor search shows the selected document type and offers the linked request action', str_contains($l['body'], 'ZZTest Visitor') && str_contains($l['body'], 'Barangay Clearance') && str_contains($l['body'], 'requests/form.php?visit=' . $vid) && (int) db_val('SELECT document_type_id FROM visitor_log WHERE visit_id = ?', [$vid]) === $typeId);
 
     // request filing
     $fs = $clk->get('/requests/form.php?q=ZZTest4');
     $pre = $clk->get('/requests/form.php?visit=' . $vid);
-    record('B4-4', 'Resident search lists active residents with a Select link and hides archived ones', str_contains($fs['body'], 'ZZTest4, Rita') && str_contains($fs['body'], 'resident=' . $rita) && !str_contains($fs['body'], 'ZZTest4, Gone') && str_contains($pre['body'], 'value="ZZTest Visitor"'));
+    $preSelected = $clk->get('/requests/form.php?visit=' . $vid . '&resident=' . $rita);
+    record('B4-4', 'Resident search lists active residents, hides archived ones, and carries the visitor name into the request flow', str_contains($fs['body'], 'ZZTest4, Rita') && str_contains($fs['body'], 'resident=' . $rita) && !str_contains($fs['body'], 'ZZTest4, Gone') && str_contains($pre['body'], 'value="ZZTest Visitor"') && $preSelected['status'] === 200 && preg_match('/<option value="' . $typeId . '" selected>/', $preSelected['body']) === 1);
+    $linkedPurpose = 'ZZ Test linked intake purpose';
+    $linked = post_as($clk, '/requests/form.php?resident=' . $rita . '&visit=' . $vid, '/requests/form.php?resident=' . $rita . '&visit=' . $vid, [
+        'resident_id' => (string) $rita, 'visit_id' => (string) $vid, 'type_id' => (string) $typeId,
+        'purpose' => $linkedPurpose, 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+    ]);
+    $linkedId = $rid($linkedPurpose);
+    $linkedRow = $linkedId > 0 ? db_one('SELECT visit_id, type_id FROM document_requests WHERE request_id = ?', [$linkedId]) : null;
+    record('B4-4A', 'A visitor intake can be continued into a request linked to the same visit and selected document', $linked['status'] === 302 && $linkedRow !== null && (int) $linkedRow['visit_id'] === $vid && (int) $linkedRow['type_id'] === $typeId);
+    $otherTypeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Certificate of Residency'");
+    $mismatchPurpose = 'ZZ Test mismatched intake document';
+    $mismatch = post_as($clk, '/requests/form.php?resident=' . $rita . '&visit=' . $vid, '/requests/form.php?resident=' . $rita . '&visit=' . $vid, [
+        'resident_id' => (string) $rita, 'visit_id' => (string) $vid, 'type_id' => (string) $otherTypeId,
+        'purpose' => $mismatchPurpose, 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+    ]);
+    record('B4-4B', 'A linked request cannot change the document type selected at visitor intake', $mismatch['status'] === 200 && str_contains($mismatch['body'], 'must match the service selected') && $rid($mismatchPurpose) === 0);
     $r = $filed('ZZ Test purpose 1'); $id1 = $rid('ZZ Test purpose 1');
     $row = db_one('SELECT reference_no, status FROM document_requests WHERE request_id = ?', [$id1]);
     record('B4-5', 'A request is filed: reference like REQ-YYYY-NNNN, status Pending, audited', $r['status'] === 302 && $row !== null && preg_match('/^REQ-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && $row['status'] === 'Pending' && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_created' AND entity_id = ?", [$id1]) === 1);
