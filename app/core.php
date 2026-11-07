@@ -269,9 +269,9 @@ function audit(string $action, string $module, string $status = 'Success', strin
     );
 }
 /** For events that change nothing (failed login, access denied): never let logging break the request. */
-function audit_best_effort(string $action, string $module, string $status, string $remarks, ?string $actorName = null): void
+function audit_best_effort(string $action, string $module, string $status, string $remarks, ?string $actorName = null, ?string $entityType = null, ?int $entityId = null): void
 {
-    try { audit($action, $module, $status, $remarks, null, null, $actorName); }
+    try { audit($action, $module, $status, $remarks, $entityType, $entityId, $actorName); }
     catch (Throwable $e) { error_log('BIRMS audit failed: ' . $e->getMessage()); }
 }
 function mb_substr_safe(string $s, int $len): string
