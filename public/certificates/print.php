@@ -17,7 +17,7 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e((string) $c['reference_no']) ?> | <?= e((string) config('app_name')) ?></title>
 <link rel="stylesheet" href="<?= $asset('vendor/bootstrap/css/bootstrap.min.css') ?>"><link rel="stylesheet" href="<?= $asset('vendor/bootstrap-icons/bootstrap-icons.min.css') ?>"><link rel="stylesheet" href="<?= $asset('css/birms.css') ?>"></head>
-<body><div class="cert-wrap">
+<body data-auto-print="<?= get_str('print') === '1' ? '1' : '0' ?>"><div class="cert-wrap">
   <div class="cert-bar no-print">
     <a class="btn btn-light border" href="<?= e(base_url('certificates/history.php')) ?>"><i class="bi bi-arrow-left me-1"></i>Back</a>
     <a class="btn btn-light border" href="<?= e(base_url('certificates/pdf.php?id=' . (int) $c['issuance_id'])) ?>"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
@@ -34,5 +34,5 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
   </div>
 </div>
 <script src="<?= $asset('vendor/bootstrap/js/bootstrap.bundle.min.js') ?>"></script><script src="<?= $asset('js/app.js') ?>"></script>
-<?php if (get_str('print') === '1'): ?><script>window.addEventListener('load', function () { window.print(); });</script><?php endif; ?>
+
 </body></html>
