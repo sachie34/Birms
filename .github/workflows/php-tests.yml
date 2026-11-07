@@ -99,3 +99,14 @@ jobs:
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
         run: php tests/run_modules.php http://127.0.0.1:8080
+
+      - name: Verify SQL backup can be restored to a separate disposable database
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+          BIRMS_RESTORE_DB_USER: root
+          BIRMS_RESTORE_DB_PASS: ci-root-pass
+        run: php tools/verify_backup_restore.php
