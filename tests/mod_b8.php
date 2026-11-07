@@ -33,11 +33,13 @@ function run_b8(array $S, string $base): void
         $cleanup();
 
         $visitClass = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'visit_class' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
+        $visitorDocTypeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance' AND is_active = 1");
         $visitorFields = [
             '_csrf' => $clk->token('/visitors/index.php'),
             'visitor_name' => 'ZZB Visitor',
             'purpose' => 'ZZ-B8 Supporting ID upload test',
             'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
+            'document_type_id' => (string) $visitorDocTypeId,
             'visited_at' => date('Y-m-d\\TH:i'),
         ];
         $visitorPost = $clk->upload('/visitors/index.php', $visitorFields, 'attachment', $tmp, 'ZZ-B8 identity.pdf');
@@ -60,6 +62,7 @@ function run_b8(array $S, string $base): void
         $invalidPost = $clk->upload('/visitors/index.php', [
             '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
             'purpose' => 'ZZ-B8 disallowed extension', 'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
+            'document_type_id' => (string) $visitorDocTypeId,
             'visited_at' => date('Y-m-d\\TH:i'),
         ], 'attachment', $tmp, 'not-allowed.txt', 'text/plain');
         record('B8-3', 'Disallowed upload types are rejected without saving a visitor record',
@@ -80,7 +83,7 @@ function run_b8(array $S, string $base): void
         $freeTypeId = (int) db()->lastInsertId();
         $requestForm = $clk->upload('/requests/form.php', [
             '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
-            'resident_id' => (string) $residentId, 'visit_id' => (string) ($visitId ?? ''),
+            'resident_id' => (string) $residentId, 'visit_id' => '',
             'type_id' => (string) $freeTypeId, 'purpose' => 'ZZ-B8 Supporting documents',
             'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
             'fee_rule_id' => '', 'fee_quantity' => '1',
