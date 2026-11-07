@@ -91,6 +91,31 @@ function run_b8(array $S, string $base): void
         db_exec("INSERT INTO document_types (name, fee_amount, template_body, is_active, sort_order)
                  VALUES ('ZZ-B8 Free Certificate', '0.00', 'Draft certificate for {{full_name}}; purpose {{purpose}}.', 1, 9997)");
         $freeTypeId = (int) db()->lastInsertId();
+
+        $linkedPurpose = 'ZZ-B8 visitor-linked service request';
+        $linkedPost = $clk->post('/requests/form.php?resident=' . $residentId, [
+            '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
+            'resident_id' => (string) $residentId, 'visit_id' => (string) $visitId,
+            'type_id' => (string) $visitorDocTypeId, 'purpose' => $linkedPurpose,
+            'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+            'fee_rule_id' => '', 'fee_quantity' => '1',
+        ]);
+        $linkedRequest = db_one('SELECT request_id, visit_id, type_id FROM document_requests WHERE purpose = ?', [$linkedPurpose]);
+        $mismatchPurpose = 'ZZ-B8 visitor service mismatch must be blocked';
+        $mismatchPost = $clk->post('/requests/form.php?resident=' . $residentId, [
+            '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
+            'resident_id' => (string) $residentId, 'visit_id' => (string) $visitId,
+            'type_id' => (string) $freeTypeId, 'purpose' => $mismatchPurpose,
+            'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+            'fee_rule_id' => '', 'fee_quantity' => '1',
+        ]);
+        record('B8-3A', 'Visitor intake service carries into its linked request and a different document type is rejected',
+            $linkedPost['status'] === 302 && $linkedRequest !== null
+            && (int) $linkedRequest['visit_id'] === (int) $visitId
+            && (int) $linkedRequest['type_id'] === $visitorDocTypeId
+            && $mismatchPost['status'] === 200
+            && str_contains($mismatchPost['body'], 'must match the service selected in the visitor logbook')
+            && (int) db_val('SELECT COUNT(*) FROM document_requests WHERE purpose = ?', [$mismatchPurpose]) === 0);
         $requestForm = $clk->upload('/requests/form.php', [
             '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
             'resident_id' => (string) $residentId, 'visit_id' => '',
