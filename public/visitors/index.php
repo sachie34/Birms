@@ -26,7 +26,7 @@ if (is_post()) {
     if (!$errors) {
         try {
         $vid = db_transaction(function () use ($v, $when, $file): int {
-            db_exec('INSERT INTO visitor_log (visited_at, visitor_name, purpose, class_id, logged_by) VALUES (?, ?, ?, ?, ?)', [$when, $v['visitor_name'], $v['purpose'], $v['class_id'] !== '' ? (int) $v['class_id'] : null, audit_actor()['user_id'] ?? null]);
+            db_exec('INSERT INTO visitor_log (visited_at, visitor_name, purpose, class_id, document_type_id, logged_by) VALUES (?, ?, ?, ?, ?, ?)', [$when, $v['visitor_name'], $v['purpose'], $v['class_id'] !== '' ? (int) $v['class_id'] : null, (int) $v['document_type_id'], audit_actor()['user_id'] ?? null]);
             $id = (int) db()->lastInsertId();
             store_document_upload('visitor', $id, $file);
             audit('visit_logged', 'Visitors', 'Success', 'Visit logged: ' . $v['visitor_name'], 'visit', $id);
