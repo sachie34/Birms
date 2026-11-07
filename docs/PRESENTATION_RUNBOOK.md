@@ -1,22 +1,22 @@
-# BIRMS Presentation Runbook (October 23, 2026)
+# BIRMS Presentation Runbook (November 7, 2026)
 
 ## Which version to present
 
-Use the `john/paper-code-compliance` branch for the expanded demo. It contains the current B1–B8 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, and cash-collection ledger. These additions are not yet merged to `main`.
+Use the `john/paper-code-compliance` branch for the expanded demo. It contains the current B1–B9 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, and cash-collection ledger. These additions are not yet merged to `main`.
 
-The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/39651736557) before the final documentation changes passed PHP syntax, migrations 001-011 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **142/142 module integration checks** (zero failures/untested). The dashboard and visible request-status label changes were included in that passing run.
+The [latest completed application-code CI run](https://github.com/sachie34/Birms/actions/runs/42340926579) before the final documentation changes passed PHP syntax, migrations through 018 on disposable MariaDB 10.11, **37/37 authentication/security/audit checks**, and **158/158 module integration checks** (zero failures/untested). The dashboard and visible request-status label changes were included in that passing run.
 
 CI is not the same as running the app on the target office PC. Target-PC XAMPP/browser UAT remains required. Also check the latest [GitHub Actions runs](https://github.com/sachie34/Birms/actions) for the setup-wizard preflight run triggered by the final workflow update.
 
 ## 1. Safety and setup
 
-1. Download the [one-click BIRMS ZIP from main](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract the full folder under `C:\xampp\htdocs\`, and rename the extracted folder to `birms_work` so the commands below work as written.
+1. Download the [BIRMS ZIP from the reviewed paper-compliance branch](https://github.com/sachie34/Birms/archive/refs/heads/john/paper-code-compliance.zip), extract the full folder under `C:\xampp\htdocs\`, and rename the extracted folder to `birms_work` so the commands below work as written.
 2. Keep the original `barangay_db` untouched. The setup wizard targets a separate `barangay_db_work` database only.
 3. Start Apache and the intended local MySQL/MariaDB server. The wizard expects `127.0.0.1:3306` by default; avoid starting two database services on the same port.
 4. Double-click `SETUP_XAMPP.bat`. Enter the local MySQL root password and create a non-default administrator account/password when prompted. The wizard creates the private `app/config.local.php`, applies migrations, and sets up the limited application DB user.
 5. Open the localhost URL printed by the installer (it includes your extracted folder name). Read [README_XAMPP.md](README_XAMPP.md) if the installer reports a setup error. Back up the working project and database before subsequent changes.
 6. Create synthetic demo residents, households, visitors, requests, and blotter incidents. Do not use real residents' personal data for a classroom demo.
-7. In Settings, configure test Puroks, required document wording and a test Captain/Secretary name. Configure demo fee rules only if you need to show the fee workflow. Use clearly marked draft/demo values; do not issue or present draft output as an official barangay certificate.
+7. In Settings, configure test Puroks and a test Captain/Secretary name. Demo certificate samples, PHP 50 standard/Certified True Copy rates, and illustrative Business tiers are preloaded; keep every output labeled as a school demo.
 
 ## 2. Run automated tests on the same working copy
 
@@ -43,7 +43,7 @@ Keep the browser ready and use a dedicated demo account for each role.
 2. **Resident records and households:** register a synthetic resident, assign a household/Purok, search by name or household code, and show the saved profile.
 3. **Visitor logbook and form filing:** record a synthetic visitor, attach a small sample PDF/JPG/PNG, and download the stored file through the authenticated link.
 4. **Document request queue:** create a request for the demo resident, show Pending/Review, assign or review it, demonstrate that incomplete requirements block approval, then mark the requirements Complete and advance it through the permitted status flow.
-5. **Certificate generation:** set test wording and a draft/demo signatory, issue a ready request, download the server-generated PDF, and open the print view. Check the resident name, reference number, date, fee label, draft warning, and typed-signature disclaimer.
+5. **Certificate generation:** set test wording and a draft/demo signatory, issue a ready request (including Certified True Copy if illustrating the PDF baseline), download the server-generated PDF, and open the print view. Check the resident name, reference number, date, fee label, draft warning, and typed-signature disclaimer.
 6. **Issuance history and cash ledger:** find the issued certificate by name/reference/O.R. number. For a paid demo issuance, show its ledger entry and how Pending and Reconciled totals differ. Do not label a staff-entered ledger amount as independently verified cash unless actual receipt evidence has been checked under an approved office process.
 7. **Blotter and hearings:** file a synthetic incident with complainant/respondent details, search the parties, schedule a future hearing, record a hearing outcome, and preview/print a summons only after its approved test wording is configured.
 8. **Reports and dashboard:** open demographic, issuance, request, and blotter summaries; select a period and export a CSV. Compare at least one total with the same working database. Explain that demographic figures are a current active-resident snapshot, not a historical period-end count.
