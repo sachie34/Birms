@@ -166,7 +166,7 @@ function run_b8(array $S, string $base): void
         $paidPost = $sec->post('/certificates/issue.php?request=' . $paidRequestId, [
             '_csrf' => $sec->token('/certificates/issue.php?request=' . $paidRequestId),
             'request_id' => (string) $paidRequestId, 'or_number' => $receipt,
-            'payment_method' => 'bank_transfer', 'signature_text' => 'ZZ B8 Ledger Signatory',
+            'payment_method' => 'cash', 'signature_text' => 'ZZ B8 Ledger Signatory',
         ]);
         if (preg_match('/[?&]id=(\\d+)/', (string) loc($paidPost), $m)) { $paidIssuanceId = (int) $m[1]; }
         else { $paidIssuanceId = null; }
@@ -176,7 +176,7 @@ function run_b8(array $S, string $base): void
         record('B8-6', 'Paid issuance creates one pending ledger entry linked to issuance, payment method and collector',
             $paidPost['status'] === 302 && $paidIssuance !== null && $ledger !== null
             && (float) $ledger['fee_amount'] === 25.0
-            && $ledger['payment_method'] === 'bank_transfer' && $ledger['reconciliation_status'] === 'pending'
+            && $ledger['payment_method'] === 'cash' && $ledger['reconciliation_status'] === 'pending'
             && (int) $ledger['collector_id'] === $secretaryId
             && (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) === 1);
 
@@ -196,15 +196,25 @@ function run_b8(array $S, string $base): void
 
         if ($ledger !== null && $paidIssuanceId !== null) {
             $ledgerId = (int) $ledger['ledger_id'];
+            $nonCashEdit = $adm->post('/admin/ledger.php', [
+                '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) $ledgerId,
+                'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '99.00',
+                'payment_method' => 'bank_transfer', 'notes' => 'ZZ-B8 rejected non-cash method',
+            ]);
+            $unchangedAfterNonCash = db_one('SELECT fee_amount, payment_method FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]);
+            record('B8-8A', 'The cash-only project scope rejects non-cash ledger methods without changing saved records',
+                str_contains($nonCashEdit['body'], 'Only physical cash payments')
+                && (float) ($unchangedAfterNonCash['fee_amount'] ?? 0) === 25.0
+                && (string) ($unchangedAfterNonCash['payment_method'] ?? '') === 'cash');
             $edit = $adm->post('/admin/ledger.php', [
                 '_csrf' => $adm->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) $ledgerId,
                 'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '27.50',
-                'payment_method' => 'other', 'notes' => 'ZZ-B8 reviewed edit',
+                'payment_method' => 'cash', 'notes' => 'ZZ-B8 reviewed edit',
             ]);
             $updated = db_one('SELECT * FROM cash_collection_ledger WHERE ledger_id = ?', [$ledgerId]);
             record('B8-8', 'Ledger update persists amount, method, date and notes',
                 $edit['status'] === 302 && (float) ($updated['fee_amount'] ?? 0) === 27.5
-                && (string) ($updated['payment_method'] ?? '') === 'other'
+                && (string) ($updated['payment_method'] ?? '') === 'cash'
                 && (string) ($updated['notes'] ?? '') === 'ZZ-B8 reviewed edit');
 
             $reconcile = $adm->post('/admin/ledger.php', [

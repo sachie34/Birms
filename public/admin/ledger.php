@@ -7,7 +7,7 @@ require_login();
 require_permission('ledger.view');
 $actor = audit_actor();
 $errors = [];
-$methods = ['cash' => 'Cash', 'bank_transfer' => 'Bank transfer', 'other' => 'Other'];
+$methods = ['cash' => 'Cash'];
 
 if (is_post()) {
     require_csrf();
@@ -21,7 +21,7 @@ if (is_post()) {
             $transactionDate = v_datetime_local(post_str('transaction_date'));
             $collectorName = trim(post_str('collector_name'));
             if ($issuanceId === null) { throw new RuntimeException('Choose an issued certificate.'); }
-            if (!isset($methods[$method])) { throw new RuntimeException('Choose a valid payment method.'); }
+            if (!isset($methods[$method])) { throw new RuntimeException('Only physical cash payments can be recorded in this project scope.'); }
             if ($transactionDate === null) { throw new RuntimeException('Enter the actual transaction date and time from the receipt or office record.'); }
             if (!v_len($collectorName, 2, 100)) { throw new RuntimeException('Enter the actual collector name (2-100 characters).'); }
             db_transaction(function () use ($issuanceId, $method, $transactionDate, $collectorName): void {
@@ -51,7 +51,7 @@ if (is_post()) {
             $notes = post_text('notes');
             if ($date === null) { $errors[] = 'Enter a valid transaction date and time.'; }
             if (!v_money($amount) || (float) $amount < 0) { $errors[] = 'Enter a valid non-negative amount.'; }
-            if (!isset($methods[$method])) { $errors[] = 'Choose a valid payment method.'; }
+            if (!isset($methods[$method])) { $errors[] = 'Only physical cash payments can be recorded in this project scope.'; }
             if (str_len($notes) > 500) { $errors[] = 'Notes are limited to 500 characters.'; }
             if ($errors) { throw new RuntimeException('invalid'); }
             db_transaction(function () use ($id, $date, $amount, $method, $notes): void {
@@ -125,7 +125,7 @@ $missing = db_all('SELECT i.issuance_id, i.reference_no, i.resident_name, i.fee_
     WHERE i.fee_amount > 0 AND i.or_number IS NOT NULL AND cc.ledger_id IS NULL ORDER BY i.issued_at DESC LIMIT 200');
 
 render_header('Cash Collection Ledger', [['Administration', null], ['Cash Collection Ledger', null]], 'ledger');
-page_head('Cash Collection Ledger', 'Track recorded cash-collection transactions and reconciliation. A pending item is not yet reconciled; totals are not proof of a bank deposit.');
+page_head('Cash Collection Ledger', 'Record physical cash transactions and reconciliation. A pending item is not yet reconciled; totals are not proof of a bank deposit.');
 echo errors_box($errors);
 ?>
 <div class="row g-3 mb-3">
@@ -141,7 +141,7 @@ echo errors_box($errors);
       <div class="col-lg-6"><label class="form-label" for="issuance_id">Issued certificate (must have an O.R.)</label><select class="form-select" id="issuance_id" name="issuance_id" required><option value="">Select</option><?php foreach ($missing as $m): ?><option value="<?= (int) $m['issuance_id'] ?>"><?= e((string) $m['reference_no'] . ' · ' . $m['resident_name'] . ' · ' . money($m['fee_amount']) . ' · O.R. ' . $m['or_number'] . ' · issued ' . date('Y-m-d', strtotime((string) $m['issued_at']))) ?></option><?php endforeach; ?></select></div>
       <div class="col-lg-2"><label class="form-label" for="legacy_date">Actual transaction date/time</label><input class="form-control" type="datetime-local" id="legacy_date" name="transaction_date" required></div>
       <div class="col-lg-2"><label class="form-label" for="collector_name">Actual collector name</label><input class="form-control" type="text" id="collector_name" name="collector_name" maxlength="100" required></div>
-      <div class="col-lg-1"><label class="form-label" for="new_method">Method</label><select class="form-select" id="new_method" name="payment_method"><?php foreach ($methods as $k => $label): ?><option value="<?= e($k) ?>"><?= e($label) ?></option><?php endforeach; ?></select></div>
+      <div class="col-lg-1"><label class="form-label" for="new_method">Method</label><select class="form-select" id="new_method" name="payment_method" required><?php foreach ($methods as $k => $label): ?><option value="<?= e($k) ?>"><?= e($label) ?></option><?php endforeach; ?></select></div>
       <div class="col-lg-1"><button class="btn btn-primary w-100" type="submit">Add</button></div>
     </form><?php endif; ?>
   </div>

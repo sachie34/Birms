@@ -35,7 +35,7 @@ if (is_post()) {
     $paymentMethod = post_str('payment_method') !== '' ? post_str('payment_method') : 'cash';
     $signatureText = trim(post_str('signature_text'));
     if ($signatureText === '') { $signatureText = trim((string) ($vars['captain_name'] ?? '')); }
-    if (!in_array($paymentMethod, ['cash', 'bank_transfer', 'other'], true)) { $errors[] = 'Choose a valid payment method.'; }
+    if ($paymentMethod !== 'cash') { $errors[] = 'Only physical cash payments can be recorded in this project scope.'; }
     if (str_len($signatureText) > 150) { $errors[] = 'Typed signature is limited to 150 characters.'; }
     if ($blockers) { $errors = $blockers; }
     else {
@@ -100,7 +100,7 @@ if (!$blockers && !$existing) {
     <p class="mb-2">Fee: <strong><?= e(money($r['fee_amount'])) ?></strong> <span class="text-muted small">(set by the Secretary, not editable here)</span></p>
     <form method="post" action="<?= e(base_url('certificates/issue.php?request=' . $rid)) ?>" class="needs-validation" novalidate data-confirm="Issue this certificate? This cannot be undone."><?= csrf_field() ?><input type="hidden" name="request_id" value="<?= (int) $rid ?>"><div class="row">
       <?= f_text('or_number', 'Official Receipt (O.R.) number', $or, ['maxlength' => 30, 'required' => (float) $r['fee_amount'] > 0, 'col' => 'col-12', 'help' => (float) $r['fee_amount'] > 0 ? 'Required because a fee is charged. Each O.R. number can be used only once.' : 'Optional: this document is free.']) ?>
-      <?= f_select('payment_method', 'Payment method', ['cash' => 'Cash', 'bank_transfer' => 'Bank transfer', 'other' => 'Other'], $paymentMethod, ['required' => true, 'col' => 'col-12', 'help' => 'For paid issuances, a pending cash-collection ledger entry is created for reconciliation.']) ?>
+      <?= f_select('payment_method', 'Payment method', ['cash' => 'Cash'], $paymentMethod, ['required' => true, 'col' => 'col-12', 'help' => 'The project records physical cash only; it does not process online payments. A pending cash-collection ledger entry is created for reconciliation.']) ?>
       <?= f_text('signature_text', 'Typed signatory / signature name', $signatureText, ['maxlength' => 150, 'col' => 'col-12', 'help' => 'A typed name is not a cryptographically verified digital signature. This certificate remains marked as a draft until the official layout is approved.']) ?>
     </div><button class="btn btn-primary" type="submit"><i class="bi bi-file-earmark-check me-1"></i>Issue certificate</button></form>
   </div></div></div>

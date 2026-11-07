@@ -54,7 +54,10 @@ function run_b5(array $S, string $base): void
 
     // payment rules
     $a = $issue($sec, $rReady, ['or_number' => '']); $b = $issue($sec, $rReady, ['or_number' => 'bad number!']);
-    record('B5-5', 'A fee needs an O.R. number; bad characters are refused; nothing issued', $iss($rReady) === null && str_contains($a['body'], 'O.R.') && str_contains($b['body'], 'letters, numbers and dashes'));
+    $nonCash = $issue($sec, $rReady, ['or_number' => 'ZZOR-NONCASH', 'payment_method' => 'bank_transfer']);
+    record('B5-5', 'A fee needs an O.R. number, bad characters are refused, and non-cash payment methods are rejected',
+        $iss($rReady) === null && str_contains($a['body'], 'O.R.') && str_contains($b['body'], 'letters, numbers and dashes')
+        && str_contains($nonCash['body'], 'Only physical cash payments') && $iss($rReady) === null);
     $ok = $issue($sec, $rReady, ['or_number' => 'ZZOR-1']); $row = $iss($rReady);
     $ageNow = age_on($birth);
     record('B5-6', 'A Secretary issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Claimed', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed');
