@@ -308,6 +308,17 @@ function run_b7(array $S, string $base): void
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
+    $standardFeeRows = db_all("SELECT name, fee_amount FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency')");
+    $standardFees = [];
+    foreach ($standardFeeRows as $feeRow) { $standardFees[(string) $feeRow['name']] = (float) $feeRow['fee_amount']; }
+    $businessType = db_one("SELECT type_id, fee_amount FROM document_types WHERE name = 'Business Clearance' LIMIT 1");
+    record('B7-17', 'Professor-required default fees are PHP 50 for the three standard certificates; Business Clearance is available for approved tier pricing',
+        count($standardFees) === 3
+        && ($standardFees['Barangay Clearance'] ?? 0) === 50.0
+        && ($standardFees['Certificate of Residency'] ?? 0) === 50.0
+        && ($standardFees['Certificate of Indigency'] ?? 0) === 50.0
+        && $businessType !== null && $businessType['fee_amount'] === null);
+
     // Clean ledger children before removing issuances, and issuances before requests.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
     if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
