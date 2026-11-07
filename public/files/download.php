@@ -14,7 +14,7 @@ if ($privateRoot === false || $path === false || !str_starts_with($path, $privat
     abort(404, 'That attachment is no longer available.');
 }
 if (!hash_equals((string) $att['sha256'], hash_file('sha256', $path))) {
-    audit_best_effort('attachment_integrity_failed', 'Security', 'Failed', 'Attachment checksum mismatch', 'attachment', (int) $id);
+    audit_best_effort('attachment_integrity_failed', 'Security', 'Failed', 'Attachment checksum mismatch', null, 'attachment', (int) $id);
     abort(410, 'The attachment failed its integrity check.');
 }
 audit_best_effort('attachment_downloaded', 'Files', 'Success', 'Private attachment downloaded: ' . (string) $att['original_name'], null, 'attachment', (int) $id);
