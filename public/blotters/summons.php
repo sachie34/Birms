@@ -1,5 +1,5 @@
 <?php
-/** Printable summons for a scheduled hearing. The official wording comes from Settings; nothing is guessed. */
+/** Printable scheduled-hearing summons. Fresh installs use an explicitly non-official demo sample until approved wording is entered. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
