@@ -36,6 +36,9 @@
 
   // Print buttons (no inline scripts are allowed)
   document.querySelectorAll('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); });
+  if (document.body && document.body.dataset.autoPrint === '1') {
+    window.addEventListener('load', function () { window.print(); });
+  }
 
   // Client-side checks (convenience only: the server always re-validates)
   document.querySelectorAll('form.needs-validation').forEach(function (f) {
