@@ -63,14 +63,24 @@ function certificate_pdf_bytes(array $issuance): string
     $body = (string) ($issuance['body_text'] ?? '');
     $signature = trim((string) ($issuance['signature_text'] ?? ''));
     if ($signature === '') { $signature = trim((string) ($issuance['captain_name'] ?? '')); }
+    $logoPath = APP_ROOT . '/public/assets/birms-demo-logo.svg';
+    $logoHtml = '';
+    if (is_file($logoPath)) {
+        $logoBytes = file_get_contents($logoPath);
+        if (is_string($logoBytes) && $logoBytes !== '') {
+            $logoHtml = '<img class="logo" src="data:image/svg+xml;base64,' . base64_encode($logoBytes) . '" alt="BIRMS demo logo for school project">';
+        }
+    }
     $html = '<!doctype html><html><head><meta charset="utf-8"><style>'
         . 'body{font-family:DejaVu Sans,Arial,sans-serif;font-size:12px;color:#172033;margin:34px;}'
-        . '.draft{border:2px solid #9b2c2c;color:#9b2c2c;text-align:center;font-weight:bold;padding:8px;margin-bottom:22px;}'
+        . '.draft{border:2px solid #9b2c2c;color:#9b2c2c;text-align:center;font-weight:bold;padding:8px;margin-bottom:22px;}
+        .logo{display:block;width:118px;height:118px;margin:0 auto 8px}.demo-note{text-align:center;color:#9b2c2c;font-size:9px;font-weight:bold;letter-spacing:.06em;margin:0 0 12px;}'
         . '.head{text-align:center;line-height:1.65}.title{text-align:center;font-size:20px;font-weight:bold;margin:28px 0;}'
         . '.body{font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:220px;}'
         . '.sign{margin:48px 0 8px;text-align:center;font-weight:bold;text-decoration:underline;}'
         . '.muted{font-size:10px;color:#555;margin-top:28px;border-top:1px solid #aaa;padding-top:8px;}'
         . '</style></head><body><div class="draft">' . $draft . '</div>'
+        . $logoHtml . '<div class="demo-note">SCHOOL PROJECT DEMO - NOT AN OFFICIAL BARANGAY SEAL</div>'
         . '<div class="head">Republic of the Philippines<br>Province of ' . $esc((string) setting('province', ''))
         . '<br>Municipality of ' . $esc((string) setting('municipality', '')) . '<br><strong>' . $esc(barangay_title()) . '</strong></div>'
         . '<div class="title">' . $esc((string) ($issuance['type_name'] ?? 'Certificate')) . '</div>'
@@ -93,7 +103,7 @@ function certificate_pdf_bytes(array $issuance): string
     }
 
     // Dependency-free PDF fallback: preserves the actual issuance text and metadata in a valid PDF.
-    $lines = [$draft, '', (string) setting('province', '') . ' / ' . (string) setting('municipality', ''), barangay_title(), '',
+    $lines = [$draft, 'BIRMS DEMO - SCHOOL PROJECT', 'NOT AN OFFICIAL BARANGAY SEAL', '', (string) setting('province', '') . ' / ' . (string) setting('municipality', ''), barangay_title(), '',
         (string) ($issuance['type_name'] ?? 'Certificate'), ''];
     $rawBody = str_replace(["\r\n", "\r"], "\n", $body);
     foreach (explode("\n", $rawBody) as $paragraph) {
