@@ -17,7 +17,7 @@ if (!hash_equals((string) $att['sha256'], hash_file('sha256', $path))) {
     audit_best_effort('attachment_integrity_failed', 'Security', 'Failed', 'Attachment checksum mismatch', 'attachment', (int) $id);
     abort(410, 'The attachment failed its integrity check.');
 }
-audit_best_effort('attachment_downloaded', 'Files', 'Success', 'Private attachment downloaded: ' . (string) $att['original_name'], 'attachment', (int) $id);
+audit_best_effort('attachment_downloaded', 'Files', 'Success', 'Private attachment downloaded: ' . (string) $att['original_name'], null, 'attachment', (int) $id);
 $name = basename((string) $att['original_name']);
 $name = str_replace(["\r", "\n", '"', "\\"], '_', $name);
 header('Content-Type: ' . (string) $att['mime_type']);
