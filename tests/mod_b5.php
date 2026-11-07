@@ -31,7 +31,7 @@ function run_b5(array $S, string $base): void
     $stat = fn(int $req) => (string) db_val('SELECT status FROM document_requests WHERE request_id = ?', [$req]);
     $res = $mkRes('Ana');
 
-    $bad = ''; foreach (['/certificates/issue.php' => 'certificates.issue', '/certificates/history.php' => 'certificates.history', '/certificates/history_export.php' => 'reports.export'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
+    $bad = ''; foreach (['/certificates/issue.php' => 'certificates.issue', '/certificates/history.php' => 'certificates.history', '/certificates/history_export.php' => 'reports.export', '/certificates/print_action.php' => 'certificates.print'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
     record('B5-1', 'Issue, history and export pages: every role gets exactly what the permission map says', $bad === '', $bad);
     $rReady = $mkReq($res, $tPaid); $rPend = $mkReq($res, $tPaid, 'Pending');
     $list = $sec->get('/certificates/issue.php');
@@ -77,10 +77,24 @@ function run_b5(array $S, string $base): void
     db_exec("UPDATE document_types SET template_body = ?, fee_amount = 50 WHERE type_id = ?", [$body, $tPaid]); db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
 
     // printing
-    $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]); $capView = $cap->get('/certificates/print.php?id=' . $row['issuance_id']); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $clkView = $clk->get('/certificates/print.php?id=' . $row['issuance_id']); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    record('B5-13', 'Captain, Clerk and Administrator can print independently of issuance permission; each print is audited', $capView['status'] === 200 && $c1 === $c0 + 1 && $clkView['status'] === 200 && $c2 === $c1 + 1 && $admView['status'] === 200 && $c3 === $c2 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
+    $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $capView = $cap->get('/certificates/print.php?id=' . $row['issuance_id']);
+    $clkView = $clk->get('/certificates/print.php?id=' . $row['issuance_id']);
+    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']);
+    $cPreview = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $capPrint = post_as($cap, '/certificates/print.php?id=' . $row['issuance_id'], '/certificates/print_action.php', ['id' => (string) $row['issuance_id']]);
+    $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $clkPrint = post_as($clk, '/certificates/print.php?id=' . $row['issuance_id'], '/certificates/print_action.php', ['id' => (string) $row['issuance_id']]);
+    $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $admPrint = post_as($adm, '/certificates/print.php?id=' . $row['issuance_id'], '/certificates/print_action.php', ['id' => (string) $row['issuance_id']]);
+    $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    record('B5-13', 'Opening the preview never counts as a print; explicit Print actions by Captain, Clerk and Administrator increment and audit',
+        $capView['status'] === 200 && $clkView['status'] === 200 && $admView['status'] === 200 && $cPreview === $c0
+        && $capPrint['status'] === 302 && $c1 === $c0 + 1
+        && $clkPrint['status'] === 302 && $c2 === $c1 + 1
+        && $admPrint['status'] === 302 && $c3 === $c2 + 1
+        && str_contains($clkView['body'], 'Republic of the Philippines')
+        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed' AND entity_type = 'issuance' AND entity_id = ?", [$row['issuance_id']]) === 3);
 
     // PDF download is a separate output path: verify headers, signature, and that downloading
     // does not masquerade as a browser print or increment the print counter.
