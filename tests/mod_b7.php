@@ -322,15 +322,40 @@ function run_b7(array $S, string $base): void
     $businessTiers = db_all("SELECT fee_tier, unit_rate, min_quantity, max_quantity FROM fee_matrix WHERE type_id = ? AND fee_category = 'Business' AND is_active = 1 AND effective_from <= CURDATE() AND (effective_to IS NULL OR effective_to >= CURDATE()) ORDER BY unit_rate", [(int) ($businessType['type_id'] ?? 0)]);
     $businessTierMap = [];
     foreach ($businessTiers as $tier) { $businessTierMap[(string) $tier['fee_tier']] = (float) $tier['unit_rate']; }
+    $businessTierRulesValid = count($businessTierMap) >= 3;
+    foreach (['Tier 1', 'Tier 2', 'Tier 3'] as $requiredTier) {
+        $matchingTier = array_values(array_filter($businessTiers, fn($tier) => $tier['fee_tier'] === $requiredTier));
+        $businessTierRulesValid = $businessTierRulesValid && count($matchingTier) === 1
+            && (int) $matchingTier[0]['min_quantity'] === 1 && (int) $matchingTier[0]['max_quantity'] === 1;
+    }
     record('B7-18', 'Business Clearance offers the three professor-required configurable fee tiers from PHP 100 to PHP 300',
         ($businessTierMap['Tier 1'] ?? 0) === 100.0
         && ($businessTierMap['Tier 2'] ?? 0) === 200.0
         && ($businessTierMap['Tier 3'] ?? 0) === 300.0
-        && count($businessTierMap) >= 3
-        && !empty(array_filter($businessTiers, fn($tier) => (int) $tier['min_quantity'] === 1 && (int) $tier['max_quantity'] === 1)));
+        && $businessTierRulesValid);
+
+    $businessTierTwoId = (int) db_val("SELECT fee_rule_id FROM fee_matrix WHERE type_id = ? AND fee_category = 'Business' AND fee_tier = 'Tier 2' AND is_active = 1 AND effective_from <= CURDATE() AND (effective_to IS NULL OR effective_to >= CURDATE()) ORDER BY effective_from DESC LIMIT 1", [(int) ($businessType['type_id'] ?? 0)]);
+    $businessQuotePurpose = 'ZZ B7 Business Tier 2 quote test';
+    $businessQuotePost = post_as($clk, '/requests/form.php?resident=' . $residentId, '/requests/form.php?resident=' . $residentId, [
+        'resident_id' => (string) $residentId, 'type_id' => (string) ($businessType['type_id'] ?? 0),
+        'purpose' => $businessQuotePurpose, 'assigned_to' => '',
+        'requirements_status' => 'Not checked', 'requirements_note' => '',
+        'fee_rule_id' => (string) $businessTierTwoId, 'fee_quantity' => '1',
+    ]);
+    $businessQuoteId = (int) db_val('SELECT request_id FROM document_requests WHERE purpose = ?', [$businessQuotePurpose]);
+    $businessQuote = $businessQuoteId > 0 ? db_one('SELECT fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, quoted_fee_amount FROM document_requests WHERE request_id = ?', [$businessQuoteId]) : null;
+    record('B7-19', 'A Business Clearance request selects Tier 2 and saves its PHP 200 quote and tier snapshot',
+        $businessTierTwoId > 0 && $businessQuotePost['status'] === 302 && $businessQuote !== null
+        && (int) $businessQuote['fee_rule_id'] === $businessTierTwoId
+        && $businessQuote['fee_category_snapshot'] === 'Business'
+        && $businessQuote['fee_tier_snapshot'] === 'Tier 2'
+        && (int) $businessQuote['fee_quantity'] === 1
+        && abs((float) $businessQuote['fee_unit_rate'] - 200.00) < 0.001
+        && abs((float) $businessQuote['quoted_fee_amount'] - 200.00) < 0.001);
 
     // Clean ledger children before removing issuances, and issuances before requests.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
+    if (isset($businessQuoteId) && $businessQuoteId > 0) { db_exec('DELETE FROM document_requests WHERE request_id = ?', [$businessQuoteId]); }
     if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
     if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
