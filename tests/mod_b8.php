@@ -5,7 +5,7 @@ require_once __DIR__ . '/../app/certificates_lib.php';
 
 function run_b8(array $S, string $base): void
 {
-    $clk = $S['clerk']; $sec = $S['secretary']; $adm = $S['admin'];
+    $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $tmp = tempnam(sys_get_temp_dir(), 'birms-b8-pdf');
     if ($tmp === false) { record('B8-1', 'Test fixture for PDF upload created', false); return; }
     file_put_contents($tmp, "%PDF-1.4\n1 0 obj <<>> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
@@ -151,10 +151,19 @@ function run_b8(array $S, string $base): void
             && (int) $ledger['collector_id'] === $secretaryId
             && (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) === 1);
 
-        record('B8-7', 'Cash ledger page is available to Administrator and denied to Secretary',
-            $adm->get('/admin/ledger.php')['status'] === 200
-            && $sec->get('/admin/ledger.php')['status'] === 403
-            && str_contains($adm->get('/admin/ledger.php')['body'], 'Cash Collection Ledger'));
+        $adminLedgerPage = $adm->get('/admin/ledger.php');
+        $captainLedgerPage = $cap->get('/admin/ledger.php');
+        $captainLedgerPost = $cap->post('/admin/ledger.php', [
+            '_csrf' => $cap->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) ($ledger['ledger_id'] ?? 0),
+            'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '99.00', 'payment_method' => 'cash', 'notes' => 'unauthorized Captain edit',
+        ]);
+        $captainCannotChangeLedger = abs((float) db_val('SELECT fee_amount FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) - 25.0) < 0.001;
+        record('B8-7', 'Administrator can manage the ledger; Captain can view it read-only; Secretary is denied',
+            $adminLedgerPage['status'] === 200 && str_contains($adminLedgerPage['body'], 'Cash Collection Ledger')
+            && $captainLedgerPage['status'] === 200 && str_contains($captainLedgerPage['body'], 'View only')
+            && !str_contains($captainLedgerPage['body'], 'name="do"')
+            && $captainLedgerPost['status'] === 403 && $captainCannotChangeLedger
+            && $sec->get('/admin/ledger.php')['status'] === 403);
 
         if ($ledger !== null && $paidIssuanceId !== null) {
             $ledgerId = (int) $ledger['ledger_id'];
