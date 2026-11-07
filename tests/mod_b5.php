@@ -82,6 +82,22 @@ function run_b5(array $S, string $base): void
     $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
     record('B5-13', 'Printing: Captain can view without counting; issuer and highest-privilege Administrator can print and are audited', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $admView['status'] === 200 && $c3 === $c2 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 2);
 
+    // PDF download is a separate output path: verify headers, signature, and that downloading
+    // does not masquerade as a browser print or increment the print counter.
+    $pdfCountBefore = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $pdf = $sec->get('/certificates/pdf.php?id=' . $row['issuance_id']);
+    $pdfCountAfter = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $pdfAudit = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_pdf_downloaded' AND entity_id = ?", [$row['issuance_id']]);
+    record('B5-13A', 'PDF download returns an application/pdf attachment with a valid PDF signature, is audited, and does not increment the print counter',
+        $pdf['status'] === 200
+        && str_starts_with($pdf['body'], '%PDF-')
+        && ($pdf['headers']['content-type'] ?? '') === 'application/pdf'
+        && str_contains(strtolower($pdf['headers']['content-disposition'] ?? ''), '.pdf')
+        && $pdfCountBefore === $pdfCountAfter
+        && $pdfAudit >= 1,
+        'status=' . $pdf['status'] . ', content-type=' . ($pdf['headers']['content-type'] ?? 'missing')
+        . ', signature=' . (str_starts_with($pdf['body'], '%PDF-') ? 'valid' : 'invalid'));
+
     // history
     $h = $sec->get('/certificates/history.php?q=ZZOR-1'); $h2 = $sec->get('/certificates/history.php?q=ZZTest5&type=' . $tFree); $h3 = $sec->get('/certificates/history.php?from=' . date('Y-m-d') . '&to=' . date('Y-m-d') . '&q=ZZTest5'); $h4 = $sec->get('/certificates/history.php?to=2000-01-01&q=ZZTest5');
     $sum = (float) db_val("SELECT SUM(fee_amount) FROM issuances WHERE resident_name LIKE '%ZZTEST5%'");
