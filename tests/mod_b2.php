@@ -41,7 +41,13 @@ function run_b2(array $S, string $base): void
     $seed = (int) db_val("SELECT COUNT(*) FROM document_types WHERE name IN ('Barangay Clearance','Certificate of Residency','Certificate of Indigency')");
     $sql = (string) file_get_contents(APP_ROOT . '/database/migrations/002_settings.sql');
     preg_match('/INSERT INTO document_types \(([^)]*)\)/', $sql, $m);
-    record('B2-9', 'The three documented document names exist; the migration seeds no fee and no wording', $seed === 3 && isset($m[1]) && trim($m[1]) === 'name, sort_order');
+    $ctc = db_one("SELECT fee_amount, template_body FROM document_types WHERE name = 'Certified True Copy' AND is_active = 1");
+    $ctcMigration = (string) file_get_contents(APP_ROOT . '/database/migrations/019_demo_certified_true_copy.sql');
+    record('B2-9', 'The three assigned standard types and the baseline Certified True Copy option are present; CTC has its PHP 50 demo rate and clearly watermarked sample wording',
+        $seed === 3 && isset($m[1]) && trim($m[1]) === 'name, sort_order'
+        && $ctc !== null && (float) $ctc['fee_amount'] === 50.0
+        && str_starts_with((string) $ctc['template_body'], 'SCHOOL PROJECT DEMO - NOT AN OFFICIAL CERTIFICATE.')
+        && str_contains($ctcMigration, 'Certified True Copy'));
     $bads = [['fee_amount' => 'abc'], ['fee_amount' => '-5'], ['fee_amount' => '1234567'], ['fee_amount' => '10', 'template_body' => 'Hello {{nonsense}}']];
     $allBad = true; foreach ($bads as $b) { $r = $post($sec, ['do' => 'doctype_save', 'tab' => 'documents', 'id' => (string) $tid, 'is_active' => '1'] + $b); if (!str_contains($r['body'], 'alert-danger')) { $allBad = false; } }
     record('B2-10', 'Bad fees (abc, -5, too large) and unknown wording placeholders are rejected', $allBad);
