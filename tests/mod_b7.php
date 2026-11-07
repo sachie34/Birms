@@ -291,8 +291,9 @@ function run_b7(array $S, string $base): void
     record('B7-16B1', 'Periodic quarterly CSV includes selected recipient',
         $preparedForLabel === 'Office of the Mayor',
         'Parsed Prepared for value: ' . ($preparedForLabel !== '' ? $preparedForLabel : '(missing)'));
-    record('B7-16B2', 'Periodic quarterly CSV identifies draft template status',
-        str_contains($periodicCsvBody, 'Template status'));
+    record('B7-16B2', 'Periodic quarterly CSV identifies its school-demo and unapproved status',
+        str_contains($periodicCsvBody, 'Template status')
+        && str_contains($periodicCsvBody, 'SCHOOL PROJECT DEMO - draft BIRMS summary; not an approved agency form'));
     record('B7-16B3', 'Periodic quarterly CSV includes reporting period',
         str_contains($periodicCsvBody, 'Report period'));
     record('B7-16C', 'Periodic quarterly CSV distinguishes reconciled and pending cash-ledger amounts',
