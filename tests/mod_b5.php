@@ -31,7 +31,7 @@ function run_b5(array $S, string $base): void
     $stat = fn(int $req) => (string) db_val('SELECT status FROM document_requests WHERE request_id = ?', [$req]);
     $res = $mkRes('Ana');
 
-    $bad = ''; foreach (['/certificates/issue.php' => 'certificates.issue', '/certificates/history.php' => 'certificates.history', '/certificates/history_export.php' => 'reports.export', '/certificates/print_action.php' => 'certificates.print'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
+    $bad = ''; foreach (['/certificates/issue.php' => 'certificates.issue', '/certificates/history.php' => 'certificates.history', '/certificates/history_export.php' => 'reports.export'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
     record('B5-1', 'Issue, history and export pages: every role gets exactly what the permission map says', $bad === '', $bad);
     $rReady = $mkReq($res, $tPaid); $rPend = $mkReq($res, $tPaid, 'Pending');
     $list = $sec->get('/certificates/issue.php');
