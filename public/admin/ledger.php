@@ -21,7 +21,7 @@ if (is_post()) {
             $transactionDate = v_datetime_local(post_str('transaction_date'));
             $collectorName = trim(post_str('collector_name'));
             if ($issuanceId === null) { throw new RuntimeException('Choose an issued certificate.'); }
-            if (!isset($methods[$method])) { throw new RuntimeException('Choose a valid payment method.'); }
+            if (!isset($methods[$method])) { throw new RuntimeException('Only physical cash payments can be recorded in this project scope.'); }
             if ($transactionDate === null) { throw new RuntimeException('Enter the actual transaction date and time from the receipt or office record.'); }
             if (!v_len($collectorName, 2, 100)) { throw new RuntimeException('Enter the actual collector name (2-100 characters).'); }
             db_transaction(function () use ($issuanceId, $method, $transactionDate, $collectorName): void {
@@ -51,7 +51,7 @@ if (is_post()) {
             $notes = post_text('notes');
             if ($date === null) { $errors[] = 'Enter a valid transaction date and time.'; }
             if (!v_money($amount) || (float) $amount < 0) { $errors[] = 'Enter a valid non-negative amount.'; }
-            if (!isset($methods[$method])) { $errors[] = 'Choose a valid payment method.'; }
+            if (!isset($methods[$method])) { $errors[] = 'Only physical cash payments can be recorded in this project scope.'; }
             if (str_len($notes) > 500) { $errors[] = 'Notes are limited to 500 characters.'; }
             if ($errors) { throw new RuntimeException('invalid'); }
             db_transaction(function () use ($id, $date, $amount, $method, $notes): void {
