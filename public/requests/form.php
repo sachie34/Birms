@@ -58,7 +58,8 @@ if (is_post() && $resident !== null) {
         // Legacy request-form clients may omit fee quantity. Quantity 1 preserves the prior workflow.
         'fee_quantity' => post_str('fee_quantity') !== '' ? post_str('fee_quantity') : '1',
     ];
-    if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }\n    if ($visit !== null && (int) ($visit['document_type_id'] ?? 0) > 0 && (int) $v['type_id'] !== (int) $visit['document_type_id']) { $errors[] = 'The document type must match the service selected in the visitor logbook.'; }
+    if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
+    if ($visit !== null && (int) ($visit['document_type_id'] ?? 0) > 0 && (int) $v['type_id'] !== (int) $visit['document_type_id']) { $errors[] = 'The document type must match the service selected in the visitor logbook.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
     if ($v['assigned_to'] !== '' && !isset($staff[(int) $v['assigned_to']])) { $errors[] = 'Choose a valid staff member or leave it blank.'; }
     if (!in_array($v['requirements_status'], ['Not checked', 'Incomplete', 'Complete'], true)) { $errors[] = 'Choose a valid requirements-check status.'; }
