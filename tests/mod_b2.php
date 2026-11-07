@@ -107,6 +107,14 @@ function run_b2(array $S, string $base): void
     $out = []; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/migrate.php') . ' status 2>&1', $out, $code);
     record('B2-21', 'No migration is pending on the working database', $code === 0 && preg_match('/(^|\n)0 pending\./', implode("\n", $out)) === 1);
 
+    $documentSettings = $sec->get('/admin/settings.php?tab=documents');
+    record('B2-22', 'Certificate settings distinguish school-demo samples from approved official wording and include Certified True Copy',
+        $documentSettings['status'] === 200
+        && str_contains($documentSettings['body'], 'Demo or approved wording')
+        && str_contains($documentSettings['body'], 'Fresh installs include a school-demo sample')
+        && str_contains($documentSettings['body'], 'Certified True Copy')
+        && !str_contains($documentSettings['body'], 'Official wording'));
+
     // cleanup: put everything back
     foreach ($snap as $k => $v) { db_exec('UPDATE settings SET setting_value = ? WHERE setting_key = ?', [$v, $k]); }
     foreach ($types as $t) { db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ? WHERE type_id = ?', [$t['fee_amount'], $t['template_body'], $t['is_active'], $t['type_id']]); }
