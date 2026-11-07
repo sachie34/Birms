@@ -319,6 +319,16 @@ function run_b7(array $S, string $base): void
         && ($standardFees['Certificate of Indigency'] ?? 0) === 50.0
         && $businessType !== null && $businessType['fee_amount'] === null);
 
+    $businessTiers = db_all("SELECT fee_tier, unit_rate, min_quantity, max_quantity FROM fee_matrix WHERE type_id = ? AND fee_category = 'Business' AND is_active = 1 AND effective_from <= CURDATE() AND (effective_to IS NULL OR effective_to >= CURDATE()) ORDER BY unit_rate", [(int) ($businessType['type_id'] ?? 0)]);
+    $businessTierMap = [];
+    foreach ($businessTiers as $tier) { $businessTierMap[(string) $tier['fee_tier']] = (float) $tier['unit_rate']; }
+    record('B7-18', 'Business Clearance offers the three professor-required configurable fee tiers from PHP 100 to PHP 300',
+        ($businessTierMap['Tier 1'] ?? 0) === 100.0
+        && ($businessTierMap['Tier 2'] ?? 0) === 200.0
+        && ($businessTierMap['Tier 3'] ?? 0) === 300.0
+        && count($businessTierMap) >= 3
+        && !empty(array_filter($businessTiers, fn($tier) => (int) $tier['min_quantity'] === 1 && (int) $tier['max_quantity'] === 1)));
+
     // Clean ledger children before removing issuances, and issuances before requests.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
     if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
