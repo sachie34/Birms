@@ -5,7 +5,7 @@ require_once __DIR__ . '/../app/certificates_lib.php';
 
 function run_b8(array $S, string $base): void
 {
-    $clk = $S['clerk']; $sec = $S['secretary']; $adm = $S['admin'];
+    $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $tmp = tempnam(sys_get_temp_dir(), 'birms-b8-pdf');
     if ($tmp === false) { record('B8-1', 'Test fixture for PDF upload created', false); return; }
     file_put_contents($tmp, "%PDF-1.4\n1 0 obj <<>> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
@@ -33,11 +33,13 @@ function run_b8(array $S, string $base): void
         $cleanup();
 
         $visitClass = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'visit_class' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
+        $visitorDocTypeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance' AND is_active = 1");
         $visitorFields = [
             '_csrf' => $clk->token('/visitors/index.php'),
             'visitor_name' => 'ZZB Visitor',
             'purpose' => 'ZZ-B8 Supporting ID upload test',
             'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
+            'document_type_id' => (string) $visitorDocTypeId,
             'visited_at' => date('Y-m-d\\TH:i'),
         ];
         $visitorPost = $clk->upload('/visitors/index.php', $visitorFields, 'attachment', $tmp, 'ZZ-B8 identity.pdf');
@@ -55,11 +57,22 @@ function run_b8(array $S, string $base): void
             : ['status' => 0, 'headers' => [], 'body' => ''];
         record('B8-2', 'Private attachment download checks authorization and returns the stored file',
             $download['status'] === 200 && str_starts_with($download['body'], '%PDF-')
-            && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf');
+            && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf'
+            && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'attachment_downloaded' AND entity_type = 'attachment' AND entity_id = ?", [(int) $visitorAttachment['attachment_id']]) === 1);
+
+        $storedPath = APP_ROOT . '/' . ltrim((string) $visitorAttachment['storage_path'], '/\\');
+        $storedBytes = (string) file_get_contents($storedPath);
+        file_put_contents($storedPath, $storedBytes . 'tampered');
+        $tampered = $clk->get('/files/download.php?id=' . (int) $visitorAttachment['attachment_id']);
+        file_put_contents($storedPath, $storedBytes);
+        $integrityAudit = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'attachment_integrity_failed' AND entity_type = 'attachment' AND entity_id = ?", [(int) $visitorAttachment['attachment_id']]);
+        record('B8-2A', 'A tampered private attachment is refused with HTTP 410 and an entity-linked security audit',
+            $tampered['status'] === 410 && $integrityAudit === 1 && !leaks($tampered));
 
         $invalidPost = $clk->upload('/visitors/index.php', [
             '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
             'purpose' => 'ZZ-B8 disallowed extension', 'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
+            'document_type_id' => (string) $visitorDocTypeId,
             'visited_at' => date('Y-m-d\\TH:i'),
         ], 'attachment', $tmp, 'not-allowed.txt', 'text/plain');
         record('B8-3', 'Disallowed upload types are rejected without saving a visitor record',
@@ -78,9 +91,34 @@ function run_b8(array $S, string $base): void
         db_exec("INSERT INTO document_types (name, fee_amount, template_body, is_active, sort_order)
                  VALUES ('ZZ-B8 Free Certificate', '0.00', 'Draft certificate for {{full_name}}; purpose {{purpose}}.', 1, 9997)");
         $freeTypeId = (int) db()->lastInsertId();
+
+        $linkedPurpose = 'ZZ-B8 visitor-linked service request';
+        $linkedPost = $clk->post('/requests/form.php?resident=' . $residentId, [
+            '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
+            'resident_id' => (string) $residentId, 'visit_id' => (string) $visitId,
+            'type_id' => (string) $visitorDocTypeId, 'purpose' => $linkedPurpose,
+            'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+            'fee_rule_id' => '', 'fee_quantity' => '1',
+        ]);
+        $linkedRequest = db_one('SELECT request_id, visit_id, type_id FROM document_requests WHERE purpose = ?', [$linkedPurpose]);
+        $mismatchPurpose = 'ZZ-B8 visitor service mismatch must be blocked';
+        $mismatchPost = $clk->post('/requests/form.php?resident=' . $residentId, [
+            '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
+            'resident_id' => (string) $residentId, 'visit_id' => (string) $visitId,
+            'type_id' => (string) $freeTypeId, 'purpose' => $mismatchPurpose,
+            'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+            'fee_rule_id' => '', 'fee_quantity' => '1',
+        ]);
+        record('B8-3A', 'Visitor intake service carries into its linked request and a different document type is rejected',
+            $linkedPost['status'] === 302 && $linkedRequest !== null
+            && (int) $linkedRequest['visit_id'] === (int) $visitId
+            && (int) $linkedRequest['type_id'] === $visitorDocTypeId
+            && $mismatchPost['status'] === 200
+            && str_contains($mismatchPost['body'], 'must match the service selected in the visitor logbook')
+            && (int) db_val('SELECT COUNT(*) FROM document_requests WHERE purpose = ?', [$mismatchPurpose]) === 0);
         $requestForm = $clk->upload('/requests/form.php', [
             '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
-            'resident_id' => (string) $residentId, 'visit_id' => (string) ($visitId ?? ''),
+            'resident_id' => (string) $residentId, 'visit_id' => '',
             'type_id' => (string) $freeTypeId, 'purpose' => 'ZZ-B8 Supporting documents',
             'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
             'fee_rule_id' => '', 'fee_quantity' => '1',
@@ -106,10 +144,14 @@ function run_b8(array $S, string $base): void
         }
         $freeIssuance = $freeIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$freeIssuanceId]) : null;
         $pdf = $freeIssuanceId ? $sec->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
-        record('B8-5', 'Issuance saves a typed-signatory snapshot and returns a server-generated PDF',
+        $preview = $freeIssuanceId ? $sec->get('/certificates/print.php?id=' . $freeIssuanceId) : ['status' => 0, 'body' => ''];
+        $pdfHasDemoMark = class_exists('Dompdf\\Dompdf') || (str_contains($pdf['body'], 'BIRMS DEMO - SCHOOL PROJECT') && str_contains($pdf['body'], '0.07 0.25 0.22 rg'));
+        record('B8-5', 'Issuance preview and server-generated PDF include the school demo branding and return a valid PDF',
             $freePost['status'] === 302 && $freeIssuance !== null
             && (string) ($freeIssuance['signature_text'] ?? '') === 'ZZ B8 Typed Signatory'
-            && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-')
+            && $preview['status'] === 200 && str_contains($preview['body'], 'birms-demo-logo.svg')
+            && str_contains($preview['body'], 'NOT AN OFFICIAL BARANGAY SEAL')
+            && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-') && $pdfHasDemoMark
             && strtolower((string) ($pdf['headers']['content-type'] ?? '')) === 'application/pdf'
             && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf'));
 
@@ -138,10 +180,19 @@ function run_b8(array $S, string $base): void
             && (int) $ledger['collector_id'] === $secretaryId
             && (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) === 1);
 
-        record('B8-7', 'Cash ledger page is available to Administrator and denied to Secretary',
-            $adm->get('/admin/ledger.php')['status'] === 200
-            && $sec->get('/admin/ledger.php')['status'] === 403
-            && str_contains($adm->get('/admin/ledger.php')['body'], 'Cash Collection Ledger'));
+        $adminLedgerPage = $adm->get('/admin/ledger.php');
+        $captainLedgerPage = $cap->get('/admin/ledger.php');
+        $captainLedgerPost = $cap->post('/admin/ledger.php', [
+            '_csrf' => $cap->token('/admin/ledger.php'), 'do' => 'update', 'id' => (string) ($ledger['ledger_id'] ?? 0),
+            'transaction_date' => date('Y-m-d\\TH:i'), 'fee_amount' => '99.00', 'payment_method' => 'cash', 'notes' => 'unauthorized Captain edit',
+        ]);
+        $captainCannotChangeLedger = abs((float) db_val('SELECT fee_amount FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) - 25.0) < 0.001;
+        record('B8-7', 'Administrator can manage the ledger; Captain can view it read-only; Secretary is denied',
+            $adminLedgerPage['status'] === 200 && str_contains($adminLedgerPage['body'], 'Cash Collection Ledger')
+            && $captainLedgerPage['status'] === 200 && str_contains($captainLedgerPage['body'], 'View only')
+            && !str_contains($captainLedgerPage['body'], 'name="do"')
+            && $captainLedgerPost['status'] === 403 && $captainCannotChangeLedger
+            && $sec->get('/admin/ledger.php')['status'] === 403);
 
         if ($ledger !== null && $paidIssuanceId !== null) {
             $ledgerId = (int) $ledger['ledger_id'];

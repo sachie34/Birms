@@ -63,14 +63,24 @@ function certificate_pdf_bytes(array $issuance): string
     $body = (string) ($issuance['body_text'] ?? '');
     $signature = trim((string) ($issuance['signature_text'] ?? ''));
     if ($signature === '') { $signature = trim((string) ($issuance['captain_name'] ?? '')); }
+    $logoPath = APP_ROOT . '/public/assets/birms-demo-logo.svg';
+    $logoHtml = '';
+    if (is_file($logoPath)) {
+        $logoBytes = file_get_contents($logoPath);
+        if (is_string($logoBytes) && $logoBytes !== '') {
+            $logoHtml = '<img class="logo" src="data:image/svg+xml;base64,' . base64_encode($logoBytes) . '" alt="BIRMS demo logo for school project">';
+        }
+    }
     $html = '<!doctype html><html><head><meta charset="utf-8"><style>'
         . 'body{font-family:DejaVu Sans,Arial,sans-serif;font-size:12px;color:#172033;margin:34px;}'
         . '.draft{border:2px solid #9b2c2c;color:#9b2c2c;text-align:center;font-weight:bold;padding:8px;margin-bottom:22px;}'
+        . '.logo{display:block;width:118px;height:118px;margin:0 auto 8px}.demo-note{text-align:center;color:#9b2c2c;font-size:9px;font-weight:bold;letter-spacing:.06em;margin:0 0 12px;}'
         . '.head{text-align:center;line-height:1.65}.title{text-align:center;font-size:20px;font-weight:bold;margin:28px 0;}'
         . '.body{font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:220px;}'
         . '.sign{margin:48px 0 8px;text-align:center;font-weight:bold;text-decoration:underline;}'
         . '.muted{font-size:10px;color:#555;margin-top:28px;border-top:1px solid #aaa;padding-top:8px;}'
         . '</style></head><body><div class="draft">' . $draft . '</div>'
+        . $logoHtml . '<div class="demo-note">SCHOOL PROJECT DEMO - NOT AN OFFICIAL BARANGAY SEAL</div>'
         . '<div class="head">Republic of the Philippines<br>Province of ' . $esc((string) setting('province', ''))
         . '<br>Municipality of ' . $esc((string) setting('municipality', '')) . '<br><strong>' . $esc(barangay_title()) . '</strong></div>'
         . '<div class="title">' . $esc((string) ($issuance['type_name'] ?? 'Certificate')) . '</div>'
@@ -93,7 +103,10 @@ function certificate_pdf_bytes(array $issuance): string
     }
 
     // Dependency-free PDF fallback: preserves the actual issuance text and metadata in a valid PDF.
-    $lines = [$draft, '', (string) setting('province', '') . ' / ' . (string) setting('municipality', ''), barangay_title(), '',
+    $lines = [
+        $draft, 'BIRMS DEMO - SCHOOL PROJECT', 'NOT AN OFFICIAL BARANGAY SEAL',
+        '', '', '', '', '', '', '', '', '', '', // Reserve clear space for the vector demo mark.
+        (string) setting('province', '') . ' / ' . (string) setting('municipality', ''), barangay_title(), '',
         (string) ($issuance['type_name'] ?? 'Certificate'), ''];
     $rawBody = str_replace(["\r\n", "\r"], "\n", $body);
     foreach (explode("\n", $rawBody) as $paragraph) {
@@ -115,7 +128,40 @@ function certificate_pdf_bytes(array $issuance): string
     $objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
     foreach ($pages as $idx => $pageLines) {
         $pageId = 3 + ($idx * 2); $streamId = $pageId + 1; $pageIds[] = $pageId . ' 0 R';
-        $stream = "BT\n/F1 10 Tf\n";
+        $stream = '';
+        if ($idx === 0) {
+            // Vector fallback for the demo logo when Dompdf is unavailable.
+            $stream .= "q
+0.07 0.25 0.22 rg
+300 750 m 327.6 750 350 727.6 350 700 c 350 672.4 327.6 650 300 650 c 272.4 650 250 672.4 250 700 c 250 727.6 272.4 750 300 750 c f
+0.85 0.66 0.24 RG 2 w
+300 750 m 327.6 750 350 727.6 350 700 c 350 672.4 327.6 650 300 650 c 272.4 650 250 672.4 250 700 c 250 727.6 272.4 750 300 750 c S
+0.85 0.66 0.24 rg
+270 712 m 300 734 l 330 712 l h f
+0.96 0.95 0.88 rg
+276 690 48 22 re f
+0.08 0.32 0.28 RG 3 w
+285 691 m 285 708 l S
+300 691 m 300 708 l S
+315 691 m 315 708 l S
+0.85 0.66 0.24 rg
+268 686 64 3 re f
+0.96 0.95 0.88 rg
+278 676 m 280.2 676 282 674.2 282 672 c 282 669.8 280.2 668 278 668 c 275.8 668 274 669.8 274 672 c 274 674.2 275.8 676 278 676 c f
+300 679 m 302.8 679 305 676.8 305 674 c 305 671.2 302.8 669 300 669 c 297.2 669 295 671.2 295 674 c 295 676.8 297.2 679 300 679 c f
+322 676 m 324.2 676 326 674.2 326 672 c 326 669.8 324.2 668 322 668 c 319.8 668 318 669.8 318 672 c 318 674.2 319.8 676 322 676 c f
+1 1 1 RG 2 w
+274 654 m 274 663 277 666 278 666 c S
+291 654 m 291 664 295 668 300 668 c S
+300 654 m 300 664 305 668 309 668 c S
+318 666 m 319 666 322 663 322 654 c S
+0.47 0.71 0.60 RG 1.5 w
+265 658 m 300 650 335 658 335 658 c S
+273 653 m 300 647 327 653 327 653 c S
+Q
+";
+        }
+        $stream .= "BT\n/F1 10 Tf\n";
         $y = 790;
         foreach ($pageLines as $line) {
             $ascii = function_exists('iconv') ? iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', (string) $line) : (string) $line;

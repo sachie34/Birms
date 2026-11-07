@@ -33,12 +33,12 @@ if ($existingFeeRule !== null && !isset($feeRuleOptions[(int) $existingFeeRule['
 }
 $staff = []; foreach (db_all("SELECT user_id, full_name FROM users WHERE status = 'active' AND role IN ('secretary','clerk') ORDER BY full_name") as $u) { $staff[(int) $u['user_id']] = (string) $u['full_name']; }
 $visitId = get_int('visit') ?? post_int('visit_id');
-$visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name FROM visitor_log WHERE visit_id = ?', [$visitId]) : null;
+$visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name, document_type_id FROM visitor_log WHERE visit_id = ?', [$visitId]) : null;
 $residentId = $ex ? (int) $ex['resident_id'] : (get_int('resident') ?? post_int('resident_id'));
 $resident = $residentId !== null ? db_one('SELECT resident_id, last_name, first_name, middle_name, suffix, residency_status, archived_at FROM residents WHERE resident_id = ?', [$residentId]) : null;
 if ($resident !== null && $resident['archived_at'] !== null) { $resident = null; }
 $errors = []; $v = [
-    'type_id' => (string) ($ex['type_id'] ?? ''), 'purpose' => $ex['purpose'] ?? '',
+    'type_id' => (string) ($ex['type_id'] ?? ($visit['document_type_id'] ?? '')), 'purpose' => $ex['purpose'] ?? '',
     'assigned_to' => (string) ($ex['assigned_to'] ?? (audit_actor()['user_id'] ?? '')),
     'requirements_status' => (string) ($ex['requirements_status'] ?? 'Not checked'),
     'requirements_note' => (string) ($ex['requirements_note'] ?? ''),
@@ -59,6 +59,7 @@ if (is_post() && $resident !== null) {
         'fee_quantity' => post_str('fee_quantity') !== '' ? post_str('fee_quantity') : '1',
     ];
     if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
+    if ($visit !== null && (int) ($visit['document_type_id'] ?? 0) > 0 && (int) $v['type_id'] !== (int) $visit['document_type_id']) { $errors[] = 'The document type must match the service selected in the visitor logbook.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
     if ($v['assigned_to'] !== '' && !isset($staff[(int) $v['assigned_to']])) { $errors[] = 'Choose a valid staff member or leave it blank.'; }
     if (!in_array($v['requirements_status'], ['Not checked', 'Incomplete', 'Complete'], true)) { $errors[] = 'Choose a valid requirements-check status.'; }
@@ -197,6 +198,7 @@ if ($resident === null) {
 } else {
     $action = base_url('requests/form.php' . ($ex ? '?id=' . (int) $ex['request_id'] : ''));
     card_start();
+    echo '<div class="alert alert-warning"><strong>School project demo.</strong> Certificate text, fee tiers and report layouts are sample data, not official Barangay rules. Documents generated here are not valid for official transactions.</div>';
     if ($ex !== null) {
         $existingAttachments = attachments_for_parent('request', (int) $ex['request_id']);
         if ($existingAttachments) {
@@ -208,14 +210,14 @@ if ($resident === null) {
     echo '<form method="post" enctype="multipart/form-data" action="' . e($action) . '" class="needs-validation" novalidate autocomplete="off">' . csrf_field() . '<input type="hidden" name="resident_id" value="' . (int) $resident['resident_id'] . '">' . ($visit ? '<input type="hidden" name="visit_id" value="' . (int) $visit['visit_id'] . '">' : '') . '<div class="row">';
     if (!$types) { echo '<div class="col-12 alert alert-warning">No document types are available. Ask the Secretary to set them up in Settings.</div>'; }
     echo f_select('type_id', 'Document', $types, $v['type_id'], ['required' => true, 'blank' => 'Select a document']);
-    echo f_select('fee_rule_id', 'Approved fee category / tier', $feeRuleOptions, $v['fee_rule_id'], [
-        'blank' => 'Use per-document fee only when no active matrix rule applies',
+    echo f_select('fee_rule_id', 'Demo fee category / tier', $feeRuleOptions, $v['fee_rule_id'], [
+        'blank' => 'Use sample per-document fee when no active demo matrix rule applies',
         'col' => 'col-12',
-        'help' => 'Each option names its document type, approved category/tier, rate per unit, and quantity range. The server checks that the selected rule matches the document. Add only rates formally approved by the barangay in Settings → Multi-tier fee matrix.',
+        'help' => 'Each option shows a sample category/tier, rate and quantity range. The server checks that the selected rule matches the document. Demo tiers do not encode official business eligibility criteria.',
     ]);
     echo f_text('fee_quantity', 'Quantity for selected fee tier', $v['fee_quantity'], [
         'required' => true, 'type' => 'number', 'min' => 1, 'step' => 1,
-        'help' => 'If a fee matrix rule is selected, the amount is calculated as approved rate × quantity. Without a matrix rule, the legacy document fee is used and quantity remains 1.',
+        'help' => 'If a demo fee rule is selected, the amount is calculated as sample rate × quantity. Without a matrix rule, the configured per-document sample fee is used and quantity remains 1.',
     ]);
     if ($ex !== null && $ex['quoted_fee_amount'] !== null) {
         echo '<div class="col-12"><div class="alert alert-info">Saved fee quote: <strong>' . e(money($ex['quoted_fee_amount'])) . '</strong>'

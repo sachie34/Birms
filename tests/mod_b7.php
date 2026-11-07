@@ -197,7 +197,7 @@ function run_b7(array $S, string $base): void
     $quoteReview = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
     $quoteReady = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
-    $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
+    $quoteIssue = post_as($sec, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
         'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
     ]);
     $quoteIssuance = db_one('SELECT issuance_id, fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, body_text FROM issuances WHERE request_id = ?', [$quoteRequestId]);
@@ -308,8 +308,65 @@ function run_b7(array $S, string $base): void
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
+    $demoTemplateRows = db_all("SELECT name, template_body FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency', 'Business Clearance')");
+    $demoTemplatesValid = count($demoTemplateRows) === 4;
+    foreach ($demoTemplateRows as $demoTemplate) {
+        $demoTemplatesValid = $demoTemplatesValid
+            && str_starts_with((string) $demoTemplate['template_body'], 'SCHOOL PROJECT DEMO - NOT AN OFFICIAL CERTIFICATE.')
+            && str_contains((string) $demoTemplate['template_body'], '{{full_name}}')
+            && str_contains((string) $demoTemplate['template_body'], '{{date_issued}}');
+    }
+    record('B7-20', 'Fresh demo installs receive clearly labeled sample certificate wording for all four document types',
+        $demoTemplatesValid);
+
+    $standardFeeRows = db_all("SELECT name, fee_amount FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency')");
+    $standardFees = [];
+    foreach ($standardFeeRows as $feeRow) { $standardFees[(string) $feeRow['name']] = (float) $feeRow['fee_amount']; }
+    $businessType = db_one("SELECT type_id, fee_amount FROM document_types WHERE name = 'Business Clearance' LIMIT 1");
+    record('B7-17', 'Professor-required default fees are PHP 50 for the three standard certificates; Business Clearance is available for approved tier pricing',
+        count($standardFees) === 3
+        && ($standardFees['Barangay Clearance'] ?? 0) === 50.0
+        && ($standardFees['Certificate of Residency'] ?? 0) === 50.0
+        && ($standardFees['Certificate of Indigency'] ?? 0) === 50.0
+        && $businessType !== null && $businessType['fee_amount'] === null);
+
+    $businessTiers = db_all("SELECT fee_tier, unit_rate, min_quantity, max_quantity FROM fee_matrix WHERE type_id = ? AND fee_category = 'Business' AND is_active = 1 AND effective_from <= CURDATE() AND (effective_to IS NULL OR effective_to >= CURDATE()) ORDER BY unit_rate", [(int) ($businessType['type_id'] ?? 0)]);
+    $businessTierMap = [];
+    foreach ($businessTiers as $tier) { $businessTierMap[(string) $tier['fee_tier']] = (float) $tier['unit_rate']; }
+    $businessTierRulesValid = count($businessTierMap) >= 3;
+    foreach (['Tier 1', 'Tier 2', 'Tier 3'] as $requiredTier) {
+        $matchingTier = array_values(array_filter($businessTiers, fn($tier) => $tier['fee_tier'] === $requiredTier));
+        $businessTierRulesValid = $businessTierRulesValid && count($matchingTier) === 1
+            && (int) $matchingTier[0]['min_quantity'] === 1 && (int) $matchingTier[0]['max_quantity'] === 1;
+    }
+    record('B7-18', 'Business Clearance offers the three professor-required configurable fee tiers from PHP 100 to PHP 300',
+        ($businessTierMap['Tier 1'] ?? 0) === 100.0
+        && ($businessTierMap['Tier 2'] ?? 0) === 200.0
+        && ($businessTierMap['Tier 3'] ?? 0) === 300.0
+        && $businessTierRulesValid);
+
+    $businessTierTwoId = (int) db_val("SELECT fee_rule_id FROM fee_matrix WHERE type_id = ? AND fee_category = 'Business' AND fee_tier = 'Tier 2' AND is_active = 1 AND effective_from <= CURDATE() AND (effective_to IS NULL OR effective_to >= CURDATE()) ORDER BY effective_from DESC LIMIT 1", [(int) ($businessType['type_id'] ?? 0)]);
+    $businessQuotePurpose = 'ZZ B7 Business Tier 2 quote test';
+    $businessQuotePost = post_as($clk, '/requests/form.php?resident=' . $residentId, '/requests/form.php?resident=' . $residentId, [
+        'resident_id' => (string) $residentId, 'type_id' => (string) ($businessType['type_id'] ?? 0),
+        'purpose' => $businessQuotePurpose, 'assigned_to' => '',
+        'requirements_status' => 'Not checked', 'requirements_note' => '',
+        'fee_rule_id' => (string) $businessTierTwoId, 'fee_quantity' => '1',
+    ]);
+    $businessQuoteId = (int) db_val('SELECT request_id FROM document_requests WHERE purpose = ?', [$businessQuotePurpose]);
+    $businessQuote = $businessQuoteId > 0 ? db_one('SELECT fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, quoted_fee_amount FROM document_requests WHERE request_id = ?', [$businessQuoteId]) : null;
+    record('B7-19', 'A Business Clearance request selects Tier 2 and saves its PHP 200 quote and tier snapshot',
+        $businessTierTwoId > 0 && $businessQuotePost['status'] === 302 && $businessQuote !== null
+        && (int) $businessQuote['fee_rule_id'] === $businessTierTwoId
+        && $businessQuote['fee_category_snapshot'] === 'Business'
+        && $businessQuote['fee_tier_snapshot'] === 'Tier 2'
+        && (int) $businessQuote['fee_quantity'] === 1
+        && abs((float) $businessQuote['fee_unit_rate'] - 200.00) < 0.001
+        && abs((float) $businessQuote['quoted_fee_amount'] - 200.00) < 0.001);
+
     // Clean ledger children before removing issuances, and issuances before requests.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
+    if (isset($businessQuoteId) && $businessQuoteId > 0) { db_exec('DELETE FROM document_requests WHERE request_id = ?', [$businessQuoteId]); }
     if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
     if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
