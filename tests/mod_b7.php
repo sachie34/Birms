@@ -308,6 +308,17 @@ function run_b7(array $S, string $base): void
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
+    $demoTemplateRows = db_all("SELECT name, template_body FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency', 'Business Clearance')");
+    $demoTemplatesValid = count($demoTemplateRows) === 4;
+    foreach ($demoTemplateRows as $demoTemplate) {
+        $demoTemplatesValid = $demoTemplatesValid
+            && str_starts_with((string) $demoTemplate['template_body'], 'SCHOOL PROJECT DEMO - NOT AN OFFICIAL CERTIFICATE.')
+            && str_contains((string) $demoTemplate['template_body'], '{{full_name}}')
+            && str_contains((string) $demoTemplate['template_body'], '{{date_issued}}');
+    }
+    record('B7-20', 'Fresh demo installs receive clearly labeled sample certificate wording for all four document types',
+        $demoTemplatesValid);
+
     $standardFeeRows = db_all("SELECT name, fee_amount FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency')");
     $standardFees = [];
     foreach ($standardFeeRows as $feeRow) { $standardFees[(string) $feeRow['name']] = (float) $feeRow['fee_amount']; }
