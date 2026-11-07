@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">BIRMS demo logo</title>
+  <desc id="desc">A clearly labeled school project logo with a community hall, people, and fields.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#123f37"/>
+      <stop offset="1" stop-color="#0b2928"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6d98a"/>
+      <stop offset="1" stop-color="#d9a93c"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" rx="44" fill="#f5f3eb"/>
+  <circle cx="320" cy="270" r="206" fill="url(#bg)"/>
+  <circle cx="320" cy="270" r="188" fill="none" stroke="url(#gold)" stroke-width="5"/>
+  <circle cx="320" cy="270" r="174" fill="none" stroke="#ffffff" stroke-opacity=".22" stroke-width="1.5"/>
+  <!-- Abstract community hall; this is not an official seal. -->
+  <path d="M190 315a130 130 0 0 1 260 0" fill="#e8bb55" opacity=".18"/>
+  <path d="M226 276 320 214l94 62v12H226z" fill="url(#gold)"/>
+  <path d="M238 288h164v79H238z" fill="#f5f3eb"/>
+  <path d="M258 288v79m40-79v79m44-79v79m40-79v79" stroke="#155247" stroke-width="11"/>
+  <path d="M222 371h196v14H222z" fill="url(#gold)"/>
+  <path d="M210 390h220" stroke="#79b69a" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="255" cy="411" r="12" fill="#f5f3eb"/>
+  <circle cx="320" cy="403" r="14" fill="#f5f3eb"/>
+  <circle cx="385" cy="411" r="12" fill="#f5f3eb"/>
+  <path d="M232 454c2-21 11-32 23-32s21 11 23 32m18 3c2-27 11-41 24-41s22 14 24 41m18-3c2-21 11-32 23-32s21 11 23 32" fill="none" stroke="#f5f3eb" stroke-width="9" stroke-linecap="round"/>
+  <path d="M218 467q102 32 204 0M239 484q81 24 162 0" fill="none" stroke="#79b69a" stroke-width="4" stroke-linecap="round"/>
+  <text x="320" y="548" text-anchor="middle" fill="#123f37" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="800" letter-spacing="5">BIRMS</text>
+  <text x="320" y="578" text-anchor="middle" fill="#54716a" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="2.1">DEMO • SCHOOL PROJECT</text>
+</svg>
