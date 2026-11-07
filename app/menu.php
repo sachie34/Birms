@@ -21,7 +21,7 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'lookup',    'label' => 'Case Look-up',         'icon' => 'bi-search',       'path' => 'blotters/lookup.php',   'perm' => 'blotters.view',  'built' => true],
         ['group' => 'Workspace', 'key' => 'reports',   'label' => 'Reports',              'icon' => 'bi-bar-chart-line','path' => 'reports/index.php',  'perm' => 'reports.view',   'built' => true],
         ['group' => 'Administration', 'key' => 'users',    'label' => 'User Accounts',    'icon' => 'bi-people',       'path' => 'admin/users.php',     'perm' => 'users.manage',   'built' => true],
-        ['group' => 'Administration', 'key' => 'settings', 'label' => 'Fees and Puroks',  'icon' => 'bi-sliders',      'path' => 'admin/settings.php',  'perm' => 'settings.view',  'built' => true],
+        ['group' => 'Administration', 'key' => 'settings', 'label' => 'System Settings',  'icon' => 'bi-sliders',      'path' => 'admin/settings.php',  'perm' => 'settings.view',  'built' => true],
         ['group' => 'Administration', 'key' => 'audit',    'label' => 'Audit Trail',      'icon' => 'bi-journal-check','path' => 'admin/audit.php',     'perm' => 'audit.view',     'built' => true],
         ['group' => 'Administration', 'key' => 'backup',   'label' => 'Backup',           'icon' => 'bi-download',     'path' => 'admin/backup.php',    'perm' => 'backup.run',     'built' => true],
         ['group' => 'Administration', 'key' => 'ledger',   'label' => 'Cash Collection Ledger', 'icon' => 'bi-cash-stack', 'path' => 'admin/ledger.php', 'perm' => 'ledger.view', 'built' => true],

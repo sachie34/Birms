@@ -51,4 +51,39 @@ function run_b9(array $S, string $base): void
     } finally {
         db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     }
+    $dashboardProblems = [];
+    foreach ($roles as $role) {
+        $dashboard = $S[$role]->get('/dashboard.php');
+        if ($dashboard['status'] !== 200 || !str_contains($dashboard['body'], '<h1>Operations Overview</h1>')
+            || !str_contains($dashboard['body'], '<h2>Your workspace</h2>')) {
+            $dashboardProblems[] = $role . ': dashboard unavailable or missing clear headings';
+            continue;
+        }
+        foreach (menu_definition() as $item) {
+            if (empty($item['built']) || $item['key'] === 'dashboard') { continue; }
+            $path = preg_quote('/' . ltrim((string) $item['path'], '/'), '~');
+            $linkExists = preg_match('~href="[^"]*' . $path . '"~', $dashboard['body']) === 1;
+            $label = preg_quote(htmlspecialchars((string) $item['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), '~');
+            $labelExists = preg_match('~<strong>' . $label . '</strong>~', $dashboard['body']) === 1;
+            $shouldSee = role_can($role, (string) $item['perm']);
+            if ($shouldSee !== $linkExists || $shouldSee !== $labelExists) {
+                $dashboardProblems[] = $role . ':' . $item['label'] . ' visibility=' . ($linkExists ? 'shown' : 'hidden');
+            }
+        }
+        $canSeeRevenue = role_can($role, 'reports.view');
+        if ($canSeeRevenue !== str_contains($dashboard['body'], '<h2>Revenue collected</h2>')) {
+            $dashboardProblems[] = $role . ': revenue summary permission mismatch';
+        }
+        $canSeeUsers = role_can($role, 'users.manage');
+        if ($canSeeUsers !== str_contains($dashboard['body'], '<h2>User accounts</h2>')) {
+            $dashboardProblems[] = $role . ': user summary permission mismatch';
+        }
+        $restrictedAuditMessage = str_contains($dashboard['body'], 'Recent activity is restricted to roles with audit access.');
+        if ((!role_can($role, 'audit.view')) !== $restrictedAuditMessage) {
+            $dashboardProblems[] = $role . ': audit summary permission mismatch';
+        }
+    }
+    record('B9-5', 'Operations Overview gives each role clear navigation and only the summaries its permissions allow',
+        !$dashboardProblems, implode(', ', $dashboardProblems));
+
 }
