@@ -1675,6 +1675,12 @@
                 "default": "null",
                 "extra": ""
             },
+            "document_type_id": {
+                "type": "int unsigned",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
             "logged_by": {
                 "type": "int unsigned",
                 "nullable": true,
@@ -1699,6 +1705,12 @@
                 "unique": false,
                 "columns": [
                     "logged_by"
+                ]
+            },
+            "idx_visit_document_type": {
+                "unique": false,
+                "columns": [
+                    "document_type_id"
                 ]
             },
             "idx_visit_name": {
@@ -1726,6 +1738,14 @@
                     "class_id"
                 ],
                 "ref": "lookups(lookup_id)",
+                "on_delete": "RESTRICT",
+                "on_update": "CASCADE"
+            },
+            "fk_visit_document_type": {
+                "columns": [
+                    "document_type_id"
+                ],
+                "ref": "document_types(type_id)",
                 "on_delete": "RESTRICT",
                 "on_update": "CASCADE"
             },
