@@ -61,9 +61,10 @@ function run_b9(array $S, string $base): void
         }
         foreach (menu_definition() as $item) {
             if (empty($item['built']) || $item['key'] === 'dashboard') { continue; }
-            $url = htmlspecialchars(base_url((string) $item['path']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $linkExists = str_contains($dashboard['body'], 'href="' . $url . '"');
-            $labelExists = str_contains($dashboard['body'], '>' . htmlspecialchars((string) $item['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</strong>');
+            $path = preg_quote('/' . ltrim((string) $item['path'], '/'), '~');
+            $linkExists = preg_match('~href="[^"]*' . $path . '"~', $dashboard['body']) === 1;
+            $label = preg_quote(htmlspecialchars((string) $item['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), '~');
+            $labelExists = preg_match('~<strong>' . $label . '</strong>~', $dashboard['body']) === 1;
             $shouldSee = role_can($role, (string) $item['perm']);
             if ($shouldSee !== $linkExists || $shouldSee !== $labelExists) {
                 $dashboardProblems[] = $role . ':' . $item['label'] . ' visibility=' . ($linkExists ? 'shown' : 'hidden');
