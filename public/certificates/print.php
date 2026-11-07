@@ -5,10 +5,11 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('certificates.history');
+require_permission('certificates.print');
 $id = get_int('id');
 $c = $id === null ? null : db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$id]);
 if ($c === null) { abort(404, 'That certificate was not found.'); }
-if (can('certificates.issue')) {
+if (can('certificates.print')) {
     db_exec('UPDATE issuances SET print_count = print_count + 1, last_printed_at = NOW() WHERE issuance_id = ?', [$id]);
     audit_best_effort('certificate_printed', 'Certificates', 'Success', $c['reference_no'] . ' opened for printing', null);
     $c['print_count'] = (int) $c['print_count'] + 1;
