@@ -73,8 +73,8 @@ function certificate_pdf_bytes(array $issuance): string
     }
     $html = '<!doctype html><html><head><meta charset="utf-8"><style>'
         . 'body{font-family:DejaVu Sans,Arial,sans-serif;font-size:12px;color:#172033;margin:34px;}'
-        . '.draft{border:2px solid #9b2c2c;color:#9b2c2c;text-align:center;font-weight:bold;padding:8px;margin-bottom:22px;}
-        .logo{display:block;width:118px;height:118px;margin:0 auto 8px}.demo-note{text-align:center;color:#9b2c2c;font-size:9px;font-weight:bold;letter-spacing:.06em;margin:0 0 12px;}'
+        . '.draft{border:2px solid #9b2c2c;color:#9b2c2c;text-align:center;font-weight:bold;padding:8px;margin-bottom:22px;}'
+        . '.logo{display:block;width:118px;height:118px;margin:0 auto 8px}.demo-note{text-align:center;color:#9b2c2c;font-size:9px;font-weight:bold;letter-spacing:.06em;margin:0 0 12px;}'
         . '.head{text-align:center;line-height:1.65}.title{text-align:center;font-size:20px;font-weight:bold;margin:28px 0;}'
         . '.body{font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:220px;}'
         . '.sign{margin:48px 0 8px;text-align:center;font-weight:bold;text-decoration:underline;}'
