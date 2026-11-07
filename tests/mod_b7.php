@@ -309,15 +309,15 @@ function run_b7(array $S, string $base): void
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
-    $demoTemplateRows = db_all("SELECT name, template_body FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency', 'Business Clearance')");
-    $demoTemplatesValid = count($demoTemplateRows) === 4;
+    $demoTemplateRows = db_all("SELECT name, template_body FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency', 'Business Clearance', 'Certified True Copy')");
+    $demoTemplatesValid = count($demoTemplateRows) === 5;
     foreach ($demoTemplateRows as $demoTemplate) {
         $demoTemplatesValid = $demoTemplatesValid
             && str_starts_with((string) $demoTemplate['template_body'], 'SCHOOL PROJECT DEMO - NOT AN OFFICIAL CERTIFICATE.')
             && str_contains((string) $demoTemplate['template_body'], '{{full_name}}')
             && str_contains((string) $demoTemplate['template_body'], '{{date_issued}}');
     }
-    record('B7-20', 'Fresh demo installs receive clearly labeled sample certificate wording for all four document types',
+    record('B7-20', 'Fresh demo installs receive clearly labeled sample certificate wording for all five requested document types',
         $demoTemplatesValid);
 
     $summonsDemo = (string) db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
@@ -327,12 +327,13 @@ function run_b7(array $S, string $base): void
         && str_contains($summonsDemo, '{{hearing_date}}')
         && str_contains($summonsDemo, 'must not be served as an official summons'));
 
-    $standardFeeRows = db_all("SELECT name, fee_amount FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency')");
+    $standardFeeRows = db_all("SELECT name, fee_amount FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency', 'Certified True Copy')");
     $standardFees = [];
     foreach ($standardFeeRows as $feeRow) { $standardFees[(string) $feeRow['name']] = (float) $feeRow['fee_amount']; }
     $businessType = db_one("SELECT type_id, fee_amount FROM document_types WHERE name = 'Business Clearance' LIMIT 1");
-    record('B7-17', 'Professor-required default fees are PHP 50 for the three standard certificates; Business Clearance is available for approved tier pricing',
-        count($standardFees) === 3
+    record('B7-17', 'PDF baseline PHP 50 rates are available for the three standard certificates and Certified True Copy; Business Clearance remains tier-priced',
+        count($standardFees) === 4
+        && ($standardFees['Certified True Copy'] ?? 0) === 50.0
         && ($standardFees['Barangay Clearance'] ?? 0) === 50.0
         && ($standardFees['Certificate of Residency'] ?? 0) === 50.0
         && ($standardFees['Certificate of Indigency'] ?? 0) === 50.0

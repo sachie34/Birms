@@ -65,6 +65,22 @@ function run_b4(array $S, string $base): void
         'purpose' => $mismatchPurpose, 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
     ]);
     record('B4-4B', 'A linked request cannot change the document type selected at visitor intake', $mismatch['status'] === 200 && str_contains($mismatch['body'], 'must match the service selected') && $rid($mismatchPurpose) === 0);
+    $ctcTypeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Certified True Copy' AND is_active = 1");
+    $ctcPurpose = 'ZZ Test Certified True Copy request';
+    $ctcVisitResponse = $visit($clk, ['visitor_name' => 'ZZTest CTC Visitor', 'purpose' => 'Requests a certified true copy', 'document_type_id' => (string) $ctcTypeId]);
+    $ctcVisitId = (int) db_val("SELECT visit_id FROM visitor_log WHERE visitor_name = 'ZZTest CTC Visitor' ORDER BY visit_id DESC LIMIT 1");
+    $ctcForm = $clk->get('/requests/form.php?visit=' . $ctcVisitId . '&resident=' . $rita);
+    $ctcRequestResponse = post_as($clk, '/requests/form.php?visit=' . $ctcVisitId . '&resident=' . $rita, '/requests/form.php?visit=' . $ctcVisitId . '&resident=' . $rita, [
+        'resident_id' => (string) $rita, 'visit_id' => (string) $ctcVisitId, 'type_id' => (string) $ctcTypeId,
+        'purpose' => $ctcPurpose, 'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
+    ]);
+    $ctcRequestId = $rid($ctcPurpose);
+    $ctcRequestRow = $ctcRequestId > 0 ? db_one('SELECT visit_id, type_id FROM document_requests WHERE request_id = ?', [$ctcRequestId]) : null;
+    record('B4-20', 'Certified True Copy is selectable at visitor intake and carries through to the linked resident request',
+        $ctcTypeId > 0 && $ctcVisitResponse['status'] === 302 && $ctcVisitId > 0
+        && $ctcForm['status'] === 200 && preg_match('/<option value="' . $ctcTypeId . '" selected>/', $ctcForm['body']) === 1
+        && $ctcRequestResponse['status'] === 302 && $ctcRequestRow !== null
+        && (int) $ctcRequestRow['visit_id'] === $ctcVisitId && (int) $ctcRequestRow['type_id'] === $ctcTypeId);
     $r = $filed('ZZ Test purpose 1'); $id1 = $rid('ZZ Test purpose 1');
     $row = db_one('SELECT reference_no, status FROM document_requests WHERE request_id = ?', [$id1]);
     record('B4-5', 'A request is filed: reference like REQ-YYYY-NNNN, status Pending, audited', $r['status'] === 302 && $row !== null && preg_match('/^REQ-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && $row['status'] === 'Pending' && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_created' AND entity_id = ?", [$id1]) === 1);
