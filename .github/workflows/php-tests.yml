@@ -19,7 +19,7 @@ jobs:
         include:
           - php-version: '8.2'
             mariadb-version: '10.4'
-          - php-version: ${{ matrix.php-version }}
+          - php-version: '8.3'
             mariadb-version: '10.11'
     services:
       mariadb:
@@ -41,7 +41,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php-version }}
           extensions: curl, mbstring, pdo_mysql
           coverage: none
 
