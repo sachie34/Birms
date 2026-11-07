@@ -319,6 +319,13 @@ function run_b7(array $S, string $base): void
     record('B7-20', 'Fresh demo installs receive clearly labeled sample certificate wording for all four document types',
         $demoTemplatesValid);
 
+    $summonsDemo = (string) db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
+    record('B7-22', 'Fresh demo installs have clearly watermarked summons wording with the required placeholders',
+        str_starts_with($summonsDemo, 'SCHOOL PROJECT DEMO - NOT AN OFFICIAL BARANGAY SUMMONS.')
+        && str_contains($summonsDemo, '{{respondent_names}}')
+        && str_contains($summonsDemo, '{{hearing_date}}')
+        && str_contains($summonsDemo, 'must not be served as an official summons'));
+
     $standardFeeRows = db_all("SELECT name, fee_amount FROM document_types WHERE name IN ('Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency')");
     $standardFees = [];
     foreach ($standardFeeRows as $feeRow) { $standardFees[(string) $feeRow['name']] = (float) $feeRow['fee_amount']; }
