@@ -60,6 +60,15 @@ function run_b8(array $S, string $base): void
             && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf'
             && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'attachment_downloaded' AND entity_type = 'attachment' AND entity_id = ?", [(int) $visitorAttachment['attachment_id']]) === 1);
 
+        $storedPath = APP_ROOT . '/' . ltrim((string) $visitorAttachment['storage_path'], '/\\');
+        $storedBytes = (string) file_get_contents($storedPath);
+        file_put_contents($storedPath, $storedBytes . 'tampered');
+        $tampered = $clk->get('/files/download.php?id=' . (int) $visitorAttachment['attachment_id']);
+        file_put_contents($storedPath, $storedBytes);
+        $integrityAudit = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'attachment_integrity_failed' AND entity_type = 'attachment' AND entity_id = ?", [(int) $visitorAttachment['attachment_id']]);
+        record('B8-2A', 'A tampered private attachment is refused with HTTP 410 and an entity-linked security audit',
+            $tampered['status'] === 410 && $integrityAudit === 1 && !leaks($tampered));
+
         $invalidPost = $clk->upload('/visitors/index.php', [
             '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
             'purpose' => 'ZZ-B8 disallowed extension', 'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
