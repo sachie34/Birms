@@ -26,6 +26,8 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
   </div>
   <div class="cert-sheet">
     <div class="cert-draft">DRAFT — PENDING OFFICIAL LAYOUT APPROVAL</div>
+    <img class="cert-demo-logo" src="<?= $asset('birms-demo-logo.svg') ?>" width="128" height="128" alt="BIRMS demo logo for school project">
+    <div class="cert-demo-note">SCHOOL PROJECT DEMO — NOT AN OFFICIAL BARANGAY SEAL</div>
     <div class="cert-head"><div class="l1">Republic of the Philippines</div><div class="l1">Province of <?= e((string) setting('province', '')) ?> · Municipality of <?= e((string) setting('municipality', '')) ?></div><div class="l3"><?= e(barangay_title()) ?></div></div>
     <div class="cert-title"><?= e((string) $c['type_name']) ?></div>
     <div class="cert-body"><?= e((string) $c['body_text']) ?></div>
