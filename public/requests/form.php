@@ -33,12 +33,12 @@ if ($existingFeeRule !== null && !isset($feeRuleOptions[(int) $existingFeeRule['
 }
 $staff = []; foreach (db_all("SELECT user_id, full_name FROM users WHERE status = 'active' AND role IN ('secretary','clerk') ORDER BY full_name") as $u) { $staff[(int) $u['user_id']] = (string) $u['full_name']; }
 $visitId = get_int('visit') ?? post_int('visit_id');
-$visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name FROM visitor_log WHERE visit_id = ?', [$visitId]) : null;
+$visit = $visitId !== null ? db_one('SELECT visit_id, visitor_name, document_type_id FROM visitor_log WHERE visit_id = ?', [$visitId]) : null;
 $residentId = $ex ? (int) $ex['resident_id'] : (get_int('resident') ?? post_int('resident_id'));
 $resident = $residentId !== null ? db_one('SELECT resident_id, last_name, first_name, middle_name, suffix, residency_status, archived_at FROM residents WHERE resident_id = ?', [$residentId]) : null;
 if ($resident !== null && $resident['archived_at'] !== null) { $resident = null; }
 $errors = []; $v = [
-    'type_id' => (string) ($ex['type_id'] ?? ''), 'purpose' => $ex['purpose'] ?? '',
+    'type_id' => (string) ($ex['type_id'] ?? ($visit['document_type_id'] ?? '')), 'purpose' => $ex['purpose'] ?? '',
     'assigned_to' => (string) ($ex['assigned_to'] ?? (audit_actor()['user_id'] ?? '')),
     'requirements_status' => (string) ($ex['requirements_status'] ?? 'Not checked'),
     'requirements_note' => (string) ($ex['requirements_note'] ?? ''),
@@ -58,7 +58,7 @@ if (is_post() && $resident !== null) {
         // Legacy request-form clients may omit fee quantity. Quantity 1 preserves the prior workflow.
         'fee_quantity' => post_str('fee_quantity') !== '' ? post_str('fee_quantity') : '1',
     ];
-    if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }
+    if (!isset($types[(int) $v['type_id']]) && (string) ($ex['type_id'] ?? '') !== $v['type_id']) { $errors[] = 'Choose an available document.'; }\n    if ($visit !== null && (int) ($visit['document_type_id'] ?? 0) > 0 && (int) $v['type_id'] !== (int) $visit['document_type_id']) { $errors[] = 'The document type must match the service selected in the visitor logbook.'; }
     if (!v_len($v['purpose'], 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
     if ($v['assigned_to'] !== '' && !isset($staff[(int) $v['assigned_to']])) { $errors[] = 'Choose a valid staff member or leave it blank.'; }
     if (!in_array($v['requirements_status'], ['Not checked', 'Incomplete', 'Complete'], true)) { $errors[] = 'Choose a valid requirements-check status.'; }
