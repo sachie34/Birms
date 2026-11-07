@@ -53,7 +53,7 @@ if ($isCsv) {
         fputcsv($out, $safe, ',', '"', '\\');
     };
     $write(['Prepared for', $recipientLabel]);
-    $write(['Template status', 'Draft standardized BIRMS summary; official agency-specific format pending recipient approval']);
+    $write(['Template status', 'SCHOOL PROJECT DEMO - draft BIRMS summary; not an approved agency form']);
     $write(['Report period', $periodLabel]);
     if ($type === 'demographics') {
         $write(['Section', 'Category', 'Count']);
@@ -196,7 +196,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
   <span class="badge text-bg-light border">Generated <?= e(date('d M Y, H:i')) ?></span>
 </div>
 
-<div class="alert alert-warning">This is a draft standardized BIRMS summary for <?= e($recipientLabel) ?>. The official agency-specific form, required fields, and submission rules must be confirmed with the receiving office before this output is treated as an official report.</div>
+<div class="alert alert-warning">SCHOOL PROJECT DEMO - NOT AN APPROVED AGENCY FORM. This draft BIRMS summary for <?= e($recipientLabel) ?> is for interface demonstration only. Confirm the official form, required fields, and submission rules with the receiving office before using it officially.</div>
 
 <?php if ($type === 'demographics'): ?>
   <div class="row g-3 mb-3">
