@@ -197,7 +197,7 @@ function run_b7(array $S, string $base): void
     $quoteReview = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Review']);
     $quoteReady = post_as($sec, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
-    $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
+    $quoteIssue = post_as($sec, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
         'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
     ]);
     $quoteIssuance = db_one('SELECT issuance_id, fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, body_text FROM issuances WHERE request_id = ?', [$quoteRequestId]);
