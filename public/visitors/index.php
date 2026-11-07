@@ -5,8 +5,10 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('requests.view');
-$canAdd = can('requests.add'); $classes = lookup_list('visit_class'); $errors = [];\n$documentTypes = [];\nforeach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $type) { $documentTypes[(int) $type['type_id']] = (string) $type['name']; }
-$v = ['visitor_name' => '', 'purpose' => '', 'class_id' => '', 'visited_at' => date('Y-m-d\TH:i')];
+$canAdd = can('requests.add'); $classes = lookup_list('visit_class'); $errors = [];
+$documentTypes = [];
+foreach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $type) { $documentTypes[(int) $type['type_id']] = (string) $type['name']; }
+$v = ['visitor_name' => '', 'purpose' => '', 'class_id' => '', 'document_type_id' => '', 'visited_at' => date('Y-m-d\TH:i')];
 
 if (is_post()) {
     require_csrf();
@@ -20,7 +22,8 @@ if (is_post()) {
     elseif (strtotime($when) > time() + 300) { $errors[] = 'The visit time cannot be in the future.'; }
     elseif (strtotime($when) < strtotime('-1 year')) { $errors[] = 'The visit time is more than a year ago. Check it.'; }
     if ($classes && !isset($classes[(int) $v['class_id']])) { $errors[] = 'Choose the classification.'; }
-    if (!$classes && $v['class_id'] !== '') { $errors[] = 'No classifications are set up yet.'; }\n    if (!$documentTypes || !isset($documentTypes[(int) $v['document_type_id']])) { $errors[] = 'Choose an available document or service: Indigency, Residency, Clearance or Business.'; }
+    if (!$classes && $v['class_id'] !== '') { $errors[] = 'No classifications are set up yet.'; }
+    if (!$documentTypes || !isset($documentTypes[(int) $v['document_type_id']])) { $errors[] = 'Choose an available document or service: Indigency, Residency, Clearance or Business.'; }
     $uploadError = attachment_upload_error($file);
     if ($uploadError !== null) { $errors[] = $uploadError; }
     if (!$errors) {
@@ -70,7 +73,8 @@ if ($newId !== null && can('requests.add')) { echo '<div class="alert alert-info
       <form method="post" enctype="multipart/form-data" action="<?= e(base_url('visitors/index.php')) ?>" class="needs-validation" novalidate autocomplete="off"><?= csrf_field() ?><div class="row">
         <?= f_text('visitor_name', 'Visitor full name', $v['visitor_name'], ['required' => true, 'maxlength' => 100, 'col' => 'col-12']) ?>
         <?= f_text('visited_at', 'Date and time', $v['visited_at'], ['type' => 'datetime-local', 'required' => true, 'col' => 'col-12']) ?>
-        <?= f_text('purpose', 'Purpose of visit', $v['purpose'], ['required' => true, 'maxlength' => 150, 'col' => 'col-12']) ?>\n        <?= f_select('document_type_id', 'Document / service requested', $documentTypes, $v['document_type_id'], ['required' => true, 'blank' => 'Select Indigency, Residency, Clearance or Business', 'col' => 'col-12', 'help' => 'Select the service requested at the counter. This selection is saved in the visitor log and carried into the linked document request.']) ?>
+        <?= f_text('purpose', 'Purpose of visit', $v['purpose'], ['required' => true, 'maxlength' => 150, 'col' => 'col-12']) ?>
+        <?= f_select('document_type_id', 'Document / service requested', $documentTypes, $v['document_type_id'], ['required' => true, 'blank' => 'Select Indigency, Residency, Clearance or Business', 'col' => 'col-12', 'help' => 'Select the service requested at the counter. This selection is saved in the visitor log and carried into the linked document request.']) ?>
         <div class="col-12 mb-3"><label class="form-label" for="attachment">Supporting document (optional)</label><input class="form-control" id="attachment" name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div class="form-text">PDF, JPG or PNG; maximum 10 MB. Files are stored privately.</div></div>
         <?php if ($classes): ?><?= f_select('class_id', 'Classification', $classes, $v['class_id'], ['required' => true, 'blank' => 'Select', 'col' => 'col-12']) ?><?php else: ?><div class="col-12 text-muted small mb-3">No classifications entered yet (Settings, Other lists).</div><?php endif; ?>
       </div><button class="btn btn-primary w-100" type="submit"><i class="bi bi-check-lg me-1"></i>Save entry</button></form>
