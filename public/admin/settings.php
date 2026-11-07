@@ -200,7 +200,9 @@ if ($tab === 'general') {
                     LEFT JOIN users u ON u.user_id = fm.created_by
                     ORDER BY dt.name, fm.fee_category, fm.fee_tier, fm.effective_from DESC, fm.fee_rule_id DESC');
     card_start('Configured fee matrix', 'No fee rates are preloaded. Add only categories, tiers, dates, and rates approved by the barangay. Existing request and issuance fee snapshots are not changed when a rule is disabled.');
-    echo '<div class="alert alert-secondary">For a document type with an active rule effective today, a new request must select a fee category/tier and quantity. The system calculates the quoted amount as approved unit rate × quantity. If no effective matrix rule exists for a document type, the existing per-document fee setting remains available. This does not process online payments.</div>';
+    echo '<div class="alert alert-warning"><strong>School project demo examples only.</strong> These sample business descriptions illustrate how tiers could be presented; they are not Barangay-approved criteria, do not determine eligibility, and must not be used to set an official fee.</div>';
+    echo '<div class="table-responsive mb-3"><table class="table table-b"><thead><tr><th>Sample tier</th><th>Illustrative example only</th><th class="text-end">Demo rate</th></tr></thead><tbody><tr><td>Tier 1</td><td>Micro or home-based business</td><td class="text-end">PHP 100</td></tr><tr><td>Tier 2</td><td>Small storefront or service shop</td><td class="text-end">PHP 200</td></tr><tr><td>Tier 3</td><td>Larger establishment or multiple locations</td><td class="text-end">PHP 300</td></tr></tbody></table></div>';
+    echo '<div class="alert alert-secondary">For a document type with an active rule effective today, a new request must select a fee category/tier and quantity. The system calculates the quoted amount as configured unit rate × quantity. If no effective matrix rule exists for a document type, the existing per-document fee setting remains available. This does not process online payments.</div>';
     if (!$rows) { echo empty_state('bi-cash-stack', 'No fee-matrix rules have been entered yet.'); }
     else {
         echo '<div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document/service</th><th>Category</th><th>Tier</th><th class="text-end">Rate per unit</th><th>Quantity range</th><th>Effective dates</th><th>Status</th><th></th></tr></thead><tbody>';
@@ -251,10 +253,11 @@ if ($tab === 'general') {
         card_end();
     }
 } elseif ($tab === 'summons') {
-    card_start('Hearing summons wording', 'The official text printed on a summons. Nothing is pre-filled; a summons cannot be printed until this is set.');
+    card_start('Hearing summons wording', 'A clearly marked non-official demo sample is pre-filled for presentations. Replace it with Barangay-approved text before official use.');
+    echo '<div class="alert alert-warning"><strong>School project demo - not an official summons.</strong> The pre-filled text is sample wording only and has no legal effect. Do not serve it as a real summons.</div>';
     echo '<div class="alert alert-secondary">Placeholders: ' . e('{{' . implode('}} {{', SUMMONS_TOKENS) . '}}') . '</div>';
     echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('summons_save');
-    echo f_textarea('summons_wording', 'Official wording', (string) setting('summons_wording', ''), ['rows' => 7, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
+    echo f_textarea('summons_wording', 'Demo or approved wording', (string) setting('summons_wording', ''), ['rows' => 7, 'maxlength' => 4000, 'help' => 'The fresh-install sample is not official. Replace it only with wording approved by the Barangay before real use.']);
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
     card_end();
 } else {
