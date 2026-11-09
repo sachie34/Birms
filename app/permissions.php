@@ -60,9 +60,10 @@ function can(string $permission): bool
 /** Server-side gate. Hiding a menu item is never the protection; this is. */
 function require_permission(string $permission): void
 {
-    if (!can($permission)) {
-        $u = auth_user();
+    $u = auth_user();
+    if ($u === null || !role_can((string) $u['role'], $permission)) {
         audit_best_effort('access_denied', 'Security', 'Failed', 'Needs ' . $permission . ' on ' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')), $u['username'] ?? null);
         abort(403, 'Your role does not have access to this page.');
     }
+    audit_best_effort('access_granted', 'Security', 'Success', 'Granted ' . $permission . ' on ' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')), $u['username'] ?? null);
 }
