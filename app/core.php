@@ -259,12 +259,20 @@ function audit_actor(): ?array
 function audit(string $action, string $module, string $status = 'Success', string $remarks = '', ?string $entityType = null, ?int $entityId = null, ?string $actorName = null, ?int $actorId = null): void
 {
     $u = audit_actor();
+    $actor = $u;
+    if ($actorId !== null && ($actor === null || !isset($actor['full_name'], $actor['role'], $actor['username']))) {
+        $actor = db_one('SELECT user_id, username, full_name, role FROM users WHERE user_id = ?', [$actorId]) ?? $actor;
+    }
     db_exec(
-        'INSERT INTO audit_log (user_id, username_snapshot, action, module, entity_type, entity_id, status, remarks, ip_address)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO audit_log (user_id, username_snapshot, full_name_snapshot, role_snapshot, action, module, entity_type, entity_id, status, remarks, ip_address)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
-            $actorId ?? ($u['user_id'] ?? null), $actorName ?? ($u['username'] ?? null), $action, $module,
-            $entityType, $entityId, $status, mb_substr_safe($remarks, 1000), PHP_SAPI === 'cli' ? 'cli' : client_ip(),
+            $actorId ?? ($u['user_id'] ?? $actor['user_id'] ?? null),
+            $actorName ?? ($actor['username'] ?? $u['username'] ?? null),
+            $actor['full_name'] ?? null,
+            $actor['role'] ?? null,
+            $action, $module, $entityType, $entityId, $status, mb_substr_safe($remarks, 1000),
+            PHP_SAPI === 'cli' ? 'cli' : client_ip(),
         ]
     );
 }

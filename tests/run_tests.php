@@ -74,9 +74,14 @@ $pre = new Http($base); $pre->get('/index.php'); $before = file_get_contents($pr
 preg_match('/BIRMSSESS\s+(\S+)/', (string) $before, $m1);
 $r = $pre->login($fx['clerk'], TP); $cookie = implode(' | ', $r['cookies']); $afterJar = file_get_contents($pre->jar); preg_match('/BIRMSSESS\s+(\S+)/', (string) $afterJar, $m2);
 record('H6', 'Sign-in works; cookie is HttpOnly + SameSite; session id changes at login', $r['status'] === 302 && str_contains(loc($r), 'dashboard.php') && stripos($cookie, 'httponly') !== false && stripos($cookie, 'samesite=lax') !== false && ($m1[1] ?? 'a') !== ($m2[1] ?? 'a'), $cookie === '' ? 'no cookie' : '');
+$clerkId = (int) db_val('SELECT user_id FROM users WHERE username = ?', [$fx['clerk']]);
+$loginAudit = db_one("SELECT occurred_at, username_snapshot, full_name_snapshot, role_snapshot FROM audit_log WHERE user_id = ? AND action = 'login' ORDER BY audit_id DESC LIMIT 1", [$clerkId]);
+record('H6A', 'Audit snapshots login time, username, full name and role', $loginAudit !== null && $loginAudit['occurred_at'] !== '' && $loginAudit['username_snapshot'] === $fx['clerk'] && $loginAudit['full_name_snapshot'] === 'Test Clerk' && $loginAudit['role_snapshot'] === 'clerk');
 $roleLabel = ['admin' => 'Administrator', 'captain' => 'Barangay Captain', 'secretary' => 'Barangay Secretary', 'clerk' => 'Barangay Staff'];
 $okAll = true; foreach ($sessions as $role => $s) { $r = $s->get('/dashboard.php'); if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) { $okAll = false; } }
 record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll);
+$clerkAccess = db_one("SELECT occurred_at, full_name_snapshot, username_snapshot, role_snapshot FROM audit_log WHERE user_id = ? AND action = 'access_granted' AND remarks LIKE 'Granted dashboard.view on dashboard.php%' ORDER BY audit_id DESC LIMIT 1", [$clerkId]);
+record('H7A', 'Successful page access is recorded with actor identity and role', $clerkAccess !== null && $clerkAccess['occurred_at'] !== '' && $clerkAccess['full_name_snapshot'] === 'Test Clerk' && $clerkAccess['username_snapshot'] === $fx['clerk'] && $clerkAccess['role_snapshot'] === 'clerk');
 
 /* RBAC matrix: users.manage = admin; audit.view = admin+captain; audit.export = admin */
 $matrix = ['/admin/users.php' => ['admin'], '/admin/user_edit.php' => ['admin'], '/admin/audit.php' => ['admin', 'captain'], '/admin/audit_export.php' => ['admin']];
@@ -86,6 +91,27 @@ foreach ($matrix as $path => $allowed) { foreach ($sessions as $role => $s) {
     if ($r['status'] !== $want) { $okAll = false; $why .= "{$role} {$path} got {$r['status']} want {$want}; "; }
 } }
 record('H8', 'Role matrix enforced on the server for every admin page and role', $okAll, $why);
+$failedAuditPage = $sessions['admin']->get('/admin/audit.php?status=failed&q=access_denied');
+record('H8A', 'Audit viewer filters denied access and shows the user full name, username and role', $failedAuditPage['status'] === 200 && str_contains($failedAuditPage['body'], 'Test Clerk') && str_contains($failedAuditPage['body'], 'zz_test_clerk') && str_contains($failedAuditPage['body'], 'Barangay Staff / Clerk') && str_contains($failedAuditPage['body'], 'access_denied') && str_contains($failedAuditPage['body'], 'Failed'));
+$failedAuditCsv = $sessions['admin']->get('/admin/audit_export.php?status=failed&q=access_denied');
+$failedCsvLines = preg_split('/\r?\n/', ltrim($failedAuditCsv['body'], "\xEF\xBB\xBF")) ?: [];
+$failedCsvHeader = isset($failedCsvLines[0]) ? str_getcsv($failedCsvLines[0]) : [];
+$failedCsvActorRow = null;
+foreach (array_slice($failedCsvLines, 1) as $line) {
+    $row = str_getcsv($line);
+    if (in_array($fx['clerk'], $row, true)) { $failedCsvActorRow = $row; break; }
+}
+record('H8B', 'Audit CSV includes actor name, username, role and result',
+    $failedAuditCsv['status'] === 200
+    && str_contains($failedAuditCsv['headers']['content-type'] ?? '', 'text/csv')
+    && ($failedCsvHeader[1] ?? '') === 'User name'
+    && ($failedCsvHeader[2] ?? '') === 'Username'
+    && ($failedCsvHeader[3] ?? '') === 'Role'
+    && $failedCsvActorRow !== null
+    && in_array('Test Clerk', $failedCsvActorRow, true)
+    && in_array('Barangay Staff / Clerk', $failedCsvActorRow, true)
+    && in_array('Failed', $failedCsvActorRow, true),
+    json_encode(['status' => $failedAuditCsv['status'], 'header' => $failedCsvHeader, 'row' => $failedCsvActorRow]));
 $tok = $sessions['clerk']->token('/dashboard.php'); $nUsers = (int) db_val('SELECT COUNT(*) FROM users');
 $r = $sessions['clerk']->post('/admin/user_edit.php', ['_csrf' => $tok, 'username' => 'zz_test_evil', 'full_name' => 'Evil User', 'role' => 'admin']);
 record('H9', 'A clerk cannot create users even with a valid token (403, nothing saved)', $r['status'] === 403 && (int) db_val('SELECT COUNT(*) FROM users') === $nUsers);
@@ -172,8 +198,9 @@ record('H19', 'Every sidebar link opens for every role; no dead links or error t
 db_exec("INSERT INTO audit_log (username_snapshot, action, module, status, remarks) VALUES ('@sneaky', '=SUM(1+1)', 'Test', 'Success', '+cmd|calc')");
 $csv = $a->get('/admin/audit_export.php');
 $lines = preg_split('/\r?\n/', ltrim($csv['body'], "\xEF\xBB\xBF")) ?: []; $formula = false;
+$csvHeader = isset($lines[0]) ? str_getcsv($lines[0]) : [];
 foreach ($lines as $ln) { foreach (str_getcsv($ln, ',', '"', '\\') as $cell) { if (is_string($cell) && $cell !== '' && strpos('=+-@', $cell[0]) !== false) { $formula = true; } } }
-record('A1', 'CSV export works for the admin and neutralizes spreadsheet formulas', $csv['status'] === 200 && str_contains($csv['headers']['content-type'] ?? '', 'text/csv') && str_starts_with($csv['body'], "\xEF\xBB\xBFWhen,User") && !$formula);
+record('A1', 'CSV export works for the admin and neutralizes spreadsheet formulas', $csv['status'] === 200 && str_contains($csv['headers']['content-type'] ?? '', 'text/csv') && ($csvHeader[0] ?? '') === 'When' && ($csvHeader[1] ?? '') === 'User name' && !$formula);
 $av = $a->get('/admin/audit.php?status=Failed'); $av2 = $a->get('/admin/audit.php?from=2023-02-31&to=garbage');
 record('A2', 'Audit viewer filters work; impossible dates are ignored', $av['status'] === 200 && str_contains($av['body'], 'pill-red') && $av2['status'] === 200);
 $need = ['login' => 0, 'login_failed' => 0, 'login_blocked' => 0, 'user_created' => 0, 'access_denied' => 0, 'csrf_rejected' => 0, 'user_deactivated' => 0, 'user_unlocked' => 0, 'password_changed' => 0, 'logout' => 0, 'audit_exported' => 0];

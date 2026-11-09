@@ -25,6 +25,18 @@
                 "default": "null",
                 "extra": ""
             },
+            "full_name_snapshot": {
+                "type": "varchar(100)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
+            "role_snapshot": {
+                "type": "varchar(30)",
+                "nullable": true,
+                "default": "null",
+                "extra": ""
+            },
             "action": {
                 "type": "varchar(50)",
                 "nullable": false,
