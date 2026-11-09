@@ -4,7 +4,7 @@
 
 Use the `john/paper-code-compliance` branch for the expanded demo. It contains the current B1–B9 application, reports/dashboard, visitor/request attachments, PDF generation, configurable fee matrix, and cash-collection ledger. These additions are not yet merged to `main`.
 
-The [final audited application-code CI run](https://github.com/sachie34/Birms/actions/runs/42342197300) for the final audited code revision passed PHP syntax, migrations through 019 on disposable MariaDB 10.4 and 10.11, **37/37 authentication/security/audit checks**, and **160/160 module integration checks** (zero failures/untested). The run also checks Certified True Copy from visitor intake through linked request and the school-demo certificate wording labels.
+The latest [CI run for PR #31](https://github.com/sachie34/Birms/actions/runs/42662554832), on head `6ce400f387603859af6690aa24728eec58b1aa24`, passed PHP syntax, XAMPP setup preflight, migrations on disposable MariaDB 10.4/10.11, **41/41 authentication/security/audit checks**, **160/160 module integration checks**, and separate-database backup restore. Audit checks cover actor name/role snapshots, permission-checked access/denials, and CSV export. CI does not replace browser/printer/upload UAT on the presentation PC.
 
 CI is not the same as running the app on the target office PC. Target-PC XAMPP/browser UAT remains required. Also check the latest [GitHub Actions runs](https://github.com/sachie34/Birms/actions) for the setup-wizard preflight run triggered by the final workflow update.
 
@@ -47,7 +47,7 @@ Keep the browser ready and use a dedicated demo account for each role.
 6. **Issuance history and cash ledger:** find the issued certificate by name/reference/O.R. number. For a paid demo issuance, show its ledger entry and how Pending and Reconciled totals differ. Do not label a staff-entered ledger amount as independently verified cash unless actual receipt evidence has been checked under an approved office process.
 7. **Blotter and hearings:** file a synthetic incident with complainant/respondent details, search the parties, schedule a future hearing, record a hearing outcome, and preview/print a summons only after its approved test wording is configured.
 8. **Reports and dashboard:** open demographic, issuance, request, and blotter summaries; select a period and export a CSV. Compare at least one total with the same working database. Explain that demographic figures are a current active-resident snapshot, not a historical period-end count.
-9. **Audit trail:** open the audit viewer and show the actions just performed, including any denied action if it was logged.
+9. **Audit trail:** open the audit viewer and show recent page access, denied access, and actions. Point out the user’s name, username, role, time, result and remarks. Older entries can show “Not recorded” for name/role.
 10. **Optional local backup:** as Administrator, download a SQL backup to a safe local folder. Do not attempt a cloud-backup claim unless a real approved HTTPS destination has been configured and upload plus restore have actually been tested.
 
 ## 4. Before the examiner arrives

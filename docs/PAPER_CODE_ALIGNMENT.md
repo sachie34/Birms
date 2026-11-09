@@ -6,7 +6,7 @@
 
 ## Overall finding
 
-The current source code implements the main application flows for the five core functional areas in the compiled Chapters 1-3 paper, plus record searching/retrieval (FR6). The final audited application-code CI run passed PHP syntax, migrations through 019 on disposable MariaDB 10.4 and 10.11, **37/37 authentication/security/audit checks**, and **160/160 integration checks**.
+The current source code implements the main application flows for the five core functional areas in the compiled Chapters 1-3 paper, plus record searching/retrieval (FR6). The latest CI run for [PR #31](https://github.com/sachie34/Birms/actions/runs/42662554832) passed PHP syntax and setup preflight, migrations on disposable MariaDB 10.4/10.11, **41/41 authentication/security/audit checks**, **160/160 integration checks**, and separate-database backup restore. Target-PC UAT is still required.
 
 That does **not** mean every sentence in every provided document is an exact match. Some uploaded documents describe different or supplementary requirements. Those conflicts are listed below rather than represented as completed functionality. The actual XAMPP/browser test on the presentation computer is still required.
 
