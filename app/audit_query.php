@@ -17,7 +17,11 @@ function audit_build_query(array $src): array
         'to'     => audit_valid_date(input_str($src, 'to')) ?? '',
         'user'   => (string) (input_int($src, 'user') ?? ''),
         'module' => input_str($src, 'module'),
-        'status' => in_array(input_str($src, 'status'), ['Success', 'Failed'], true) ? input_str($src, 'status') : '',
+        'status' => match (strtolower(input_str($src, 'status'))) {
+            'success' => 'success',
+            'failed' => 'failed',
+            default => '',
+        },
         'q'      => input_str($src, 'q'),
     ];
     $w = []; $p = [];
