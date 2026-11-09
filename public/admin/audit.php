@@ -18,7 +18,7 @@ $query = array_filter($f, fn($x) => $x !== '');
 render_header('Audit Trail', [['Audit Trail', null]], 'audit');
 ?>
 <div class="page-head">
-  <div><h1>Audit Trail</h1><p>Shows page access, denied access, actions, and application errors. Older entries may not include name or role snapshots.</p></div>
+  <div><h1>Audit Trail</h1><p>Shows permission-checked page access, denied access, actions, and application errors. Older entries may not include name or role snapshots.</p></div>
   <?php if (can('audit.export')): ?><a class="btn btn-light border" href="<?= e(base_url('admin/audit_export.php') . ($query ? '?' . http_build_query($query) : '')) ?>"><i class="bi bi-download me-1"></i>Export CSV</a><?php endif; ?>
 </div>
 <div class="card-b">
