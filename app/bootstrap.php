@@ -29,12 +29,36 @@ ini_set('error_log', $logDir . '/php-error.log');
 ini_set('display_errors', config('env') === 'development' ? '1' : '0');
 error_reporting(E_ALL);
 
-set_exception_handler(function (Throwable $e): void {
+$uncaughtExceptionHandled = false;
+$recordApplicationFailure = static function (string $remarks): void {
+    try {
+        $u = function_exists('auth_user') ? auth_user() : null;
+        audit_best_effort('application_error', 'System', 'Failed', $remarks, $u['username'] ?? null);
+    } catch (Throwable $auditError) {
+        error_log('BIRMS runtime-error audit failed: ' . $auditError->getMessage());
+    }
+};
+
+set_exception_handler(function (Throwable $e) use (&$uncaughtExceptionHandled, $recordApplicationFailure): void {
+    $uncaughtExceptionHandled = true;
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'CLI'));
     error_log('BIRMS uncaught ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    $recordApplicationFailure('Uncaught ' . get_class($e) . ' on ' . $script . '; details are in the server error log.');
     if (!headers_sent()) { http_response_code(500); }
     echo config('env') === 'development'
         ? '<pre>' . e((string) $e) . '</pre>'
         : '<!doctype html><meta charset="utf-8"><title>Error</title><p style="font-family:sans-serif">Something went wrong. Please try again or contact the administrator.</p>';
+});
+
+register_shutdown_function(function () use (&$uncaughtExceptionHandled, $recordApplicationFailure): void {
+    if ($uncaughtExceptionHandled) { return; }
+    $error = error_get_last();
+    $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR];
+    if ($error === null || !in_array($error['type'], $fatalTypes, true)) { return; }
+
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'CLI'));
+    error_log('BIRMS fatal PHP error: ' . $error['message'] . ' @ ' . $error['file'] . ':' . $error['line']);
+    $recordApplicationFailure('Fatal PHP error on ' . $script . '; details are in the server error log.');
 });
 
 function send_security_headers(): void
