@@ -92,10 +92,11 @@ if (is_post()) {
             flash_add('success', 'Pending ledger record deleted and audited.');
             redirect('admin/ledger.php');
         } else { throw new RuntimeException('Unknown ledger action.'); }
+    } catch (PDOException $e) {
+        error_log('BIRMS cash ledger database error: ' . $e->getMessage());
+        $errors[] = 'The ledger change could not be saved. Check for an existing transaction for that issuance.';
     } catch (RuntimeException $e) {
         if ($e->getMessage() !== 'invalid') { $errors[] = $e->getMessage(); }
-    } catch (PDOException $e) {
-        $errors[] = 'The ledger change could not be saved. Check for an existing transaction for that issuance.';
     }
 }
 
