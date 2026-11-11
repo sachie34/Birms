@@ -11,10 +11,15 @@ permissions:
 
 jobs:
   php-and-integration-tests:
+    name: PHP and MariaDB ${{ matrix.mariadb-version }} checks
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mariadb-version: ['10.4', '10.11']
     services:
       mariadb:
-        image: mariadb:10.11
+        image: mariadb:${{ matrix.mariadb-version }}
         env:
           MARIADB_ROOT_PASSWORD: ci-root-pass
           MARIADB_DATABASE: barangay_db_work
