@@ -9,10 +9,18 @@ $id = get_int('id');
 $c = $id === null ? null : db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$id]);
 if ($c === null) { abort(404, 'That certificate was not found.'); }
 $canPrint = can('certificates.print');
-if ($canPrint) {
-    db_exec('UPDATE issuances SET print_count = print_count + 1, last_printed_at = NOW() WHERE issuance_id = ?', [$id]);
-    audit_best_effort('certificate_printed', 'Certificates', 'Success', $c['reference_no'] . ' opened for printing', null);
-    $c['print_count'] = (int) $c['print_count'] + 1;
+if (is_post()) {
+    require_csrf();
+    if (!$canPrint) { abort(403, 'You are not allowed to print this certificate.'); }
+    if (post_str('do') !== 'record_print') { abort(400, 'Unknown print action.'); }
+    $printCount = db_transaction(function () use ($id, $c): int {
+        db_exec('UPDATE issuances SET print_count = print_count + 1, last_printed_at = NOW() WHERE issuance_id = ?', [$id]);
+        audit('certificate_printed', 'Certificates', 'Success', $c['reference_no'] . ' printed', 'issuance', $id);
+        return (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$id]);
+    });
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['ok' => true, 'print_count' => $printCount], JSON_THROW_ON_ERROR);
+    exit;
 }
 $asset = fn(string $p): string => e(base_url('assets/' . $p));
 $signatureDisplay = trim((string) ($c['signature_text'] ?? ''));
