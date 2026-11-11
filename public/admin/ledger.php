@@ -56,14 +56,16 @@ if (is_post()) {
             if (str_len($notes) > 500) { $errors[] = 'Notes are limited to 500 characters.'; }
             if ($errors) { throw new RuntimeException('invalid'); }
             db_transaction(function () use ($id, $date, $amount, $method, $notes): void {
-                $old = db_one('SELECT ledger_id, reconciliation_status FROM cash_collection_ledger WHERE ledger_id = ? FOR UPDATE', [$id]);
+                $old = db_one('SELECT ledger_id, reconciliation_status, transaction_date, fee_amount, payment_method FROM cash_collection_ledger WHERE ledger_id = ? FOR UPDATE', [$id]);
                 if ($old === null) { throw new RuntimeException('The ledger transaction was not found.'); }
                 if ($old['reconciliation_status'] !== 'pending') {
                     throw new RuntimeException('Mark this transaction Pending before editing reconciled details.');
                 }
                 db_exec('UPDATE cash_collection_ledger SET transaction_date = ?, fee_amount = ?, payment_method = ?, notes = ? WHERE ledger_id = ?',
                     [$date, $amount, $method, $notes !== '' ? $notes : null, $id]);
-                audit('cash_ledger_updated', 'Cash Ledger', 'Success', 'Updated ledger transaction ' . $id, 'cash_ledger', $id);
+                $before = 'amount ' . number_format((float) $old['fee_amount'], 2, '.', '') . ', date ' . (string) $old['transaction_date'] . ', method ' . (string) $old['payment_method'];
+                $after = 'amount ' . number_format((float) $amount, 2, '.', '') . ', date ' . $date . ', method ' . $method;
+                audit('cash_ledger_updated', 'Cash Ledger', 'Success', 'Updated ledger transaction ' . $id . '; before [' . $before . ']; after [' . $after . ']', 'cash_ledger', $id);
             });
             flash_add('success', 'Ledger transaction updated.');
             redirect('admin/ledger.php');
