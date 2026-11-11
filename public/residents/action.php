@@ -30,8 +30,16 @@ db_transaction(function () use ($action, $r, $id): void {
             audit('residency_status_changed', 'Residents', 'Success', $name . ': ' . $r['residency_status'] . ' -> ' . $new, 'resident', $id);
     }
 });
+} catch (PDOException $e) {
+    error_log('BIRMS resident action database error: ' . $e->getMessage());
+    flash_add('danger', 'The resident record could not be updated because of a database error.');
+    redirect('residents/view.php', ['id' => $id]);
 } catch (RuntimeException $e) {
-    flash_add('warning', 'Restore this archived resident before changing their status.');
+    if ($e->getMessage() === 'archived') {
+        flash_add('warning', 'Restore this archived resident before changing their status.');
+    } else {
+        flash_add('danger', 'The resident action could not be completed.');
+    }
     redirect('residents/view.php', ['id' => $id]);
 }
 flash_add('success', 'Done.');
