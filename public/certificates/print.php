@@ -35,8 +35,9 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
     <a class="btn btn-light border" href="<?= e(base_url('certificates/history.php')) ?>"><i class="bi bi-arrow-left me-1"></i>Back</a>
     <?php if ($canPrint): ?>
       <a class="btn btn-light border" href="<?= e(base_url('certificates/pdf.php?id=' . (int) $c['issuance_id'])) ?>"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
-      <span class="text-muted small align-self-center">Printed <?= (int) $c['print_count'] ?> time(s). Letterhead and layout are a provisional default until approved by the Barangay Secretary.</span>
-      <button type="button" class="btn btn-primary" data-print><i class="bi bi-printer me-1"></i>Print</button>
+      <span class="text-muted small align-self-center"><span data-print-count>Printed <?= (int) $c['print_count'] ?> time(s).</span> Letterhead and layout are a provisional default until approved by the Barangay Secretary.</span>
+      <form id="certificate-print-form" class="d-none" method="post" action="<?= e(base_url('certificates/print.php?id=' . (int) $c['issuance_id'])) ?>"><?= csrf_field() ?><input type="hidden" name="do" value="record_print"></form>
+      <button type="button" class="btn btn-primary" data-print data-print-record-form="certificate-print-form"><i class="bi bi-printer me-1"></i>Print</button>
     <?php else: ?>
       <span class="text-muted small align-self-center"><i class="bi bi-eye me-1"></i>Preview only. Printing and PDF download are not available for this role.</span>
     <?php endif; ?>
