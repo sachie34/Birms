@@ -202,7 +202,14 @@ function run_b6(array $S, string $base): void
     $wording = "You are summoned to appear at {{venue}} on {{hearing_date}} at {{hearing_time}} regarding case {{case_no}}.\nRespondent: {{respondent_names}}.\n<b>Bring a valid ID</b>";
     $w2 = $saveW($sec, $wording);
     $sp0 = $audit('summons_printed');   // audit rows persist between runs, so count from here
+    $countBeforeViews = $cnt($C1);
     $p1 = $sumPage($sec, $C1); $c1 = $cnt($C1); $p2 = $sumPage($cap, $C1); $p3 = $sumPage($clk, $C1); $c2 = $cnt($C1); $p4 = $sumPage($adm, $C1); $c3 = $cnt($C1);
+    $sumPath = '/blotters/summons.php?id=' . $C1;
+    $secPrint = $sec->post($sumPath, ['_csrf' => $sec->token($sumPath), 'do' => 'record_print']);
+    $capPrint = $cap->post($sumPath, ['_csrf' => $cap->token($sumPath), 'do' => 'record_print']);
+    $clkPrint = $clk->post($sumPath, ['_csrf' => $clk->token($sumPath), 'do' => 'record_print']);
+    $admPrint = $adm->post($sumPath, ['_csrf' => $adm->token($sumPath), 'do' => 'record_print']);
+    $countAfterPrints = $cnt($C1);
     $sched($sec, $C, $future(8), ''); $C3 = $hid($C); $s3 = $sumPage($sec, $C3);
     $file($clk, ['narrative' => 'ZZ-B6 five: no respondent known', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => '', 'c_name' => 'Zzcomp Kilo']); $E = $cid('five'); $sched($sec, $E, $future(6)); $HE = $hid($E); $s4 = $sumPage($sec, $HE);
     $s5 = $sumPage($sec, $H1); $s6 = $sumPage($sec, 99999999); $s7 = $sec->get('/blotters/summons.php?id[]=1');
@@ -210,9 +217,14 @@ function run_b6(array $S, string $base): void
         str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set') && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500 && $w2['status'] === 302
         && db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'") === $wording
         && str_contains($s3['body'], 'cannot be printed yet') && str_contains($s3['body'], 'venue') && str_contains($s4['body'], 'no respondent') && str_contains($s5['body'], 'still Scheduled') && $s6['status'] === 404 && $s7['status'] < 500);
-    record('B6-16', 'Printing a summons: wording is escaped and correct; view-only roles do not increment print count, while Secretary and Administrator actions are counted and audited',
+    record('B6-16', 'Summons views never change print counts; only explicit print actions by authorized roles increment and audit them',
         $p1['status'] === 200 && str_contains($p1['body'], 'SUMMONS') && str_contains($p1['body'], $cNo) && str_contains($p1['body'], 'ZZ Test Hall') && str_contains($p1['body'], 'Zzresp Juliet') && str_contains($p1['body'], '&lt;b&gt;Bring a valid ID&lt;/b&gt;') && !str_contains($p1['body'], '<b>Bring')
-        && !str_contains($p1['body'], '{{') && $c1 === 1 && $p2['status'] === 200 && $p3['status'] === 200 && $c2 === 1 && $p4['status'] === 200 && $c3 === $c2 + 1 && $audit('summons_printed') === $sp0 + 2);
+        && !str_contains($p1['body'], '{{') && $c1 === $countBeforeViews && $c2 === $countBeforeViews && $c3 === $countBeforeViews
+        && $capPrint['status'] === 200 && str_contains($capPrint['body'], '"counted":false')
+        && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"counted":false')
+        && $secPrint['status'] === 200 && str_contains($secPrint['body'], '"counted":true')
+        && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"counted":true')
+        && $countAfterPrints === $countBeforeViews + 2 && $audit('summons_printed') === $sp0 + 2);
 
     /* ---- CSRF, methods, odd input, XSS ---- */
     $snap = [$status($A), $nPart($A), $nHear($A), $cases()]; $nt = [];
