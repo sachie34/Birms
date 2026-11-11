@@ -78,11 +78,17 @@ function run_b5(array $S, string $base): void
     db_exec("UPDATE document_types SET template_body = ?, fee_amount = 50 WHERE type_id = ?", [$body, $tPaid]); db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
 
     // printing
-    $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]); $capView = $cap->get('/certificates/print.php?id=' . $row['issuance_id']); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $clkView = $clk->get('/certificates/print.php?id=' . $row['issuance_id']); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $secView = $sec->get('/certificates/print.php?id=' . $row['issuance_id']); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    $admView = $adm->get('/certificates/print.php?id=' . $row['issuance_id']); $c4 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    record('B5-13', 'Captain can preview without counting; Clerk, Secretary and Administrator may print and printing is tracked', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 + 1 && $secView['status'] === 200 && $c3 === $c2 + 1 && $admView['status'] === 200 && $c4 === $c3 + 1 && str_contains($clkView['body'], 'Republic of the Philippines') && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
+    $issuancePath = '/certificates/print.php?id=' . (int) $row['issuance_id'];
+    $c0 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $capView = $cap->get($issuancePath); $c1 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $clkView = $clk->get($issuancePath); $c2 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $secView = $sec->get($issuancePath); $c3 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $admView = $adm->get($issuancePath); $c4 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    $clkPrint = $clk->post($issuancePath, ['_csrf' => $clk->token($issuancePath), 'do' => 'record_print']);
+    $secPrint = $sec->post($issuancePath, ['_csrf' => $sec->token($issuancePath), 'do' => 'record_print']);
+    $admPrint = $adm->post($issuancePath, ['_csrf' => $adm->token($issuancePath), 'do' => 'record_print']);
+    $c5 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
+    record('B5-13', 'Opening a certificate does not count as printing; authorized print actions increment and audit the count', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 && $secView['status'] === 200 && $c3 === $c0 && $admView['status'] === 200 && $c4 === $c0 && str_contains($clkView['body'], 'Republic of the Philippines') && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"ok":true') && $secPrint['status'] === 200 && str_contains($secPrint['body'], '"ok":true') && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"ok":true') && $c5 === $c0 + 3 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
     $capPdf = $cap->get('/certificates/pdf.php?id=' . $row['issuance_id']);
     record('B5-21', 'Captain can preview an issued certificate but cannot print or download a PDF; print-authorized roles receive controls',
         $capView['status'] === 200
