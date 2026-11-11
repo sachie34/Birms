@@ -107,6 +107,7 @@ page_head('Database Backup & Export', 'Create a one-click SQL backup and, when c
       <div class="card-body-b">
         <ul class="mb-0">
           <li>Cloud upload requires an approved HTTPS WebDAV endpoint and credentials; no real service or account is bundled.</li>
+          <li>The SQL backup does not include uploaded attachment files. Back up <code>storage/private_uploads/</code> separately at the same time and preserve its directory structure so database records continue to point to the right files.</li>
           <li>Backups are one-click; scheduled backups and backup notifications are not included.</li>
           <li>Successful transfer does not prove restoration will work. Test restoration in a separate scratch database before relying on a backup.</li>
           <li>Download, upload-start, success, and failure events are written to the audit trail.</li>
