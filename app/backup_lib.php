@@ -35,7 +35,10 @@ function backup_write_sql_export($out, array $tableNames): void
     $write('');
 
     $pdo = db();
-    foreach ($tableNames as $table) {
+    $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+    try {
+        foreach ($tableNames as $table) {
         if (!preg_match('/^[A-Za-z0-9_$]+$/', (string) $table)) {
             throw new InvalidArgumentException('A database table name failed validation.');
         }
@@ -80,7 +83,10 @@ function backup_write_sql_export($out, array $tableNames): void
         } finally {
             $stmt->closeCursor();
         }
-        $write('');
+            $write('');
+        }
+    } finally {
+        if ($pdo->inTransaction()) { $pdo->rollBack(); }
     }
     $write('SET FOREIGN_KEY_CHECKS = 1;');
 }
