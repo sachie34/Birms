@@ -34,6 +34,9 @@ if (is_post()) {
         });
         flash_add('success', 'Visitor entry saved.');
         redirect('visitors/index.php', ['new' => $vid]);
+        } catch (PDOException $e) {
+            error_log('BIRMS visitor entry database error: ' . $e->getMessage());
+            $errors[] = 'The visitor entry could not be saved because of a database error.';
         } catch (RuntimeException $e) { $errors[] = $e->getMessage(); }
     }
     audit_best_effort('visit_rejected', 'Visitors', 'Failed', 'Validation failed (' . count($errors) . ' problem(s))');

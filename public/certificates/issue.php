@@ -80,8 +80,16 @@ if (is_post()) {
             });
             flash_add('success', 'Certificate issued.');
             redirect('certificates/print.php', ['id' => $iid]);
-        } catch (RuntimeException $e) { $errors[] = 'This request changed while you were issuing it. Check its status and try again.'; }
-        catch (PDOException $e) { if (str_contains($e->getMessage(), 'uq_issuance_or')) { $errors[] = 'That O.R. number was already used for another certificate.'; } else { throw $e; } }
+        } catch (PDOException $e) {
+            if (str_contains($e->getMessage(), 'uq_issuance_or')) {
+                $errors[] = 'That O.R. number was already used for another certificate.';
+            } else {
+                error_log('BIRMS certificate issuance database error: ' . $e->getMessage());
+                $errors[] = 'The certificate could not be issued due to a database error. Please try again or contact an administrator.';
+            }
+        } catch (RuntimeException $e) {
+            $errors[] = 'This request changed while you were issuing it. Check its status and try again.';
+        }
     }
     audit_best_effort('certificate_refused', 'Certificates', 'Failed', $r['reference_no'] . ': ' . implode(' ', array_slice($errors, 0, 2)));
 }

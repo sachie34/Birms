@@ -20,35 +20,43 @@ $msg = '';
 try {
     db_transaction(function () use ($action, $t, &$msg): void {
         $uid = (int) $t['user_id'];
+        $activeAdminIds = $action === 'deactivate' ? lock_active_admin_user_ids() : [];
+        $current = db_one('SELECT user_id, username, role, status FROM users WHERE user_id = ? FOR UPDATE', [$uid]);
+        if ($current === null) { throw new RuntimeException('user-not-found'); }
+
         switch ($action) {
             case 'reset_password':
                 $plain = random_password();
                 db_exec('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE user_id = ?', [password_hash($plain, PASSWORD_DEFAULT), $uid]);
-                login_clear_failures((string) $t['username']);
-                audit('password_reset', 'Users', 'Success', 'Temporary password set for ' . $t['username'], 'user', $uid);
+                login_clear_failures((string) $current['username']);
+                audit('password_reset', 'Users', 'Success', 'Temporary password set for ' . $current['username'], 'user', $uid);
                 $msg = 'New temporary password (shown once, give it to the user): ' . $plain;
                 break;
             case 'unlock':
-                login_clear_failures((string) $t['username']);
-                audit('user_unlocked', 'Users', 'Success', 'Cleared failed sign-ins for ' . $t['username'], 'user', $uid);
+                login_clear_failures((string) $current['username']);
+                audit('user_unlocked', 'Users', 'Success', 'Cleared failed sign-ins for ' . $current['username'], 'user', $uid);
                 $msg = 'Sign-in unlocked.';
                 break;
             case 'deactivate':
-                if ($t['role'] === 'admin' && $t['status'] === 'active' && (int) db_val("SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active' AND user_id <> ?", [$uid]) < 1) {
+                if ($current['role'] === 'admin' && $current['status'] === 'active'
+                    && count(array_filter($activeAdminIds, static fn(int $adminId): bool => $adminId !== $uid)) < 1) {
                     throw new RuntimeException('last-admin');
                 }
                 db_exec("UPDATE users SET status = 'inactive' WHERE user_id = ?", [$uid]);
-                audit('user_deactivated', 'Users', 'Success', 'Deactivated ' . $t['username'], 'user', $uid);
+                audit('user_deactivated', 'Users', 'Success', 'Deactivated ' . $current['username'], 'user', $uid);
                 $msg = 'Account deactivated.';
                 break;
             case 'activate':
                 db_exec("UPDATE users SET status = 'active' WHERE user_id = ?", [$uid]);
-                audit('user_activated', 'Users', 'Success', 'Reactivated ' . $t['username'], 'user', $uid);
+                audit('user_activated', 'Users', 'Success', 'Reactivated ' . $current['username'], 'user', $uid);
                 $msg = 'Account reactivated.';
                 break;
         }
     });
     flash_add('success', $msg);
+} catch (PDOException $e) {
+    error_log('BIRMS user administration database error: ' . $e->getMessage());
+    flash_add('danger', 'The action could not be completed because of a database error.');
 } catch (RuntimeException $e) {
     flash_add('danger', $e->getMessage() === 'last-admin' ? 'At least one active Administrator must remain.' : 'The action could not be completed.');
 }

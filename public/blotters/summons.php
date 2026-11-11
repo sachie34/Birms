@@ -22,12 +22,22 @@ if ($blockers) {
     echo btn_link('blotters/view.php?id=' . (int) $h['blotter_id'], 'Back to the case', 'btn-light border', 'bi-arrow-left');
     render_footer(); exit;
 }
-// Only people who schedule hearings count as printing it; a viewer opening the page does not.
-if (can('hearings.add')) {
-    db_transaction(function () use ($h): void {
-        db_exec('UPDATE hearings SET summons_count = summons_count + 1 WHERE hearing_id = ?', [$h['hearing_id']]);
-        audit('summons_printed', 'Blotter', 'Success', $h['case_no'] . ': summons for hearing of ' . date('j M Y g:i A', strtotime((string) $h['scheduled_at'])), 'blotter', (int) $h['blotter_id']);
-    });
+if (is_post()) {
+    require_csrf();
+    if (post_str('do') !== 'record_print') { abort(400, 'Unknown print action.'); }
+    if ($blockers) { abort(422, 'This summons cannot be printed yet.'); }
+    $counted = can('hearings.add');
+    $summonsCount = (int) $h['summons_count'];
+    if ($counted) {
+        $summonsCount = db_transaction(function () use ($h): int {
+            db_exec('UPDATE hearings SET summons_count = summons_count + 1 WHERE hearing_id = ?', [$h['hearing_id']]);
+            audit('summons_printed', 'Blotter', 'Success', $h['case_no'] . ': summons printed for hearing of ' . date('j M Y g:i A', strtotime((string) $h['scheduled_at'])), 'blotter', (int) $h['blotter_id']);
+            return (int) db_val('SELECT summons_count FROM hearings WHERE hearing_id = ?', [(int) $h['hearing_id']]);
+        });
+    }
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['ok' => true, 'counted' => $counted, 'summons_count' => $summonsCount], JSON_THROW_ON_ERROR);
+    exit;
 }
 $asset = fn(string $p): string => e(base_url('assets/' . $p));
 $text = render_template($body, $vars);
@@ -39,7 +49,8 @@ $text = render_template($body, $vars);
 <body>
   <div class="cert-wrap">
     <div class="cert-bar no-print"><a class="btn btn-light border" href="<?= e(base_url('blotters/view.php?id=' . (int) $h['blotter_id'])) ?>"><i class="bi bi-arrow-left me-1"></i>Back to the case</a>
-      <button class="btn btn-primary" type="button" data-print><i class="bi bi-printer me-1"></i>Print</button>
+      <form id="summons-print-form" class="d-none" method="post" action="<?= e(base_url('blotters/summons.php?id=' . (int) $h['hearing_id'])) ?>"><?= csrf_field() ?><input type="hidden" name="do" value="record_print"></form>
+      <button class="btn btn-primary" type="button" data-print data-print-record-form="summons-print-form"><i class="bi bi-printer me-1"></i>Print</button>
       <span class="text-muted small">Provisional layout until the Barangay Secretary approves the official format.</span></div>
     <div class="cert-sheet">
       <div class="cert-head"><div class="l1">Republic of the Philippines</div><div class="l1">Province of <?= e($vars['province']) ?> · Municipality of <?= e($vars['municipality']) ?></div><div class="l3"><?= e(barangay_title()) ?></div></div>

@@ -61,16 +61,29 @@ if (is_post()) {
             flash_add('success', 'User created. Temporary password (shown once, give it to the user): ' . $plain);
             redirect('admin/user_edit.php', ['id' => $newId]);
         }
-        db_transaction(function () use ($v, $email, $phone, $target): void {
-            $changes = [];
-            foreach (['full_name', 'role', 'status'] as $f) { if ((string) $target[$f] !== (string) $v[$f]) { $changes[] = $f . ': ' . $target[$f] . ' -> ' . $v[$f]; } }
-            if ((string) $target['email'] !== (string) ($email ?? '')) { $changes[] = 'email changed'; }
-            if ((string) $target['contact_number'] !== (string) ($phone ?? '')) { $changes[] = 'contact number changed'; }
-            db_exec('UPDATE users SET full_name = ?, role = ?, status = ?, email = ?, contact_number = ? WHERE user_id = ?', [$v['full_name'], $v['role'], $v['status'], $email, $phone, $target['user_id']]);
-            audit('user_updated', 'Users', 'Success', ($changes ? implode('; ', $changes) : 'No field changed') . ' [' . $target['username'] . ']', 'user', (int) $target['user_id']);
-        });
-        flash_add('success', 'User updated.');
-        redirect('admin/user_edit.php', ['id' => (int) $target['user_id']]);
+        try {
+            db_transaction(function () use ($v, $email, $phone, $target): void {
+                $activeAdminIds = lock_active_admin_user_ids();
+                $freshTarget = db_one('SELECT user_id, username, full_name, role, status, email, contact_number FROM users WHERE user_id = ? FOR UPDATE', [(int) $target['user_id']]);
+                if ($freshTarget === null) { throw new RuntimeException('user-not-found'); }
+                if ($freshTarget['role'] === 'admin' && $freshTarget['status'] === 'active'
+                    && ($v['role'] !== 'admin' || $v['status'] !== 'active')
+                    && count(array_filter($activeAdminIds, static fn(int $adminId): bool => $adminId !== (int) $freshTarget['user_id'])) < 1) {
+                    throw new RuntimeException('last-admin');
+                }
+                $changes = [];
+                foreach (['full_name', 'role', 'status'] as $f) { if ((string) $freshTarget[$f] !== (string) $v[$f]) { $changes[] = $f . ': ' . $freshTarget[$f] . ' -> ' . $v[$f]; } }
+                if ((string) $freshTarget['email'] !== (string) ($email ?? '')) { $changes[] = 'email changed'; }
+                if ((string) $freshTarget['contact_number'] !== (string) ($phone ?? '')) { $changes[] = 'contact number changed'; }
+                db_exec('UPDATE users SET full_name = ?, role = ?, status = ?, email = ?, contact_number = ? WHERE user_id = ?', [$v['full_name'], $v['role'], $v['status'], $email, $phone, $freshTarget['user_id']]);
+                audit('user_updated', 'Users', 'Success', ($changes ? implode('; ', $changes) : 'No field changed') . ' [' . $freshTarget['username'] . ']', 'user', (int) $freshTarget['user_id']);
+            });
+            flash_add('success', 'User updated.');
+            redirect('admin/user_edit.php', ['id' => (int) $target['user_id']]);
+        } catch (RuntimeException $e) {
+            if ($e->getMessage() !== 'last-admin') { throw $e; }
+            $errors[] = 'At least one active Administrator must remain.';
+        }
     }
 }
 

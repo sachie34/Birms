@@ -9,10 +9,18 @@ $id = get_int('id');
 $c = $id === null ? null : db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$id]);
 if ($c === null) { abort(404, 'That certificate was not found.'); }
 $canPrint = can('certificates.print');
-if ($canPrint) {
-    db_exec('UPDATE issuances SET print_count = print_count + 1, last_printed_at = NOW() WHERE issuance_id = ?', [$id]);
-    audit_best_effort('certificate_printed', 'Certificates', 'Success', $c['reference_no'] . ' opened for printing', null);
-    $c['print_count'] = (int) $c['print_count'] + 1;
+if (is_post()) {
+    require_csrf();
+    if (!$canPrint) { abort(403, 'You are not allowed to print this certificate.'); }
+    if (post_str('do') !== 'record_print') { abort(400, 'Unknown print action.'); }
+    $printCount = db_transaction(function () use ($id, $c): int {
+        db_exec('UPDATE issuances SET print_count = print_count + 1, last_printed_at = NOW() WHERE issuance_id = ?', [$id]);
+        audit('certificate_printed', 'Certificates', 'Success', $c['reference_no'] . ' printed', 'issuance', $id);
+        return (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$id]);
+    });
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['ok' => true, 'print_count' => $printCount], JSON_THROW_ON_ERROR);
+    exit;
 }
 $asset = fn(string $p): string => e(base_url('assets/' . $p));
 $signatureDisplay = trim((string) ($c['signature_text'] ?? ''));
@@ -27,8 +35,9 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
     <a class="btn btn-light border" href="<?= e(base_url('certificates/history.php')) ?>"><i class="bi bi-arrow-left me-1"></i>Back</a>
     <?php if ($canPrint): ?>
       <a class="btn btn-light border" href="<?= e(base_url('certificates/pdf.php?id=' . (int) $c['issuance_id'])) ?>"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
-      <span class="text-muted small align-self-center">Printed <?= (int) $c['print_count'] ?> time(s). Letterhead and layout are a provisional default until approved by the Barangay Secretary.</span>
-      <button type="button" class="btn btn-primary" data-print><i class="bi bi-printer me-1"></i>Print</button>
+      <span class="text-muted small align-self-center"><span data-print-count>Printed <?= (int) $c['print_count'] ?> time(s).</span> Letterhead and layout are a provisional default until approved by the Barangay Secretary.</span>
+      <form id="certificate-print-form" class="d-none" method="post" action="<?= e(base_url('certificates/print.php?id=' . (int) $c['issuance_id'])) ?>"><?= csrf_field() ?><input type="hidden" name="do" value="record_print"></form>
+      <button type="button" class="btn btn-primary" data-print data-print-record-form="certificate-print-form"><i class="bi bi-printer me-1"></i>Print</button>
     <?php else: ?>
       <span class="text-muted small align-self-center"><i class="bi bi-eye me-1"></i>Preview only. Printing and PDF download are not available for this role.</span>
     <?php endif; ?>

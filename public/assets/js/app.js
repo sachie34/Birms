@@ -35,7 +35,35 @@
   }
 
   // Print buttons (no inline scripts are allowed)
-  document.querySelectorAll('[data-print]').forEach(function (b) { b.addEventListener('click', function () { window.print(); }); });
+  document.querySelectorAll('[data-print]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var formId = b.getAttribute('data-print-record-form');
+      if (!formId) { window.print(); return; }
+      var form = document.getElementById(formId);
+      if (!form) { return; }
+      b.disabled = true;
+      fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+      }).then(function (response) {
+        if (!response.ok) { throw new Error('Print event could not be recorded.'); }
+        return response.json();
+      }).then(function (result) {
+        if (!result.ok) { throw new Error('Print event could not be recorded.'); }
+        var counter = document.querySelector('[data-print-count]');
+        if (counter && typeof result.print_count === 'number') {
+          counter.textContent = 'Printed ' + result.print_count + ' time(s).';
+        }
+        window.print();
+      }).catch(function () {
+        window.alert('The print could not be recorded. Refresh the page and try again.');
+      }).finally(function () {
+        b.disabled = false;
+      });
+    });
+  });
 
   // Client-side checks (convenience only: the server always re-validates)
   document.querySelectorAll('form.needs-validation').forEach(function (f) {
