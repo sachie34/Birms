@@ -257,6 +257,18 @@ function db_transaction(callable $fn): mixed
     }
 }
 
+/** Lock the current active administrator set; call only inside a transaction. */
+function lock_active_admin_user_ids(): array
+{
+    if (!db()->inTransaction()) {
+        throw new LogicException('Active administrator rows can only be locked inside a transaction.');
+    }
+    return array_map(
+        static fn(array $row): int => (int) $row['user_id'],
+        db_all("SELECT user_id FROM users WHERE role = 'admin' AND status = 'active' ORDER BY user_id FOR UPDATE")
+    );
+}
+
 /* ---------------------------------------------------------------- validators */
 
 function v_len(string $s, int $min, int $max): bool
