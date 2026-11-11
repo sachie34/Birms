@@ -49,6 +49,9 @@ try {
         }
     });
     flash_add('success', $msg);
+} catch (PDOException $e) {
+    error_log('BIRMS user administration database error: ' . $e->getMessage());
+    flash_add('danger', 'The action could not be completed because of a database error.');
 } catch (RuntimeException $e) {
     flash_add('danger', $e->getMessage() === 'last-admin' ? 'At least one active Administrator must remain.' : 'The action could not be completed.');
 }
