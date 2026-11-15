@@ -69,14 +69,14 @@ function run_b6(array $S, string $base): void
     /* ---- status moves ---- */
     $m1 = $move($clk, $A, 'Active'); $m1a = $move($adm, $AdminCase, 'Active'); $adminCaseStatus = $status($AdminCase); $s1 = $status($A);
     $m2 = $move($cap, $A, 'Scheduled'); $s2 = $status($A);
-    $m3 = $move($cap, $A, 'Active'); $s3 = $status($A);
-    $m4 = $move($cap, $A, 'Pending'); $s4 = $status($A);
-    $m5 = $move($cap, $A, 'Resolved', ''); $s5 = $status($A);
+    $m3 = $move($sec, $A, 'Active'); $s3 = $status($A);
+    $m4 = $move($sec, $A, 'Pending'); $s4 = $status($A);
+    $m5 = $move($sec, $A, 'Resolved', ''); $s5 = $status($A);
     $m6 = post_as($cap, $page($A), '/blotters/action.php', ['id' => (string) $A, 'do' => 'move', 'to' => ['Resolved'], 'note' => 'x']);
-    record('B6-5', 'Status rules: the clerk is denied while Administrator and Captain can make permitted moves; Pending to Active works for the Captain; Scheduled cannot be set by hand; no way back; Resolved needs a note',
+    record('B6-5', 'Status rules: Staff and Chairman cannot edit a blotter case; Secretary and Administrator can make permitted moves; Scheduled is set only by a hearing; no way back; Resolved needs a note',
         $m1['status'] === 403 && $m1a['status'] === 302 && $adminCaseStatus === 'Active' && $s1 === 'Pending' && $s2 === 'Pending' && $m3['status'] === 302 && $s3 === 'Active' && $s4 === 'Active' && $s5 === 'Active' && $m6['status'] < 500 && $status($A) === 'Active'
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'blotter_status_changed' AND remarks LIKE ?", [$aNo . ': Pending -> Active%']) === 1);
-    $m7 = $move($cap, $B, 'Resolved', 'ZZ withdrawn by complainant'); $rowB = db_one('SELECT status, resolution_note, resolved_at FROM blotters WHERE blotter_id = ?', [$B]);
+    $m7 = $move($sec, $B, 'Resolved', 'ZZ withdrawn by complainant'); $rowB = db_one('SELECT status, resolution_note, resolved_at FROM blotters WHERE blotter_id = ?', [$B]);
     $m8 = $move($sec, $B, 'Active'); $m9 = $move($sec, $B, 'Resolved', 'again');
     record('B6-6', 'A Pending case can be resolved straight away with a note (resolved time recorded); a Resolved case is final', $m7['status'] === 302 && $rowB['status'] === 'Resolved' && $rowB['resolution_note'] === 'ZZ withdrawn by complainant' && $rowB['resolved_at'] !== null && $status($B) === 'Resolved');
 
@@ -109,12 +109,12 @@ function run_b6(array $S, string $base): void
     $H2 = $hid($A);  // the later one (+9 days) is the newest
     $o0 = $outc($sec, $A, $H1, 'Held'); $s0 = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);
     $o1 = $outc($clk, $A, $H1, 'Cancelled', 'ZZ clerk try'); $o1a = $outc($adm, $A, $H1, 'Held'); $afterAdminOutcome = db_one('SELECT status, scheduled_at FROM hearings WHERE hearing_id = ?', [$H1]);
-    $o2 = $outc($cap, $A, $H1, 'Postponed', ''); $afterEmptyPostpone = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);
-    $o3 = $outc($cap, $A, $H1, 'Cancelled', 'ZZ complainant unavailable'); $stillSched = $status($A);   // H2 is still open
-    $o4 = $outc($cap, $A, $H2, 'Postponed', 'ZZ hall in use'); $afterAll = $status($A);                    // none left: back to Active
-    $o5 = $outc($cap, $A, $H1, 'Held');                                                                     // already final
+    $o2 = $outc($sec, $A, $H1, 'Postponed', ''); $afterEmptyPostpone = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);
+    $o3 = $outc($sec, $A, $H1, 'Cancelled', 'ZZ complainant unavailable'); $stillSched = $status($A);   // H2 is still open
+    $o4 = $outc($sec, $A, $H2, 'Postponed', 'ZZ hall in use'); $afterAll = $status($A);                    // none left: back to Active
+    $o5 = $outc($sec, $A, $H1, 'Held');                                                                     // already final
     $sched($sec, $A, $future(5)); $H3 = $hid($A); db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-2 hours')), $H3]);
-    $o6 = $outc($cap, $A, $H3, 'Held');
+    $o6 = $outc($sec, $A, $H3, 'Held');
     $outcomeChecks = [
         'held-too-early-not-saved' => $o0['status'] === 302 && $s0 === 'Scheduled',
         'clerk-denied' => $o1['status'] === 403,
@@ -136,9 +136,9 @@ function run_b6(array $S, string $base): void
     /* ---- resolve rules ---- */
     $file($clk, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']); $D = $cid('four');
     $sched($sec, $D, $future(6)); $HD = $hid($D);
-    $rs1 = $move($cap, $D, 'Resolved', 'ZZ settled'); $afterRefuse = $status($D);
-    $outc($cap, $D, $HD, 'Cancelled', 'ZZ parties settled out of court');
-    $rs2 = $move($cap, $D, 'Resolved', 'ZZ settled at the barangay'); $rowD = db_one('SELECT status, resolved_at FROM blotters WHERE blotter_id = ?', [$D]);
+    $rs1 = $move($sec, $D, 'Resolved', 'ZZ settled'); $afterRefuse = $status($D);
+    $outc($sec, $D, $HD, 'Cancelled', 'ZZ parties settled out of court');
+    $rs2 = $move($sec, $D, 'Resolved', 'ZZ settled at the barangay'); $rowD = db_one('SELECT status, resolved_at FROM blotters WHERE blotter_id = ?', [$D]);
     $after = [$sched($sec, $D, $future(7))['status'], $nHear($D)]; $np2 = $nPart($D);
     $pp = $sec->get('/blotters/party.php?case=' . $D)['status']; $ee = $sec->get('/blotters/form.php?id=' . $D)['status']; $back = $move($sec, $D, 'Active'); 
     record('B6-10', 'A case with an open hearing cannot be resolved; after the outcome it can; a resolved case accepts no hearing, party or edit and cannot reopen',
@@ -213,7 +213,7 @@ function run_b6(array $S, string $base): void
     $sched($sec, $C, $future(8), ''); $C3 = $hid($C); $s3 = $sumPage($sec, $C3);
     $file($clk, ['narrative' => 'ZZ-B6 five: no respondent known', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => '', 'c_name' => 'Zzcomp Kilo']); $E = $cid('five'); $sched($sec, $E, $future(6)); $HE = $hid($E); $s4 = $sumPage($sec, $HE);
     $s5 = $sumPage($sec, $H1); $s6 = $sumPage($sec, 99999999); $s7 = $sec->get('/blotters/summons.php?id[]=1');
-    record('B6-15', 'Summons: blocked until the Secretary sets the official wording; unknown placeholders are refused; only the Secretary/Captain-style permissions save it; blockers for empty venue, no respondent and a finished hearing',
+    record('B6-15', 'Summons: blocked until the System Admin sets the official wording; unknown placeholders are refused; only the System Admin saves it; blockers for empty venue, no respondent and a finished hearing',
         str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set') && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500 && $w2['status'] === 302
         && db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'") === $wording
         && str_contains($s3['body'], 'cannot be printed yet') && str_contains($s3['body'], 'venue') && str_contains($s4['body'], 'no respondent') && str_contains($s5['body'], 'still Scheduled') && $s6['status'] === 404 && $s7['status'] < 500);
