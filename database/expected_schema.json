@@ -2458,8 +2458,8 @@
             },
             "resident_no": {
                 "type": "varchar(24)",
-                "nullable": false,
-                "default": "NULL",
+                "nullable": true,
+                "default": "null",
                 "extra": ""
             },
             "address": {
@@ -2476,8 +2476,8 @@
             },
             "resident_status_id": {
                 "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
+                "nullable": true,
+                "default": "null",
                 "extra": ""
             },
             "marital_status": {
@@ -2488,8 +2488,8 @@
             },
             "resident_type_id": {
                 "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
+                "nullable": true,
+                "default": "null",
                 "extra": ""
             },
             "email_address": {
