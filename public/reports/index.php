@@ -9,7 +9,8 @@ $types = [
     'issuance' => 'Issuance summary',
     'requests' => 'Request processing summary',
     'blotter' => 'Blotter summary',
-    'periodic' => 'Monthly / Quarterly Administrative Report',
+    'queues' => 'Queue utilization and waiting time',
+    'periodic' => 'Periodic Administrative Report',
 ];
 $type = get_str('type');
 if (!isset($types[$type])) { $type = 'demographics'; }
@@ -25,12 +26,14 @@ $recipientLabel = $recipients[$recipient];
 $isCsv = get_str('format') === 'csv';
 require_permission($isCsv ? 'reports.export' : 'reports.view');
 
-$range = report_period_range(get_str('period'), get_int('year'), get_int('month'), get_int('quarter'));
+$anchorDate = get_str('anchor_date');
+$range = report_period_range(get_str('period'), get_int('year'), get_int('month'), get_int('quarter'), $anchorDate);
 $data = match ($type) {
     'demographics' => report_demographics(),
     'issuance' => report_issuances($range),
     'requests' => report_requests($range),
     'blotter' => report_blotters($range),
+    'queues' => report_queueing($range),
     'periodic' => report_periodic_administrative($range),
 };
 $reportLabel = $types[$type];
@@ -147,6 +150,7 @@ $period = $range['period'];
 $filterQuery = ['type' => $type, 'period' => $period, 'year' => $range['year'], 'recipient' => $recipient];
 if ($period === 'month') { $filterQuery['month'] = $range['month']; }
 if ($period === 'quarter') { $filterQuery['quarter'] = $range['quarter']; }
+if (in_array($period, ['day', 'week'], true)) { $filterQuery['anchor_date'] = $anchorDate !== '' ? $anchorDate : date('Y-m-d'); }
 $exportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
 $reportActions = '<button class="btn btn-light border" type="button" data-print><i class="bi bi-printer me-1"></i>Print</button>';
 if (can('reports.export')) { $reportActions .= ' <a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>'; }
@@ -170,11 +174,14 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
       </div>
       <div class="col-md-2"><label class="form-label" for="period">Period</label>
         <select class="form-select" name="period" id="period">
+          <option value="day"<?= $period === 'day' ? ' selected' : '' ?>>Daily</option>
+          <option value="week"<?= $period === 'week' ? ' selected' : '' ?>>Weekly</option>
           <option value="month"<?= $period === 'month' ? ' selected' : '' ?>>Monthly</option>
           <option value="quarter"<?= $period === 'quarter' ? ' selected' : '' ?>>Quarterly</option>
           <option value="year"<?= $period === 'year' ? ' selected' : '' ?>>Annual</option>
         </select>
       </div>
+      <div class="col-md-2"><label class="form-label" for="anchor_date">Date / week of</label><input class="form-control" type="date" name="anchor_date" id="anchor_date" value="<?= e($anchorDate !== '' ? $anchorDate : date('Y-m-d')) ?>"></div>
       <div class="col-md-2"><label class="form-label" for="year">Year</label>
         <select class="form-select" name="year" id="year"><?php for ($y = (int) date('Y'); $y >= 2000; $y--): ?><option value="<?= $y ?>"<?= $y === (int) $range['year'] ? ' selected' : '' ?>><?= $y ?></option><?php endfor; ?></select>
       </div>
