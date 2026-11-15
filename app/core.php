@@ -345,3 +345,43 @@ function mb_substr_safe(string $s, int $len): string
     // No mbstring (some PHP setups): cut by characters, never in the middle of a multi-byte letter.
     return preg_match('/^.{0,' . max(0, $len) . '}/us', $s, $m) === 1 ? $m[0] : substr($s, 0, $len);
 }
+
+
+/**
+ * Fixed-window, database-backed limiter. Raw identifiers (such as IP or resident ID)
+ * are never stored; only a SHA-256 bucket digest is persisted.
+ */
+function rate_limit_allow(string $scope, string $identifier, int $limit, int $windowSeconds): bool
+{
+    $scope = trim($scope);
+    $identifier = trim($identifier);
+    $limit = max(1, min(10000, $limit));
+    $windowSeconds = max(1, min(86400, $windowSeconds));
+    if ($scope === '' || $identifier === '') {
+        throw new InvalidArgumentException('Rate-limit scope and identifier are required.');
+    }
+    $bucketHash = hash('sha256', $scope . "\0" . $identifier);
+    $windowStart = date('Y-m-d H:i:s', intdiv(time(), $windowSeconds) * $windowSeconds);
+    db_exec(
+        'INSERT INTO rate_limit_buckets (bucket_hash, window_started_at, hit_count)
+         VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE hit_count = hit_count + 1',
+        [$bucketHash, $windowStart]
+    );
+    $hits = (int) db_val(
+        'SELECT hit_count FROM rate_limit_buckets WHERE bucket_hash = ? AND window_started_at = ?',
+        [$bucketHash, $windowStart]
+    );
+    if (random_int(1, 100) === 1) {
+        db_exec('DELETE FROM rate_limit_buckets WHERE window_started_at < (NOW() - INTERVAL 2 DAY)');
+    }
+    return $hits <= $limit;
+}
+
+function rate_limit_require(string $scope, string $identifier, int $limit, int $windowSeconds, string $message = 'Too many attempts. Please try again later.'): void
+{
+    if (!rate_limit_allow($scope, $identifier, $limit, $windowSeconds)) {
+        audit_best_effort('rate_limit_exceeded', 'Security', 'Failed', 'Rate limit exceeded for ' . preg_replace('/[^a-zA-Z0-9_.-]/', '', $scope));
+        abort(429, $message);
+    }
+}
