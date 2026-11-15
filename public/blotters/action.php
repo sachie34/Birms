@@ -7,7 +7,7 @@ require_login();
 require_csrf();
 require_permission('blotters.view');
 $id = post_int('id'); $do = post_str('do');
-if ($id === null || !in_array($do, ['move', 'archive', 'restore'], true)) { abort(404, 'Unknown action.'); }
+if ($id === null || !in_array($do, ['move', 'archive', 'restore', 'srs_move'], true)) { abort(404, 'Unknown action.'); }
 $c = db_one('SELECT * FROM blotters WHERE blotter_id = ?', [$id]);
 if ($c === null) { abort(404, 'That case was not found.'); }
 $back = fn() => redirect('blotters/view.php', ['id' => $id]);
@@ -15,6 +15,25 @@ $refuse = function (string $why) use ($c, $do, $back): never {
     audit_best_effort('blotter_action_refused', 'Blotter', 'Failed', $c['case_no'] . ' ' . $do . ': ' . $why);
     flash_add('danger', $why); $back();
 };
+
+if ($do === 'srs_move') {
+    $to = post_str('to');
+    $note = post_str('note');
+    try {
+        blotter_srs_change_status($id, $to, $note);
+        flash_add('success', 'Case status updated to ' . $to . '.');
+    } catch (DomainException $e) {
+        audit_best_effort('blotter_action_refused', 'Blotter', 'Failed', $c['case_no'] . ': ' . $e->getMessage(), null);
+        flash_add('danger', $e->getMessage());
+    } catch (InvalidArgumentException | RuntimeException $e) {
+        audit_best_effort('blotter_action_refused', 'Blotter', 'Failed', $c['case_no'] . ': ' . $e->getMessage(), null);
+        flash_add('danger', $e->getMessage());
+    } catch (Throwable $e) {
+        error_log('BIRMS MSIT blotter status update failed: ' . $e->getMessage());
+        flash_add('danger', 'The case status could not be saved. No successful change was recorded.');
+    }
+    $back();
+}
 
 if ($do === 'move') {
     $to = post_str('to'); $note = post_str('note');
