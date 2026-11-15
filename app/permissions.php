@@ -33,7 +33,7 @@ function permission_map(): array
         // Secretary maintains resident, document and blotter records and reviews document requests.
         'secretary' => [
             'dashboard.view',
-            'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
+            'residents.view',
             'requests.view', 'requests.add', 'requests.edit', 'requests.review',
             'certificates.history',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
