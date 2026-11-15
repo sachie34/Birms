@@ -332,11 +332,11 @@ function run_b7(array $S, string $base): void
         db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
     }
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
-    if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
-    if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
     db_exec('DELETE FROM issuances WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
     db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
     db_exec('DELETE FROM document_requests WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
+    if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
+    if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
     db_exec('DELETE FROM blotters WHERE case_no = ?', [$caseNo]);
     db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     db_exec('DELETE FROM households WHERE household_id = ?', [$houseId]);
