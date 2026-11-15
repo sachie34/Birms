@@ -64,9 +64,9 @@ SET r.resident_type_id = no_type.lookup_id
 WHERE r.resident_type_id IS NULL;
 
 ALTER TABLE residents
-    MODIFY COLUMN resident_no VARCHAR(24) NOT NULL,
-    MODIFY COLUMN resident_status_id INT UNSIGNED NOT NULL,
-    MODIFY COLUMN resident_type_id INT UNSIGNED NOT NULL,
+    MODIFY COLUMN resident_no VARCHAR(24) NULL,
+    MODIFY COLUMN resident_status_id INT UNSIGNED NULL,
+    MODIFY COLUMN resident_type_id INT UNSIGNED NULL,
     ADD UNIQUE KEY uq_resident_no (resident_no),
     ADD KEY idx_resident_purok_status_type (purok_id, resident_status_id, resident_type_id, archived_at),
     ADD KEY idx_resident_type_srs (resident_type_id),
