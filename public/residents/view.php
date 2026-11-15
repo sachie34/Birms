@@ -47,6 +47,7 @@ $row = static fn(string $label, string $value) => '<tr><th class="text-muted fw-
 ?>
 <div class="row g-3">
   <div class="col-lg-7">
+    <?php if (!empty($r['photo_path'])): ?><div class="mb-3"><img src="<?= e(base_url('residents/photo.php?id=' . (int) $id)) ?>" alt="<?= e('Photo of ' . resident_name($r)) ?>" class="img-thumbnail" width="144"></div><?php endif; ?>
     <div class="card-b"><div class="card-h"><h2>Resident information</h2></div><div class="card-body-b">
       <table class="table table-sm mb-0"><tbody>
         <?= $row('Resident ID', e((string) ($r['resident_no'] ?? 'Not assigned'))) ?>
