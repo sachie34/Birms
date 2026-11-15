@@ -33,10 +33,9 @@ if (is_post()) {
     require_csrf();
     $or = post_str('or_number');
     $paymentMethod = post_str('payment_method') !== '' ? post_str('payment_method') : 'cash';
-    $signatureText = trim(post_str('signature_text'));
-    if ($signatureText === '') { $signatureText = trim((string) ($vars['captain_name'] ?? '')); }
+    // The signatory image is controlled by Admin and snapshotted automatically; staff cannot type or substitute it.
+    $signatureText = trim((string) ($vars['captain_name'] ?? ''));
     if (!in_array($paymentMethod, ['cash', 'bank_transfer', 'other'], true)) { $errors[] = 'Choose a valid payment method.'; }
-    if (str_len($signatureText) > 150) { $errors[] = 'Typed signature is limited to 150 characters.'; }
     if ($blockers) { $errors = $blockers; }
     else {
         $fee = (float) $r['fee_amount'];
