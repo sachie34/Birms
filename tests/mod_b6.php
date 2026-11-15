@@ -150,7 +150,9 @@ function run_b6(array $S, string $base): void
     $ar3 = $do($sec, $B, 'archive'); $archived = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) !== null;
     $listSec = $sec->get('/blotters/index.php')['body']; $arcSec = $sec->get('/blotters/index.php?tab=Archived')['body']; $arcClk = $clk->get('/blotters/index.php?tab=Archived')['body'];
     $viewClk = $clk->get($page($B));
-    $rest = $do($sec, $B, 'restore'); $restored = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) === null;
+    $rest = $do($sec, $B, 'restore');
+    $restored = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) === null;
+    $restoredStatus = (string) db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]);
     $do($sec, $B, 'archive');   // leave it archived for the look-up test
     $b611Checks = [
         'captain-denied' => $ar0['status'] === 403,
@@ -161,7 +163,7 @@ function run_b6(array $S, string $base): void
         'secretary-archived-filter' => str_contains($arcSec, $bNo),
         'staff-archived-filter' => str_contains($arcClk, $bNo) && str_contains($arcClk, 'tab=Archived'),
         'archived-view' => $viewClk['status'] === 200 && str_contains(strtolower($viewClk['body']), 'archived'),
-        'restore' => $rest['status'] === 302 && $restored && db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]) === 'Resolved',
+        'restore' => $rest['status'] === 302 && $restored && $restoredStatus === 'Resolved',
         'audit' => $audit('blotter_archived') >= 2 && $audit('blotter_restored') >= 1,
     ];
     $b611Failed = array_keys(array_filter($b611Checks, static fn(bool $ok): bool => !$ok));
