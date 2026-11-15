@@ -56,7 +56,7 @@ function run_b14(array $S, string $base): void
                 [$service, $today]
             ) ?? 0);
         }
-        $issue = static function (Http $client, string $service, string $reference, ?int $resident = null) {
+        $issue = static function (Http $client, string $service, string $reference, ?int $resident = null) use ($residentId) {
             return post_as($client, '/queue/index.php', '/queue/action.php', [
                 'do' => 'issue', 'service' => $service,
                 'resident_id' => $resident === null ? '' : (string) $resident,
