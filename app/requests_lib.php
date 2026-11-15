@@ -48,7 +48,9 @@ function request_visible_to_current_user(array $request): bool
     $readyForStaffDecision = $role === 'clerk'
         && (string) ($request['status'] ?? '') === 'Review'
         && (string) ($request['requirements_status'] ?? '') === 'Complete';
-    return $ownsOrAssigned || $readyForStaffDecision;
+    $approvedForStaffIssue = $role === 'clerk'
+        && in_array((string) ($request['status'] ?? ''), ['Ready', 'Claimed'], true);
+    return $ownsOrAssigned || $readyForStaffDecision || $approvedForStaffIssue;
 }
 function new_request_reference(): string
 {
