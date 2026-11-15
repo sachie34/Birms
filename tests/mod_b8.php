@@ -34,39 +34,27 @@ function run_b8(array $S, string $base): void
         // Remove residue from an interrupted run, scoped only to the reserved ZZ-B8 fixture names.
         $cleanup();
 
-        $visitClass = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'visit_class' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
-        $visitorFields = [
-            '_csrf' => $clk->token('/visitors/index.php'),
-            'visitor_name' => 'ZZB Visitor',
-            'purpose' => 'ZZ-B8 Supporting ID upload test',
-            'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
-            'visited_at' => date('Y-m-d\\TH:i'),
-        ];
-        $visitorPost = $clk->upload('/visitors/index.php', $visitorFields, 'attachment', $tmp, 'ZZ-B8 identity.pdf');
-        $visitId = null;
-        if (preg_match('/[?&]new=(\\d+)/', (string) loc($visitorPost), $m)) { $visitId = (int) $m[1]; }
-        $visitorAttachment = $visitId ? db_one('SELECT * FROM document_attachments WHERE visit_id = ? LIMIT 1', [$visitId]) : null;
-        $visitorPage = $clk->get('/visitors/index.php?q=ZZ-B8');
-        record('B8-1', 'Visitor logbook saves a private PDF attachment and shows its download link',
-            $visitorPost['status'] === 302 && $visitId !== null && $visitorAttachment !== null
-            && str_contains($visitorPage['body'], 'ZZ-B8 identity.pdf')
-            && (int) db_val('SELECT COUNT(*) FROM document_attachments WHERE visit_id = ?', [$visitId]) === 1);
+        $visitorBefore = (int) db_val('SELECT COUNT(*) FROM visitor_log');
+        $visitorRoute = $clk->get('/visitors/index.php');
+        record('B8-1', 'The old visitor logbook route is retired and redirects to the queue console',
+            $visitorRoute['status'] === 302 && str_contains((string) $visitorRoute['location'], 'queue/index.php'));
 
-        $download = $visitorAttachment
-            ? $clk->get('/files/download.php?id=' . (int) $visitorAttachment['attachment_id'])
-            : ['status' => 0, 'headers' => [], 'body' => ''];
-        record('B8-2', 'Private attachment download checks authorization and returns the stored file',
-            $download['status'] === 200 && str_starts_with($download['body'], '%PDF-')
-            && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf');
+        $visitorUpload = $clk->upload('/visitors/index.php', [
+            '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Visitor',
+            'purpose' => 'Legacy visitor attachment must not be stored',
+        ], 'attachment', $tmp, 'ZZ-B8 identity.pdf');
+        record('B8-2', 'Posting an attachment to the retired visitor route cannot create a visitor or attachment record',
+            $visitorUpload['status'] === 302
+            && (int) db_val('SELECT COUNT(*) FROM visitor_log') === $visitorBefore
+            && (int) db_val('SELECT COUNT(*) FROM document_attachments WHERE visit_id IS NOT NULL') === 0);
 
-        $invalidPost = $clk->upload('/visitors/index.php', [
+        $invalidVisitorUpload = $clk->upload('/visitors/index.php', [
             '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
-            'purpose' => 'ZZ-B8 disallowed extension', 'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
-            'visited_at' => date('Y-m-d\\TH:i'),
+            'purpose' => 'Legacy visitor upload must not be stored',
         ], 'attachment', $tmp, 'not-allowed.txt', 'text/plain');
-        record('B8-3', 'Disallowed upload types are rejected without saving a visitor record',
-            $invalidPost['status'] === 200 && str_contains($invalidPost['body'], 'Allowed attachment formats')
-            && (int) db_val("SELECT COUNT(*) FROM visitor_log WHERE visitor_name = 'ZZB Invalid Upload'") === 0);
+        record('B8-3', 'The retired visitor route ignores all upload types and creates no visitor record',
+            $invalidVisitorUpload['status'] === 302
+            && (int) db_val("SELECT COUNT(*) FROM visitor_log WHERE visitor_name LIKE 'ZZB %'") === 0);
 
         db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ-B8 Purok', 9998)");
         $purokId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND label = 'ZZ-B8 Purok'");
@@ -82,7 +70,7 @@ function run_b8(array $S, string $base): void
         $freeTypeId = (int) db()->lastInsertId();
         $requestForm = $clk->upload('/requests/form.php', [
             '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
-            'resident_id' => (string) $residentId, 'visit_id' => (string) ($visitId ?? ''),
+            'resident_id' => (string) $residentId,
             'type_id' => (string) $freeTypeId, 'purpose' => 'ZZ-B8 Supporting documents',
             'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
             'fee_rule_id' => '', 'fee_quantity' => '1',
