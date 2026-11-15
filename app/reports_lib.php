@@ -8,11 +8,26 @@
 declare(strict_types=1);
 
 /** Return a validated reporting range. End dates are exclusive. */
-function report_period_range(string $period, ?int $year = null, ?int $month = null, ?int $quarter = null): array
+function report_period_range(string $period, ?int $year = null, ?int $month = null, ?int $quarter = null, ?string $anchorDate = null): array
 {
     $now = new DateTimeImmutable('today');
     $year = ($year !== null && $year >= 2000 && $year <= 2100) ? $year : (int) $now->format('Y');
-    $period = in_array($period, ['month', 'quarter', 'year'], true) ? $period : 'month';
+    $period = in_array($period, ['day', 'week', 'month', 'quarter', 'year'], true) ? $period : 'month';
+    $anchorDate = $anchorDate !== null && v_date($anchorDate) ? $anchorDate : $now->format('Y-m-d');
+
+    if ($period === 'day') {
+        $start = new DateTimeImmutable($anchorDate);
+        $end = $start->modify('+1 day');
+        return ['period' => $period, 'year' => (int) $start->format('Y'), 'month' => (int) $start->format('n'), 'quarter' => null,
+            'start' => $start->format('Y-m-d 00:00:00'), 'end' => $end->format('Y-m-d 00:00:00'), 'label' => $start->format('j F Y')];
+    }
+    if ($period === 'week') {
+        $anchor = new DateTimeImmutable($anchorDate);
+        $start = $anchor->modify('-' . ((int) $anchor->format('N') - 1) . ' days');
+        $end = $start->modify('+7 days');
+        return ['period' => $period, 'year' => (int) $start->format('Y'), 'month' => (int) $start->format('n'), 'quarter' => null,
+            'start' => $start->format('Y-m-d 00:00:00'), 'end' => $end->format('Y-m-d 00:00:00'), 'label' => 'Week of ' . $start->format('j F Y')];
+    }
 
     if ($period === 'month') {
         $month = ($month !== null && $month >= 1 && $month <= 12) ? $month : (int) $now->format('n');
