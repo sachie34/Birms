@@ -96,8 +96,7 @@ function run_b3(array $S, string $base): void
         $residentId = (int) ($resident['resident_id'] ?? 0);
         if ($residentId > 0) { $createdIds[] = $residentId; }
         $profile = $residentId > 0 ? $clk->get('/residents/view.php?id=' . $residentId) : ['status' => 0, 'body' => ''];
-        record('B3-4', 'Staff can register a resident with direct Address and Purok, and BIRMS assigns a unique Resident ID with Email as the default notification channel',
-            $created['status'] === 302 && $resident !== null
+        $b34Ok = $created['status'] === 302 && $resident !== null
             && preg_match('/^RES-\d{4}-\d{6}$/', (string) $resident['resident_no']) === 1
             && $resident['address'] === '123 B3 Test Street'
             && (int) $resident['purok_id'] === $purokId
@@ -107,7 +106,13 @@ function run_b3(array $S, string $base): void
             && $profile['status'] === 200
             && str_contains($profile['body'], (string) $resident['resident_no'])
             && str_contains($profile['body'], '123 B3 Test Street')
-            && !str_contains($profile['body'], 'Household members'));
+            && !str_contains($profile['body'], 'Household members');
+        record('B3-4', 'Staff can register a resident with direct Address and Purok, and BIRMS assigns a unique Resident ID with Email as the default notification channel',
+            $b34Ok,
+            'POST=' . $created['status'] . '; location=' . (string) ($created['location'] ?? '')
+            . '; resident=' . ($resident === null ? 'not saved' : (string) $resident['resident_no'])
+            . '; response=' . substr(trim(strip_tags((string) $created['body'])), 0, 500)
+            . '; profile=' . $profile['status']);
 
         $duplicateRejected = $create($clk, ['first_name' => 'First']);
         $duplicateAllowed = $create($clk, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
