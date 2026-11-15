@@ -115,3 +115,18 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 /* Chairman signature images are kept in the stylesheet to preserve the strict Content Security Policy. */
 .chairman-signature-preview { max-width: 320px; max-height: 150px; object-fit: contain; background: #fff; border: 1px solid #ccd3dc; padding: 12px; border-radius: 8px; }
 .cert-sign .chairman-signature-image { display: block; max-width: 220px; max-height: 90px; object-fit: contain; margin: 0 auto 8px; }
+
+/* MSIT NFR-1 to NFR-3: accessible baseline sizing for the office portal. */
+html { font-size: 18px; }
+body { font-size: 18px; }
+.nav-group, .user-chip .urole, .app-foot, .page-head p,
+.card-b .card-h p, .form-label, .form-text,
+.table-b thead th, .pill, .empty-state,
+.small, small, .btn, .btn-sm, .form-control, .form-select,
+.form-control-sm, .form-select-sm {
+  font-size: 18px !important;
+}
+.btn, button, .form-control, .form-select, input, select, textarea {
+  min-height: 48px;
+}
+.table-b thead th { line-height: 1.25; }
