@@ -17,6 +17,7 @@ function run_b8(array $S, string $base): void
             LEFT JOIN document_requests dr ON dr.request_id = da.request_id
             WHERE (vl.visitor_name LIKE 'ZZB %' OR vl.purpose LIKE 'ZZ-B8%') OR dr.purpose LIKE 'ZZ-B8%'");
         foreach ($fileRows as $row) { @unlink(APP_ROOT . '/' . ltrim((string) $row['storage_path'], '/\\')); }
+        db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B8%')");
         db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTestB8%')");
         db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTestB8%'");
         db_exec("DELETE FROM document_attachments WHERE visit_id IN (SELECT visit_id FROM visitor_log WHERE (visitor_name LIKE 'ZZB %' OR purpose LIKE 'ZZ-B8%')) OR request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B8%')");
@@ -124,13 +125,19 @@ function run_b8(array $S, string $base): void
             if (preg_match('/[?&]id=(\\d+)/', (string) loc($freePost), $m)) { $freeIssuanceId = (int) $m[1]; }
         }
         $freeIssuance = $freeIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$freeIssuanceId]) : null;
-        $pdf = $freeIssuanceId ? $sec->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
-        record('B8-5', 'Issuance saves a typed-signatory snapshot and returns a server-generated PDF',
-            $freePost['status'] === 302 && $freeIssuance !== null
+        // Staff is the role that issues and downloads certificates under the revised SRS.
+        $pdf = $freeIssuanceId ? $clk->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
+        $b85Ok = $freePost['status'] === 302 && $freeIssuance !== null
             && (string) ($freeIssuance['signature_text'] ?? '') === 'ZZ B8 Typed Signatory'
             && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-')
             && strtolower((string) ($pdf['headers']['content-type'] ?? '')) === 'application/pdf'
-            && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf'));
+            && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf');
+        record('B8-5', 'Staff can retrieve the server-generated PDF for an issued certificate',
+            $b85Ok,
+            'issue=' . $freePost['status'] . '; saved=' . ($freeIssuance !== null ? 'yes' : 'no')
+            . '; signatory-snapshot=' . (string) ($freeIssuance['signature_text'] ?? 'missing')
+            . '; pdf=' . $pdf['status'] . '; content-type=' . (string) ($pdf['headers']['content-type'] ?? 'none')
+            . '; pdf-header=' . substr($pdf['body'], 0, 5));
 
         db_exec("INSERT INTO document_types (name, fee_amount, template_body, is_active, sort_order)
                  VALUES ('ZZ-B8 Paid Certificate', '25.00', 'Paid draft for {{full_name}}.', 1, 9998)");
