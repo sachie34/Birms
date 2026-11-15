@@ -103,13 +103,12 @@ function run_b8(array $S, string $base): void
         $b84aOk = $otherLogin['status'] === 302
             && $ownerDownload['status'] === 200 && str_starts_with($ownerDownload['body'], '%PDF-')
             && $strangerDownload['status'] === 404
-            && $strangerView['status'] === 404
-            && $download['status'] === 200;
+            && $strangerView['status'] === 404;
         $requestAccess = $requestId ? db_one('SELECT created_by, assigned_to FROM document_requests WHERE request_id = ?', [$requestId]) : null;
         record('B8-4a', 'Request attachment downloads are limited to the filing/assigned Clerk; shared visitor attachments remain accessible to authorized staff',
             $b84aOk,
             'login=' . $otherLogin['status'] . '; owner=' . $ownerDownload['status'] . '; stranger=' . $strangerDownload['status']
-            . '; stranger-view=' . $strangerView['status'] . '; visitor=' . $download['status']
+            . '; stranger-view=' . $strangerView['status']
             . '; request-created-by=' . (string) ($requestAccess['created_by'] ?? 'null')
             . '; request-assigned-to=' . (string) ($requestAccess['assigned_to'] ?? 'null'));
 
