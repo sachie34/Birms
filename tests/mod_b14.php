@@ -1,6 +1,7 @@
 <?php
 /** B14 end-to-end tests for the first service queue workflow slice. */
 declare(strict_types=1);
+require_once __DIR__ . '/../app/queue_lib.php';
 
 function run_b14(array $S, string $base): void
 {
