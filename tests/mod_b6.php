@@ -147,14 +147,16 @@ function run_b6(array $S, string $base): void
     /* ---- archive ---- */
     $ar0 = $do($cap, $B, 'archive'); $ar1 = $do($clk, $B, 'archive'); $ar2 = $do($sec, $A, 'archive');   // A is not resolved
     $ar3 = $do($sec, $B, 'archive'); $archived = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) !== null;
-    $listSec = $sec->get('/blotters/index.php')['body']; $arcSec = $sec->get('/blotters/index.php?tab=archived')['body']; $arcClk = $clk->get('/blotters/index.php?tab=archived')['body'];
+    $listSec = $sec->get('/blotters/index.php')['body']; $arcSec = $sec->get('/blotters/index.php?tab=Archived')['body']; $arcClk = $clk->get('/blotters/index.php?tab=Archived')['body'];
     $viewClk = $clk->get($page($B));
     $rest = $do($sec, $B, 'restore'); $restored = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) === null;
     $do($sec, $B, 'archive');   // leave it archived for the look-up test
-    record('B6-11', 'Archive: only a Resolved case, only by the Secretary; hidden from the main list; the Archived tab is Secretary-only; archived cases stay viewable; restore works',
+    record('B6-11', 'Resolved cases can be archived by the Secretary; archived records remain visible to authorized readers and restore preserves the SRS status',
         $ar0['status'] === 403 && $ar1['status'] === 403 && $ar2['status'] === 302 && $status($A) === 'Active' && db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$A]) === null && $ar3['status'] === 302 && $archived
-        && !str_contains($listSec, $bNo) && str_contains($arcSec, $bNo) && !str_contains($arcClk, 'tab=archived') && !str_contains($arcClk, $bNo) && $viewClk['status'] === 200 && str_contains($viewClk['body'], 'archived')
-        && $rest['status'] === 302 && $restored && $audit('blotter_archived') >= 2 && $audit('blotter_restored') >= 1);
+        && str_contains($listSec, $bNo) && str_contains($arcSec, $bNo) && str_contains($arcClk, $bNo) && str_contains($arcClk, 'tab=Archived')
+        && $viewClk['status'] === 200 && str_contains($viewClk['body'], 'archived')
+        && $rest['status'] === 302 && $restored && db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]) === 'Resolved'
+        && $audit('blotter_archived') >= 2 && $audit('blotter_restored') >= 1);
 
     /* ---- look-up ---- */
     $lk = fn(Http $h, string $q) => $h->get('/blotters/lookup.php?q=' . rawurlencode($q));
