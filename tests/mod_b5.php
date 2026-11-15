@@ -62,7 +62,8 @@ function run_b5(array $S, string $base): void
     record('B5-5', 'Secretary cannot issue; Staff issuance still validates O.R. values without saving invalid records', $secretaryTry['status'] === 403 && $iss($rReady) === null && $stat($rReady) === 'Ready' && str_contains($a['body'], 'O.R.') && str_contains($b['body'], 'letters, numbers and dashes'));
     $ok = $issue($clk, $rReady, ['or_number' => 'ZZOR-1']); $row = $iss($rReady);
     $ageNow = age_on($birth);
-    record('B5-6', 'Staff issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Released in the SRS field', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed' && (string) ($row['msit_status'] ?? '') === 'Released');
+    record('B5-6', 'Staff issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Released in the SRS field', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed'
+        && (string) db_val('SELECT msit_status FROM document_requests WHERE request_id = ?', [$rReady]) === 'Released');
     record('B5-23', 'Certificate issuance snapshots the currently configured Chairman image path', $row !== null
         && (string) ($row['chairman_signature_path'] ?? '') === (string) ($signatureFixture['current'] ?? '')
         && chairman_signature_path_to_absolute((string) ($row['chairman_signature_path'] ?? '')) !== null);
