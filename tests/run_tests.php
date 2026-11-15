@@ -129,8 +129,18 @@ preg_match('/BIRMSSESS\s+(\S+)/', (string) $before, $m1);
 $r = $pre->login($fx['clerk'], TP); $cookie = implode(' | ', $r['cookies']); $afterJar = file_get_contents($pre->jar); preg_match('/BIRMSSESS\s+(\S+)/', (string) $afterJar, $m2);
 record('H6', 'Sign-in works; cookie is HttpOnly + SameSite; session id changes at login', $r['status'] === 302 && str_contains(loc($r), 'dashboard.php') && stripos($cookie, 'httponly') !== false && stripos($cookie, 'samesite=lax') !== false && ($m1[1] ?? 'a') !== ($m2[1] ?? 'a'), $cookie === '' ? 'no cookie' : '');
 $roleLabel = ['admin' => 'Administrator', 'captain' => 'Chairman (Punong Barangay)', 'secretary' => 'Secretary', 'clerk' => 'Staff'];
-$okAll = true; foreach ($sessions as $role => $s) { $r = $s->get('/dashboard.php'); if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) { $okAll = false; } }
-record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll);
+$okAll = true; $dashboardProblems = [];
+foreach ($sessions as $role => $s) {
+    $r = $s->get('/dashboard.php');
+    if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) {
+        $okAll = false;
+        $dashboardProblems[] = $role . ': HTTP ' . $r['status']
+            . '; role-label=' . (str_contains($r['body'], $roleLabel[$role]) ? 'yes' : 'no')
+            . '; leaks=' . (leaks($r) ? 'yes' : 'no')
+            . '; body=' . substr(trim(strip_tags((string) $r['body'])), 0, 600);
+    }
+}
+record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll, implode(' | ', $dashboardProblems));
 
 /* RBAC matrix aligned with the revised SRS: account and audit administration are Admin-only. */
 $matrix = ['/admin/users.php' => ['admin'], '/admin/user_edit.php' => ['admin'], '/admin/audit.php' => ['admin'], '/admin/audit_export.php' => ['admin']];
