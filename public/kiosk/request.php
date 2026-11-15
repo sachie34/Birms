@@ -33,7 +33,7 @@ if (is_post()) {
                     [$reference, $requestId]
                 );
                 audit('request_created', 'Requests', 'Success', $reference . ' submitted through the resident kiosk.', 'request', $requestId, 'resident-kiosk', null);
-                $ticket = queue_issue_number('Documents', (int) $resident['resident_id'], $reference, 'kiosk');
+                $ticket = queue_issue_number('Documents', (int) $resident['resident_id'], $reference, 'kiosk', $purpose);
                 return ['request_id' => $requestId, 'reference_no' => $reference, 'ticket' => $ticket];
             });
             $_SESSION['kiosk_last_request'] = $result;
