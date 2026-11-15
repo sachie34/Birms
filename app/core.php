@@ -28,6 +28,7 @@ function config(?string $path = null, mixed $default = null): mixed
                 'max_failed_logins' => 5, 'lockout_minutes' => 15, 'ip_max_failed' => 30,
                 'password_min_length' => 10, 'csp' => true,
             ],
+            'email' => ['enabled' => false, 'from_email' => '', 'from_name' => 'Barangay Office'],
             'backup' => [
                 'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
             ],
@@ -75,7 +76,10 @@ function config(?string $path = null, mixed $default = null): mixed
         }
 
         $envMap = [
-            'BIRMS_DB_HOST' => ['db', 'host'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
+            'BIRMS_DB_HOST' => ['db', 'host'],
+            'BIRMS_EMAIL_ENABLED' => ['email', 'enabled'],
+            'BIRMS_EMAIL_FROM' => ['email', 'from_email'],
+            'BIRMS_EMAIL_FROM_NAME' => ['email', 'from_name'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
             'BIRMS_DB_USER' => ['db', 'user'], 'BIRMS_DB_PASS' => ['db', 'pass'], 'BIRMS_ENV' => ['env', null],
             'BIRMS_IDLE_MINUTES' => ['session', 'idle_minutes'],
             'BIRMS_BACKUP_WEBDAV_URL' => ['backup', 'webdav_url'],
