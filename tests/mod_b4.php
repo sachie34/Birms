@@ -51,7 +51,13 @@ function run_b4(array $S, string $base): void
     $pre = $clk->get('/requests/form.php?visit=' . $vid);
     $roleForm = $clk->get('/requests/form.php?resident=' . $rita);
     record('B4-4a', 'Clerk sees disabled requirements-review controls on request intake', preg_match('~<select[^>]*name="requirements_status"[^>]*disabled~', $roleForm['body']) === 1 && preg_match('~<textarea[^>]*name="requirements_note"[^>]*disabled~', $roleForm['body']) === 1);
-    record('B4-4', 'Resident search lists active residents with a Select link and hides archived ones', str_contains($fs['body'], 'ZZTest4, Rita') && str_contains($fs['body'], 'resident=' . $rita) && !str_contains($fs['body'], 'ZZTest4, Gone') && str_contains($pre['body'], 'value="ZZTest Visitor"'));
+    $b44Ok = str_contains($fs['body'], 'ZZTest4, Rita') && str_contains($fs['body'], 'resident=' . $rita) && !str_contains($fs['body'], 'ZZTest4, Gone') && str_contains($pre['body'], 'value="ZZTest Visitor"');
+    record('B4-4', 'Resident search lists active residents with a Select link and hides archived ones', $b44Ok,
+        'search=' . $fs['status'] . '; resident-name=' . (str_contains($fs['body'], 'ZZTest4, Rita') ? 'yes' : 'no')
+        . '; select-link=' . (str_contains($fs['body'], 'resident=' . $rita) ? 'yes' : 'no')
+        . '; archived-hidden=' . (!str_contains($fs['body'], 'ZZTest4, Gone') ? 'yes' : 'no')
+        . '; visit=' . $pre['status'] . '; visit-name=' . (str_contains($pre['body'], 'value="ZZTest Visitor"') ? 'yes' : 'no')
+        . '; search-excerpt=' . substr(trim(strip_tags((string) $fs['body'])), 0, 700));
     $r = $filed('ZZ Test purpose 1'); $id1 = $rid('ZZ Test purpose 1');
     $row = db_one('SELECT reference_no, status FROM document_requests WHERE request_id = ?', [$id1]);
     record('B4-5', 'A request is filed: reference like REQ-YYYY-NNNN, status Pending, audited', $r['status'] === 302 && $row !== null && preg_match('/^REQ-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && $row['status'] === 'Pending' && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_created' AND entity_id = ?", [$id1]) === 1);
