@@ -82,6 +82,15 @@ jobs:
           BIRMS_DB_PASS: ci-root-pass
         run: php tools/migrate.php up
 
+      - name: Verify migrated database matches the checked-in schema snapshot
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: php tools/schema_check.php
+
       - name: Start local PHP server
         env:
           BIRMS_DB_HOST: 127.0.0.1
