@@ -22,8 +22,8 @@ function run_b5(array $S, string $base): void
     $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n): int {
         $n++;
         $requirementsStatus = $status === 'Ready' ? 'Complete' : 'Not checked';
-        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requirements_status, requested_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $requirementsStatus]);
+        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, msit_status, requirements_status, requested_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $status === 'Ready' ? 'Approved' : 'Pending', $requirementsStatus]);
         return (int) db()->lastInsertId();
     };
     $issue = fn(Http $h, int $req, array $o = []) => post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req] + $o);
@@ -64,7 +64,7 @@ function run_b5(array $S, string $base): void
     $auditIssued = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_issued' AND entity_id = ?", [$row['issuance_id'] ?? 0]);
     $auditReleased = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? AND remarks LIKE '% -> Released via %'", [$rReady]);
     $historyReleased = (int) db_val("SELECT COUNT(*) FROM request_status_history WHERE request_id = ? AND service = 'Documents' AND previous_status = 'Approved' AND new_status = 'Released'", [$rReady]);
-    record('B5-8', 'Issuing and its audit/status-history records were saved together', $auditIssued === 1 && $auditReleased === 1 && $historyReleased === 1);
+    record('B5-8', 'Issuing and its audit/status-history records were saved together', $auditIssued === 1 && $auditReleased === 1 && $historyReleased === 1, 'issued=' . $auditIssued . '; release-audit=' . $auditReleased . '; history=' . $historyReleased);
 
     $r2 = $mkReq($res, $tPaid); $dup = $issue($clk, $r2, ['or_number' => 'ZZOR-1']);
     record('B5-9', 'The same O.R. number cannot be used twice; the second request stays Ready', str_contains($dup['body'], 'already used') && $iss($r2) === null && $stat($r2) === 'Ready');
@@ -102,7 +102,11 @@ function run_b5(array $S, string $base): void
         && $secPrint['status'] === 403
         && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"ok":true')
         && $c5 === $c0 + 2
-        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 2);
+        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 2,
+        'chairman-view=' . $capView['status'] . '; staff-view=' . $clkView['status']
+        . '; secretary-view=' . $secView['status'] . '; admin-view=' . $admView['status']
+        . '; staff-print=' . $clkPrint['status'] . '; secretary-print=' . $secPrint['status']
+        . '; admin-print=' . $admPrint['status'] . '; counts=' . $c0 . '/' . $c5);
     $capPdf = $cap->get('/certificates/pdf.php?id=' . $row['issuance_id']);
     record('B5-21', 'Captain can preview an issued certificate but cannot print or download a PDF; print-authorized roles receive controls',
         $capView['status'] === 200
@@ -125,7 +129,7 @@ function run_b5(array $S, string $base): void
     $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $clk->get('/requests/view.php?id=' . $r2);
     record('B5-16', 'Request view links the certificate; Staff sees Issue for a Ready request; the resident view lists issued documents',
         str_contains($rv['body'], (string) $row['reference_no'])
-        && str_contains($rReady2['body'], 'Issue certificate')
+        && $rReady2['status'] === 200 && str_contains($rReady2['body'], 'Issue certificate')
         && str_contains($rr['body'], 'ZZ Test Cert Paid'),
         'issued-link=' . (str_contains($rv['body'], (string) $row['reference_no']) ? 'yes' : 'no')
         . '; staff-issue=' . (str_contains($rReady2['body'], 'Issue certificate') ? 'yes' : 'no')
@@ -155,8 +159,14 @@ function run_b5(array $S, string $base): void
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTEST5%')");
     db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTEST5%'");
     db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
-    db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
-    db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'");
+    $testRequestIds = array_map(static fn(array $r): int => (int) $r['request_id'], db_all("SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'"));
+    if ($testRequestIds) {
+        $marks = implode(',', array_fill(0, count($testRequestIds), '?'));
+        db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
+    }
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest5%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'"); db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");
     db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'captain_name'", [$capOld]);
