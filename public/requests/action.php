@@ -14,8 +14,7 @@ if ($r === null || !request_visible_to_current_user($r)) { abort(404, 'That requ
 $perm = REQUEST_TRANSITIONS[$r['status']][$to] ?? null;
 if ($perm === null) {
     audit_best_effort('request_move_refused', 'Requests', 'Failed', $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ' is not allowed');
-    flash_add('danger', 'That step is not allowed from the current status.');
-    redirect('requests/view.php', ['id' => $id]);
+    abort(403, 'That request transition is not permitted for this role or current status.');
 }
 require_permission($perm);
 if (in_array($to, ['Ready', 'Rejected'], true) && $r['requirements_status'] !== 'Complete') {
