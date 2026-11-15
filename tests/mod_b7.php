@@ -8,7 +8,8 @@ function run_b7(array $S, string $base): void
 {
     $adm = $S['admin']; $cap = $S['captain']; $sec = $S['secretary']; $clk = $S['clerk'];
 
-    // Clean interrupted B7 test rows only. Delete any ledger children before deleting issuance parents.
+    // Clean interrupted B7 test rows only. Remove request-history and ledger children before parent requests/issuances.
+    db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZB7R%' OR purpose = 'ZZ B7 Fee matrix quote test')");
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no LIKE 'ZB7I%' OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))");
     db_exec("DELETE FROM issuances WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test')");
     db_exec("DELETE FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'");
@@ -322,13 +323,20 @@ function run_b7(array $S, string $base): void
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
-    // Clean ledger children before removing issuances, and issuances before requests.
+    // Clean child history/outbox/ledger rows before removing issuances and requests.
+    $cleanupRequestIds = array_values(array_filter([(int) $requestId, (int) ($quoteRequestId ?? 0)], static fn(int $id): bool => $id > 0));
+    if ($cleanupRequestIds) {
+        $marks = implode(',', array_fill(0, count($cleanupRequestIds), '?'));
+        db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
+        db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
+        db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
+    }
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
-    if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
     if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
+    db_exec('DELETE FROM issuances WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
     db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
-    db_exec('DELETE FROM document_requests WHERE request_id = ?', [$requestId]);
+    db_exec('DELETE FROM document_requests WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
     db_exec('DELETE FROM blotters WHERE case_no = ?', [$caseNo]);
     db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     db_exec('DELETE FROM households WHERE household_id = ?', [$houseId]);
