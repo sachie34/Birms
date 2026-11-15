@@ -18,6 +18,7 @@ require __DIR__ . '/residents_import_lib.php';
 require __DIR__ . '/requests_lib.php';
 require __DIR__ . '/queue_lib.php';
 require __DIR__ . '/venues_lib.php';
+require __DIR__ . '/kiosk_lib.php';
 require __DIR__ . '/email_provider.php';
 require __DIR__ . '/sms_provider.php';
 require __DIR__ . '/certificates_lib.php';
