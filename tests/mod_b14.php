@@ -132,7 +132,8 @@ function run_b14(array $S, string $base): void
             && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action IN ('queue_number_issued','queue_number_called','queue_number_served','queue_number_skipped','queue_number_cancelled') AND entity_type = 'queue_entry' AND entity_id IN (SELECT queue_id FROM queue_entries WHERE reference_no LIKE ?)", [$prefix . '%']) >= 10);
 
         $snapshot = queue_all_snapshots();
-        $display = $cap->get('/queue/display.php');
+        $anonymous = new Http($base);
+        $display = $anonymous->get('/queue/display.php');
         $noPersonalData = !str_contains($display['body'], 'zz_test_clerk')
             && !str_contains($display['body'], 'ZZB14')
             && !str_contains($display['body'], 'contact_number')
