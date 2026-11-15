@@ -124,15 +124,25 @@ function run_b7(array $S, string $base): void
     $blotterPage = $sec->get('/reports/index.php?type=blotter&period=month&year=' . date('Y') . '&month=' . date('n'));
     $periodicPage = $sec->get('/reports/index.php?type=periodic&period=month&year=' . date('Y') . '&month=' . date('n') . '&recipient=pnp');
     $dashboard = $sec->get('/dashboard.php');
+    $b77Checks = [
+        'demographic-category' => $reportPage['status'] === 200 && str_contains($reportPage['body'], 'ZZ B7 Employment'),
+        'issuance-report' => $issuancePage['status'] === 200 && !str_contains($issuancePage['body'], 'ZZ B7 report test'),
+        'request-report' => $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary'),
+        'blotter-report' => $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident'),
+        'periodic-title' => $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Monthly / Quarterly Administrative Report'),
+        'periodic-recipient' => str_contains($periodicPage['body'], 'Philippine National Police (PNP)'),
+        'periodic-collections' => str_contains($periodicPage['body'], 'Revenue collected'),
+        'dashboard-purok' => $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'),
+    ];
+    $b77Failures = array_keys(array_filter($b77Checks, static fn(bool $ok): bool => !$ok));
     record('B7-7', 'Report screens and dashboard expose the configured categories and real operational summaries',
-        $reportPage['status'] === 200 && str_contains($reportPage['body'], 'ZZ B7 Employment') && $issuancePage['status'] === 200
-        && str_contains($issuancePage['body'], 'ZZ B7 report test') === false
-        && $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary')
-        && $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident')
-        && $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Monthly / Quarterly Administrative Report')
-        && str_contains($periodicPage['body'], 'Philippine National Police (PNP)')
-        && str_contains($periodicPage['body'], 'Revenue collected')
-        && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
+        !$b77Failures,
+        ($b77Failures ? implode(',', $b77Failures) : 'all report checks passed')
+        . '; page-statuses=' . $reportPage['status'] . '/' . $issuancePage['status'] . '/' . $requestsPage['status'] . '/' . $blotterPage['status'] . '/' . $periodicPage['status'] . '/' . $dashboard['status']
+        . '; demographic=' . ($b77Checks['demographic-category'] ? 'yes' : 'no')
+        . '; blotter=' . ($b77Checks['blotter-report'] ? 'yes' : 'no')
+        . '; periodic=' . substr(trim(strip_tags((string) $periodicPage['body'])), 0, 600)
+        . '; dashboard=' . substr(trim(strip_tags((string) $dashboard['body'])), 0, 600));
     record('B7-10', 'Request-processing summaries derive totals, current status, document type and assignee from saved requests',
         (int) $afterMonthRequests['summary']['total'] === (int) $baselineMonthRequests['summary']['total'] + 1
         && (int) $afterMonthRequests['summary']['claimed_count'] === (int) $baselineMonthRequests['summary']['claimed_count'] + 1
