@@ -48,27 +48,40 @@ function report_count_value(array &$counts, string $label): void
 function report_demographics(): array
 {
     $rows = db_all(
-        "SELECT r.birthdate, r.sex, r.civil_status, r.voter_status,
+        "SELECT r.birthdate, r.sex,
+                COALESCE(NULLIF(r.marital_status, ''), r.civil_status) AS marital_status,
+                r.voter_status,
                 COALESCE(emp.label, 'Not specified') AS employment_status,
-                COALESCE(pk.label, 'Purok not assigned') AS purok
+                COALESCE(pk.label, 'Purok not assigned') AS purok,
+                COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) AS resident_status,
+                COALESCE(rt.label, oldcat.label, 'Not specified') AS resident_type
          FROM residents r
          LEFT JOIN households h ON h.household_id = r.household_id
-         LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id AND pk.list_key = 'purok'
+         LEFT JOIN lookups pk ON pk.lookup_id = COALESCE(r.purok_id, h.purok_id) AND pk.list_key = 'purok'
+         LEFT JOIN lookups rs ON rs.lookup_id = r.resident_status_id AND rs.list_key = 'resident_status'
+         LEFT JOIN lookups rt ON rt.lookup_id = r.resident_type_id AND rt.list_key = 'resident_type'
+         LEFT JOIN lookups oldcat ON oldcat.lookup_id = r.category_id AND oldcat.list_key = 'resident_category'
          LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status'
-         WHERE r.archived_at IS NULL AND r.residency_status = 'Active'
+         WHERE r.archived_at IS NULL
+           AND COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) = 'Active'
          ORDER BY r.resident_id"
     );
     $data = [
-        'total' => count($rows), 'age_brackets' => [], 'sex' => [], 'civil_status' => [],
-        'employment_status' => [], 'voter_status' => [], 'purok' => [],
+        'total' => count($rows), 'age_brackets' => [], 'sex' => [], 'marital_status' => [],
+        'civil_status' => [], 'employment_status' => [], 'voter_status' => [],
+        'purok' => [], 'resident_type' => [], 'resident_status' => [],
     ];
     $brackets = age_brackets();
     foreach ($rows as $r) {
         report_count_value($data['sex'], (string) $r['sex']);
-        report_count_value($data['civil_status'], (string) $r['civil_status']);
+        report_count_value($data['marital_status'], (string) $r['marital_status']);
+        // Keep the old key for older report integrations while the revised UI uses marital_status.
+        report_count_value($data['civil_status'], (string) $r['marital_status']);
         report_count_value($data['employment_status'], (string) $r['employment_status']);
         report_count_value($data['voter_status'], (string) $r['voter_status']);
         report_count_value($data['purok'], (string) $r['purok']);
+        report_count_value($data['resident_type'], (string) $r['resident_type']);
+        report_count_value($data['resident_status'], (string) $r['resident_status']);
 
         $age = age_on((string) $r['birthdate']);
         $ageLabel = 'Outside configured age brackets';
@@ -77,7 +90,7 @@ function report_demographics(): array
         }
         report_count_value($data['age_brackets'], $ageLabel);
     }
-    foreach (['sex', 'civil_status', 'employment_status', 'voter_status', 'purok', 'age_brackets'] as $key) {
+    foreach (['sex','marital_status','civil_status','employment_status','voter_status','purok','resident_type','resident_status','age_brackets'] as $key) {
         ksort($data[$key], SORT_NATURAL | SORT_FLAG_CASE);
     }
     return $data;
