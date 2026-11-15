@@ -65,12 +65,14 @@ if (is_post()) {
                 db_exec('INSERT INTO issuances
                          (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount,
                           fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate,
-                          or_number, body_text, captain_name, signature_text, issued_by, issued_by_name, issued_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+                          or_number, body_text, captain_name, signature_text, chairman_signature_path, issued_by, issued_by_name, issued_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
                     [$ref, $rid, $x['resident_id'], $x['type_id'], resident_name_natural($x), $x['type_name'], $x['purpose'], $x['fee_amount'],
                      $x['fee_rule_id'] ?? null, $x['fee_category_snapshot'] ?? null, $x['fee_tier_snapshot'] ?? null,
                      $x['fee_quantity'] ?? 1, $x['fee_unit_rate'] ?? null,
-                     $or !== '' ? $or : null, $body, $v['captain_name'] !== '' ? $v['captain_name'] : null, $signatureText !== '' ? $signatureText : null, $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
+                     $or !== '' ? $or : null, $body, $v['captain_name'] !== '' ? $v['captain_name'] : null,
+                     $signatureText !== '' ? $signatureText : null, $chairmanSignaturePath,
+                     $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
                 // Capture the issuance ID before a cash-ledger insert changes PDO::lastInsertId().
                 $iid = (int) db()->lastInsertId();
                 if ((float) $x['fee_amount'] > 0) {
