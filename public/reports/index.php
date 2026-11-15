@@ -298,6 +298,25 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     </tbody></table></div><?php endif; ?>
   </div></div>
 
+<?php elseif ($type === 'queues'): ?>
+  <?php $s = $data['summary']; ?>
+  <div class="alert alert-info">Queue totals are counted by ticket issue time. Average waiting time uses served tickets only; waiting, called, skipped and cancelled tickets are not included in that average.</div>
+  <div class="row g-3 mb-3">
+    <?php foreach ([
+      'Tickets issued' => (int) $s['total'], 'Waiting' => (int) $s['waiting_count'], 'Called' => (int) $s['called_count'],
+      'Served' => (int) $s['served_count'], 'Skipped' => (int) $s['skipped_count'], 'Cancelled' => (int) $s['cancelled_count'],
+    ] as $label => $count): ?>
+      <div class="col-6 col-lg-4"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div>
+    <?php endforeach; ?>
+    <div class="col-6 col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Average wait</h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= $s['average_wait_seconds'] === null ? '—' : number_format((float) $s['average_wait_seconds'] / 60, 1) . ' min' ?></div></div></div></div>
+  </div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Queue performance by service</h2></div><div class="card-body-b">
+    <?php if (!$data['by_service']): ?><?= empty_state('bi-ticket', 'No queue tickets were issued in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Service</th><th class="text-end">Issued</th><th class="text-end">Waiting</th><th class="text-end">Called</th><th class="text-end">Served</th><th class="text-end">Skipped</th><th class="text-end">Cancelled</th><th class="text-end">Average wait</th></tr></thead><tbody>
+      <?php foreach ($data['by_service'] as $row): ?><tr><td><?= e((string) $row['service']) ?></td><td class="text-end"><?= number_format((int) $row['total']) ?></td><td class="text-end"><?= number_format((int) $row['waiting_count']) ?></td><td class="text-end"><?= number_format((int) $row['called_count']) ?></td><td class="text-end"><?= number_format((int) $row['served_count']) ?></td><td class="text-end"><?= number_format((int) $row['skipped_count']) ?></td><td class="text-end"><?= number_format((int) $row['cancelled_count']) ?></td><td class="text-end"><?= $row['average_wait_seconds'] === null ? '—' : number_format((float) $row['average_wait_seconds'] / 60, 1) . ' min' ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+
 <?php elseif ($type === 'periodic'): ?>
   <?php
     $population = $data['population'];
@@ -305,6 +324,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     $collections = $data['collections'];
     $requests = $data['requests'];
     $blotter = $data['blotter'];
+    $queues = $data['queues'];
   ?>
   <div class="alert alert-info">This is a consolidated BIRMS administrative summary for <?= e($range['label']) ?>. Resident population is a current snapshot, not a historical period-end count. Collected revenue includes reconciled cash-ledger rows only. Agency-specific forms and mandatory report fields still require confirmation by the receiving office.</div>
   <div class="row g-3 mb-3">
@@ -336,9 +356,10 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
       <?php if (!$issuance['by_type']): ?><div class="text-muted mt-3">No certificates were issued in this period.</div><?php else: ?><div class="table-responsive mt-3"><table class="table table-b mb-0"><thead><tr><th>Document</th><th class="text-end">Issued</th></tr></thead><tbody><?php foreach ($issuance['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
     </div></div></div>
     <div class="col-lg-6"><div class="card-b h-100"><div class="card-h"><h2>Blotter summary</h2></div><div class="card-body-b">
-      <div class="mb-2">Non-archived cases in period: <strong><?= number_format((int) $blotter['summary']['total']) ?></strong></div>
-      <div class="mb-2">Resolved: <strong><?= number_format((int) $blotter['summary']['resolved_count']) ?></strong></div>
-      <div class="mb-3">Resolution rate: <strong><?= number_format((float) $blotter['summary']['resolution_rate'], 1) ?>%</strong></div>
+      <div class="mb-2">Total incidents in period: <strong><?= number_format((int) $blotter['summary']['total']) ?></strong></div>
+      <div class="mb-2">Resolved: <strong><?= number_format((int) $blotter['summary']['resolved_count']) ?></strong> · Dismissed: <strong><?= number_format((int) $blotter['summary']['dismissed_count']) ?></strong></div>
+      <div class="mb-3">Resolution rate (non-archived): <strong><?= number_format((float) $blotter['summary']['resolution_rate'], 1) ?>%</strong></div>
+      <div class="small text-muted">Ongoing <?= (int) $blotter['summary']['ongoing_count'] ?> · Unresolved <?= (int) $blotter['summary']['unresolved_count'] ?> · Archived <?= (int) $blotter['summary']['archived_count'] ?></div>
       <?php if (!$blotter['by_type']): ?><div class="text-muted">No incidents were recorded in this period.</div><?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Incident type</th><th class="text-end">Cases</th></tr></thead><tbody><?php foreach ($blotter['by_type'] as $row): ?><tr><td><?= e((string) $row['incident_type']) ?></td><td class="text-end"><?= number_format((int) $row['case_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
     </div></div></div>
   </div>
@@ -346,13 +367,25 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     <?php if (!$blotter['by_purok']): ?><?= empty_state('bi-shield-exclamation', 'No cases were recorded in this period.') ?>
     <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Cases</th></tr></thead><tbody><?php foreach ($blotter['by_purok'] as $row): ?><tr><td><?= e((string) $row['purok']) ?></td><td class="text-end"><?= number_format((int) $row['case_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
   </div></div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Queue statistics</h2><p>Daily service queues summarized across the selected period.</p></div><div class="card-body-b">
+    <div class="row g-3 mb-3">
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Tickets issued</div><div class="fs-4 fw-bold"><?= number_format((int) $queues['summary']['total']) ?></div></div></div>
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Served</div><div class="fs-4 fw-bold"><?= number_format((int) $queues['summary']['served_count']) ?></div></div></div>
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Waiting + called</div><div class="fs-4 fw-bold"><?= number_format((int) $queues['summary']['waiting_count'] + (int) $queues['summary']['called_count']) ?></div></div></div>
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Average wait</div><div class="fs-4 fw-bold"><?= $queues['summary']['average_wait_seconds'] === null ? '—' : number_format((float) $queues['summary']['average_wait_seconds'] / 60, 1) . ' min' ?></div></div></div>
+    </div>
+    <?php if (!$queues['by_service']): ?><?= empty_state('bi-ticket', 'No queue tickets were issued in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Service</th><th class="text-end">Issued</th><th class="text-end">Served</th><th class="text-end">Average wait</th></tr></thead><tbody>
+      <?php foreach ($queues['by_service'] as $row): ?><tr><td><?= e((string) $row['service']) ?></td><td class="text-end"><?= number_format((int) $row['total']) ?></td><td class="text-end"><?= number_format((int) $row['served_count']) ?></td><td class="text-end"><?= $row['average_wait_seconds'] === null ? '—' : number_format((float) $row['average_wait_seconds'] / 60, 1) . ' min' ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
 <?php else: ?>
   <?php $s = $data['summary']; ?>
   <div class="row g-3 mb-3">
     <?php foreach ([
-      'Total incidents' => (int) $s['total'], 'Pending' => (int) $s['pending_count'], 'Active' => (int) $s['active_count'],
-      'Scheduled' => (int) $s['scheduled_count'], 'Resolved' => (int) $s['resolved_count'],
-    ] as $label => $count): ?><div class="col-6 col-lg"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div><?php endforeach; ?>
+      'Total incidents' => (int) $s['total'], 'Ongoing' => (int) $s['ongoing_count'], 'Unresolved' => (int) $s['unresolved_count'],
+      'Resolved' => (int) $s['resolved_count'], 'Dismissed' => (int) $s['dismissed_count'], 'Archived' => (int) $s['archived_count'],
+    ] as $label => $count): ?><div class="col-6 col-lg-4"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div><?php endforeach; ?>
   </div>
   <div class="card-b mb-3"><div class="card-h"><h2>Resolution rate</h2></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((float) $s['resolution_rate'], 1) ?>%</div><div class="text-muted small">Resolved cases divided by all non-archived cases recorded in the selected incident-date period.</div></div></div>
   <?php foreach ([
