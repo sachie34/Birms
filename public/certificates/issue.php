@@ -50,6 +50,11 @@ if (is_post()) {
                 if ($x === null || $x['status'] !== 'Ready') { throw new RuntimeException('state'); }
                 $v = certificate_vars($x);
                 if (certificate_blockers($x, $v)) { throw new RuntimeException('blocked'); }
+                $requiresChairmanSignature = (int) ($x['requires_chairman_signature'] ?? 1) === 1;
+                $chairmanSignaturePath = $requiresChairmanSignature ? chairman_signature_current_relative() : null;
+                if ($requiresChairmanSignature && chairman_signature_path_to_absolute($chairmanSignaturePath) === null) {
+                    throw new RuntimeException('The Chairman signature image changed or became unavailable. Refresh and ask Admin to verify Settings before issuing.');
+                }
                 $n = db_exec("UPDATE document_requests SET status = 'Claimed', msit_status = 'Released', status_note = NULL WHERE request_id = ? AND status = 'Ready'", [$rid]);
                 if ($n !== 1) { throw new RuntimeException('state'); }
                 $documentReference = (string) $x['reference_no'];
