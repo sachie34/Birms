@@ -15,15 +15,21 @@ if ($searched) {
 
     if (can('residents.view')) {
         $results['residents'] = db_all(
-            "SELECT r.resident_id, r.first_name, r.middle_name, r.last_name, r.suffix,
-                    r.residency_status, h.household_code
-             FROM residents r LEFT JOIN households h ON h.household_id = r.household_id
+            "SELECT r.resident_id, r.resident_no, r.first_name, r.middle_name, r.last_name, r.suffix,
+                    COALESCE(r.address, h.street_address) AS resident_address, pk.label AS purok,
+                    COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) AS resident_status
+             FROM residents r
+             LEFT JOIN households h ON h.household_id = r.household_id
+             LEFT JOIN lookups pk ON pk.lookup_id = COALESCE(r.purok_id, h.purok_id) AND pk.list_key = 'purok'
+             LEFT JOIN lookups rs ON rs.lookup_id = r.resident_status_id AND rs.list_key = 'resident_status'
              WHERE r.archived_at IS NULL
                AND (CONCAT_WS(' ', r.first_name, r.middle_name, r.last_name, r.suffix) LIKE ?
                     OR CONCAT_WS(' ', r.last_name, r.first_name, r.middle_name, r.suffix) LIKE ?
-                    OR h.household_code LIKE ?)
+                    OR COALESCE(r.resident_no, '') LIKE ?
+                    OR COALESCE(r.address, h.street_address, '') LIKE ?
+                    OR COALESCE(r.email_address, '') LIKE ?)
              ORDER BY r.last_name, r.first_name LIMIT 10",
-            [$like, $like, $like]
+            [$like, $like, $like, $like, $like]
         );
     }
     if (can('requests.view')) {
@@ -71,7 +77,7 @@ page_head('Search Records', 'Search the record areas available to your account.'
 <div class="card-b mb-3">
   <form method="get" class="filters" action="<?= e(base_url('search.php')) ?>" role="search">
     <div class="global-search-field">
-      <label class="form-label" for="q">Name, reference number, document type or case</label>
+      <label class="form-label" for="q">Name, Resident ID, address, email, reference number or case</label>
       <input class="form-control" id="q" name="q" value="<?= e($q) ?>" maxlength="80" placeholder="Enter at least 2 characters" autofocus>
     </div>
     <div><button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>Search records</button></div>
@@ -85,12 +91,15 @@ page_head('Search Records', 'Search the record areas available to your account.'
 
   <?php if (can('residents.view')): ?>
   <div class="card-b mb-3">
-    <div class="card-h"><h2><i class="bi bi-people me-2 text-primary"></i>Residents (<?= count($results['residents']) ?>)</h2><p>Matches by name or household code.</p></div>
+    <div class="card-h"><h2><i class="bi bi-people me-2 text-primary"></i>Residents (<?= count($results['residents']) ?>)</h2><p>Matches by name, Resident ID, address or email.</p></div>
     <?php if (!$results['residents']): ?><div class="empty-state">No matching resident records.</div>
-    <?php else: ?><div class="table-responsive"><table class="table table-b"><thead><tr><th>Resident</th><th>Household</th><th>Status</th><th class="text-end">Action</th></tr></thead><tbody>
+    <?php else: ?><div class="table-responsive"><table class="table table-b"><thead><tr><th>Resident ID</th><th>Resident</th><th>Address</th><th>Purok</th><th>Status</th><th class="text-end">Action</th></tr></thead><tbody>
       <?php foreach ($results['residents'] as $r): ?><tr>
+        <td class="text-nowrap"><?= e((string) ($r['resident_no'] ?? 'Not assigned')) ?></td>
         <td class="fw-semibold"><?= e(trim(implode(' ', array_filter([(string) $r['last_name'] . ',', (string) $r['first_name'], (string) ($r['middle_name'] ?? ''), (string) ($r['suffix'] ?? '')])))) ?></td>
-        <td><?= e((string) ($r['household_code'] ?? '—')) ?></td><td><?= residency_pill((string) $r['residency_status']) ?></td>
+        <td><?= e((string) ($r['resident_address'] ?? '—')) ?></td>
+        <td><?= e((string) ($r['purok'] ?? 'Not assigned')) ?></td>
+        <td><?= status_pill((string) ($r['resident_status'] ?? 'Not set')) ?></td>
         <td class="text-end"><a class="btn btn-sm btn-light border" href="<?= e(base_url('residents/view.php?id=' . (int) $r['resident_id'])) ?>">Open</a></td>
       </tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
   </div>
