@@ -41,9 +41,14 @@ function request_visible_to_current_user(array $request): bool
     }
 
     $userId = (int) ($user['user_id'] ?? 0);
-    return $userId > 0
-        && ((int) ($request['created_by'] ?? 0) === $userId
-            || (int) ($request['assigned_to'] ?? 0) === $userId);
+    if ($userId < 1) { return false; }
+    $ownsOrAssigned = (int) ($request['created_by'] ?? 0) === $userId
+        || (int) ($request['assigned_to'] ?? 0) === $userId;
+    // Staff also receives the shared final-decision queue after the Secretary has completed review.
+    $readyForStaffDecision = $role === 'clerk'
+        && (string) ($request['status'] ?? '') === 'Review'
+        && (string) ($request['requirements_status'] ?? '') === 'Complete';
+    return $ownsOrAssigned || $readyForStaffDecision;
 }
 function new_request_reference(): string
 {
