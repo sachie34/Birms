@@ -11,8 +11,6 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'dashboard', 'label' => 'Operations Overview', 'icon' => 'bi-grid-1x2',     'path' => 'dashboard.php',     'perm' => 'dashboard.view', 'built' => true],
         // Each link is shown only when the route is implemented and the user's role has its permission.
         ['group' => 'Workspace', 'key' => 'residents', 'label' => 'Residents',            'icon' => 'bi-person-vcard', 'path' => 'residents/index.php', 'perm' => 'residents.view', 'built' => true],
-        ['group' => 'Workspace', 'key' => 'households', 'label' => 'Households',          'icon' => 'bi-house',        'path' => 'residents/households.php', 'perm' => 'residents.view', 'built' => true],
-        ['group' => 'Workspace', 'key' => 'visitors',  'label' => 'Visitor Logbook',      'icon' => 'bi-journal-text', 'path' => 'visitors/index.php',  'perm' => 'requests.view',  'built' => true],
         ['group' => 'Workspace', 'key' => 'requests',  'label' => 'Request Tracker',      'icon' => 'bi-inbox',        'path' => 'requests/index.php',  'perm' => 'requests.view',  'built' => true],
         ['group' => 'Workspace', 'key' => 'certs',     'label' => 'Certificate Generation','icon' => 'bi-file-earmark-check', 'path' => 'certificates/issue.php', 'perm' => 'certificates.issue', 'built' => true],
         ['group' => 'Workspace', 'key' => 'history',   'label' => 'Issuance History',     'icon' => 'bi-clock-history','path' => 'certificates/history.php', 'perm' => 'certificates.history', 'built' => true],
