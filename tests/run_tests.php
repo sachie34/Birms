@@ -128,7 +128,7 @@ $pre = new Http($base); $pre->get('/index.php'); $before = file_get_contents($pr
 preg_match('/BIRMSSESS\s+(\S+)/', (string) $before, $m1);
 $r = $pre->login($fx['clerk'], TP); $cookie = implode(' | ', $r['cookies']); $afterJar = file_get_contents($pre->jar); preg_match('/BIRMSSESS\s+(\S+)/', (string) $afterJar, $m2);
 record('H6', 'Sign-in works; cookie is HttpOnly + SameSite; session id changes at login', $r['status'] === 302 && str_contains(loc($r), 'dashboard.php') && stripos($cookie, 'httponly') !== false && stripos($cookie, 'samesite=lax') !== false && ($m1[1] ?? 'a') !== ($m2[1] ?? 'a'), $cookie === '' ? 'no cookie' : '');
-$roleLabel = ['admin' => 'Administrator', 'captain' => 'Chairman (Punong Barangay)', 'secretary' => 'Secretary', 'clerk' => 'Staff'];
+$roleLabel = ['admin' => 'Admin', 'captain' => 'Chairman (Punong Barangay)', 'secretary' => 'Secretary', 'clerk' => 'Staff'];
 $okAll = true; $dashboardProblems = [];
 foreach ($sessions as $role => $s) {
     $r = $s->get('/dashboard.php');
