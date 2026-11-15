@@ -24,6 +24,10 @@ function run_b7(array $S, string $base): void
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZB7H%'");
     db_exec("DELETE FROM lookups WHERE (list_key = 'employment_status' AND label = 'ZZ B7 Employment') OR (list_key = 'incident_type' AND label = 'ZZ B7 Incident') OR (list_key = 'purok' AND label = 'ZZ B7 Purok')");
 
+    $signatureFixture = fx_upload_chairman_signature($adm);
+    record('B7-17', 'Admin configures the Chairman signature before fee-quote certificate issuance',
+        $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
+
     $bad = '';
     foreach (['/reports/index.php' => 'reports.view', '/admin/backup.php' => 'backup.run'] as $path => $perm) {
         [$ok, $why] = rbac_page($S, $path, $perm);
@@ -341,4 +345,5 @@ function run_b7(array $S, string $base): void
     db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     db_exec('DELETE FROM households WHERE household_id = ?', [$houseId]);
     db_exec('DELETE FROM lookups WHERE lookup_id IN (?, ?, ?)', [$employmentId, $incidentTypeId, $purokId]);
+    fx_restore_chairman_signature($signatureFixture);
 }
