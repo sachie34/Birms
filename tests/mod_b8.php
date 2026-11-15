@@ -116,8 +116,8 @@ function run_b8(array $S, string $base): void
         $freeIssuanceId = null;
         if ($requestId !== null) {
             db_exec("UPDATE document_requests SET status = 'Ready', requirements_status = 'Complete' WHERE request_id = ?", [$requestId]);
-            $freePost = $sec->post('/certificates/issue.php?request=' . $requestId, [
-                '_csrf' => $sec->token('/certificates/issue.php?request=' . $requestId),
+            $freePost = $clk->post('/certificates/issue.php?request=' . $requestId, [
+                '_csrf' => $clk->token('/certificates/issue.php?request=' . $requestId),
                 'request_id' => (string) $requestId, 'or_number' => '',
                 'payment_method' => 'cash', 'signature_text' => 'ZZ B8 Typed Signatory',
             ]);
@@ -140,8 +140,8 @@ function run_b8(array $S, string $base): void
                  VALUES (?, ?, ?, 'ZZ-B8 paid issuance', 'Ready', 'Complete', NOW())", [$paidRef, $residentId, $paidTypeId]);
         $paidRequestId = (int) db()->lastInsertId();
         $receipt = 'ZZB8OR-' . substr(md5((string) microtime(true)), 0, 8);
-        $paidPost = $sec->post('/certificates/issue.php?request=' . $paidRequestId, [
-            '_csrf' => $sec->token('/certificates/issue.php?request=' . $paidRequestId),
+        $paidPost = $clk->post('/certificates/issue.php?request=' . $paidRequestId, [
+            '_csrf' => $clk->token('/certificates/issue.php?request=' . $paidRequestId),
             'request_id' => (string) $paidRequestId, 'or_number' => $receipt,
             'payment_method' => 'bank_transfer', 'signature_text' => 'ZZ B8 Ledger Signatory',
         ]);
@@ -149,12 +149,12 @@ function run_b8(array $S, string $base): void
         else { $paidIssuanceId = null; }
         $paidIssuance = $paidIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$paidIssuanceId]) : null;
         $ledger = $paidIssuanceId ? db_one('SELECT * FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) : null;
-        $secretaryId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_secretary'");
+        $staffId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
         record('B8-6', 'Paid issuance creates one pending ledger entry linked to issuance, payment method and collector',
             $paidPost['status'] === 302 && $paidIssuance !== null && $ledger !== null
             && (float) $ledger['fee_amount'] === 25.0
             && $ledger['payment_method'] === 'bank_transfer' && $ledger['reconciliation_status'] === 'pending'
-            && (int) $ledger['collector_id'] === $secretaryId
+            && (int) $ledger['collector_id'] === $staffId
             && (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) === 1);
 
          $adminLedger = $adm->get('/admin/ledger.php');
