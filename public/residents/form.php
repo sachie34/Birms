@@ -111,7 +111,6 @@ if (is_post()) {
         $savedId = db_transaction(function () use ($v, $ex): int {
             $statusId = (int) $v['resident_status_id'];
             $typeId = (int) $v['resident_type_id'];
-            $statusLabel = (string) ($GLOBALS['__unused'] ?? '');
             $statusLabel = (string) db_val('SELECT label FROM lookups WHERE lookup_id = ? AND list_key = \'resident_status\'', [$statusId]);
             $typeLabel = (string) db_val('SELECT label FROM lookups WHERE lookup_id = ? AND list_key = \'resident_type\'', [$typeId]);
             if ($statusLabel === '' || $typeLabel === '') { throw new RuntimeException('The selected resident status or type is no longer available. Refresh the form and try again.'); }
@@ -120,6 +119,10 @@ if (is_post()) {
             $residentNo = $ex !== null && !empty($ex['resident_no'])
                 ? (string) $ex['resident_no']
                 : sprintf('RES-%d-%06d', (int) date('Y'), next_counter('resident', (int) date('Y')));
+            $previousStatusId = (int) ($ex['resident_status_id'] ?? 0);
+            $previousStatusLabel = $previousStatusId > 0
+                ? (string) db_val('SELECT label FROM lookups WHERE lookup_id = ? AND list_key = \'resident_status\'', [$previousStatusId])
+                : '';
             $legacyVoter = $ex['voter_status'] ?? 'Unverified';
             $employmentId = $ex['employment_status_id'] ?? null;
             $common = [
@@ -160,8 +163,8 @@ if (is_post()) {
             }
             audit('resident_updated', 'Residents', 'Success', ($changes ? implode('; ', $changes) : 'No field changed') . ' [' . $residentNo . ']',
                 'resident', $rid);
-            if ((string) ($ex['resident_status_id'] ?? '') !== (string) $statusId) {
-                audit('resident_status_changed', 'Residents', 'Success', $residentNo . ': ' . ($ex['resident_status_id'] ?? 'Unassigned') . ' -> ' . $statusLabel, 'resident', $rid);
+            if ($previousStatusId !== $statusId) {
+                audit('resident_status_changed', 'Residents', 'Success', $residentNo . ': ' . ($previousStatusLabel !== '' ? $previousStatusLabel : 'Unassigned') . ' -> ' . $statusLabel, 'resident', $rid);
             }
             return $rid;
         });
