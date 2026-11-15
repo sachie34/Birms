@@ -11,15 +11,16 @@ if (is_post()) {
     rate_limit_require('kiosk_venue_request', (string) $resident['resident_id'], 4, 3600,
         'Too many venue requests were submitted. Please ask Staff for help.');
     $venueId = post_int('venue_id');
+    $purpose = post_str('purpose');
     if ($venueId === null) { $errors[] = 'Choose a venue.'; }
     if (!$errors) {
         try {
-            $result = db_transaction(function () use ($resident, $venueId): array {
+            $result = db_transaction(function () use ($resident, $venueId, $purpose): array {
                 $reservation = venue_create_reservation(
-                    (int) $venueId, (int) $resident['resident_id'], post_str('purpose'),
+                    (int) $venueId, (int) $resident['resident_id'], $purpose,
                     post_str('reservation_date'), post_str('start_time'), post_str('end_time'), null
                 );
-                $ticket = queue_issue_number('Venue', (int) $resident['resident_id'], $reservation['reference_no'], 'kiosk');
+                $ticket = queue_issue_number('Venue', (int) $resident['resident_id'], $reservation['reference_no'], 'kiosk', $purpose);
                 return ['reservation' => $reservation, 'ticket' => $ticket];
             });
             $_SESSION['kiosk_last_venue'] = $result;
