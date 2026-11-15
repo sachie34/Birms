@@ -16,7 +16,7 @@ function run_b10(array $S, string $base): void
     ];
     $results = [];
     foreach ($paths as $path) {
-        $results[] = ($path === '/residents/import_errors.php?token=invalid') ? $sec->get($path) : $adm->get($path);
+        $results[] = $adm->get($path);
     }
     $retired = $results[0]['status'] === 302 && str_contains((string) $results[0]['location'], 'residents/index.php')
         && $results[1]['status'] === 302 && str_contains((string) $results[1]['location'], 'residents/index.php')
