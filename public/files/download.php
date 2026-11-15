@@ -12,7 +12,7 @@ if ($att === null) { abort(404, 'That attachment was not found.'); }
 // Request attachments follow the same row-level visibility rule as their parent request.
 // Visitor-log attachments remain available to authorized staff on the shared office logbook.
 if ($att['request_id'] !== null) {
-    $parent = db_one('SELECT created_by, assigned_to FROM document_requests WHERE request_id = ?', [(int) $att['request_id']]);
+    $parent = db_one('SELECT created_by, assigned_to, status, requirements_status FROM document_requests WHERE request_id = ?', [(int) $att['request_id']]);
     if ($parent === null || !request_visible_to_current_user($parent)) {
         abort(404, 'That attachment was not found.');
     }
