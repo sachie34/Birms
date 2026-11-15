@@ -1,21 +1,16 @@
 <?php
 /**
- * app/permissions.php
- * Role-permission map. STATUS: PROVISIONAL, pending validation by the Barangay Secretary.
- * Deny by default: a permission not listed for a role is refused. Enforced on the SERVER in every page/handler.
- * Least-privilege workflow: only Secretary/Admin can begin requirements review; only Captain/Admin can make the final request decision.
- * Clerk may print/download an issued certificate but cannot issue one. Captain has read-only cash-ledger access.
- * The other roles retain the current provisional matrix until the barangay validates it.
+ * Role permissions aligned with BRMS_SRS_Revised.docx.
+ * The legacy internal role ids captain/clerk are retained for existing accounts:
+ * captain = Chairman (read-only); clerk = Staff (service processing).
  */
 declare(strict_types=1);
 
-const PERMISSIONS_STATUS = 'PROVISIONAL';
+const PERMISSIONS_STATUS = 'MSIT_SRS_ALIGNED';
 
 function permission_map(): array
 {
     return [
-        // Administrator is the highest-privilege role and may perform operational tasks as needed.
-        // The map remains provisional until the barangay validates all role assignments.
         'admin' => [
             'dashboard.view',
             'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.restore', 'residents.export',
@@ -23,26 +18,37 @@ function permission_map(): array
             'certificates.history', 'certificates.issue', 'certificates.print',
             'settings.view', 'settings.edit',
             'audit.view', 'audit.export', 'users.manage', 'backup.run', 'cash_ledger.view', 'cash_ledger.manage',
-            'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive', 'venues.view', 'venues.manage', 'venues.approve', 'venues.view', 'venues.manage', 'venues.approve',
-            'hearings.view', 'hearings.add', 'hearings.edit',
-            'reports.view', 'reports.export', 'queue.view', 'queue.manage',
-        ],
-        'captain' => [
-            'dashboard.view', 'residents.view', 'residents.export', 'requests.view', 'requests.approve',
-            'certificates.history', 'settings.view', 'blotters.view', 'hearings.view', 'venues.view',
-            'reports.view', 'reports.export', 'audit.view', 'cash_ledger.view', 'queue.view',
-        ],
-        'secretary' => [
-            'dashboard.view', 'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
-            'requests.view', 'requests.add', 'requests.edit', 'requests.review',
-            'certificates.history', 'certificates.issue', 'certificates.print', 'settings.view', 'settings.edit',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
-            'hearings.view', 'hearings.add', 'hearings.edit', 'reports.view', 'reports.export', 'queue.view',
+            'hearings.view', 'hearings.add', 'hearings.edit',
+            'venues.view', 'venues.manage', 'venues.approve',
+            'queue.view', 'queue.manage',
+            'reports.view', 'reports.export',
         ],
+        // Chairman / Punong Barangay is strictly read-only. The stored signature is applied by staff.
+        'captain' => [
+            'dashboard.view', 'residents.view', 'requests.view',
+            'certificates.history', 'blotters.view', 'hearings.view', 'venues.view', 'queue.view',
+            'reports.view', 'reports.export', 'cash_ledger.view',
+        ],
+        // Secretary maintains resident, document and blotter records and reviews document requests.
+        'secretary' => [
+            'dashboard.view',
+            'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
+            'requests.view', 'requests.add', 'requests.edit', 'requests.review',
+            'certificates.history',
+            'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
+            'hearings.view', 'hearings.add', 'hearings.edit',
+            'venues.view', 'queue.view',
+            'reports.view', 'reports.export',
+        ],
+        // Staff handles resident-facing services, final request decisions, certificate generation, venues and queues.
         'clerk' => [
-            'dashboard.view', 'residents.view', 'residents.add', 'residents.edit',
-            'requests.view', 'requests.add', 'requests.edit', 'certificates.history', 'certificates.print',
-            'blotters.view', 'blotters.add', 'hearings.view', 'queue.view', 'queue.manage', 'venues.view', 'venues.manage', 'venues.approve',
+            'dashboard.view', 'residents.view',
+            'requests.view', 'requests.add', 'requests.edit', 'requests.approve',
+            'certificates.history', 'certificates.issue', 'certificates.print',
+            'blotters.view', 'hearings.view',
+            'venues.view', 'venues.manage', 'venues.approve',
+            'queue.view', 'queue.manage',
         ],
     ];
 }
@@ -58,7 +64,7 @@ function can(string $permission): bool
     return $u !== null && role_can((string) $u['role'], $permission);
 }
 
-/** Server-side gate. Hiding a menu item is never the protection; this is. */
+/** Server-side gate. Hiding a menu item is never the protection. */
 function require_permission(string $permission): void
 {
     if (!can($permission)) {
