@@ -129,7 +129,7 @@ function run_b7(array $S, string $base): void
         'issuance-report' => $issuancePage['status'] === 200 && !str_contains($issuancePage['body'], 'ZZ B7 report test'),
         'request-report' => $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary'),
         'blotter-report' => $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident'),
-        'periodic-title' => $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Monthly / Quarterly Administrative Report'),
+        'periodic-title' => $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Periodic Administrative Report'),
         'periodic-recipient' => str_contains($periodicPage['body'], 'Philippine National Police (PNP)'),
         'periodic-collections' => str_contains($periodicPage['body'], 'Revenue collected'),
         'dashboard-purok' => $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'),
