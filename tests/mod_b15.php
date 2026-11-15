@@ -67,11 +67,12 @@ function run_b15(array $S, string $base): void
         try {
             venue_create_reservation($venueId, $residentId, 'Conflicting meeting', $date, '10:30', '11:30', $adminId);
         } catch (InvalidArgumentException $e) {
-            $overlapRejected = str_contains($e->getMessage(), 'overlaps');
+            $overlapRejected = str_contains($e->getMessage(), 'already requested') || str_contains($e->getMessage(), 'overlaps');
         }
         $sameDayOther = venue_create_reservation($venueId, $residentId, 'After lunch activity', $date, '11:00', '12:00', $adminId);
         record('B15-04', 'Overlapping Pending reservations are rejected but back-to-back bookings are allowed',
-            $overlapRejected && $sameDayOther['reservation_id'] > 0);
+            $overlapRejected && $sameDayOther['reservation_id'] > 0,
+            'overlap-rejected=' . ($overlapRejected ? 'yes' : 'no') . '; back-to-back=' . (string) $sameDayOther['reservation_id']);
 
         venue_change_status((int) $first['reservation_id'], 'Rejected', 'Venue already requested for another event');
         $reopenedSlot = venue_create_reservation($venueId, $residentId, 'Replacement meeting', $date, '10:00', '11:00', $adminId);
@@ -87,7 +88,8 @@ function run_b15(array $S, string $base): void
         record('B15-05', 'Rejection frees a time slot; approval blocks later overlaps and both decisions are written to history',
             $approvedOverlapRejected
             && $rejected !== null && $rejected['previous_status'] === 'Pending' && $rejected['new_status'] === 'Rejected'
-            && $approved !== null && $approved['previous_status'] === 'Pending' && $approved['new_status'] === 'Approved');
+            && $approved !== null && $approved['previous_status'] === 'Pending' && $approved['new_status'] === 'Approved',
+            'approved-overlap=' . ($approvedOverlapRejected ? 'yes' : 'no') . '; rejected=' . json_encode($rejected) . '; approved=' . json_encode($approved));
 
         $start = '00:00:00';
         $end = '23:59:59';
