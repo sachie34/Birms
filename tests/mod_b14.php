@@ -61,6 +61,7 @@ function run_b14(array $S, string $base): void
                 'do' => 'issue', 'service' => $service,
                 'resident_id' => $resident === null ? '' : (string) $resident,
                 'reference_no' => $reference,
+                'purpose' => 'Purpose for ' . $reference,
             ]);
         };
         $issued = [
@@ -69,7 +70,7 @@ function run_b14(array $S, string $base): void
             'Documents' => $issue($clk, 'Documents', $prefix . 'DOCUMENTS'),
             'Venue' => $issue($clk, 'Venue', $prefix . 'VENUE'),
         ];
-        $rows = db_all('SELECT service, queue_number, status, reference_no FROM queue_entries WHERE reference_no LIKE ? ORDER BY service, queue_number', [$prefix . '%']);
+        $rows = db_all('SELECT service, queue_number, status, reference_no, purpose FROM queue_entries WHERE reference_no LIKE ? ORDER BY service, queue_number', [$prefix . '%']);
         $byService = [];
         foreach ($rows as $row) { $byService[$row['service']][] = $row; }
         $independent = count($rows) === 4
@@ -83,6 +84,8 @@ function run_b14(array $S, string $base): void
             && count(array_filter($issued, static fn(array $r): bool => $r['status'] === 302)) === 4;
         record('B14-02', 'Blotter, Documents and Venue issue separate sequential daily numbers without mixing their counters',
             $independent);
+        record('B14-11', 'Every issued queue entry records the purpose of the resident visit',
+            count(array_filter($rows, static fn(array $row): bool => str_starts_with((string) ($row['purpose'] ?? ''), 'Purpose for '))) === 4);
 
         $deniedCaptain = post_as($cap, '/queue/index.php', '/queue/action.php', [
             'do' => 'issue', 'service' => 'Blotter', 'reference_no' => $prefix . 'DENIED-CAPTAIN',
