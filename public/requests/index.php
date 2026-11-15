@@ -26,7 +26,7 @@ $q = get_str('q'); $page = max(1, get_int('page') ?? 1); $per = 25;
 $countScope = '';
 $countParams = [];
 if ($role === 'clerk') {
-    $countScope = ' WHERE (created_by = ? OR assigned_to = ?)';
+    $countScope = " WHERE (created_by = ? OR assigned_to = ? OR (status = 'Review' AND requirements_status = 'Complete') OR status IN ('Ready','Claimed'))";
     $countParams = [(int) $me['user_id'], (int) $me['user_id']];
 }
 $counts = ['all' => 0];
@@ -46,7 +46,7 @@ if ($role === 'admin') {
     $myCondition = "(dr.status = 'Pending' OR (dr.status = 'Review' AND dr.requirements_status <> 'Complete'))";
 } else {
     // Staff sees their own/assigned requests plus the shared queue ready for final decisions.
-    $myCondition = "((dr.created_by = ? OR dr.assigned_to = ?) OR (dr.status = 'Review' AND dr.requirements_status = 'Complete'))";
+    $myCondition = "((dr.created_by = ? OR dr.assigned_to = ?) OR (dr.status = 'Review' AND dr.requirements_status = 'Complete') OR dr.status IN ('Ready','Claimed'))";
     $myParams = [(int) $me['user_id'], (int) $me['user_id']];
 }
 $counts['my'] = (int) db_val('SELECT COUNT(*) FROM document_requests dr WHERE ' . $myCondition, $myParams);
@@ -54,7 +54,7 @@ $counts['my'] = (int) db_val('SELECT COUNT(*) FROM document_requests dr WHERE ' 
 $w = []; $p = [];
 // Restrict Staff to owned/assigned items except the shared final-decision queue.
 if ($role === 'clerk') {
-    $w[] = '((dr.created_by = ? OR dr.assigned_to = ?) OR (dr.status = \'Review\' AND dr.requirements_status = \'Complete\'))';
+    $w[] = '((dr.created_by = ? OR dr.assigned_to = ?) OR (dr.status = \'Review\' AND dr.requirements_status = \'Complete\') OR dr.status IN (\'Ready\',\'Claimed\'))';
     array_push($p, (int) $me['user_id'], (int) $me['user_id']);
 }
 if ($tab === 'my') {
