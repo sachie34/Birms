@@ -10,6 +10,7 @@ function run_b8(array $S, string $base): void
     if ($tmp === false) { record('B8-1', 'Test fixture for PDF upload created', false); return; }
     file_put_contents($tmp, "%PDF-1.4\n1 0 obj <<>> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
     $paidIssuanceId = null;
+    $signatureFixture = null;
 
     $cleanup = static function () use ($tmp): void {
         $fileRows = db_all("SELECT da.storage_path FROM document_attachments da
@@ -34,6 +35,9 @@ function run_b8(array $S, string $base): void
     try {
         // Remove residue from an interrupted run, scoped only to the reserved ZZ-B8 fixture names.
         $cleanup();
+        $signatureFixture = fx_upload_chairman_signature($adm);
+        record('B8-15', 'Admin uploads a valid private Chairman JPG before document issuance',
+            $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
 
         $visitorBefore = (int) db_val('SELECT COUNT(*) FROM visitor_log');
         $visitorRoute = $clk->get('/visitors/index.php');
@@ -120,7 +124,6 @@ function run_b8(array $S, string $base): void
             $freePost = $clk->post('/certificates/issue.php?request=' . $requestId, [
                 '_csrf' => $clk->token('/certificates/issue.php?request=' . $requestId),
                 'request_id' => (string) $requestId, 'or_number' => '',
-                'payment_method' => 'cash', 'signature_text' => 'ZZ B8 Typed Signatory',
             ]);
             if (preg_match('/[?&]id=(\\d+)/', (string) loc($freePost), $m)) { $freeIssuanceId = (int) $m[1]; }
         }
@@ -128,14 +131,15 @@ function run_b8(array $S, string $base): void
         // Staff is the role that issues and downloads certificates under the revised SRS.
         $pdf = $freeIssuanceId ? $clk->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
         $b85Ok = $freePost['status'] === 302 && $freeIssuance !== null
-            && (string) ($freeIssuance['signature_text'] ?? '') === 'ZZ B8 Typed Signatory'
+            && (string) ($freeIssuance['chairman_signature_path'] ?? '') === (string) ($signatureFixture['current'] ?? '')
+            && chairman_signature_path_to_absolute((string) ($freeIssuance['chairman_signature_path'] ?? '')) !== null
             && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-')
             && strtolower((string) ($pdf['headers']['content-type'] ?? '')) === 'application/pdf'
             && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf');
-        record('B8-5', 'Staff can retrieve the server-generated PDF for an issued certificate',
+        record('B8-5', 'Staff receives a server-generated PDF containing the per-issuance Chairman signature snapshot',
             $b85Ok,
             'issue=' . $freePost['status'] . '; saved=' . ($freeIssuance !== null ? 'yes' : 'no')
-            . '; signatory-snapshot=' . (string) ($freeIssuance['signature_text'] ?? 'missing')
+            . '; signature-snapshot=' . (string) ($freeIssuance['chairman_signature_path'] ?? 'missing')
             . '; pdf=' . $pdf['status'] . '; content-type=' . (string) ($pdf['headers']['content-type'] ?? 'none')
             . '; pdf-header=' . substr($pdf['body'], 0, 5));
 
@@ -150,7 +154,6 @@ function run_b8(array $S, string $base): void
         $paidPost = $clk->post('/certificates/issue.php?request=' . $paidRequestId, [
             '_csrf' => $clk->token('/certificates/issue.php?request=' . $paidRequestId),
             'request_id' => (string) $paidRequestId, 'or_number' => $receipt,
-            'payment_method' => 'bank_transfer', 'signature_text' => 'ZZ B8 Ledger Signatory',
         ]);
         if (preg_match('/[?&]id=(\\d+)/', (string) loc($paidPost), $m)) { $paidIssuanceId = (int) $m[1]; }
         else { $paidIssuanceId = null; }
@@ -259,6 +262,7 @@ function run_b8(array $S, string $base): void
         record('B8-14', 'Expected schema agrees with the migrated database', $schemaCode === 0, $schemaCode === 0 ? '' : implode(' | ', array_slice($schemaOutput, 0, 4)));
     } finally {
         $cleanup();
+        if (is_array($signatureFixture)) { fx_restore_chairman_signature($signatureFixture); }
         @unlink($tmp);
     }
 }
