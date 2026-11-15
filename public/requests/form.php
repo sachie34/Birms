@@ -206,6 +206,10 @@ if (is_post() && $resident !== null) {
                 [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
                  $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
+            db_exec("INSERT INTO request_status_history
+                     (service, reference_no, previous_status, new_status, changed_by, note, request_id)
+                     VALUES ('Documents', ?, NULL, 'Pending', ?, 'Request submitted through the office intake form.', ?)",
+                [$ref, audit_actor()['user_id'] ?? null, $new]);
             store_document_upload('request', $new, $file);
             audit('request_created', 'Requests', 'Success',
                 $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'] . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
