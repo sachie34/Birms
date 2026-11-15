@@ -153,7 +153,7 @@ function run_b8(array $S, string $base): void
         $receipt = 'ZZB8OR-' . substr(md5((string) microtime(true)), 0, 8);
         $paidPost = $clk->post('/certificates/issue.php?request=' . $paidRequestId, [
             '_csrf' => $clk->token('/certificates/issue.php?request=' . $paidRequestId),
-            'request_id' => (string) $paidRequestId, 'or_number' => $receipt,
+            'request_id' => (string) $paidRequestId, 'or_number' => $receipt, 'payment_method' => 'bank_transfer',
         ]);
         if (preg_match('/[?&]id=(\\d+)/', (string) loc($paidPost), $m)) { $paidIssuanceId = (int) $m[1]; }
         else { $paidIssuanceId = null; }
