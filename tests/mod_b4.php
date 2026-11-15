@@ -88,7 +88,7 @@ function run_b4(array $S, string $base): void
 
     // transitions
     $chairmanTry = $move($cap, $id1, 'Ready'); $a = $chairmanTry['status'] === 302 && $status($id1) === 'Pending'
-        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_move_refused' AND entity_id = ?", [$id1]) >= 1;
+        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_move_refused' AND remarks LIKE ?", [$row['reference_no'] . ': Pending -> Ready%']) >= 1;
     $clerkReview = $move($clk, $id1, 'Review');
     $clerkBlocked = $clerkReview['status'] === 403 && $status($id1) === 'Pending';
     $x2 = $move($sec, $id1, 'Review'); $b = $status($id1) === 'Review' && db_val('SELECT assigned_to FROM document_requests WHERE request_id = ?', [$id1]) !== null;
