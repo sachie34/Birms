@@ -51,8 +51,9 @@ if (is_post()) {
                 if ($x === null || $x['status'] !== 'Ready') { throw new RuntimeException('state'); }
                 $v = certificate_vars($x);
                 if (certificate_blockers($x, $v)) { throw new RuntimeException('blocked'); }
-                $n = db_exec("UPDATE document_requests SET status = 'Claimed', status_note = NULL WHERE request_id = ? AND status = 'Ready'", [$rid]);
+                $n = db_exec("UPDATE document_requests SET status = 'Claimed', msit_status = 'Released', status_note = NULL WHERE request_id = ? AND status = 'Ready'", [$rid]);
                 if ($n !== 1) { throw new RuntimeException('state'); }
+                $documentReference = (string) $x['reference_no'];
                 $y = (int) date('Y'); $ref = sprintf('CERT-%d-%04d', $y, next_counter('certificate', $y));
                 $x['reference_no'] = $ref; $v = certificate_vars($x);
                 $body = render_template((string) $x['template_body'], $v);
@@ -75,7 +76,11 @@ if (is_post()) {
                         [$iid, resident_name_natural($x), (float) $x['fee_amount'], $paymentMethod, $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
                 }
                 audit('certificate_issued', 'Certificates', 'Success', $ref . ' (' . $x['type_name'] . ') for ' . $x['last_name'] . ', ' . $x['first_name'] . '; fee ' . $x['fee_amount'] . ($or !== '' ? '; O.R. ' . $or : ''), 'issuance', $iid);
-                audit('request_status_changed', 'Requests', 'Success', $x['reference_no'] . ' -> Claimed via ' . $ref, 'request', $rid);
+                db_exec("INSERT INTO request_status_history
+                         (service, reference_no, previous_status, new_status, changed_by, note, request_id)
+                         VALUES ('Documents', ?, 'Approved', 'Released', ?, ?, ?)",
+                    [$documentReference, $actor['user_id'] ?? null, 'Certificate issued: ' . $ref, $rid]);
+                audit('request_status_changed', 'Requests', 'Success', $documentReference . ' -> Released via ' . $ref, 'request', $rid);
                 return $iid;
             });
             flash_add('success', 'Certificate issued.');
