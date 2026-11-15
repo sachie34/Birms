@@ -40,7 +40,7 @@ function v_or_number(string $s): bool { return preg_match('/^[A-Za-z0-9-]{1,30}$
 /** Request + resident + household + document type, for issuing. */
 function issuable_request(int $id): ?array
 {
-    return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.requirements_status, dr.requirements_note, dr.fee_rule_id,
+    return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.msit_status, dr.requirements_status, dr.requirements_note, dr.fee_rule_id,
             dr.fee_category_snapshot, dr.fee_tier_snapshot, dr.fee_quantity, dr.fee_unit_rate, dr.quoted_fee_amount,
             dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status, r.marital_status,
             r.archived_at AS resident_archived, COALESCE(r.address, h.street_address) AS street_address, pk.label AS purok, dt.name AS type_name,
