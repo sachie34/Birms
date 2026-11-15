@@ -60,6 +60,7 @@ $v = [
     'resident_type_id' => $existingTypeId !== '' ? $existingTypeId : (string) ($defaultTypeId === false ? '' : $defaultTypeId),
     'contact_number' => $ex['contact_number'] ?? '',
     'email_address' => $ex['email_address'] ?? '',
+    'photo_path' => $ex['photo_path'] ?? null,
     'notification_preference' => $ex['notification_preference'] ?? 'email',
     'confirm_dup' => false,
 ];
@@ -87,6 +88,9 @@ if (is_post()) {
     if ($v['resident_type_id'] === '' || !isset($types[(int) $v['resident_type_id']])) { $errors[] = 'Choose a valid resident type.'; }
     if ($v['contact_number'] !== '' && !v_phone($v['contact_number'])) { $errors[] = 'Mobile number is not valid (example: 09171234567).'; }
     if ($v['email_address'] !== '' && !v_email($v['email_address'])) { $errors[] = 'Enter a valid email address.'; }
+    $photoFile = $_FILES['photo'] ?? null;
+    $photoError = resident_photo_upload_error(is_array($photoFile) ? $photoFile : null);
+    if ($photoError !== null) { $errors[] = $photoError; }
     if (!in_array($v['notification_preference'], ['email','sms','both'], true)) { $errors[] = 'Choose Email, SMS or Both for notifications.'; }
     if (in_array($v['notification_preference'], ['sms','both'], true) && $v['contact_number'] === '') { $errors[] = 'Enter a mobile number for SMS notifications.'; }
     if (in_array($v['notification_preference'], ['email','both'], true) && $v['email_address'] === '') {
@@ -107,8 +111,19 @@ if (is_post()) {
         }
     }
 
+    $newPhotoPath = null;
+    if (!$errors && is_array($photoFile) && (int) ($photoFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        try {
+            $newPhotoPath = resident_photo_store($photoFile);
+        } catch (RuntimeException $photoException) {
+            $errors[] = $photoException->getMessage();
+        }
+    }
+
     if (!$errors) {
-        $savedId = db_transaction(function () use ($v, $ex): int {
+        $photoPath = $newPhotoPath ?? ($ex['photo_path'] ?? null);
+        try {
+        $savedId = db_transaction(function () use ($v, $ex, $photoPath): int {
             $statusId = (int) $v['resident_status_id'];
             $typeId = (int) $v['resident_type_id'];
             $statusLabel = (string) db_val('SELECT label FROM lookups WHERE lookup_id = ? AND list_key = \'resident_status\'', [$statusId]);
@@ -135,10 +150,10 @@ if (is_post()) {
             ];
             if ($ex === null) {
                 db_exec('INSERT INTO residents
-                    (resident_no,address,purok_id,resident_status_id,marital_status,resident_type_id,contact_number,email_address,notification_preference,
+                    (resident_no,address,purok_id,resident_status_id,marital_status,resident_type_id,contact_number,email_address,photo_path,notification_preference,
                      last_name,first_name,middle_name,suffix,birthdate,sex,civil_status,category_id,employment_status_id,voter_status,residency_status,
                      household_id,is_household_head,created_by)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,NULL,0,?)',
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,0,?)',
                     array_merge($common, [audit_actor()['user_id'] ?? null]));
                 $rid = (int) db()->lastInsertId();
                 audit('resident_created', 'Residents', 'Success', 'Registered ' . $residentNo . ': ' . $v['last_name'] . ', ' . $v['first_name'], 'resident', $rid);
@@ -148,7 +163,7 @@ if (is_post()) {
             $rid = (int) $ex['resident_id'];
             db_exec('UPDATE residents SET
                 resident_no=?, address=?, purok_id=?, resident_status_id=?, marital_status=?, resident_type_id=?,
-                contact_number=?, email_address=?, notification_preference=?,
+                contact_number=?, email_address=?, photo_path=?, notification_preference=?,
                 last_name=?, first_name=?, middle_name=?, suffix=?, birthdate=?, sex=?, civil_status=?,
                 category_id=?, employment_status_id=?, voter_status=?, residency_status=?
                 WHERE resident_id=?',
@@ -168,8 +183,16 @@ if (is_post()) {
             }
             return $rid;
         });
+        if ($newPhotoPath !== null && !empty($ex['photo_path'])) {
+            resident_photo_delete((string) $ex['photo_path']);
+        }
         flash_add('success', $ex ? 'Resident record updated.' : 'Resident registered.');
         redirect('residents/view.php', ['id' => $savedId]);
+        } catch (Throwable $saveException) {
+            if ($newPhotoPath !== null) { resident_photo_delete($newPhotoPath); }
+            error_log('BIRMS resident save failed: ' . $saveException->getMessage());
+            $errors[] = 'The resident record could not be saved. Check the entered information and try again.';
+        }
     }
     audit_best_effort('resident_rejected', 'Residents', 'Failed', 'Validation failed (' . count($errors) . ' problem(s))');
 }
@@ -180,7 +203,7 @@ page_head($title, 'Maintain the resident\'s individual address, Purok, status an
 echo errors_box($errors);
 $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id'] : ''));
 ?>
-<form method="post" action="<?= e($action) ?>" class="needs-validation" novalidate autocomplete="off"><?= csrf_field() ?>
+<form method="post" action="<?= e($action) ?>" class="needs-validation" novalidate autocomplete="off" enctype="multipart/form-data"><?= csrf_field() ?>
 <div class="row g-3">
   <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Personal information</h2></div><div class="card-body-b"><div class="row">
     <?php if ($ex): ?><div class="col-12 mb-3"><span class="text-muted small">Resident ID</span><div class="fw-semibold"><?= e((string) $ex['resident_no']) ?></div></div><?php endif; ?>
@@ -201,6 +224,11 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
   <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Contact and notifications</h2></div><div class="card-body-b"><div class="row">
     <?= f_text('contact_number', 'Mobile number', (string) $v['contact_number'], ['maxlength' => 20, 'placeholder' => '09171234567', 'col' => 'col-12']) ?>
     <?= f_text('email_address', 'Email address', (string) $v['email_address'], ['type' => 'email', 'maxlength' => 100, 'placeholder' => 'resident@example.com', 'col' => 'col-12']) ?>
+    <div class="col-12">
+      <label class="form-label" for="photo">Resident photo (JPG or PNG, maximum 5 MB)</label>
+      <input class="form-control" type="file" id="photo" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+      <?php if ($ex && !empty($ex['photo_path'])): ?><div class="mt-2"><img src="<?= e(base_url('residents/photo.php?id=' . (int) $ex['resident_id'])) ?>" alt="Current resident photo" width="112" height="112" class="rounded border" style="object-fit:cover"><div class="form-text">Choose a new image to replace the current photo.</div></div><?php endif; ?>
+    </div>
     <?= f_select('notification_preference', 'Notification channel', ['email'=>'Email','sms'=>'SMS','both'=>'Both'], (string) $v['notification_preference'], ['required' => true, 'col' => 'col-12', 'help' => 'Email is the default. SMS is optional and requires a mobile number.']) ?>
   </div></div></div></div>
 </div>
