@@ -42,7 +42,7 @@ function issuable_request(int $id): ?array
 {
     return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.requirements_status, dr.requirements_note, dr.fee_rule_id,
             dr.fee_category_snapshot, dr.fee_tier_snapshot, dr.fee_quantity, dr.fee_unit_rate, dr.quoted_fee_amount,
-            dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status,
+            dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status, r.marital_status,
             r.archived_at AS resident_archived, COALESCE(r.address, h.street_address) AS street_address, pk.label AS purok, dt.name AS type_name,
             COALESCE(dr.quoted_fee_amount, dt.fee_amount) AS fee_amount, dt.template_body
         FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id
