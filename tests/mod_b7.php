@@ -61,9 +61,9 @@ function run_b7(array $S, string $base): void
     $purokId = (int) db()->lastInsertId();
 
     $stamp = date('ymdHis') . random_int(10, 99);
-    $houseCode = 'ZB7H' . $stamp;
-    db_exec('INSERT INTO households (household_code, purok_id, street_address) VALUES (?, ?, ?)', [$houseCode, $purokId, 'ZZ B7 Test Address']);
-    $houseId = (int) db()->lastInsertId();
+    $residentNo = 'RES-ZB7-' . $stamp;
+    $residentStatusId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active' LIMIT 1");
+    $residentTypeId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None' LIMIT 1");
 
     $baselineDemo = report_demographics();
     $baselineMonthIssuance = report_issuances($month);
@@ -74,9 +74,12 @@ function run_b7(array $S, string $base): void
         if (age_on('1990-01-01') >= $lo && age_on('1990-01-01') <= $hi) { $ageLabel = $label; break; }
     }
 
-    db_exec("INSERT INTO residents (household_id, last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status, employment_status_id)
-             VALUES (?, 'ZZB7Report', 'ReportTest', '1990-01-01', 'Male', 'Single', 'Active', 'Registered', ?)",
-        [$houseId, $employmentId]);
+    db_exec("INSERT INTO residents
+             (resident_no, address, purok_id, resident_status_id, resident_type_id, marital_status,
+              household_id, last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status, employment_status_id)
+             VALUES (?, 'ZZ B7 Test Address', ?, ?, ?, 'Single', NULL,
+                     'ZZB7Report', 'ReportTest', '1990-01-01', 'Male', 'Single', 'Active', 'Registered', ?)",
+        [$residentNo, $purokId, $residentStatusId, $residentTypeId, $employmentId]);
     $residentId = (int) db()->lastInsertId();
 
     $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance' LIMIT 1");
