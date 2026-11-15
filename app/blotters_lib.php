@@ -2,7 +2,8 @@
 /** Blotter rules: statuses, who may move a case, hearing rules, name matching for the look-up, summons wording checks. */
 declare(strict_types=1);
 
-const BLOTTER_STATUSES = ['Pending', 'Active', 'Scheduled', 'Resolved'];
+const BLOTTER_STATUSES = ['Pending', 'Active', 'Scheduled', 'Resolved']; // retained for hearing workflow compatibility
+const MSIT_BLOTTER_STATUSES = ['Ongoing', 'Unresolved', 'Resolved', 'Dismissed', 'Archived'];
 const HEARING_OUTCOMES = ['Held', 'Postponed', 'Cancelled'];
 /** current status => [new status => permission]. 'Scheduled' is never set by hand: scheduling a hearing sets it and recording the last open hearing clears it. */
 const BLOTTER_MOVES = [
@@ -24,8 +25,72 @@ function new_case_no(): string
     $y = (int) date('Y');
     return sprintf('BLT-%d-%04d', $y, next_counter('blotter', $y));
 }
-/** A case can be edited or get new parties and hearings only while it is neither resolved nor archived. */
-function case_is_open(array $c): bool { return $c['status'] !== 'Resolved' && $c['archived_at'] === null; }
+/** SRS status transitions. Hearing scheduling is tracked separately and never changes the five-state case workflow. */
+const MSIT_BLOTTER_MOVES = [
+    'Ongoing' => ['Unresolved' => 'blotters.edit', 'Resolved' => 'blotters.edit', 'Dismissed' => 'blotters.edit'],
+    'Unresolved' => ['Ongoing' => 'blotters.edit', 'Resolved' => 'blotters.edit', 'Dismissed' => 'blotters.edit'],
+    'Resolved' => ['Archived' => 'blotters.archive'],
+    'Dismissed' => ['Archived' => 'blotters.archive'],
+];
+
+function blotter_srs_allowed_moves(string $status): array
+{
+    $out = [];
+    foreach (MSIT_BLOTTER_MOVES[$status] ?? [] as $to => $permission) {
+        if (can($permission)) { $out[] = $to; }
+    }
+    return $out;
+}
+
+/** Change the authoritative SRS status and write both the shared history and the audit event atomically. */
+function blotter_srs_change_status(int $blotterId, string $to, string $note = ''): void
+{
+    if (!in_array($to, MSIT_BLOTTER_STATUSES, true)) {
+        throw new InvalidArgumentException('Choose a valid MSIT case status.');
+    }
+    db_transaction(function () use ($blotterId, $to, $note): void {
+        $case = db_one('SELECT blotter_id, case_no, msit_status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE', [$blotterId]);
+        if ($case === null) { throw new RuntimeException('That case was not found.'); }
+        $from = (string) ($case['msit_status'] ?? 'Ongoing');
+        $permission = MSIT_BLOTTER_MOVES[$from][$to] ?? null;
+        if ($permission === null) { throw new InvalidArgumentException('A ' . $from . ' case cannot move to ' . $to . '.'); }
+        if (!can($permission)) { throw new DomainException('Your role cannot make this case-status change.'); }
+        if (in_array($to, ['Resolved', 'Dismissed'], true) && !v_len($note, 3, 500)) {
+            throw new InvalidArgumentException('Enter a reason or outcome (3-500 characters).');
+        }
+        if ($to === 'Archived' && $case['archived_at'] !== null) {
+            throw new InvalidArgumentException('This case is already archived.');
+        }
+        $archiveAt = $to === 'Archived' ? 'NOW()' : 'NULL';
+        $archivedFrom = $to === 'Archived' ? $from : null;
+        $changed = db_exec(
+            'UPDATE blotters
+             SET msit_status = ?, archived_at = ' . $archiveAt . ', archived_from_status = ?
+             WHERE blotter_id = ? AND msit_status = ?',
+            [$to, $archivedFrom, $blotterId, $from]
+        );
+        if ($changed !== 1) { throw new RuntimeException('The case changed before this action completed. Refresh and try again.'); }
+        $actorId = audit_actor()['user_id'] ?? null;
+        db_exec(
+            "INSERT INTO request_status_history
+             (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
+             VALUES ('Blotter', ?, ?, ?, ?, ?, ?)",
+            [$case['case_no'], $from, $to, $actorId, $note !== '' ? $note : null, $blotterId]
+        );
+        audit('blotter_srs_status_changed', 'Blotter', 'Success',
+            $case['case_no'] . ': ' . $from . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''),
+            'blotter', $blotterId);
+    });
+}
+
+/** A case stays editable only before either SRS final outcome/archive or the legacy resolved state. */
+function case_is_open(array $c): bool
+{
+    $srs = (string) ($c['msit_status'] ?? 'Ongoing');
+    return !in_array($srs, ['Resolved', 'Dismissed', 'Archived'], true)
+        && (string) ($c['status'] ?? '') !== 'Resolved'
+        && ($c['archived_at'] ?? null) === null;
+}
 
 function case_parties(int $caseId): array
 {
