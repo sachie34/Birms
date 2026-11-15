@@ -111,7 +111,8 @@ function run_b3(array $S, string $base): void
             $b34Ok,
             'POST=' . $created['status'] . '; location=' . (string) ($created['location'] ?? '')
             . '; resident=' . ($resident === null ? 'not saved' : (string) $resident['resident_no'])
-            . '; response=' . substr(trim(strip_tags((string) $created['body'])), 0, 500)
+            . '; response=' . substr(trim(strip_tags((string) $created['body'])), 0, 1200)
+            . '; validation=' . (preg_match('/alert-danger[^>]*>(.*?)<\\/div>/s', (string) $created['body'], $errMatch) ? substr(trim(strip_tags($errMatch[1])), 0, 1200) : 'no alert-danger')
             . '; profile=' . $profile['status']);
 
         $duplicateRejected = $create($clk, ['first_name' => 'First']);
