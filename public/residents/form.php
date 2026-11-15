@@ -143,7 +143,7 @@ if (is_post()) {
             $common = [
                 $residentNo, $v['address'], (int) $v['purok_id'], $statusId, $v['marital_status'], $typeId,
                 $v['contact_number'] !== '' ? preg_replace('/[\s-]/', '', $v['contact_number']) : null,
-                $v['email_address'] !== '' ? strtolower($v['email_address']) : null, $v['notification_preference'],
+                $v['email_address'] !== '' ? strtolower($v['email_address']) : null, $photoPath, $v['notification_preference'],
                 $v['last_name'], $v['first_name'], $v['middle_name'] !== '' ? $v['middle_name'] : null,
                 $v['suffix'] !== '' ? $v['suffix'] : null, $v['birthdate'], $v['sex'], $v['marital_status'],
                 $legacyCategory ? (int) $legacyCategory : null, $employmentId, $legacyVoter, $legacyStatus,
@@ -227,7 +227,7 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
     <div class="col-12">
       <label class="form-label" for="photo">Resident photo (JPG or PNG, maximum 5 MB)</label>
       <input class="form-control" type="file" id="photo" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
-      <?php if ($ex && !empty($ex['photo_path'])): ?><div class="mt-2"><img src="<?= e(base_url('residents/photo.php?id=' . (int) $ex['resident_id'])) ?>" alt="Current resident photo" width="112" height="112" class="rounded border" style="object-fit:cover"><div class="form-text">Choose a new image to replace the current photo.</div></div><?php endif; ?>
+      <?php if ($ex && !empty($ex['photo_path'])): ?><div class="mt-2"><img src="<?= e(base_url('residents/photo.php?id=' . (int) $ex['resident_id'])) ?>" alt="Current resident photo" width="112" height="112" class="img-thumbnail"><div class="form-text">Choose a new image to replace the current photo.</div></div><?php endif; ?>
     </div>
     <?= f_select('notification_preference', 'Notification channel', ['email'=>'Email','sms'=>'SMS','both'=>'Both'], (string) $v['notification_preference'], ['required' => true, 'col' => 'col-12', 'help' => 'Email is the default. SMS is optional and requires a mobile number.']) ?>
   </div></div></div></div>
