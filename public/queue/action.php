@@ -15,7 +15,8 @@ try {
         $residentText = post_str('resident_id');
         $residentId = $residentText === '' ? null : (ctype_digit($residentText) && (int) $residentText > 0 ? (int) $residentText : -1);
         if ($residentId === -1) { throw new InvalidArgumentException('Enter a valid Resident ID or leave the field blank for a walk-in.'); }
-        $result = queue_issue_number($service, $residentId, post_str('reference_no'), 'staff');
+        $purpose = post_str('purpose');
+        $result = queue_issue_number($service, $residentId, post_str('reference_no'), 'staff', $purpose);
         flash_add('success', $service . ' queue number #' . $result['queue_number'] . ' issued.');
     } elseif ($do === 'call_next') {
         $service = post_str('service');
