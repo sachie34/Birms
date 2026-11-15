@@ -60,14 +60,22 @@ require_permission('blotters.archive');
 if ($do === 'archive') {
     if ($c['status'] !== 'Resolved' || $c['archived_at'] !== null) { $refuse('Only a resolved case can be archived.'); }
     db_transaction(function () use ($c): void {
-        db_exec('UPDATE blotters SET archived_at = NOW() WHERE blotter_id = ? AND archived_at IS NULL', [$c['blotter_id']]);
+        db_exec("UPDATE blotters
+                 SET archived_from_status = CASE WHEN msit_status IN ('Resolved','Dismissed') THEN msit_status ELSE 'Resolved' END,
+                     msit_status = 'Archived',
+                     archived_at = NOW()
+                 WHERE blotter_id = ? AND archived_at IS NULL", [$c['blotter_id']]);
         audit('blotter_archived', 'Blotter', 'Success', $c['case_no'] . ' archived', 'blotter', (int) $c['blotter_id']);
     });
     flash_add('success', 'Case archived.'); $back();
 }
 if ($c['archived_at'] === null) { $refuse('This case is not archived.'); }
 db_transaction(function () use ($c): void {
-    db_exec('UPDATE blotters SET archived_at = NULL WHERE blotter_id = ? AND archived_at IS NOT NULL', [$c['blotter_id']]);
-    audit('blotter_restored', 'Blotter', 'Success', $c['case_no'] . ' restored', 'blotter', (int) $c['blotter_id']);
+    db_exec("UPDATE blotters
+             SET msit_status = COALESCE(archived_from_status, 'Resolved'),
+                 archived_from_status = NULL,
+                 archived_at = NULL
+             WHERE blotter_id = ? AND archived_at IS NOT NULL", [$c['blotter_id']]);
+    audit('blotter_restored', 'Blotter', 'Success', $c['case_no'] . ' restored to ' . (string) ($c['archived_from_status'] ?? 'Resolved'), 'blotter', (int) $c['blotter_id']);
 });
 flash_add('success', 'Case restored.'); $back();
