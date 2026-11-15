@@ -74,17 +74,14 @@ function queue_enqueue_notifications(int $residentId, string $service, int $numb
     $email = trim((string) ($resident['email_address'] ?? ''));
     $mobile = trim((string) ($resident['contact_number'] ?? ''));
     $channels = match ($preference) {
-        'sms' => ['sms'],
-        'both' => ['email', 'sms'],
+        'sms' => $mobile !== '' ? ['sms'] : ['email'],
+        'both' => $mobile !== '' ? ['email', 'sms'] : ['email'],
         default => ['email'],
     };
-    foreach ($channels as $channel) {
+    if (in_array('email', $channels, true) && $email === '') { $channels = array_values(array_diff($channels, ['email'])); }
+    if (in_array('sms', $channels, true) && $mobile === '') { $channels = array_values(array_diff($channels, ['sms'])); }
+    foreach (array_unique($channels) as $channel) {
         $recipient = $channel === 'email' ? $email : $mobile;
-        // SMS-only residents fall back to email when a valid address exists.
-        if ($channel === 'sms' && $recipient === '' && $email !== '') {
-            $channel = 'email';
-            $recipient = $email;
-        }
         if ($recipient === '') { continue; }
         $subject = $channel === 'email' ? 'Barangay queue update' : null;
         db_exec(
@@ -130,6 +127,16 @@ function queue_call_next(string $service): ?array
             queue_enqueue_notifications((int) $next['resident_id'], $service, (int) $next['queue_number'], 'queue_called',
                 'Your queue number ' . (int) $next['queue_number'] . ' for ' . $service . ' is now being called. Please proceed to the counter.');
         }
+        $near = db_one(
+            'SELECT queue_number, resident_id FROM queue_entries
+             WHERE service = ? AND queue_date = ? AND status = \'Waiting\'
+             ORDER BY queue_number LIMIT 1',
+            [$service, $today]
+        );
+        if ($near !== null && !empty($near['resident_id'])) {
+            queue_enqueue_notifications((int) $near['resident_id'], $service, (int) $near['queue_number'], 'queue_near',
+                'Your queue number ' . (int) $near['queue_number'] . ' for ' . $service . ' is next after the number now being served. Please get ready.');
+        }
         return $next;
     });
 }
@@ -141,8 +148,9 @@ function queue_finish_entry(int $queueId, string $nextStatus): void
         throw new InvalidArgumentException('Invalid queue completion status.');
     }
     db_transaction(function () use ($queueId, $nextStatus): void {
-        $entry = db_one('SELECT queue_id, service, queue_number, status FROM queue_entries WHERE queue_id = ? FOR UPDATE', [$queueId]);
+        $entry = db_one('SELECT queue_id, service, queue_date, queue_number, status FROM queue_entries WHERE queue_id = ? FOR UPDATE', [$queueId]);
         if ($entry === null) { throw new RuntimeException('That queue entry was not found.'); }
+        if ((string) $entry['queue_date'] !== date('Y-m-d')) { throw new RuntimeException('Only today’s queue entries can be changed from this console.'); }
         $allowed = match ($nextStatus) {
             'Served' => ['Called'],
             'Skipped' => ['Waiting', 'Called'],
