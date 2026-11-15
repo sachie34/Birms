@@ -12,7 +12,7 @@ function run_b3(array $S, string $base): void
     $email = 'b3-resident@example.test';
     $createdIds = [];
 
-    db_exec("DELETE FROM residents WHERE last_name = 'ZZB3'");
+    db_exec("DELETE FROM residents WHERE last_name = 'ZZBThree'");
     db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order, is_active) VALUES ('purok', ?, 9991, 1)", [$purokLabel]);
     $purokId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
     $statuses = lookup_list('resident_status');
@@ -24,7 +24,7 @@ function run_b3(array $S, string $base): void
     $pwdId = (int) array_search('PWD', $types, true);
 
     $defaults = [
-        'last_name' => 'ZZB3',
+        'last_name' => 'ZZBThree',
         'first_name' => 'Resident',
         'middle_name' => 'MSIT',
         'suffix' => '',
@@ -41,7 +41,7 @@ function run_b3(array $S, string $base): void
     ];
     $mk = static fn(array $values = []): array => $values + $defaults;
     $create = static fn(Http $h, array $values = []) => post_as($h, '/residents/index.php', '/residents/form.php', $mk($values));
-    $count = static fn(): int => (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name = 'ZZB3'");
+    $count = static fn(): int => (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name = 'ZZBThree'");
 
     try {
         $routeChecks = [];
@@ -92,7 +92,7 @@ function run_b3(array $S, string $base): void
             !$badRows && $count() === $before, implode(', ', $badRows));
 
         $created = $create($clk, ['first_name' => 'First']);
-        $resident = db_one("SELECT * FROM residents WHERE last_name = 'ZZB3' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
+        $resident = db_one("SELECT * FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
         $residentId = (int) ($resident['resident_id'] ?? 0);
         if ($residentId > 0) { $createdIds[] = $residentId; }
         $profile = $residentId > 0 ? $clk->get('/residents/view.php?id=' . $residentId) : ['status' => 0, 'body' => ''];
@@ -117,12 +117,12 @@ function run_b3(array $S, string $base): void
 
         $duplicateRejected = $create($clk, ['first_name' => 'First']);
         $duplicateAllowed = $create($clk, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
-        $twin = db_one("SELECT resident_id FROM residents WHERE last_name = 'ZZB3' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
+        $twin = db_one("SELECT resident_id FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
         if ($twin !== null && (int) $twin['resident_id'] !== $residentId) { $createdIds[] = (int) $twin['resident_id']; }
         record('B3-5', 'Duplicate name and birthdate is warned about and only allowed after explicit confirmation',
             str_contains($duplicateRejected['body'], 'already exists')
             && $duplicateAllowed['status'] === 302
-            && (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name = 'ZZB3' AND first_name = 'First'") === 2);
+            && (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First'") === 2);
 
         $edit = post_as($sec, '/residents/view.php?id=' . $residentId, '/residents/form.php?id=' . $residentId,
             $mk([
@@ -150,13 +150,13 @@ function run_b3(array $S, string $base): void
 
         $searchById = $sec->get('/residents/index.php?q=' . urlencode((string) $resident['resident_no']));
         $searchByAddress = $sec->get('/residents/index.php?q=' . urlencode('789 Changed B3 Avenue'));
-        $filterPurok = $sec->get('/residents/index.php?purok=' . $purokId . '&q=ZZB3');
-        $filterStatus = $sec->get('/residents/index.php?status=Transferred&q=ZZB3');
-        $filterType = $sec->get('/residents/index.php?type=' . $pwdId . '&q=ZZB3');
+        $filterPurok = $sec->get('/residents/index.php?purok=' . $purokId . '&q=ZZBThree');
+        $filterStatus = $sec->get('/residents/index.php?status=Transferred&q=ZZBThree');
+        $filterType = $sec->get('/residents/index.php?type=' . $pwdId . '&q=ZZBThree');
         record('B3-7', 'Resident search and filters use Resident ID, individual address, Purok, revised resident status and resident type',
             str_contains($searchById['body'], (string) $resident['resident_no'])
             && str_contains($searchByAddress['body'], '789 Changed B3 Avenue')
-            && str_contains($filterPurok['body'], 'ZZB3')
+            && str_contains($filterPurok['body'], 'ZZBThree')
             && str_contains($filterStatus['body'], 'Transferred')
             && str_contains($filterType['body'], 'PWD'));
 
@@ -166,7 +166,7 @@ function run_b3(array $S, string $base): void
             ['id' => (string) $residentId, 'action' => 'archive']);
         $archivedAt = db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$residentId]);
         $clerkArchivedView = $clk->get('/residents/view.php?id=' . $residentId);
-        $secretaryArchivedList = $sec->get('/residents/index.php?q=ZZB3&show=archived');
+        $secretaryArchivedList = $sec->get('/residents/index.php?q=ZZBThree&show=archived');
         $secretaryRestore = post_as($sec, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'restore']);
         $stillArchived = db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$residentId]) !== null;
@@ -177,7 +177,7 @@ function run_b3(array $S, string $base): void
             && $archive['status'] === 302
             && $archivedAt !== null
             && $clerkArchivedView['status'] === 404
-            && str_contains($secretaryArchivedList['body'], 'ZZB3')
+            && str_contains($secretaryArchivedList['body'], 'ZZBThree')
             && $secretaryRestore['status'] === 403
             && $stillArchived
             && $adminRestore['status'] === 302
@@ -189,7 +189,7 @@ function run_b3(array $S, string $base): void
             $oldAction['status'] === 404);
 
         db_exec("UPDATE residents SET address = '=HYPERLINK(\"http://example.test\",\"resident\")' WHERE resident_id = ?", [$residentId]);
-        $csv = $sec->get('/residents/export.php?q=ZZB3');
+        $csv = $sec->get('/residents/export.php?q=ZZBThree');
         $csvContent = ltrim($csv['body'], "\xEF\xBB\xBF");
         $csvLines = preg_split('/\r?\n/', $csvContent) ?: [];
         $formula = false;
@@ -239,7 +239,7 @@ function run_b3(array $S, string $base): void
             db_exec('DELETE FROM notification_outbox WHERE resident_id IN (' . $marks . ')', $ids);
             db_exec('DELETE FROM residents WHERE resident_id IN (' . $marks . ')', $ids);
         }
-        db_exec("DELETE FROM residents WHERE last_name = 'ZZB3'");
+        db_exec("DELETE FROM residents WHERE last_name = 'ZZBThree'");
         db_exec("DELETE FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
     }
 }
