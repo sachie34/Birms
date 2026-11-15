@@ -1,5 +1,5 @@
 <?php
-/** B4 tests: visitor logbook, document requests, request tracker, SMS outbox and optional provider. */
+/** B4 tests: revised document requests, request tracker, SMS outbox and optional provider. */
 declare(strict_types=1);
 
 function run_b4(array $S, string $base): void
@@ -31,33 +31,38 @@ function run_b4(array $S, string $base): void
         ]);
     };
 
-    $bad = ''; foreach (['/visitors/index.php' => 'requests.view', '/requests/index.php' => 'requests.view', '/requests/form.php' => 'requests.add'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
-    record('B4-1', 'Visitor, tracker and request-form pages: every role gets exactly what the permission map says', $bad === '', $bad);
+    $bad = '';
+    foreach (['/requests/index.php' => 'requests.view', '/requests/form.php' => 'requests.add'] as $p => $perm) {
+        [$ok, $why] = rbac_page($S, $p, $perm);
+        if (!$ok) { $bad .= "$p: $why"; }
+    }
+    record('B4-1', 'Request tracker and request-form pages enforce their role permissions', $bad === '', $bad);
 
-    // visitors
-    $vb = (int) db_val('SELECT COUNT(*) FROM visitor_log');
-    $visit = fn(Http $h, array $o = []) => post_as($h, '/visitors/index.php', '/visitors/index.php', $o + ['visitor_name' => 'ZZTest Visitor', 'visited_at' => date('Y-m-d\TH:i'), 'purpose' => 'Needs a clearance', 'class_id' => '']);
-    $variants = ['empty name' => ['visitor_name' => ''], 'digits in name' => ['visitor_name' => 'Bob9'], 'bad time' => ['visited_at' => 'tomorrow'], 'future' => ['visited_at' => date('Y-m-d\TH:i', strtotime('+2 days'))],
-                 'over a year ago' => ['visited_at' => date('Y-m-d\TH:i', strtotime('-2 years'))], 'short purpose' => ['purpose' => 'x'], 'array' => ['purpose' => ['a']]];
-    $notRej = []; foreach ($variants as $n => $o) { $r = $visit($clk, $o); if ($r['status'] !== 200 || ($n !== 'array' && !str_contains($r['body'], 'alert-danger'))) { $notRej[] = $n; } }
-    $r = $visit($clk); $cr = $visit($cap); $nt = $clk->post('/visitors/index.php', ['visitor_name' => 'ZZTest NoToken', 'visited_at' => date('Y-m-d\TH:i'), 'purpose' => 'No token here']);
-    record('B4-2', 'Visitor log: 7 bad entries rejected; clerk saves a good one; captain (view only) refused; no-token refused', !$notRej && $r['status'] === 302 && $cr['status'] === 403 && $nt['status'] === 403 && (int) db_val('SELECT COUNT(*) FROM visitor_log') === $vb + 1, implode(',', $notRej));
-    $vid = (int) db_val("SELECT visit_id FROM visitor_log WHERE visitor_name = 'ZZTest Visitor' ORDER BY visit_id DESC LIMIT 1");
-    $l = $sec->get('/visitors/index.php?q=ZZTest+Vis');
-    record('B4-3', 'Visitor search finds the entry and offers "New request"', str_contains($l['body'], 'ZZTest Visitor') && str_contains($l['body'], 'requests/form.php?visit=' . $vid));
+    // The revised SRS retires the manual visitor logbook. Do not write new visitor rows.
+    $visitorCount = (int) db_val('SELECT COUNT(*) FROM visitor_log');
+    $retiredVisitor = $clk->get('/visitors/index.php');
+    $retiredVisitorPost = $clk->post('/visitors/index.php', ['visitor_name' => 'ZZTest Visitor', 'purpose' => 'Should not be stored']);
+    record('B4-2', 'Legacy visitor logbook redirects to service queue and cannot create visitor records',
+        $retiredVisitor['status'] === 302 && str_contains((string) $retiredVisitor['location'], 'queue/index.php')
+        && $retiredVisitorPost['status'] === 302
+        && (int) db_val('SELECT COUNT(*) FROM visitor_log') === $visitorCount);
+    $legacySearch = $sec->get('/visitors/index.php?q=ZZTest+Visitor');
+    record('B4-3', 'Legacy visitor search no longer exposes a visitor-logbook page',
+        $legacySearch['status'] === 302 && str_contains((string) $legacySearch['location'], 'queue/index.php'));
 
     // request filing
-    $fs = $clk->get('/requests/form.php?q=ZZTest4');
-    $pre = $clk->get('/requests/form.php?visit=' . $vid);
+    $fs = $clk->get('/requests/form.php?q=ZZTestFour');
     $roleForm = $clk->get('/requests/form.php?resident=' . $rita);
     record('B4-4a', 'Clerk sees disabled requirements-review controls on request intake', preg_match('~<select[^>]*name="requirements_status"[^>]*disabled~', $roleForm['body']) === 1 && preg_match('~<textarea[^>]*name="requirements_note"[^>]*disabled~', $roleForm['body']) === 1);
-    $b44Ok = str_contains($fs['body'], 'ZZTest4, Rita') && str_contains($fs['body'], 'resident=' . $rita) && !str_contains($fs['body'], 'ZZTest4, Gone') && str_contains($pre['body'], 'value="ZZTest Visitor"');
-    record('B4-4', 'Resident search lists active residents with a Select link and hides archived ones', $b44Ok,
-        'search=' . $fs['status'] . '; resident-name=' . (str_contains($fs['body'], 'ZZTest4, Rita') ? 'yes' : 'no')
+    $b44Ok = str_contains($fs['body'], 'ZZTestFour, Rita') && str_contains($fs['body'], 'resident=' . $rita)
+        && !str_contains($fs['body'], 'ZZTestFour, Gone') && str_contains($fs['body'], 'RES-2026-')
+        && str_contains($fs['body'], 'ZZ-B4 Test Street');
+    record('B4-4', 'Request intake searches active residents and shows Resident ID, individual address and Purok', $b44Ok,
+        'search=' . $fs['status'] . '; resident-name=' . (str_contains($fs['body'], 'ZZTestFour, Rita') ? 'yes' : 'no')
         . '; select-link=' . (str_contains($fs['body'], 'resident=' . $rita) ? 'yes' : 'no')
-        . '; archived-hidden=' . (!str_contains($fs['body'], 'ZZTest4, Gone') ? 'yes' : 'no')
-        . '; visit=' . $pre['status'] . '; visit-name=' . (str_contains($pre['body'], 'value="ZZTest Visitor"') ? 'yes' : 'no')
-        . '; search-excerpt=' . substr(trim(strip_tags((string) $fs['body'])), 0, 700));
+        . '; archived-hidden=' . (!str_contains($fs['body'], 'ZZTestFour, Gone') ? 'yes' : 'no')
+        . '; ID=' . (str_contains($fs['body'], 'RES-2026-') ? 'yes' : 'no')
+        . '; address=' . (str_contains($fs['body'], 'ZZ-B4 Test Street') ? 'yes' : 'no'));
     $r = $filed('ZZ Test purpose 1'); $id1 = $rid('ZZ Test purpose 1');
     $row = db_one('SELECT reference_no, status FROM document_requests WHERE request_id = ?', [$id1]);
     record('B4-5', 'A request is filed: reference like REQ-YYYY-NNNN, status Pending, audited', $r['status'] === 302 && $row !== null && preg_match('/^REQ-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && $row['status'] === 'Pending' && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_created' AND entity_id = ?", [$id1]) === 1);
@@ -225,10 +230,10 @@ function run_b4(array $S, string $base): void
     $pages = [$sec->get('/requests/view.php?id=' . $idx), $sec->get('/requests/index.php?q=ZZTest4')];
     record('B4-16', 'A script tag in the purpose is escaped (XSS)', !str_contains($pages[0]['body'], '<script>alert(1)</script>') && str_contains($pages[0]['body'], '&lt;script&gt;'));
     $nc = post_as($clk, '/requests/view.php?id=' . $idx, '/requests/action.php', []); // no id
-    $odd = [$sec->get('/requests/index.php?tab[]=x&q[]=y&page[]=2'), $sec->get('/requests/view.php?id[]=1'), $sec->get('/requests/view.php?id=99999999'), $sec->get('/requests/form.php?resident[]=1&visit[]=2&q[]=3'), $sec->post('/requests/action.php', ['_csrf' => $sec->token('/requests/index.php'), 'id' => ['1'], 'to' => ['Ready'], 'note' => ['x']]), $sec->get('/visitors/index.php?q[]=x&page[]=3&new[]=1'), $sec->get('/requests/index.php?page=-4&q=' . str_repeat('Z', 4000))];
+    $odd = [$sec->get('/requests/index.php?tab[]=x&q[]=y&page[]=2'), $sec->get('/requests/view.php?id[]=1'), $sec->get('/requests/view.php?id=99999999'), $sec->get('/requests/form.php?resident[]=1&q[]=3'), $sec->post('/requests/action.php', ['_csrf' => $sec->token('/requests/index.php'), 'id' => ['1'], 'to' => ['Ready'], 'note' => ['x']]), $sec->get('/visitors/index.php?q[]=x&page[]=3&new[]=1'), $sec->get('/requests/index.php?page=-4&q=' . str_repeat('Z', 4000))];
     $bad = []; foreach ($odd as $i => $o) { if ($o['status'] >= 500 || leaks($o)) { $bad[] = $i . ':' . $o['status']; } }
     record('B4-17', 'Array, oversized and unknown-id parameters never crash a request page', !$bad && $nc['status'] === 404, implode(',', $bad));
-    $need = ['visit_logged', 'visit_rejected', 'request_created', 'request_updated', 'request_status_changed', 'request_move_refused', 'request_rejected'];
+    $need = ['request_created', 'request_updated', 'request_status_changed', 'request_move_refused', 'request_rejected'];
     $miss = array_filter($need, fn($a) => (int) db_val('SELECT COUNT(*) FROM audit_log WHERE action = ?', [$a]) < 1);
     $rm = (string) db_val("SELECT remarks FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? ORDER BY audit_id LIMIT 1", [$id1]);
     record('B4-18', 'Every request action is audited, including the old and new status', !$miss && str_contains($rm, 'Pending -> Review'), implode(',', $miss));
