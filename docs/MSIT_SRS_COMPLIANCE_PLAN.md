@@ -172,3 +172,29 @@ Do not merge this branch to `main` or label the system MSIT-compliant until the 
 Pull request [#25 — Phase-based security hardening](https://github.com/sachie34/Birms/pull/25) is still open and is not part of `main`. Its head branch is `john/fix-clerk-global-search-privacy` at `067d3383c51776374b8cb20ef609d9635657c63a`. The branch contains six commits and compares as six commits ahead / one behind current `main`; it is diverged and GitHub currently reports it is not mergeable. Its latest observed workflow run completed successfully. The PR description records 43/43 security/authentication/audit checks and 189/189 module checks for its phase-4 validation, but these are the PR's recorded results, not a fresh run on this MSIT branch.
 
 The MSIT branch was started from the current `main` so it includes the latest merged baseline. It does **not** yet include the unmerged PR #25 commits. Before changing security-sensitive code or claiming those improvements are present, inspect the divergence and port or reconcile the privacy, rate-limit, runtime, concurrency and certificate-print safeguards with the later `main` changes. Do not merge the old PR blindly, do not weaken either side's fixes, and rerun the full CI suite after reconciliation.
+
+
+## 9. Implementation progress (2026-11-15)
+
+### Phase 0 — baseline and traceability
+- **Completed for the initial review:** created this dedicated working branch from current `main`; documented the controlling SRS, inspected the resident, request, blotter, role, certificate and migration baselines, and recorded known conflicts.
+- **Not completed:** exhaustive route-by-route review and an adviser-approved role policy.
+
+### Security migration preservation
+- Ported the two database migrations from open PR #25 into this branch as migrations `013_hearing_concurrency` and `014_rate_limits`, including down scripts. The expected schema snapshot now includes the unique hearing slot guard and rate-limit bucket table.
+- **Not yet ported:** the rate-limiting runtime helpers/endpoint hooks and PHP runtime-patch guard from PR #25. Do not claim those protections are active on this branch merely because the schema table exists. They still require careful reconciliation with the later `main` fixes and their tests.
+
+### Phase 1 — additive MSIT data foundation
+- Added migration `015_msit_srs_foundation` and a working-copy-only down script.
+- It adds individual resident address/Purok, resident number, revised status/type lookups, marital status, email/photo metadata and notification preference; backfills address/Purok from the old household relation; and preserves old household columns/rows.
+- It adds the revised document/blotter status columns without removing legacy columns; archives legacy Resolved blotters in the new status field while retaining the old status; and creates queue, venue/reservation, request-history, one-time verification challenge, and notification outbox tables.
+- Added `tests/mod_b13.php` for revised resident fields/defaults, unique Resident IDs, three independent queue number sequences, venue default mode, and allowed blotter statuses.
+- Updated `database/expected_schema.json` and added a CI step to compare the fully migrated database with that snapshot.
+- **Not complete:** no resident pages/import/export/certificates/reports have been switched to these fields yet; no staff queue UI, kiosk, QR flow, reservation conflict logic, email dispatcher, signature image upload/rendering, or revised role enforcement has been implemented. The new schema is groundwork only until those workflows are connected and tested.
+
+### Validation status
+- No successful CI result is claimed yet for this branch. The new schema-check step and B13 module tests must run on a pull-request CI job.
+- Existing working databases require a pre-migration duplicate-hearing check for migration 013. Inspect:
+  `SELECT blotter_id, scheduled_at, status, COUNT(*) AS total FROM hearings GROUP BY blotter_id, scheduled_at, status HAVING COUNT(*) > 1;`
+  Resolve any duplicates by human review before applying the migration; never delete historical hearings to force the migration through.
+- The application still uses old resident pages and old role names, so do not deploy this branch as an MSIT-compliant build yet.
