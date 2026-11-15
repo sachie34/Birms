@@ -2180,7 +2180,7 @@
                 "extra": ""
             },
             "attempt_count": {
-                "type": "tinyint unsigned",
+                "type": "tinyint(3) unsigned",
                 "nullable": false,
                 "default": "0",
                 "extra": ""
