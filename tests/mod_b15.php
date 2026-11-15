@@ -32,6 +32,7 @@ function run_b15(array $S, string $base): void
     );
     $residentId = (int) db()->lastInsertId();
     $adminId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_admin'");
+    $venueId = 0;
 
     try {
         $pageOk = true;
@@ -88,9 +89,8 @@ function run_b15(array $S, string $base): void
             && $rejected !== null && $rejected['previous_status'] === 'Pending' && $rejected['new_status'] === 'Rejected'
             && $approved !== null && $approved['previous_status'] === 'Pending' && $approved['new_status'] === 'Approved');
 
-        $start = date('H:i:s', strtotime('-2 minutes'));
-        $end = date('H:i:s', strtotime('+60 minutes'));
-        if ($end <= $start) { $end = '23:59:59'; }
+        $start = '00:00:00';
+        $end = '23:59:59';
         $activeReservation = venue_create_reservation($venueId, $residentId, 'Current active use', date('Y-m-d'), $start, $end, $adminId);
         venue_change_status((int) $activeReservation['reservation_id'], 'Approved');
         $venue = db_one('SELECT * FROM venues WHERE venue_id = ?', [$venueId]);
