@@ -8,7 +8,7 @@ $id = post_int('id'); $to = post_str('to'); $note = post_str('note');
 if ($id === null || !in_array($to, REQUEST_STATUSES, true)) { abort(404, 'Unknown action.'); }
 require_csrf();
 require_permission('requests.view');
-$r = db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.requirements_status, dr.assigned_to, dr.created_by, r.contact_number, dt.name AS type_name FROM document_requests dr
+$r = db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.msit_status, dr.requirements_status, dr.assigned_to, dr.created_by, r.contact_number, dt.name AS type_name FROM document_requests dr
               JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id WHERE dr.request_id = ?', [$id]);
 if ($r === null || !request_visible_to_current_user($r)) { abort(404, 'That request was not found.'); }
 $perm = REQUEST_TRANSITIONS[$r['status']][$to] ?? null;
@@ -29,15 +29,27 @@ if (str_len($note) > 255) { flash_add('danger', 'The note is too long.'); redire
 $smsId = null;
 $done = db_transaction(function () use ($r, $to, $note, $id, &$smsId): bool {
     $assign = ($to === 'Review' && $r['assigned_to'] === null) ? (audit_actor()['user_id'] ?? null) : $r['assigned_to'];
-    $sql = 'UPDATE document_requests SET status = ?, status_note = ?, assigned_to = ?';
+    $srsStatus = match ($to) {
+        'Pending', 'Review' => 'Pending',
+        'Ready' => 'Approved',
+        'Claimed' => 'Released',
+        'Rejected', 'Cancelled' => 'Rejected',
+        default => 'Pending',
+    };
+    $sql = 'UPDATE document_requests SET status = ?, msit_status = ?, status_note = ?, assigned_to = ?';
     // Intake cannot pre-complete requirements: starting formal review resets the checklist.
     if ($to === 'Review') { $sql .= ", requirements_status = 'Not checked', requirements_note = NULL"; }
     $sql .= ' WHERE request_id = ? AND status = ?';
     // Re-check requirements in the UPDATE itself so a concurrent requirements change cannot race a final decision.
     if (in_array($to, ['Ready', 'Rejected'], true)) { $sql .= " AND requirements_status = 'Complete'"; }
-    $n = db_exec($sql, [$to, $note !== '' ? $note : null, $assign, $id, $r['status']]);
+    $n = db_exec($sql, [$to, $srsStatus, $note !== '' ? $note : null, $assign, $id, $r['status']]);
     if ($n !== 1) { return false; }      // someone else moved it first
     audit('request_status_changed', 'Requests', 'Success', $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''), 'request', $id);
+    db_exec("INSERT INTO request_status_history
+        (service, reference_no, previous_status, new_status, changed_by, note, request_id)
+        VALUES ('Documents', ?, ?, ?, ?, ?, ?)",
+        [$r['reference_no'], (string) ($r['msit_status'] ?? 'Pending'), $srsStatus, audit_actor()['user_id'] ?? null,
+         'Internal workflow step: ' . $r['status'] . ' -> ' . $to . ($note !== '' ? ' — ' . $note : ''), $id]);
     if ($to === 'Ready') { $smsId = sms_log_ready($r); }
     return true;
 });
