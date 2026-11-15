@@ -64,7 +64,7 @@ function run_b4(array $S, string $base): void
     // request filing
     $fs = $clk->get('/requests/form.php?q=ZZTestFour');
     $roleForm = $clk->get('/requests/form.php?resident=' . $rita);
-    record('B4-4a', 'Clerk sees disabled requirements-review controls on request intake', preg_match('~<select[^>]*name="requirements_status"[^>]*disabled~', $roleForm['body']) === 1 && preg_match('~<textarea[^>]*name="requirements_note"[^>]*disabled~', $roleForm['body']) === 1);
+    record('B4-4a', 'Staff sees disabled requirements-review controls on request intake', preg_match('~<select[^>]*name="requirements_status"[^>]*disabled~', $roleForm['body']) === 1 && preg_match('~<textarea[^>]*name="requirements_note"[^>]*disabled~', $roleForm['body']) === 1);
     $b44Ok = str_contains($fs['body'], 'ZZTestFour, Rita') && str_contains($fs['body'], 'resident=' . $rita)
         && !str_contains($fs['body'], 'ZZTestFour, Gone') && str_contains($fs['body'], 'RES-B4-')
         && str_contains($fs['body'], 'ZZ-B4 Test Street');
@@ -87,7 +87,7 @@ function run_b4(array $S, string $base): void
     record('B4-7', 'A captain cannot file a request (403, nothing saved)', $r['status'] === 403 && !$rid('ZZ Test purpose cap'));
 
     // transitions
-    $x = $move($cap, $id1, 'Ready'); $a = $status($id1) === 'Pending';
+    $chairmanTry = $move($cap, $id1, 'Ready'); $a = $chairmanTry['status'] === 403 && $status($id1) === 'Pending';
     $clerkReview = $move($clk, $id1, 'Review');
     $clerkBlocked = $clerkReview['status'] === 403 && $status($id1) === 'Pending';
     $x2 = $move($sec, $id1, 'Review'); $b = $status($id1) === 'Review' && db_val('SELECT assigned_to FROM document_requests WHERE request_id = ?', [$id1]) !== null;
@@ -95,19 +95,19 @@ function run_b4(array $S, string $base): void
     $reviewStepOk = str_contains($reviewDetail['body'], 'Request progress') && str_contains($reviewDetail['body'], 'Secretary requirements review') && str_contains($reviewDetail['body'], 'aria-current="step"');
     $clerkRequirements = $completeRequirements($clk, $id1);
     $clerkCannotComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
-    $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 403 && $status($id1) === 'Review';
+    $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 302 && $status($id1) === 'Review';
     $adminQueue = $adm->get('/requests/index.php?tab=my'); $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
-    record('B4-8a', 'Only Secretary can start review; Clerk cannot forge requirements completion or approve',
+    record('B4-8a', 'Secretary starts review; Staff cannot forge requirements completion and cannot approve until the checklist is complete',
         $a && $clerkBlocked && $b && $clerkCannotComplete && $c && $reviewStepOk);
     record('B4-8c', 'Each role gets a role-labeled work queue containing the right request',
         str_contains($adminQueue['body'], 'Needs Action') && str_contains($adminQueue['body'], (string) $row['reference_no'])
-        && str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'Pending Final Approval')
-        && str_contains($clkQueue['body'], 'My Requests')
+        && str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'View Only')
+        && str_contains($clkQueue['body'], 'Needs Final Decision')
         && str_contains($secQueue['body'], (string) $row['reference_no'])
         && !str_contains($capQueue['body'], (string) $row['reference_no'])
         && str_contains($clkQueue['body'], (string) $row['reference_no']));
 
-    // A Clerk may not discover or change another user's request by swapping an ID or tab.
+    // Staff may not discover or change another user's unreviewed request by swapping an ID or tab.
     $foreignPurpose = 'ZZ Test foreign-owned request';
     $foreignCreate = post_as($sec, '/requests/form.php?resident=' . $rita, '/requests/form.php?resident=' . $rita, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => $foreignPurpose,
@@ -134,32 +134,34 @@ function run_b4(array $S, string $base): void
     $invalidRequirements = $incompleteNoNote['status'] === 200
         && str_contains($incompleteNoNote['body'], 'Explain which requirements are missing')
         && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Not checked';
-    $notComplete = $move($cap, $id1, 'Ready');
-    $blockedPage = $cap->get('/requests/view.php?id=' . $id1);
+    $notComplete = $move($clk, $id1, 'Ready');
+    $blockedPage = $clk->get('/requests/view.php?id=' . $id1);
     $blocked = $status($id1) === 'Review' && $notComplete['status'] === 302
         && str_contains($blockedPage['body'], 'requirements review');
     $markedComplete = $completeRequirements($sec, $id1);
     $savedComplete = db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1]) === 'Complete';
     $reviewedDetail = $sec->get('/requests/view.php?id=' . $id1);
-    record('B4-8e', 'Progress tracker advances to final decision when Secretary completes requirements', str_contains($reviewedDetail['body'], 'Captain/Administrator final decision') && str_contains($reviewedDetail['body'], 'aria-current="step"'));
+    record('B4-8e', 'Progress tracker advances to final decision when Secretary completes requirements', str_contains($reviewedDetail['body'], 'Staff final decision') && str_contains($reviewedDetail['body'], 'aria-current="step"'));
     $secQueueAfterReview = $sec->get('/requests/index.php?tab=my');
     $capQueueAfterReview = $cap->get('/requests/index.php?tab=my');
+    $staffQueueAfterReview = $clk->get('/requests/index.php?tab=my');
     record('B4-8d', 'Complete requirements removes request from Secretary queue and moves it to final approver queue',
         !str_contains($secQueueAfterReview['body'], (string) $row['reference_no'])
+        && str_contains($staffQueueAfterReview['body'], (string) $row['reference_no'])
         && str_contains($capQueueAfterReview['body'], (string) $row['reference_no']));
     $secretaryTry = $move($sec, $id1, 'Ready');
     $secretaryDenied = $secretaryTry['status'] === 403 && $status($id1) === 'Review';
-    $x4 = $move($cap, $id1, 'Ready'); $d = $status($id1) === 'Ready';
+    $x4 = $move($clk, $id1, 'Ready'); $d = $x4['status'] === 302 && $status($id1) === 'Ready';
     $readyDetail = $cap->get('/requests/view.php?id=' . $id1);
     record('B4-8f', 'Approved request shows certificate issuance as the current next step', str_contains($readyDetail['body'], 'Certificate issuance') && str_contains($readyDetail['body'], 'aria-current="step"'));
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
-    record('B4-8b', 'Incomplete requirements block approval; Secretary is denied final approval; Captain can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
+    record('B4-8b', 'Incomplete requirements block Staff approval; Secretary is denied final approval; Staff can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
     record('B4-9', 'With SMS provider disabled, approval records a log-only outbox entry: recipient, default text and reference', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
-    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($cap, $id2, 'Ready');
+    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($clk, $id2, 'Ready');
     $o2 = db_one('SELECT recipient_number, delivery FROM sms_outbox WHERE request_id = ?', [$id2]);
     $oldTxt = db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'"); db_exec("UPDATE settings SET setting_value = 'Custom: {{reference_no}} / {{document_name}}' WHERE setting_key = 'sms_ready_text'");
-    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($sec, $id3, 'Review'); $completeRequirements($sec, $id3); $move($cap, $id3, 'Ready');
+    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($sec, $id3, 'Review'); $completeRequirements($sec, $id3); $move($clk, $id3, 'Ready');
     $o3 = (string) db_val('SELECT message FROM sms_outbox WHERE request_id = ?', [$id3]); db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'sms_ready_text'", [$oldTxt]);
     record('B4-10', 'No phone number: logged as "No number"; a custom SMS text from Settings is used', $o2 !== null && $o2['recipient_number'] === null && $o2['delivery'] === 'No number' && str_starts_with($o3, 'Custom: REQ-') && str_contains($o3, 'Barangay Clearance'));
 
@@ -172,17 +174,17 @@ function run_b4(array $S, string $base): void
     $incompleteView = $cap->get('/requests/view.php?id=' . $id4);
     $hiddenFinalActions = !str_contains($incompleteView['body'], 'name="to" value="Rejected"')
         && !str_contains($incompleteView['body'], 'name="to" value="Ready"');
-    $rejectBeforeComplete = $move($cap, $id4, 'Rejected', 'Incomplete requirements');
+    $rejectBeforeComplete = $move($clk, $id4, 'Rejected', 'Incomplete requirements');
     $blockedUntilComplete = $rejectBeforeComplete['status'] === 302 && $status($id4) === 'Review';
     $markComplete = $completeRequirements($sec, $id4);
     $completed = $markComplete['status'] === 302
         && db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id4]) === 'Complete';
-    $noReason = $move($cap, $id4, 'Rejected', ''); $still = $status($id4) === 'Review';
+    $noReason = $move($clk, $id4, 'Rejected', ''); $still = $status($id4) === 'Review';
     $finalReason = 'Eligibility criteria not met';
-    $withReason = $move($cap, $id4, 'Rejected', $finalReason);
+    $withReason = $move($clk, $id4, 'Rejected', $finalReason);
     $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === $finalReason;
-    $after = $move($cap, $id4, 'Review'); $term = $status($id4) === 'Rejected';
-    record('B4-11', 'Final rejection requires a completed requirements review; Secretary cannot reject; Captain must give a reason; rejected requests cannot be reopened',
+    $after = $move($clk, $id4, 'Review'); $term = $status($id4) === 'Rejected';
+    record('B4-11', 'Final rejection requires completed requirements; Secretary cannot reject; Staff must give a reason; rejected requests cannot be reopened',
         $pendingReject['status'] === 302 && $pendingStill && $secretaryDenied && $hiddenFinalActions
         && $blockedUntilComplete && $completed && $still && $rejected && $term);
     $filed('ZZ Test purpose cancel', $rita); $id5 = $rid('ZZ Test purpose cancel');
@@ -190,15 +192,15 @@ function run_b4(array $S, string $base): void
     record('B4-12', 'Cancel: captain refused (403); clerk allowed', $capCancel['status'] === 403 && $clkCancel['status'] === 302 && $status($id5) === 'Cancelled');
 
     $t = $sec->get('/requests/index.php?tab=Ready'); $tc = $sec->get('/requests/index.php?tab=closed'); $ts = $sec->get('/requests/index.php?q=' . urlencode((string) $row['reference_no']));
-    $nReady = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE status = 'Ready'");
+    $nReady = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE msit_status = 'Approved'");
     $b413Ok = str_contains($t['body'], 'REQ-')
-        && str_contains($t['body'], 'Ready for Pickup <span class="badge text-bg-light">' . $nReady . '</span>')
+        && str_contains($t['body'], 'Approved <span class="badge text-bg-light">' . $nReady . '</span>')
         && str_contains($tc['body'], 'ZZTest4, Rita')
         && str_contains($ts['body'], (string) $row['reference_no'])
         && !str_contains($t['body'], 'ZZ Test purpose cancel');
     record('B4-13', 'Tracker tabs, counts and search match the data', $b413Ok,
-        'ready-status=' . $t['status'] . '; ready-count=' . $nReady
-        . '; ready-label=' . (str_contains($t['body'], 'Ready for Pickup <span class="badge text-bg-light">' . $nReady . '</span>') ? 'yes' : 'no')
+        'approved-status=' . $t['status'] . '; approved-count=' . $nReady
+        . '; approved-label=' . (str_contains($t['body'], 'Ready for Pickup <span class="badge text-bg-light">' . $nReady . '</span>') ? 'yes' : 'no')
         . '; closed-status=' . $tc['status'] . '; closed-resident=' . (str_contains($tc['body'], 'ZZTest4, Rita') ? 'yes' : 'no')
         . '; search-status=' . $ts['status'] . '; search-ref=' . (str_contains($ts['body'], (string) $row['reference_no']) ? 'yes' : 'no')
         . '; canceled-hidden=' . (!str_contains($t['body'], 'ZZ Test purpose cancel') ? 'yes' : 'no'));
@@ -230,10 +232,10 @@ function run_b4(array $S, string $base): void
         'fee_rule_id' => (string) ($reviewRow['fee_rule_id'] ?? ''), 'fee_quantity' => (string) ($reviewRow['fee_quantity'] ?? 1),
     ]);
     $afterChange = db_one('SELECT purpose, status, requirements_status, requirements_note FROM document_requests WHERE request_id = ?', [$idLock]);
-    $blockedStaleDecision = $move($cap, $idLock, 'Ready');
+    $blockedStaleDecision = $move($clk, $idLock, 'Ready');
     $staleStillReview = $status($idLock) === 'Review';
     $recomplete = $completeRequirements($sec, $idLock);
-    $readyAfterRecheck = $move($cap, $idLock, 'Ready');
+    $readyAfterRecheck = $move($clk, $idLock, 'Ready');
     record('B4-20', 'Review-only edits are role-protected and material changes reset requirements before final approval',
         $clerkEditReview['status'] === 403
         && !str_contains($clerkEditLink['body'], 'href="' . e(base_url('requests/form.php?id=' . $idLock)) . '"')
