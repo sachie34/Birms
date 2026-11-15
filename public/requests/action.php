@@ -19,7 +19,11 @@ $targetPermission = match ($to) {
     'Cancelled' => 'requests.edit',
     default => null,
 };
-if ($targetPermission !== null) { require_permission($targetPermission); }
+if ($targetPermission !== null && !can($targetPermission)) {
+    audit_best_effort('request_move_refused', 'Requests', 'Failed',
+        $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ' requires ' . $targetPermission);
+    require_permission($targetPermission);
+}
 $perm = REQUEST_TRANSITIONS[$r['status']][$to] ?? null;
 if ($perm === null) {
     audit_best_effort('request_move_refused', 'Requests', 'Failed', $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ' is not allowed');
