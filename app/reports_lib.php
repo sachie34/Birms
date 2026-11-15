@@ -71,8 +71,7 @@ function report_demographics(): array
                 COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) AS resident_status,
                 COALESCE(rt.label, oldcat.label, 'Not specified') AS resident_type
          FROM residents r
-         LEFT JOIN households h ON h.household_id = r.household_id
-         LEFT JOIN lookups pk ON pk.lookup_id = COALESCE(r.purok_id, h.purok_id) AND pk.list_key = 'purok'
+         LEFT JOIN lookups pk ON pk.lookup_id = r.purok_id AND pk.list_key = 'purok'
          LEFT JOIN lookups rs ON rs.lookup_id = r.resident_status_id AND rs.list_key = 'resident_status'
          LEFT JOIN lookups rt ON rt.lookup_id = r.resident_type_id AND rt.list_key = 'resident_type'
          LEFT JOIN lookups oldcat ON oldcat.lookup_id = r.category_id AND oldcat.list_key = 'resident_category'
