@@ -111,7 +111,7 @@ function run_b7(array $S, string $base): void
 
     record('B7-6', 'Blotter report aggregates real cases by period, current status, configured incident type and Purok',
         (int) $afterMonthBlotters['summary']['total'] === (int) $baselineMonthBlotters['summary']['total'] + 1
-        && (int) ($afterMonthBlotters['summary']['pending_count']) === (int) $baselineMonthBlotters['summary']['pending_count'] + 1
+        && (int) ($afterMonthBlotters['summary']['ongoing_count']) === (int) $baselineMonthBlotters['summary']['ongoing_count'] + 1
         && count(array_filter($afterMonthBlotters['by_type'], fn($r) => $r['incident_type'] === 'ZZ B7 Incident' && (int) $r['case_count'] >= 1)) === 1
         && count(array_filter($afterMonthBlotters['by_purok'], fn($r) => $r['purok'] === 'ZZ B7 Purok' && (int) $r['case_count'] >= 1)) === 1);
 
@@ -152,7 +152,7 @@ function run_b7(array $S, string $base): void
         && str_contains($badLegacyQuantity['body'], 'Quantity must be 1 when using the per-document fee')
         && (int) db_val('SELECT COUNT(*) FROM document_requests WHERE purpose = ?', [$badLegacyPurpose]) === 0;
 
-    $feeRuleResponse = post_as($sec, '/admin/settings.php', '/admin/settings.php', [
+    $feeRuleResponse = post_as($adm, '/admin/settings.php', '/admin/settings.php', [
         'do' => 'fee_rule_add', 'tab' => 'fee_matrix', 'type_id' => (string) $matrixTypeId,
         'fee_category' => 'ZZ B7 Fee Category', 'fee_tier' => 'ZZ B7 Fee Tier',
         'unit_rate' => '18.50', 'min_quantity' => '1', 'max_quantity' => '4',
@@ -196,9 +196,9 @@ function run_b7(array $S, string $base): void
         'requirements_status' => 'Complete', 'requirements_note' => '',
         'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
     ]);
-    $quoteReady = post_as($cap, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
+    $quoteReady = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
-    $quoteIssue = post_as($sec, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
+    $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
         'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
     ]);
     $quoteIssuance = db_one('SELECT issuance_id, fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, body_text FROM issuances WHERE request_id = ?', [$quoteRequestId]);
