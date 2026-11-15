@@ -19,11 +19,12 @@ function run_b5(array $S, string $base): void
         db_exec("INSERT INTO residents (household_id, last_name, first_name, middle_name, birthdate, sex, civil_status, archived_at) VALUES (?, 'ZZTest5', ?, 'Mid', ?, 'Male', 'Single', ?)", [$household ?? $hh, $first, $birth, $arch ? date('Y-m-d H:i:s') : null]);
         return (int) db()->lastInsertId();
     };
-    $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n): int {
+    $staffUserId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
+    $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n, $staffUserId): int {
         $n++;
         $requirementsStatus = $status === 'Ready' ? 'Complete' : 'Not checked';
-        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, msit_status, requirements_status, requested_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $status === 'Ready' ? 'Approved' : 'Pending', $requirementsStatus]);
+        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, msit_status, requirements_status, requested_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
+            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $status === 'Ready' ? 'Approved' : 'Pending', $requirementsStatus, $staffUserId ?: null]);
         return (int) db()->lastInsertId();
     };
     $issue = fn(Http $h, int $req, array $o = []) => post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req] + $o);
