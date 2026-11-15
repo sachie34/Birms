@@ -13,6 +13,7 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'residents', 'label' => 'Residents',            'icon' => 'bi-person-vcard', 'path' => 'residents/index.php', 'perm' => 'residents.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'requests',  'label' => 'Request Tracker',      'icon' => 'bi-inbox',        'path' => 'requests/index.php',  'perm' => 'requests.view',  'built' => true],
         ['group' => 'Workspace', 'key' => 'queue', 'label' => 'Service Queue', 'icon' => 'bi-ticket-perforated', 'path' => 'queue/index.php', 'perm' => 'queue.view', 'built' => true],
+        ['group' => 'Workspace', 'key' => 'venues', 'label' => 'Venue Reservations', 'icon' => 'bi-building', 'path' => 'venues/index.php', 'perm' => 'venues.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'certs',     'label' => 'Certificate Generation','icon' => 'bi-file-earmark-check', 'path' => 'certificates/issue.php', 'perm' => 'certificates.issue', 'built' => true],
         ['group' => 'Workspace', 'key' => 'history',   'label' => 'Issuance History',     'icon' => 'bi-clock-history','path' => 'certificates/history.php', 'perm' => 'certificates.history', 'built' => true],
         ['group' => 'Workspace', 'key' => 'blotters',  'label' => 'Blotter',              'icon' => 'bi-shield-exclamation', 'path' => 'blotters/index.php', 'perm' => 'blotters.view', 'built' => true],
