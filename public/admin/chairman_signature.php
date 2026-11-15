@@ -57,7 +57,7 @@ page_head('Chairman / Punong Barangay Signature', 'Admin uploads the official si
 echo errors_box($errors);
 if ($currentImage !== null) {
     echo '<div class="card-b mb-3"><div class="card-h"><h2>Current signature</h2><p>This image is used for new certificates that require the Chairman signature.</p></div><div class="card-body-b">'
-        . '<img src="' . e(base_url('admin/chairman_signature_image.php')) . '" alt="Current Chairman signature" style="max-width:320px;max-height:150px;object-fit:contain;background:#fff;border:1px solid #ccd3dc;padding:12px;border-radius:8px">'
+        . '<img class="chairman-signature-preview" src="' . e(base_url('admin/chairman_signature_image.php')) . '" alt="Current Chairman signature">'
         . '</div></div>';
 } else {
     echo '<div class="alert alert-warning">No valid Chairman signature image is configured. Certificate types marked as requiring the signature cannot be issued until Admin uploads one.</div>';
