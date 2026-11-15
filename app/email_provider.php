@@ -86,8 +86,9 @@ function email_send_notification(int $notificationId, ?callable $transport = nul
     $from = trim((string) ($cfg['from_email'] ?? ''));
     $fromName = preg_replace('/[\r\n]+/', ' ', (string) ($cfg['from_name'] ?? 'Barangay Office')) ?: 'Barangay Office';
     $subject = trim((string) $row['subject']);
+    $encodeHeader = static fn(string $value): string => function_exists('mb_encode_mimeheader') ? mb_encode_mimeheader($value, 'UTF-8', 'B') : $value;
     $headers = [
-        'From: ' . mb_encode_mimeheader($fromName, 'UTF-8', 'B') . ' <' . $from . '>',
+        'From: ' . $encodeHeader($fromName) . ' <' . $from . '>',
         'MIME-Version: 1.0',
         'Content-Type: text/plain; charset=UTF-8',
         'Content-Transfer-Encoding: 8bit',
@@ -96,7 +97,7 @@ function email_send_notification(int $notificationId, ?callable $transport = nul
     try {
         $ok = $transport !== null
             ? (bool) $transport((string) $row['recipient'], $subject, (string) $row['message'], $headers)
-            : mail((string) $row['recipient'], mb_encode_mimeheader($subject, 'UTF-8', 'B'), (string) $row['message'], implode("\r\n", $headers));
+            : mail((string) $row['recipient'], $encodeHeader($subject), (string) $row['message'], implode("\r\n", $headers));
         if ($ok) {
             db_exec("UPDATE notification_outbox SET delivery_status = 'sent', sent_at = NOW(), last_error = NULL WHERE notification_id = ? AND delivery_status = 'sending'", [$notificationId]);
             audit_best_effort('email_notification_sent', 'Notifications', 'Success', 'Email outbox #' . $notificationId . ' accepted by the configured mail transport.');
