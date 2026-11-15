@@ -57,13 +57,20 @@ if (is_post()) {
                 case 'doctype_save':
                     $id = post_int('id'); $dt = $id === null ? null : db_one('SELECT type_id, name FROM document_types WHERE type_id = ?', [$id]);
                     $fee = post_str('fee_amount'); $body = post_text('template_body');
+                    $requiresSignatureInput = post_str('requires_chairman_signature');
+                    $requiresSignature = $requiresSignatureInput === ''
+                        ? (int) db_val('SELECT requires_chairman_signature FROM document_types WHERE type_id = ?', [$id])
+                        : ($requiresSignatureInput === '1' ? 1 : 0);
                     if ($dt === null) { $errors[] = 'That document does not exist.'; }
                     if ($fee !== '' && !v_money($fee)) { $errors[] = 'Fee must be an amount like 50 or 50.00 (0 means free).'; }
                     if (str_len($body) > 4000) { $errors[] = 'Wording is limited to 4,000 characters.'; }
                     if ($unknown = template_unknown_tokens($body, TEMPLATE_TOKENS)) { $errors[] = 'Unknown placeholder(s): {{' . implode('}}, {{', $unknown) . '}}.'; }
                     if ($errors) { throw new RuntimeException('invalid'); }
-                    db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ? WHERE type_id = ?', [$fee === '' ? null : $fee, $body === '' ? null : $body, post_str('is_active') === '1' ? 1 : 0, $id]);
-                    audit('doctype_saved', 'Settings', 'Success', $dt['name'] . ': fee ' . ($fee === '' ? 'not set' : $fee) . ', wording ' . ($body === '' ? 'not set' : 'set'), 'document_type', (int) $id);
+                    db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ?, requires_chairman_signature = ? WHERE type_id = ?',
+                        [$fee === '' ? null : $fee, $body === '' ? null : $body, post_str('is_active') === '1' ? 1 : 0, $requiresSignature, $id]);
+                    audit('doctype_saved', 'Settings', 'Success',
+                        $dt['name'] . ': fee ' . ($fee === '' ? 'not set' : $fee) . ', wording ' . ($body === '' ? 'not set' : 'set')
+                        . ', Chairman signature ' . ($requiresSignature ? 'required' : 'not required'), 'document_type', (int) $id);
                     flash_add('success', 'Saved ' . $dt['name'] . '.');
                     break;
                 case 'fee_rule_add':
@@ -234,13 +241,14 @@ if ($tab === 'general') {
         card_end();
     }
 } elseif ($tab === 'documents') {
-    $types = db_all('SELECT type_id, name, fee_amount, template_body, is_active FROM document_types ORDER BY sort_order, name');
+    $types = db_all('SELECT type_id, name, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types ORDER BY sort_order, name');
     echo '<div class="alert alert-secondary">Placeholders for wording: ' . e('{{' . implode('}} {{', TEMPLATE_TOKENS) . '}}') . '. {{barangay}}, {{municipality}} and {{province}} insert only the name (for example Wawa). A document cannot be issued until its fee (0 means free) <strong>and</strong> wording are set.</div>';
     foreach ($types as $t) {
         card_start((string) $t['name'], 'Fee: ' . money($t['fee_amount']) . ' · Wording: ' . ($t['template_body'] === null ? 'not set' : 'set'), 'mb-3');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('doctype_save') . '<input type="hidden" name="id" value="' . (int) $t['type_id'] . '">';
         echo f_text('fee_amount', 'Fee (PHP)', $t['fee_amount'] === null ? '' : (string) $t['fee_amount'], ['maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Blank = not set yet. 0 = free.', 'disabled' => !$canEdit, 'col' => 'col-md-3']);
         echo f_select('is_active', 'Available', ['1' => 'Yes', '0' => 'No'], $t['is_active'] ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-3']);
+        echo f_select('requires_chairman_signature', 'Chairman signature required', ['1' => 'Yes — apply stored image', '0' => 'No — no Chairman signature needed'], (int) $t['requires_chairman_signature'] === 1 ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-6', 'help' => 'When Yes, certificate issuance is blocked until Admin uploads the current Chairman signature image.']);
         echo f_textarea('template_body', 'Official wording', (string) $t['template_body'], ['rows' => 5, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
         if (!$canEdit) { echo '</div></form>'; } else { echo '</div><button class="btn btn-primary" type="submit">Save</button></form>'; }
         card_end();
