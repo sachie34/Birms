@@ -11,11 +11,31 @@ function run_b14(array $S, string $base): void
     $adm = $S['admin'];
     $today = date('Y-m-d');
     $prefix = 'ZB14-';
+    $residentNo = 'RES-ZB14-TEST';
+    $purokLabel = 'ZZ Queue B14 Purok';
+    $residentId = null;
 
-    // Remove only test-owned queue rows. Daily counters intentionally remain monotonic.
+    // Remove only test-owned rows. Daily counters intentionally remain monotonic.
     db_exec("DELETE FROM queue_entries WHERE reference_no LIKE ?", [$prefix . '%']);
+    db_exec('DELETE FROM notification_outbox WHERE recipient = ?', ['queue-b14@example.test']);
+    db_exec("DELETE FROM residents WHERE resident_no = ?", [$residentNo]);
+    db_exec("DELETE FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
 
     try {
+        db_exec("INSERT INTO lookups (list_key, label, sort_order, is_active) VALUES ('purok', ?, 9996, 1)", [$purokLabel]);
+        $purokId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
+        $statusId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active'");
+        $typeId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None'");
+        db_exec(
+            "INSERT INTO residents
+             (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
+              contact_number, email_address, notification_preference, last_name, first_name,
+              birthdate, sex, civil_status, residency_status, voter_status)
+             VALUES (?, '14 Queue Test Address', ?, ?, 'Single', ?, '09171234567', 'queue-b14@example.test',
+                     'email', 'QueueTest', 'Resident', '1991-04-18', 'Female', 'Single', 'Active', 'Unverified')",
+            [$residentNo, $purokId, $statusId, $typeId]
+        );
+        $residentId = (int) db()->lastInsertId();
         $access = true;
         foreach (['admin' => $adm, 'captain' => $cap, 'secretary' => $sec, 'clerk' => $clk] as $role => $client) {
             $page = $client->get('/queue/index.php');
@@ -36,14 +56,16 @@ function run_b14(array $S, string $base): void
                 [$service, $today]
             ) ?? 0);
         }
-        $issue = static function (Http $client, string $service, string $reference) {
+        $issue = static function (Http $client, string $service, string $reference, ?int $resident = null) {
             return post_as($client, '/queue/index.php', '/queue/action.php', [
-                'do' => 'issue', 'service' => $service, 'resident_id' => '', 'reference_no' => $reference,
+                'do' => 'issue', 'service' => $service,
+                'resident_id' => $resident === null ? '' : (string) $resident,
+                'reference_no' => $reference,
             ]);
         };
         $issued = [
-            'Blotter-1' => $issue($clk, 'Blotter', $prefix . 'BLOTTER-1'),
-            'Blotter-2' => $issue($clk, 'Blotter', $prefix . 'BLOTTER-2'),
+            'Blotter-1' => $issue($clk, 'Blotter', $prefix . 'BLOTTER-1', $residentId),
+            'Blotter-2' => $issue($clk, 'Blotter', $prefix . 'BLOTTER-2', $residentId),
             'Documents' => $issue($clk, 'Documents', $prefix . 'DOCUMENTS'),
             'Venue' => $issue($clk, 'Venue', $prefix . 'VENUE'),
         ];
@@ -99,8 +121,20 @@ function run_b14(array $S, string $base): void
             && $status($prefix . 'DOCUMENTS') === 'Called'
             && $status($prefix . 'VENUE') === 'Called'
             && (int) db_val("SELECT called_by FROM queue_entries WHERE reference_no = ?", [$firstBlotter]) === (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
-        record('B14-04', 'Staff can call the next waiting number independently for each service and the system records who called it',
+        $firstBlotterNumber = (int) db_val('SELECT queue_number FROM queue_entries WHERE reference_no = ?', [$firstBlotter]);
+        $secondBlotterNumber = (int) db_val('SELECT queue_number FROM queue_entries WHERE reference_no = ?', [$secondBlotter]);
+        $issuedRef = 'Blotter-' . date('Ymd') . '-' . $firstBlotterNumber;
+        $calledRef = 'Blotter-' . date('Ymd') . '-' . $firstBlotterNumber;
+        $nearRef = 'Blotter-' . date('Ymd') . '-' . $secondBlotterNumber;
+        $issuedNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ? AND event_type = 'queue_issued' AND reference_no = ? AND channel = 'email' AND delivery_status = 'queued'", [$residentId, $issuedRef]);
+        record('B14-04', 'Staff can call the next number independently for each service and the system records who called it',
             $calledBlotter['status'] === 302 && $calledDocs['status'] === 302 && $calledVenue['status'] === 302 && $calledCorrect);
+        record('B14-09', 'Queue issue events use the resident default Email channel and remain queued when no email transport is configured',
+            $issuedNotice === 1);
+        $calledNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ? AND event_type = 'queue_called' AND reference_no = ? AND channel = 'email'", [$residentId, $calledRef]);
+        $nearNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ? AND event_type = 'queue_near' AND reference_no = ? AND channel = 'email'", [$residentId, $nearRef]);
+        record('B14-10', 'The called resident and the next resident are separately notified by the email outbox',
+            $calledNotice === 1 && $nearNotice === 1);
 
         $blockedSecondCall = $call('Blotter');
         $singleCurrentCall = $blockedSecondCall['status'] === 302
@@ -157,5 +191,11 @@ function run_b14(array $S, string $base): void
             $odd['status'] < 500 && !leaks($odd));
     } finally {
         db_exec('DELETE FROM queue_entries WHERE reference_no LIKE ?', [$prefix . '%']);
+        if ($residentId !== null) {
+            db_exec('DELETE FROM notification_outbox WHERE resident_id = ?', [$residentId]);
+            db_exec('DELETE FROM resident_verification_challenges WHERE resident_id = ?', [$residentId]);
+            db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
+        }
+        db_exec("DELETE FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
     }
 }
