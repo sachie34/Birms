@@ -39,16 +39,17 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 37, 'captain' => 11, 'secretary' => 22, 'clerk' => 16];
+$expect = ['admin' => 37, 'captain' => 11, 'secretary' => 18, 'clerk' => 16];
 $counts = array_map('count', permission_map());
-record('U1', 'Administrator has full module access; role counts match current MSIT map (37/11/22/16)', $counts === $expect, json_encode($counts));
+record('U1', 'Administrator has full module access; role counts match current MSIT map (37/11/18/16)', $counts === $expect, json_encode($counts));
 record('U2', 'Chairman is read-only; Secretary reviews and manages records; Staff approves requests, issues certificates and manages queues; Admin manages accounts and settings',
     !role_can('ghost', 'dashboard.view')
     && role_can('secretary', 'requests.review') && !role_can('secretary', 'requests.approve')
     && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
     && !role_can('clerk', 'settings.edit') && !role_can('clerk', 'users.manage')
     && role_can('clerk', 'queue.manage') && role_can('clerk', 'venues.approve')
-    && role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore')
+    && !role_can('secretary', 'residents.add') && !role_can('secretary', 'residents.edit')
+    && !role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore')
     && role_can('admin', 'residents.restore') && role_can('admin', 'settings.edit')
     && role_can('admin', 'users.manage') && !role_can('captain', 'requests.approve')
     && !role_can('captain', 'residents.edit') && !role_can('captain', 'queue.manage')
