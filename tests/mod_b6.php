@@ -63,7 +63,7 @@ function run_b6(array $S, string $base): void
     $e2 = post_as($sec, '/blotters/form.php?id=' . $A, '/blotters/form.php?id=' . $A, ['incident_date' => 'nope', 'incident_place' => 'x', 'purok_id' => '', 'narrative' => 'short']);
     record('B6-4', 'Editing: a clerk may not; the Secretary corrects details (audited); bad edits are refused; unknown or array ids never crash',
         $e0['status'] === 403 && $e1['status'] === 302 && db_val('SELECT incident_place FROM blotters WHERE blotter_id = ?', [$A]) === 'ZZ Test Corrected Place' && $status($A) === 'Pending' && $nPart($A) === 2
-        && $audit('blotter_updated') >= 1 && $e2['status'] === 200 && str_contains($e2['body'], 'alert-danger') && $cap->get('/blotters/form.php?id=' . $A)['status'] === 200
+        && $audit('blotter_updated') >= 1 && $e2['status'] === 200 && str_contains($e2['body'], 'alert-danger') && $cap->get('/blotters/form.php?id=' . $A)['status'] === 403
         && $sec->get('/blotters/form.php?id=99999999')['status'] === 404 && $sec->get('/blotters/form.php?id[]=1')['status'] < 500);
 
     /* ---- status moves ---- */
@@ -198,9 +198,9 @@ function run_b6(array $S, string $base): void
     $cnt = fn(int $h) => (int) db_val('SELECT summons_count FROM hearings WHERE hearing_id = ?', [$h]);
     db_exec("UPDATE hearings SET status = 'Held' WHERE hearing_id = ?", [$C2]);                       // keep C2 out of the way
     $s1 = $sumPage($sec, $C1);
-    $w0 = $saveW($cap, 'ZZ captain try'); $w0c = $saveW($clk, 'ZZ clerk try'); $w1 = $saveW($sec, 'Appear on {{hearing_date}} {{secret_code}}'); $wNow = db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
+    $w0 = $saveW($cap, 'ZZ captain try'); $w0c = $saveW($clk, 'ZZ clerk try'); $w1 = $saveW($adm, 'Appear on {{hearing_date}} {{secret_code}}'); $wNow = db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
     $wording = "You are summoned to appear at {{venue}} on {{hearing_date}} at {{hearing_time}} regarding case {{case_no}}.\nRespondent: {{respondent_names}}.\n<b>Bring a valid ID</b>";
-    $w2 = $saveW($sec, $wording);
+    $w2 = $saveW($adm, $wording);
     $sp0 = $audit('summons_printed');   // audit rows persist between runs, so count from here
     $countBeforeViews = $cnt($C1);
     $p1 = $sumPage($sec, $C1); $c1 = $cnt($C1); $p2 = $sumPage($cap, $C1); $p3 = $sumPage($clk, $C1); $c2 = $cnt($C1); $p4 = $sumPage($adm, $C1); $c3 = $cnt($C1);
@@ -220,8 +220,8 @@ function run_b6(array $S, string $base): void
     record('B6-16', 'Summons views never change print counts; only explicit print actions by authorized roles increment and audit them',
         $p1['status'] === 200 && str_contains($p1['body'], 'SUMMONS') && str_contains($p1['body'], $cNo) && str_contains($p1['body'], 'ZZ Test Hall') && str_contains($p1['body'], 'Zzresp Juliet') && str_contains($p1['body'], '&lt;b&gt;Bring a valid ID&lt;/b&gt;') && !str_contains($p1['body'], '<b>Bring')
         && !str_contains($p1['body'], '{{') && $c1 === $countBeforeViews && $c2 === $countBeforeViews && $c3 === $countBeforeViews
-        && $capPrint['status'] === 200 && str_contains($capPrint['body'], '"counted":false')
-        && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"counted":false')
+        && $capPrint['status'] === 403
+        && $clkPrint['status'] === 403
         && $secPrint['status'] === 200 && str_contains($secPrint['body'], '"counted":true')
         && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"counted":true')
         && $countAfterPrints === $countBeforeViews + 2 && $audit('summons_printed') === $sp0 + 2);
