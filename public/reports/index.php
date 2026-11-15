@@ -91,12 +91,30 @@ if ($isCsv) {
             $write(['Assigned to', $row['assigned_to'], (int) $row['request_count']]);
         }
         $write(['Note', 'Status reflects the saved current status when the report is generated.', '']);
+    } elseif ($type === 'queues') {
+        $s = $data['summary'];
+        $write(['Report', 'Queue utilization and waiting time']);
+        $write(['Report period', $range['label']]);
+        $write(['Metric', 'Count / duration']);
+        foreach ([
+            'Tickets issued' => 'total', 'Waiting' => 'waiting_count', 'Called' => 'called_count',
+            'Served' => 'served_count', 'Skipped' => 'skipped_count', 'Cancelled' => 'cancelled_count',
+        ] as $label => $key) { $write([$label, (int) $s[$key]]); }
+        $write(['Average waiting time (minutes)', $s['average_wait_seconds'] === null ? 'Not available' : number_format((float) $s['average_wait_seconds'] / 60, 1, '.', '')]);
+        $write([]);
+        $write(['Service', 'Tickets issued', 'Waiting', 'Called', 'Served', 'Skipped', 'Cancelled', 'Average wait (minutes)']);
+        foreach ($data['by_service'] as $row) {
+            $write([$row['service'], (int) $row['total'], (int) $row['waiting_count'], (int) $row['called_count'],
+                (int) $row['served_count'], (int) $row['skipped_count'], (int) $row['cancelled_count'],
+                $row['average_wait_seconds'] === null ? 'Not available' : number_format((float) $row['average_wait_seconds'] / 60, 1, '.', '')]);
+        }
     } elseif ($type === 'periodic') {
         $population = $data['population'];
         $issuance = $data['issuance'];
         $collections = $data['collections'];
         $requests = $data['requests'];
         $blotter = $data['blotter'];
+        $queues = $data['queues'];
         $write(['Section', 'Metric', 'Value']);
         $write(['Population', 'Current active resident snapshot (not historical population)', (int) $population['total']]);
         foreach ($population['purok'] as $purok => $count) { $write(['Population by Purok', $purok, (int) $count]); }
@@ -111,24 +129,29 @@ if ($isCsv) {
             $write(['Requests by current status', $status, (int) $requests['summary'][$key]]);
         }
         foreach ($requests['by_type'] as $row) { $write(['Requests by document type', $row['type_name'], (int) $row['request_count']]); }
-        $write(['Blotters', 'Non-archived incidents in selected period', (int) $blotter['summary']['total']]);
-        foreach (['Pending'=>'pending_count','Active'=>'active_count','Scheduled'=>'scheduled_count','Resolved'=>'resolved_count'] as $status => $key) {
+        $write(['Blotters', 'Total incidents in selected period', (int) $blotter['summary']['total']]);
+        foreach (['Ongoing'=>'ongoing_count','Unresolved'=>'unresolved_count','Resolved'=>'resolved_count','Dismissed'=>'dismissed_count','Archived'=>'archived_count'] as $status => $key) {
             $write(['Blotters by status', $status, (int) $blotter['summary'][$key]]);
         }
-        $write(['Blotters', 'Resolution rate (%)', number_format((float) $blotter['summary']['resolution_rate'], 1, '.', '')]);
+        $write(['Blotters', 'Resolution rate among non-archived cases (%)', number_format((float) $blotter['summary']['resolution_rate'], 1, '.', '')]);
         foreach ($blotter['by_type'] as $row) { $write(['Blotters by incident type', $row['incident_type'], (int) $row['case_count']]); }
         foreach ($blotter['by_purok'] as $row) { $write(['Blotters by Purok', $row['purok'], (int) $row['case_count']]); }
+        $write(['Queues', 'Total tickets issued', (int) $queues['summary']['total']]);
+        foreach (['Waiting'=>'waiting_count','Called'=>'called_count','Served'=>'served_count','Skipped'=>'skipped_count','Cancelled'=>'cancelled_count'] as $status => $key) {
+            $write(['Queue by status', $status, (int) $queues['summary'][$key]]);
+        }
+        $write(['Queues', 'Average wait in minutes', $queues['summary']['average_wait_seconds'] === null ? 'Not available' : number_format((float) $queues['summary']['average_wait_seconds'] / 60, 1, '.', '')]);
+        foreach ($queues['by_service'] as $row) { $write(['Queue by service', $row['service'], (int) $row['total']]); }
         $write(['Note', 'Request status counts are the current saved statuses at report time; official agency-specific templates remain pending approval.', '']);
     } else {
         $s = $data['summary'];
         $write(['Report period', $range['label']]);
         $write(['Section', 'Category', 'Count / rate']);
-        $write(['Cases', 'Total non-archived incidents', (int) $s['total']]);
-        $write(['Cases', 'Pending', (int) $s['pending_count']]);
-        $write(['Cases', 'Active', (int) $s['active_count']]);
-        $write(['Cases', 'Scheduled', (int) $s['scheduled_count']]);
-        $write(['Cases', 'Resolved', (int) $s['resolved_count']]);
-        $write(['Cases', 'Resolution rate (%)', number_format((float) $s['resolution_rate'], 1, '.', '')]);
+        $write(['Cases', 'Total incidents', (int) $s['total']]);
+        foreach (['Ongoing'=>'ongoing_count','Unresolved'=>'unresolved_count','Resolved'=>'resolved_count','Dismissed'=>'dismissed_count','Archived'=>'archived_count'] as $status => $key) {
+            $write(['Cases by MSIT status', $status, (int) $s[$key]]);
+        }
+        $write(['Cases', 'Resolution rate among non-archived cases (%)', number_format((float) $s['resolution_rate'], 1, '.', '')]);
         foreach ([
             'Incident type' => $data['by_type'], 'Purok' => $data['by_purok'], 'Status' => $data['by_status'],
         ] as $section => $rows) {
