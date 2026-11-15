@@ -59,7 +59,7 @@ function run_b3(array $S, string $base): void
 
         $before = $count();
         $denied = post_as($cap, '/residents/index.php', '/residents/form.php', $mk());
-        $noCsrf = $sec->post('/residents/form.php', $mk());
+        $noCsrf = $adm->post('/residents/form.php', $mk());
         record('B3-2', 'A role without resident-add permission and a request without CSRF cannot create a resident',
             $denied['status'] === 403 && $noCsrf['status'] === 403 && $count() === $before,
             'permission=' . $denied['status'] . '; CSRF=' . $noCsrf['status']);
@@ -83,7 +83,7 @@ function run_b3(array $S, string $base): void
         $badRows = [];
         foreach ($invalid as $label => $values) {
             $values['first_name'] = 'Invalid' . substr(hash('sha256', $label), 0, 6);
-            $response = $create($sec, $values);
+            $response = $create($adm, $values);
             if ($response['status'] !== 200 || !str_contains($response['body'], 'alert-danger')) {
                 $badRows[] = $label . '=' . $response['status'];
             }
@@ -91,7 +91,7 @@ function run_b3(array $S, string $base): void
         record('B3-3', 'Resident registration rejects invalid birthdate, contact, address, Purok, status, type, marital status and malformed values',
             !$badRows && $count() === $before, implode(', ', $badRows));
 
-        $created = $create($sec, ['first_name' => 'First']);
+        $created = $create($adm, ['first_name' => 'First']);
         $resident = db_one("SELECT * FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
         $residentId = (int) ($resident['resident_id'] ?? 0);
         if ($residentId > 0) { $createdIds[] = $residentId; }
@@ -107,7 +107,7 @@ function run_b3(array $S, string $base): void
             && str_contains($profile['body'], (string) $resident['resident_no'])
             && str_contains($profile['body'], '123 B3 Test Street')
             && !str_contains($profile['body'], 'Household members');
-        record('B3-4', 'Secretary can register a resident with direct Address and Purok, and BIRMS assigns a unique Resident ID with Email as the default notification channel',
+        record('B3-4', 'Admin registers a resident with direct Address and Purok, and BIRMS assigns a unique Resident ID with Email as the default notification channel',
             $b34Ok,
             'POST=' . $created['status'] . '; location=' . (string) ($created['location'] ?? '')
             . '; resident=' . ($resident === null ? 'not saved' : (string) $resident['resident_no'])
@@ -115,8 +115,8 @@ function run_b3(array $S, string $base): void
             . '; validation=' . (preg_match('/alert-danger[^>]*>(.*?)<\\/div>/s', (string) $created['body'], $errMatch) ? substr(trim(strip_tags($errMatch[1])), 0, 1200) : 'no alert-danger')
             . '; profile=' . $profile['status']);
 
-        $duplicateRejected = $create($sec, ['first_name' => 'First']);
-        $duplicateAllowed = $create($sec, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
+        $duplicateRejected = $create($adm, ['first_name' => 'First']);
+        $duplicateAllowed = $create($adm, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
         $twin = db_one("SELECT resident_id FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
         if ($twin !== null && (int) $twin['resident_id'] !== $residentId) { $createdIds[] = (int) $twin['resident_id']; }
         record('B3-5', 'Duplicate name and birthdate is warned about and only allowed after explicit confirmation',
@@ -124,7 +124,7 @@ function run_b3(array $S, string $base): void
             && $duplicateAllowed['status'] === 302
             && (int) db_val("SELECT COUNT(*) FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First'") === 2);
 
-        $edit = post_as($sec, '/residents/view.php?id=' . $residentId, '/residents/form.php?id=' . $residentId,
+        $edit = post_as($adm, '/residents/view.php?id=' . $residentId, '/residents/form.php?id=' . $residentId,
             $mk([
                 'first_name' => 'First',
                 'marital_status' => 'Married',
@@ -162,34 +162,34 @@ function run_b3(array $S, string $base): void
 
         $deniedArchive = post_as($clk, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'archive']);
-        $archive = post_as($sec, '/residents/view.php?id=' . $residentId, '/residents/action.php',
+        $archive = post_as($adm, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'archive']);
         $archivedAt = db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$residentId]);
         $clerkArchivedView = $clk->get('/residents/view.php?id=' . $residentId);
-        $secretaryArchivedList = $sec->get('/residents/index.php?q=ZZBThree&show=archived');
+        $adminArchivedList = $adm->get('/residents/index.php?q=ZZBThree&show=archived');
         $secretaryRestore = post_as($sec, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'restore']);
         $stillArchived = db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$residentId]) !== null;
         $adminRestore = post_as($adm, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'restore']);
-        record('B3-8', 'Residents are archived, not deleted; unauthorized archive/restore actions are denied and archived records remain available to authorized staff',
+        record('B3-8', 'Admin archives and restores resident records; other roles cannot perform directory write actions',
             $deniedArchive['status'] === 403
             && $archive['status'] === 302
             && $archivedAt !== null
             && $clerkArchivedView['status'] === 404
-            && str_contains($secretaryArchivedList['body'], 'ZZBThree')
+            && str_contains($adminArchivedList['body'], 'ZZBThree')
             && $secretaryRestore['status'] === 403
             && $stillArchived
             && $adminRestore['status'] === 302
             && db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$residentId]) === null);
 
-        $oldAction = post_as($sec, '/residents/view.php?id=' . $residentId, '/residents/action.php',
+        $oldAction = post_as($adm, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'set_relocated']);
         record('B3-9', 'Legacy Active/Relocated status toggles are no longer available; status is changed through the revised resident profile',
             $oldAction['status'] === 404);
 
         db_exec("UPDATE residents SET address = '=HYPERLINK(\"http://example.test\",\"resident\")' WHERE resident_id = ?", [$residentId]);
-        $csv = $sec->get('/residents/export.php?q=ZZBThree');
+        $csv = $adm->get('/residents/export.php?q=ZZBThree');
         $csvContent = ltrim($csv['body'], "\xEF\xBB\xBF");
         $csvLines = preg_split('/\r?\n/', $csvContent) ?: [];
         $formula = false;
@@ -207,10 +207,10 @@ function run_b3(array $S, string $base): void
             && $clerkExport['status'] === 403
             && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_exported'") >= 1);
 
-        $legacyHouseholds = $sec->get('/residents/households.php');
-        $legacyHouseholdEdit = $sec->get('/residents/household_edit.php');
-        $legacyImport = $sec->get('/residents/import.php');
-        $legacyTemplate = $sec->get('/residents/import_template.php');
+        $legacyHouseholds = $adm->get('/residents/households.php');
+        $legacyHouseholdEdit = $adm->get('/residents/household_edit.php');
+        $legacyImport = $adm->get('/residents/import.php');
+        $legacyTemplate = $adm->get('/residents/import_template.php');
         record('B3-11', 'Household grouping and the old household-based CSV importer are retired from resident navigation and direct routes',
             $legacyHouseholds['status'] === 302
             && $legacyHouseholdEdit['status'] === 302
