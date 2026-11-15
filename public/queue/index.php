@@ -45,8 +45,8 @@ foreach ($snapshots as $service => $snapshot) {
                 . '<button class="btn btn-primary" type="submit">Call next ' . e(strtolower($service)) . ' number</button></form>';
         } else {
             $calledId = (int) db_val(
-                'SELECT queue_id FROM queue_entries WHERE service = ? AND queue_date = CURDATE() AND status = \'Called\' LIMIT 1',
-                [$service]
+                'SELECT queue_id FROM queue_entries WHERE service = ? AND queue_date = ? AND status = \'Called\' LIMIT 1',
+                [$service, date('Y-m-d')]
             );
             echo '<div class="d-flex flex-wrap gap-2 mb-3">';
             echo '<form method="post" action="' . e(base_url('queue/action.php')) . '">' . csrf_field()
