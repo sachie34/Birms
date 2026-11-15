@@ -41,11 +41,11 @@ function run_b6(array $S, string $base): void
 
     /* ---- filing ---- */
     $n0 = $cases();
-    $r = $file($clk, ['narrative' => 'ZZ-B6 one: fence dispute between neighbours']); $A = $cid('one'); $aNo = $cno($A);
-    $file($clk, ['narrative' => 'ZZ-B6 two: noise complaint', 'c_name' => 'Zzcomp Charlie', 'r_name' => 'Zzresp Delta']); $B = $cid('two'); $bNo = $cno($B);
+    $r = $file($sec, ['narrative' => 'ZZ-B6 one: fence dispute between neighbours']); $A = $cid('one'); $aNo = $cno($A);
+    $file($sec, ['narrative' => 'ZZ-B6 two: noise complaint', 'c_name' => 'Zzcomp Charlie', 'r_name' => 'Zzresp Delta']); $B = $cid('two'); $bNo = $cno($B);
     $adminTry = $file($adm, ['narrative' => 'ZZ-B6 admin attempt']); $AdminCase = $cid('admin attempt');
     $parts = db_all('SELECT party_role FROM blotter_parties WHERE blotter_id = ? ORDER BY party_id', [$A]);
-    record('B6-2', 'A clerk files a case: numbered BLT-YYYY-NNNN, Pending, both parties saved, audited; numbers are unique and sequential; the Administrator also files a case',
+    record('B6-2', 'Secretary files a case: numbered BLT-YYYY-NNNN, Pending, both parties saved, audited; numbers are unique and sequential; the Administrator can also file',
         $r['status'] === 302 && preg_match('/^BLT-' . date('Y') . '-\d{4}$/', $aNo) === 1 && $status($A) === 'Pending' && array_column($parts, 'party_role') === ['Complainant', 'Respondent']
         && $audit('blotter_filed') >= 3 && (int) substr($bNo, -4) === (int) substr($aNo, -4) + 1 && $AdminCase > 0 && $adminTry['status'] === 302 && $status($AdminCase) === 'Pending' && $cases() === $n0 + 3);
 
@@ -54,7 +54,7 @@ function run_b6(array $S, string $base): void
                  'age 150' => ['c_age' => '150'], 'age abc' => ['c_age' => 'abc'], 'bad phone' => ['c_contact' => '-------'], 'respondent age only' => ['r_name' => '', 'r_age' => '30', 'r_address' => '', 'r_contact' => ''],
                  'unknown purok' => ['purok_id' => '99999999'], 'html in name' => ['r_name' => '<b>Evil</b>'], 'array narrative' => ['narrative' => ['x']]];
     $notRej = []; $nb = $cases();
-    foreach ($variants as $name => $o) { $r = $file($clk, $o); if ($r['status'] !== 200 || !str_contains($r['body'], 'alert-danger')) { $notRej[] = $name . '=' . $r['status']; } }
+    foreach ($variants as $name => $o) { $r = $file($sec, $o); if ($r['status'] !== 200 || !str_contains($r['body'], 'alert-danger')) { $notRej[] = $name . '=' . $r['status']; } }
     record('B6-3', 'Fifteen kinds of bad filing are refused with a message and nothing is saved', !$notRej && $cases() === $nb, implode(', ', $notRej));
 
     /* ---- editing ---- */
@@ -134,7 +134,7 @@ function run_b6(array $S, string $base): void
         !$outcomeFailures, $outcomeFailures ? implode(', ', $outcomeFailures) : '');
 
     /* ---- resolve rules ---- */
-    $file($clk, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']); $D = $cid('four');
+    $file($sec, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']); $D = $cid('four');
     $sched($sec, $D, $future(6)); $HD = $hid($D);
     $rs1 = $move($sec, $D, 'Resolved', 'ZZ settled'); $afterRefuse = $status($D);
     $outc($sec, $D, $HD, 'Cancelled', 'ZZ parties settled out of court');
@@ -185,7 +185,7 @@ function run_b6(array $S, string $base): void
         && str_contains($v2, 'No blotter record matches this name') && !str_contains($v3, 'Possible blotter record') && !str_contains($v3, 'No blotter record matches'));
 
     /* ---- agenda ---- */
-    $file($clk, ['narrative' => 'ZZ-B6 three: stray animals', 'c_name' => 'Zzcomp India', 'r_name' => 'Zzresp Juliet']); $C = $cid('three'); $cNo = $cno($C);
+    $file($sec, ['narrative' => 'ZZ-B6 three: stray animals', 'c_name' => 'Zzcomp India', 'r_name' => 'Zzresp Juliet']); $C = $cid('three'); $cNo = $cno($C);
     $sched($sec, $C, $future(6)); $C1 = $hid($C); $sched($sec, $C, $future(7), ''); $C2 = $hid($C);
     $upc = $sec->get('/blotters/hearings.php')['body']; db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-3 hours')), $C2]);
     $ovr = $sec->get('/blotters/hearings.php?tab=overdue')['body']; $pst = $clk->get('/blotters/hearings.php?tab=past')['body'];
@@ -211,7 +211,7 @@ function run_b6(array $S, string $base): void
     $admPrint = $adm->post($sumPath, ['_csrf' => $adm->token($sumPath), 'do' => 'record_print']);
     $countAfterPrints = $cnt($C1);
     $sched($sec, $C, $future(8), ''); $C3 = $hid($C); $s3 = $sumPage($sec, $C3);
-    $file($clk, ['narrative' => 'ZZ-B6 five: no respondent known', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => '', 'c_name' => 'Zzcomp Kilo']); $E = $cid('five'); $sched($sec, $E, $future(6)); $HE = $hid($E); $s4 = $sumPage($sec, $HE);
+    $file($sec, ['narrative' => 'ZZ-B6 five: no respondent known', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => '', 'c_name' => 'Zzcomp Kilo']); $E = $cid('five'); $sched($sec, $E, $future(6)); $HE = $hid($E); $s4 = $sumPage($sec, $HE);
     $s5 = $sumPage($sec, $H1); $s6 = $sumPage($sec, 99999999); $s7 = $sec->get('/blotters/summons.php?id[]=1');
     record('B6-15', 'Summons: blocked until the System Admin sets the official wording; unknown placeholders are refused; only the System Admin saves it; blockers for empty venue, no respondent and a finished hearing',
         str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set') && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500 && $w2['status'] === 302
@@ -234,7 +234,7 @@ function run_b6(array $S, string $base): void
     $odd = []; $paths = ['/blotters/index.php?tab[]=x&q[]=y&page[]=2', '/blotters/index.php?page=-5&q=' . str_repeat('A', 4000), '/blotters/view.php?id[]=1', '/blotters/view.php?id=99999999', '/blotters/hearings.php?tab[]=x&page[]=1', '/blotters/lookup.php?q[]=a&q[]=b', '/blotters/party.php?case[]=1', '/blotters/party.php', '/blotters/summons.php?id[]=2'];
     foreach ($paths as $p) { $r = $sec->get($p); if ($r['status'] >= 500 || leaks($r)) { $odd[] = $p . '=' . $r['status']; } }
     record('B6-18', 'Odd, array and oversized parameters never crash a blotter page or leak errors', !$odd, implode(', ', $odd));
-    $file($clk, ['narrative' => 'ZZ-B6 six <script>alert(1)</script> text', 'incident_place' => '<img src=x onerror=alert(1)>', 'c_name' => 'Zzcomp Mike', 'r_name' => 'Zzresp November']); $X = $cid('six');
+    $file($sec, ['narrative' => 'ZZ-B6 six <script>alert(1)</script> text', 'incident_place' => '<img src=x onerror=alert(1)>', 'c_name' => 'Zzcomp Mike', 'r_name' => 'Zzresp November']); $X = $cid('six');
     $xv = $sec->get($page($X))['body']; $xi = $sec->get('/blotters/index.php')['body'];
     record('B6-19', 'Script and tag text in a narrative or place is shown as text, never run', $X > 0 && str_contains($xv, '&lt;script&gt;alert(1)&lt;/script&gt;') && !str_contains($xv, '<script>alert(1)') && str_contains($xv, '&lt;img src=x onerror=alert(1)&gt;') && !str_contains($xv, '<img src=x') && !str_contains($xi, '<script>alert'));
 
