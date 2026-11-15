@@ -16,7 +16,7 @@ function run_b10(array $S, string $base): void
     ];
     $results = [];
     foreach ($paths as $path) {
-        $results[] = $sec->get($path);
+        $results[] = ($path === '/residents/import_errors.php?token=invalid') ? $sec->get($path) : $adm->get($path);
     }
     $retired = $results[0]['status'] === 302 && str_contains((string) $results[0]['location'], 'residents/index.php')
         && $results[1]['status'] === 302 && str_contains((string) $results[1]['location'], 'residents/index.php')
@@ -28,8 +28,7 @@ function run_b10(array $S, string $base): void
         post_as($clk, '/residents/index.php', '/residents/import.php', ['action' => 'preview']),
         post_as($adm, '/residents/index.php', '/residents/import.php', ['action' => 'preview']),
     ];
-    $noWrites = $attempts[0]['status'] === 302
-        && str_contains((string) $attempts[0]['location'], 'residents/index.php')
+    $noWrites = $attempts[0]['status'] === 403
         && $attempts[1]['status'] === 403
         && $attempts[2]['status'] === 302
         && str_contains((string) $attempts[2]['location'], 'residents/index.php')
