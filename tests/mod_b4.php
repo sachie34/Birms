@@ -8,9 +8,20 @@ function run_b4(array $S, string $base): void
     $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'");
     db_exec("INSERT IGNORE INTO document_types (name, is_active, sort_order) VALUES ('ZZ Test Inactive Doc', 0, 9990)");
     $inactive = (int) db_val("SELECT type_id FROM document_types WHERE name = 'ZZ Test Inactive Doc'");
-    db_exec("INSERT INTO households (household_code, street_address) VALUES ('ZZTEST-B4', 'ZZ Test Street B4')"); $hh = (int) db()->lastInsertId();
-    $mkRes = function (string $first, ?string $phone, bool $arch = false) use ($hh): int {
-        db_exec("INSERT INTO residents (household_id, last_name, first_name, birthdate, sex, civil_status, contact_number, archived_at) VALUES (?, 'ZZTest4', ?, '1991-01-01', 'Female', 'Single', ?, ?)", [$hh, $first, $phone, $arch ? date('Y-m-d H:i:s') : null]);
+    $purok = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
+    $statusId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active' LIMIT 1");
+    $typeIdNone = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None' LIMIT 1");
+    $purokId = (int) ($purok['lookup_id'] ?? 0);
+    $mkRes = function (string $first, ?string $phone, bool $arch = false) use ($purokId, $statusId, $typeIdNone): int {
+        $residentNo = 'RES-B4-' . strtoupper(bin2hex(random_bytes(4)));
+        db_exec("INSERT INTO residents
+            (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
+             last_name, first_name, birthdate, sex, civil_status, contact_number, email_address,
+             notification_preference, residency_status, household_id, is_household_head, archived_at)
+            VALUES (?, 'ZZ-B4 Test Street', ?, ?, 'Single', ?, 'ZZTestFour', ?, '1991-01-01', 'Female', 'Single', ?, NULL,
+                    'email', 'Active', NULL, 0, ?)",
+            [$residentNo, $purokId > 0 ? $purokId : null, $statusId > 0 ? $statusId : null,
+             $typeIdNone > 0 ? $typeIdNone : null, $first, $phone, $arch ? date('Y-m-d H:i:s') : null]);
         return (int) db()->lastInsertId();
     };
     $rita = $mkRes('Rita', '09170004444'); $nophone = $mkRes('NoPhone', null); $gone = $mkRes('Gone', '09170004445', true);
@@ -55,13 +66,13 @@ function run_b4(array $S, string $base): void
     $roleForm = $clk->get('/requests/form.php?resident=' . $rita);
     record('B4-4a', 'Clerk sees disabled requirements-review controls on request intake', preg_match('~<select[^>]*name="requirements_status"[^>]*disabled~', $roleForm['body']) === 1 && preg_match('~<textarea[^>]*name="requirements_note"[^>]*disabled~', $roleForm['body']) === 1);
     $b44Ok = str_contains($fs['body'], 'ZZTestFour, Rita') && str_contains($fs['body'], 'resident=' . $rita)
-        && !str_contains($fs['body'], 'ZZTestFour, Gone') && str_contains($fs['body'], 'RES-2026-')
+        && !str_contains($fs['body'], 'ZZTestFour, Gone') && str_contains($fs['body'], 'RES-B4-')
         && str_contains($fs['body'], 'ZZ-B4 Test Street');
     record('B4-4', 'Request intake searches active residents and shows Resident ID, individual address and Purok', $b44Ok,
         'search=' . $fs['status'] . '; resident-name=' . (str_contains($fs['body'], 'ZZTestFour, Rita') ? 'yes' : 'no')
         . '; select-link=' . (str_contains($fs['body'], 'resident=' . $rita) ? 'yes' : 'no')
         . '; archived-hidden=' . (!str_contains($fs['body'], 'ZZTestFour, Gone') ? 'yes' : 'no')
-        . '; ID=' . (str_contains($fs['body'], 'RES-2026-') ? 'yes' : 'no')
+        . '; ID=' . (str_contains($fs['body'], 'RES-B4-') ? 'yes' : 'no')
         . '; address=' . (str_contains($fs['body'], 'ZZ-B4 Test Street') ? 'yes' : 'no'));
     $r = $filed('ZZ Test purpose 1'); $id1 = $rid('ZZ Test purpose 1');
     $row = db_one('SELECT reference_no, status FROM document_requests WHERE request_id = ?', [$id1]);
