@@ -39,9 +39,9 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 32, 'captain' => 15, 'secretary' => 24, 'clerk' => 12];
+$expect = ['admin' => 34, 'captain' => 16, 'secretary' => 25, 'clerk' => 14];
 $counts = array_map('count', permission_map());
-record('U1', 'Administrator has full module access; role counts match current map (32/15/24/12)', $counts === $expect, json_encode($counts));
+record('U1', 'Administrator has full module access; role counts match current map (34/16/25/14)', $counts === $expect, json_encode($counts));
 record('U2', 'Deny by default; Secretary/Admin can review; Captain/Admin decide; Clerk print-only; Captain ledger read-only; Secretary cannot restore residents or manage users', !role_can('ghost', 'dashboard.view') && role_can('secretary', 'requests.review') && role_can('admin', 'requests.review') && !role_can('clerk', 'requests.review') && !role_can('secretary', 'requests.approve') && role_can('captain', 'requests.approve') && role_can('clerk', 'certificates.print') && !role_can('clerk', 'certificates.issue') && role_can('secretary', 'certificates.issue') && role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore') && role_can('admin', 'residents.restore') && role_can('secretary', 'settings.edit') && !role_can('secretary', 'users.manage') && role_can('captain', 'cash_ledger.view') && !role_can('captain', 'cash_ledger.manage') && role_can('admin', 'cash_ledger.manage') && !role_can('clerk', 'users.manage') && role_can('admin', 'residents.edit') && role_can('admin', 'reports.view') && !role_can('clerk', 'reports.view') && !role_can('clerk', 'nonsense.perm'));
 $bad = ['short1', 'allletterspassword', '12345678901', 'zz_test_admin1X', 'Password123'];
 $okPw = ['Tidy-Horse-2026'];
