@@ -54,7 +54,7 @@ $counts['my'] = (int) db_val('SELECT COUNT(*) FROM document_requests dr WHERE ' 
 $w = []; $p = [];
 // Restrict Staff to owned/assigned items except the shared final-decision queue.
 if ($role === 'clerk') {
-    $w[] = '(dr.created_by = ? OR dr.assigned_to = ?)';
+    $w[] = '((dr.created_by = ? OR dr.assigned_to = ?) OR (dr.status = \'Review\' AND dr.requirements_status = \'Complete\'))';
     array_push($p, (int) $me['user_id'], (int) $me['user_id']);
 }
 if ($tab === 'my') {
