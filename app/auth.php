@@ -10,7 +10,7 @@ const ROLES = ['admin', 'captain', 'secretary', 'clerk'];
 function role_label(string $role): string
 {
     return [
-        'admin' => 'System Admin', 'captain' => 'Chairman (Punong Barangay)',
+        'admin' => 'Admin', 'captain' => 'Chairman (Punong Barangay)',
         'secretary' => 'Secretary', 'clerk' => 'Staff',
     ][$role] ?? $role;
 }
