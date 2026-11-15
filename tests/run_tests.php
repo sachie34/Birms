@@ -131,8 +131,8 @@ $roleLabel = ['admin' => 'Administrator', 'captain' => 'Chairman (Punong Baranga
 $okAll = true; foreach ($sessions as $role => $s) { $r = $s->get('/dashboard.php'); if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) { $okAll = false; } }
 record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll);
 
-/* RBAC matrix: users.manage = admin; audit.view = admin+captain; audit.export = admin */
-$matrix = ['/admin/users.php' => ['admin'], '/admin/user_edit.php' => ['admin'], '/admin/audit.php' => ['admin', 'captain'], '/admin/audit_export.php' => ['admin']];
+/* RBAC matrix aligned with the revised SRS: account and audit administration are Admin-only. */
+$matrix = ['/admin/users.php' => ['admin'], '/admin/user_edit.php' => ['admin'], '/admin/audit.php' => ['admin'], '/admin/audit_export.php' => ['admin']];
 $okAll = true; $why = '';
 foreach ($matrix as $path => $allowed) { foreach ($sessions as $role => $s) {
     $r = $s->get($path); $want = in_array($role, $allowed, true) ? 200 : 403;
