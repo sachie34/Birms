@@ -39,10 +39,20 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 34, 'captain' => 16, 'secretary' => 25, 'clerk' => 14];
+$expect = ['admin' => 37, 'captain' => 11, 'secretary' => 22, 'clerk' => 16];
 $counts = array_map('count', permission_map());
-record('U1', 'Administrator has full module access; role counts match current map (34/16/25/14)', $counts === $expect, json_encode($counts));
-record('U2', 'Deny by default; Secretary/Admin can review; Captain/Admin decide; Clerk print-only; Captain ledger read-only; Secretary cannot restore residents or manage users', !role_can('ghost', 'dashboard.view') && role_can('secretary', 'requests.review') && role_can('admin', 'requests.review') && !role_can('clerk', 'requests.review') && !role_can('secretary', 'requests.approve') && role_can('captain', 'requests.approve') && role_can('clerk', 'certificates.print') && !role_can('clerk', 'certificates.issue') && role_can('secretary', 'certificates.issue') && role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore') && role_can('admin', 'residents.restore') && role_can('secretary', 'settings.edit') && !role_can('secretary', 'users.manage') && role_can('captain', 'cash_ledger.view') && !role_can('captain', 'cash_ledger.manage') && role_can('admin', 'cash_ledger.manage') && !role_can('clerk', 'users.manage') && role_can('admin', 'residents.edit') && role_can('admin', 'reports.view') && !role_can('clerk', 'reports.view') && !role_can('clerk', 'nonsense.perm'));
+record('U1', 'Administrator has full module access; role counts match current MSIT map (37/11/22/16)', $counts === $expect, json_encode($counts));
+record('U2', 'Chairman is read-only; Secretary reviews and manages records; Staff approves requests, issues certificates and manages queues; Admin manages accounts and settings',
+    !role_can('ghost', 'dashboard.view')
+    && role_can('secretary', 'requests.review') && !role_can('secretary', 'requests.approve')
+    && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
+    && !role_can('clerk', 'settings.edit') && !role_can('clerk', 'users.manage')
+    && role_can('clerk', 'queue.manage') && role_can('clerk', 'venues.approve')
+    && role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore')
+    && role_can('admin', 'residents.restore') && role_can('admin', 'settings.edit')
+    && role_can('admin', 'users.manage') && !role_can('captain', 'requests.approve')
+    && !role_can('captain', 'residents.edit') && !role_can('captain', 'queue.manage')
+    && role_can('captain', 'reports.view') && role_can('captain', 'venues.view'));
 $bad = ['short1', 'allletterspassword', '12345678901', 'zz_test_admin1X', 'Password123'];
 $okPw = ['Tidy-Horse-2026'];
 $pwOk = true; foreach ($bad as $p) { if (!password_policy_errors($p, 'zz_test_admin')) { $pwOk = false; } } foreach ($okPw as $p) { if (password_policy_errors($p, 'x')) { $pwOk = false; } }
@@ -117,7 +127,7 @@ $pre = new Http($base); $pre->get('/index.php'); $before = file_get_contents($pr
 preg_match('/BIRMSSESS\s+(\S+)/', (string) $before, $m1);
 $r = $pre->login($fx['clerk'], TP); $cookie = implode(' | ', $r['cookies']); $afterJar = file_get_contents($pre->jar); preg_match('/BIRMSSESS\s+(\S+)/', (string) $afterJar, $m2);
 record('H6', 'Sign-in works; cookie is HttpOnly + SameSite; session id changes at login', $r['status'] === 302 && str_contains(loc($r), 'dashboard.php') && stripos($cookie, 'httponly') !== false && stripos($cookie, 'samesite=lax') !== false && ($m1[1] ?? 'a') !== ($m2[1] ?? 'a'), $cookie === '' ? 'no cookie' : '');
-$roleLabel = ['admin' => 'Administrator', 'captain' => 'Barangay Captain', 'secretary' => 'Barangay Secretary', 'clerk' => 'Barangay Staff'];
+$roleLabel = ['admin' => 'Administrator', 'captain' => 'Chairman (Punong Barangay)', 'secretary' => 'Secretary', 'clerk' => 'Staff'];
 $okAll = true; foreach ($sessions as $role => $s) { $r = $s->get('/dashboard.php'); if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) { $okAll = false; } }
 record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll);
 
