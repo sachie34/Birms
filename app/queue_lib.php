@@ -73,22 +73,41 @@ function queue_enqueue_notifications(int $residentId, string $service, int $numb
     $preference = (string) ($resident['notification_preference'] ?? 'email');
     $email = trim((string) ($resident['email_address'] ?? ''));
     $mobile = trim((string) ($resident['contact_number'] ?? ''));
-    $channels = match ($preference) {
-        'sms' => $mobile !== '' ? ['sms'] : ['email'],
-        'both' => $mobile !== '' ? ['email', 'sms'] : ['email'],
-        default => ['email'],
-    };
-    if (in_array('email', $channels, true) && $email === '') { $channels = array_values(array_diff($channels, ['email'])); }
-    if (in_array('sms', $channels, true) && $mobile === '') { $channels = array_values(array_diff($channels, ['sms'])); }
-    foreach (array_unique($channels) as $channel) {
-        $recipient = $channel === 'email' ? $email : $mobile;
-        if ($recipient === '') { continue; }
-        $subject = $channel === 'email' ? 'Barangay queue update' : null;
+    $reference = $service . '-' . date('Ymd') . '-' . $number;
+    $wantsEmail = in_array($preference, ['email', 'both'], true);
+    $wantsSms = in_array($preference, ['sms', 'both'], true);
+    $smsEnabled = $wantsSms && $mobile !== '' && sms_provider_is_enabled();
+
+    // Email is the default. If SMS is disabled, unconfigured, or lacks a number,
+    // an SMS-only preference falls back to the resident's saved email address.
+    if ($wantsSms && !$smsEnabled) { $wantsEmail = true; }
+    $emailQueued = false;
+    if ($wantsEmail && $email !== '') {
+        $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $event, $reference);
+        $emailQueued = true;
+        if (email_provider_is_enabled()) { email_send_notification($notificationId); }
+    }
+
+    if ($wantsSms && $mobile !== '') {
+        $enabled = sms_provider_is_enabled();
+        $providerStatus = $enabled ? 'not_attempted' : 'not_configured';
+        $providerName = $enabled ? sms_provider_selected_name() : null;
         db_exec(
-            'INSERT INTO notification_outbox (resident_id, channel, recipient, subject, message, event_type, reference_no, delivery_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, \'queued\')',
-            [$residentId, $channel, $recipient, $subject, $message, $event, $service . '-' . date('Ymd') . '-' . $number]
+            'INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status)
+             VALUES (?, ?, ?, NULL, ?, ?, ?)',
+            [$mobile, mb_substr_safe($message, 480), $event, $enabled ? 'Waiting to send' : 'Logged only', $providerName, $providerStatus]
         );
+        $smsId = (int) db()->lastInsertId();
+        if ($enabled) {
+            $result = sms_send_outbox($smsId, false);
+            if (in_array((string) ($result['status'] ?? ''), ['failed', 'refunded'], true) && !$emailQueued && $email !== '') {
+                $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $event . '_email_fallback', $reference);
+                if (email_provider_is_enabled()) { email_send_notification($notificationId); }
+            }
+        } elseif (!$emailQueued && $email !== '') {
+            $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $event . '_email_fallback', $reference);
+            if (email_provider_is_enabled()) { email_send_notification($notificationId); }
+        }
     }
 }
 
