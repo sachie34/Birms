@@ -11,6 +11,15 @@ require_permission('requests.view');
 $r = db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.msit_status, dr.requirements_status, dr.assigned_to, dr.created_by, r.contact_number, dt.name AS type_name FROM document_requests dr
               JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id WHERE dr.request_id = ?', [$id]);
 if ($r === null || !request_visible_to_current_user($r)) { abort(404, 'That request was not found.'); }
+// Authorize the requested action before checking whether the current state permits it.
+// This prevents a read-only role from probing or attempting staff-only actions through redirects.
+$targetPermission = match ($to) {
+    'Review' => 'requests.review',
+    'Ready', 'Rejected' => 'requests.approve',
+    'Cancelled' => 'requests.edit',
+    default => null,
+};
+if ($targetPermission !== null) { require_permission($targetPermission); }
 $perm = REQUEST_TRANSITIONS[$r['status']][$to] ?? null;
 if ($perm === null) {
     audit_best_effort('request_move_refused', 'Requests', 'Failed', $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ' is not allowed');

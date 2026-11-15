@@ -87,7 +87,7 @@ function run_b4(array $S, string $base): void
     record('B4-7', 'A captain cannot file a request (403, nothing saved)', $r['status'] === 403 && !$rid('ZZ Test purpose cap'));
 
     // transitions
-    $chairmanTry = $move($cap, $id1, 'Ready'); $a = $chairmanTry['status'] === 302 && $status($id1) === 'Pending'
+    $chairmanTry = $move($cap, $id1, 'Ready'); $a = $chairmanTry['status'] === 403 && $status($id1) === 'Pending'
         && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_move_refused' AND remarks LIKE ?", [$row['reference_no'] . ': Pending -> Ready%']) >= 1;
     $clerkReview = $move($clk, $id1, 'Review');
     $clerkBlocked = $clerkReview['status'] === 403 && $status($id1) === 'Pending';
@@ -193,7 +193,7 @@ function run_b4(array $S, string $base): void
     $rejected = $status($id4) === 'Rejected' && db_val('SELECT status_note FROM document_requests WHERE request_id = ?', [$id4]) === $finalReason;
     $after = $move($clk, $id4, 'Review'); $term = $status($id4) === 'Rejected';
     record('B4-11', 'Final rejection requires completed requirements; Secretary cannot reject; Staff must give a reason; rejected requests cannot be reopened',
-        $pendingReject['status'] === 302 && $pendingStill && $secretaryDenied && $hiddenFinalActions
+        $pendingReject['status'] === 403 && $pendingStill && $secretaryDenied && $hiddenFinalActions
         && $blockedUntilComplete && $completed && $still && $rejected && $term);
     $filed('ZZ Test purpose cancel', $rita); $id5 = $rid('ZZ Test purpose cancel');
     $capCancel = $move($cap, $id5, 'Cancelled'); $clkCancel = $move($clk, $id5, 'Cancelled', 'Resident left');
