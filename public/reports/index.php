@@ -203,8 +203,9 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     <div class="col-md-4"><div class="card-b h-100"><div class="card-h"><h2>Data classification</h2></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format(array_sum($data['employment_status'])) ?></div><div class="text-muted small">Active residents included in employment-status summary. Unspecified entries remain visible as “Not specified.”</div></div></div></div>
   </div>
   <?php foreach ([
-      'Age brackets' => $data['age_brackets'], 'Sex' => $data['sex'], 'Civil status' => $data['civil_status'],
-      'Employment status' => $data['employment_status'], 'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
+      'Age brackets' => $data['age_brackets'], 'Sex' => $data['sex'], 'Marital status' => $data['marital_status'],
+      'Resident type' => $data['resident_type'], 'Employment status' => $data['employment_status'],
+      'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
   ] as $section => $items): ?>
     <div class="card-b mb-3">
       <div class="card-h"><h2><?= e($section) ?></h2></div>
@@ -216,7 +217,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
       </div>
     </div>
   <?php endforeach; ?>
-  <div class="alert alert-info">The employment-status categories are managed under Settings → Other lists. The system does not assume a barangay-approved employment classification; residents without a selection are counted as “Not specified.”</div>
+  <div class="alert alert-info">Resident types and statuses are managed under Settings → Other lists. The employment-status summary is retained as optional legacy data. The system does not assume a barangay-approved employment classification; residents without a selection are counted as “Not specified.”</div>
 
 <?php elseif ($type === 'issuance'): ?>
   <div class="row g-3 mb-3">
