@@ -9,17 +9,17 @@ require_permission('requests.view');
 $role = (string) $me['role'];
 $myLabel = match ($role) {
     'admin' => 'Needs Action',
-    'captain' => 'Pending Final Approval',
+    'captain' => 'View Only',
     'secretary' => 'Needs Review',
-    default => 'My Requests',
+    default => 'Needs Final Decision',
 };
 $myHint = match ($role) {
-    'admin' => 'Review new requests, check requirements, or make final decisions when requirements are complete.',
-    'captain' => 'Only requests already reviewed with complete requirements belong in your final-decision queue.',
-    'secretary' => 'Check submitted requests and record whether the required documents are complete. Final approval belongs to the Captain or Administrator.',
-    default => 'Submit requests and track their progress here. You cannot complete the formal requirements review or make the final decision.',
+    'admin' => 'Oversee request records and assist with administrative corrections.',
+    'captain' => 'Chairman access is read-only. You may view request progress but cannot edit, approve, reject or release documents.',
+    'secretary' => 'Review submitted requests and record whether required documents are complete. Staff makes the final approval or rejection.',
+    default => 'Process requests whose requirements are complete, make the final decision, and generate the approved document.',
 };
-$tabs = ['all' => 'All requests', 'my' => $myLabel, 'Pending' => 'Pending', 'Review' => 'Under Review', 'Ready' => 'Ready for Pickup', 'Claimed' => 'Issued', 'closed' => 'Closed'];
+$tabs = ['all' => 'All requests', 'my' => $myLabel, 'Pending' => 'Pending', 'Approved' => 'Approved', 'Rejected' => 'Rejected', 'Released' => 'Released'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'all';
 $q = get_str('q'); $page = max(1, get_int('page') ?? 1); $per = 25;
 
@@ -30,30 +30,29 @@ if ($role === 'clerk') {
     $countParams = [(int) $me['user_id'], (int) $me['user_id']];
 }
 $counts = ['all' => 0];
-foreach (db_all('SELECT status, COUNT(*) AS n FROM document_requests' . $countScope . ' GROUP BY status', $countParams) as $c) {
+foreach (db_all('SELECT msit_status AS status, COUNT(*) AS n FROM document_requests' . $countScope . ' GROUP BY status', $countParams) as $c) {
     $counts[$c['status']] = (int) $c['n'];
     $counts['all'] += (int) $c['n'];
-    if (in_array($c['status'], ['Rejected', 'Cancelled'], true)) {
-        $counts['closed'] = ($counts['closed'] ?? 0) + (int) $c['n'];
-    }
+    
 }
 $myParams = [];
 if ($role === 'admin') {
     // Admin can do both the Secretary's requirements review and final-decision work.
     $myCondition = "dr.status IN ('Pending', 'Review')";
 } elseif ($role === 'captain') {
-    // Captain's final-decision queue only includes requests with completed requirements.
-    $myCondition = "dr.status = 'Review' AND dr.requirements_status = 'Complete'";
+    // Chairman sees a read-only view of all requests.
+    $myCondition = '1 = 1';
 } elseif ($role === 'secretary') {
     $myCondition = "(dr.status = 'Pending' OR (dr.status = 'Review' AND dr.requirements_status <> 'Complete'))";
 } else {
-    $myCondition = '(dr.created_by = ? OR dr.assigned_to = ?)';
+    // Staff sees their own/assigned requests plus the shared queue ready for final decisions.
+    $myCondition = "((dr.created_by = ? OR dr.assigned_to = ?) OR (dr.status = 'Review' AND dr.requirements_status = 'Complete'))";
     $myParams = [(int) $me['user_id'], (int) $me['user_id']];
 }
 $counts['my'] = (int) db_val('SELECT COUNT(*) FROM document_requests dr WHERE ' . $myCondition, $myParams);
 
 $w = []; $p = [];
-// Restrict every Clerk view (all/status/search/pagination), not only the My Requests tab.
+// Restrict Staff to owned/assigned items except the shared final-decision queue.
 if ($role === 'clerk') {
     $w[] = '(dr.created_by = ? OR dr.assigned_to = ?)';
     array_push($p, (int) $me['user_id'], (int) $me['user_id']);
@@ -63,10 +62,8 @@ if ($tab === 'my') {
         $w[] = '(' . $myCondition . ')';
         array_push($p, ...$myParams);
     }
-} elseif ($tab === 'closed') {
-    $w[] = "dr.status IN ('Rejected','Cancelled')";
-} elseif ($tab !== 'all') {
-    $w[] = 'dr.status = ?';
+} elseif (in_array($tab, ['Pending','Approved','Rejected','Released'], true)) {
+    $w[] = 'dr.msit_status = ?';
     $p[] = $tab;
 }
 foreach (preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $tok) {
@@ -77,7 +74,7 @@ foreach (preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $tok) {
 $where = $w ? 'WHERE ' . implode(' AND ', $w) : '';
 $from = "FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id LEFT JOIN users u ON u.user_id = dr.assigned_to $where";
 $total = (int) db_val("SELECT COUNT(*) $from", $p);
-$rows = db_all("SELECT dr.request_id, dr.reference_no, dr.requested_at, dr.status, r.last_name, r.first_name, r.middle_name, r.suffix, dt.name AS type_name, u.full_name AS assigned $from ORDER BY dr.requested_at DESC, dr.request_id DESC LIMIT " . (int) $per . ' OFFSET ' . (int) (($page - 1) * $per), $p);
+$rows = db_all("SELECT dr.request_id, dr.reference_no, dr.requested_at, dr.status, dr.msit_status, r.last_name, r.first_name, r.middle_name, r.suffix, dt.name AS type_name, u.full_name AS assigned $from ORDER BY dr.requested_at DESC, dr.request_id DESC LIMIT " . (int) $per . ' OFFSET ' . (int) (($page - 1) * $per), $p);
 
 render_header('Request Tracker', [['Request Tracker', null]], 'requests');
 page_head('Request Tracker', 'Viewing as ' . role_label($role) . '. Use “' . $myLabel . '” for the work relevant to your role.', can('requests.add') ? btn_link('requests/form.php', 'New request', 'btn-primary', 'bi-plus-lg') : '');
@@ -114,7 +111,7 @@ echo '</ul>';
     <tr>
       <td><a class="fw-semibold text-decoration-none" href="<?= e(base_url('requests/view.php?id=' . (int) $r['request_id'])) ?>"><?= e((string) $r['reference_no']) ?></a></td>
       <td class="fw-semibold"><?= e(resident_name($r)) ?></td><td><?= e((string) $r['type_name']) ?></td><td class="text-nowrap"><?= e(fmt_dt((string) $r['requested_at'])) ?></td>
-      <td class="text-nowrap"><?= e($ageLabel) ?></td><td><?= status_pill((string) $r['status']) ?></td><td><?= e((string) ($r['assigned'] ?? '—')) ?></td>
+      <td class="text-nowrap"><?= e($ageLabel) ?></td><td><?= status_pill((string) $r['msit_status']) ?></td><td><?= e((string) ($r['assigned'] ?? '—')) ?></td>
     </tr>
   <?php endforeach; ?></tbody></table></div>
   <?php render_pagination($total, $page, $per, 'requests/index.php', array_filter(['tab' => $tab === 'all' ? '' : $tab, 'q' => $q])); endif; ?>
