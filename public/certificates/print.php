@@ -23,8 +23,10 @@ if (is_post()) {
     exit;
 }
 $asset = fn(string $p): string => e(base_url('assets/' . $p));
-$signatureDisplay = trim((string) ($c['signature_text'] ?? ''));
-if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name'] ?? ''); }
+$signatureDisplay = trim((string) ($c['captain_name'] ?? ''));
+$signatureUrl = !empty($c['chairman_signature_path'])
+    ? base_url('certificates/signature_image.php?id=' . (int) $c['issuance_id'])
+    : '';
 ?>
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -47,7 +49,10 @@ if ($signatureDisplay === '') { $signatureDisplay = (string) ($c['captain_name']
     <div class="cert-head"><div class="l1">Republic of the Philippines</div><div class="l1">Province of <?= e((string) setting('province', '')) ?> · Municipality of <?= e((string) setting('municipality', '')) ?></div><div class="l3"><?= e(barangay_title()) ?></div></div>
     <div class="cert-title"><?= e((string) $c['type_name']) ?></div>
     <div class="cert-body"><?= e((string) $c['body_text']) ?></div>
-    <div class="cert-sign"><span class="name"><?= e($signatureDisplay) ?>&nbsp;</span><span class="role">Typed signature — not digitally verified</span></div>
+    <div class="cert-sign">
+      <?php if ($signatureUrl !== ''): ?><img class="chairman-signature-image" src="<?= e($signatureUrl) ?>" alt="Stored Chairman / Punong Barangay signature"><?php endif; ?>
+      <span class="name"><?= e($signatureDisplay) ?>&nbsp;</span><span class="role">Chairman / Punong Barangay</span>
+    </div>
     <div class="cert-foot"><span>Ref. <?= e((string) $c['reference_no']) ?> · Issued <?= e(date('j F Y', strtotime((string) $c['issued_at']))) ?> by <?= e((string) $c['issued_by_name']) ?></span><span><?= ((float) $c['fee_amount'] > 0 || $c['or_number'] !== null) ? 'Recorded fee: ' . e(money($c['fee_amount'])) . ($c['or_number'] !== null ? ' · O.R. No. ' . e((string) $c['or_number']) : '') : 'No fee' ?></span></div>
   </div>
 </div>
