@@ -9,6 +9,7 @@ function run_b6(array $S, string $base): void
         db_exec("DELETE FROM hearings WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM blotters WHERE narrative LIKE 'ZZ-B6%'");
+        db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM document_requests WHERE purpose LIKE 'ZZ-B6%'");
         db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest6%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST-B6%'");
@@ -151,12 +152,21 @@ function run_b6(array $S, string $base): void
     $viewClk = $clk->get($page($B));
     $rest = $do($sec, $B, 'restore'); $restored = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) === null;
     $do($sec, $B, 'archive');   // leave it archived for the look-up test
+    $b611Checks = [
+        'captain-denied' => $ar0['status'] === 403,
+        'staff-denied' => $ar1['status'] === 403,
+        'cannot-archive-open' => $ar2['status'] === 302 && $status($A) === 'Active' && db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$A]) === null,
+        'secretary-archive' => $ar3['status'] === 302 && $archived,
+        'all-list-visible' => str_contains($listSec, $bNo),
+        'secretary-archived-filter' => str_contains($arcSec, $bNo),
+        'staff-archived-filter' => str_contains($arcClk, $bNo) && str_contains($arcClk, 'tab=Archived'),
+        'archived-view' => $viewClk['status'] === 200 && str_contains(strtolower($viewClk['body']), 'archived'),
+        'restore' => $rest['status'] === 302 && $restored && db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]) === 'Resolved',
+        'audit' => $audit('blotter_archived') >= 2 && $audit('blotter_restored') >= 1,
+    ];
+    $b611Failed = array_keys(array_filter($b611Checks, static fn(bool $ok): bool => !$ok));
     record('B6-11', 'Resolved cases can be archived by the Secretary; archived records remain visible to authorized readers and restore preserves the SRS status',
-        $ar0['status'] === 403 && $ar1['status'] === 403 && $ar2['status'] === 302 && $status($A) === 'Active' && db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$A]) === null && $ar3['status'] === 302 && $archived
-        && str_contains($listSec, $bNo) && str_contains($arcSec, $bNo) && str_contains($arcClk, $bNo) && str_contains($arcClk, 'tab=Archived')
-        && $viewClk['status'] === 200 && str_contains($viewClk['body'], 'archived')
-        && $rest['status'] === 302 && $restored && db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]) === 'Resolved'
-        && $audit('blotter_archived') >= 2 && $audit('blotter_restored') >= 1);
+        !$b611Failed, $b611Failed ? implode(', ', $b611Failed) : '');
 
     /* ---- look-up ---- */
     $lk = fn(Http $h, string $q) => $h->get('/blotters/lookup.php?q=' . rawurlencode($q));
