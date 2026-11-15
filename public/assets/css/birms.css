@@ -111,3 +111,7 @@ body { background: var(--page); color: var(--ink); font-family: "Inter", "Segoe 
 /* Draft-state and ledger editor styles (kept in the stylesheet to satisfy the strict CSP). */
 .cert-draft { border: 2px solid #9b2c2c; color: #9b2c2c; font-weight: 700; text-align: center; padding: 8px; margin-bottom: 18px; }
 .ledger-editor { min-width: 220px; }
+
+/* Chairman signature images are kept in the stylesheet to preserve the strict Content Security Policy. */
+.chairman-signature-preview { max-width: 320px; max-height: 150px; object-fit: contain; background: #fff; border: 1px solid #ccd3dc; padding: 12px; border-radius: 8px; }
+.cert-sign .chairman-signature-image { display: block; max-width: 220px; max-height: 90px; object-fit: contain; margin: 0 auto 8px; }
