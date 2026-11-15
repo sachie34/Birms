@@ -99,3 +99,15 @@ body {
   .kiosk-action { min-height: 118px; }
   .kiosk-footer { flex-direction: column; }
 }
+
+/* MSIT kiosk accessibility: keep secondary text and every touch target large. */
+.kiosk-brand small, .kiosk-clock, .kiosk-heading p, .kiosk-eyebrow,
+.kiosk-field label, .kiosk-action small, .kiosk-helper, .kiosk-alert,
+.kiosk-status-value, .kiosk-history small, .kiosk-venue small, .kiosk-footer {
+  font-size: 1rem;
+}
+.kiosk-primary, .kiosk-secondary, .kiosk-action, .kiosk-field input,
+.kiosk-field select, .kiosk-field textarea, .kiosk-action-form button {
+  min-height: 60px;
+}
+.kiosk-icon { min-width: 48px; min-height: 48px; }
