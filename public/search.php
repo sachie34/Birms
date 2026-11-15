@@ -33,19 +33,26 @@ if ($searched) {
         );
     }
     if (can('requests.view')) {
-        $results['requests'] = db_all(
+        $requestMatches = db_all(
             "SELECT dr.request_id, dr.reference_no, dr.status, dr.purpose, dr.requested_at,
+                    dr.created_by, dr.assigned_to,
                     CONCAT_WS(' ', r.first_name, r.middle_name, r.last_name, r.suffix) AS resident_name,
                     dt.name AS type_name
              FROM document_requests dr
              JOIN residents r ON r.resident_id = dr.resident_id
              JOIN document_types dt ON dt.type_id = dr.type_id
-             WHERE dr.reference_no LIKE ? OR dr.purpose LIKE ?
+             WHERE (dr.reference_no LIKE ? OR dr.purpose LIKE ?
                 OR CONCAT_WS(' ', r.first_name, r.middle_name, r.last_name, r.suffix) LIKE ?
                 OR CONCAT_WS(' ', r.last_name, r.first_name, r.middle_name, r.suffix) LIKE ?
-                OR dt.name LIKE ?
-             ORDER BY dr.requested_at DESC, dr.request_id DESC LIMIT 10",
+                OR dt.name LIKE ?)
+             ORDER BY dr.requested_at DESC, dr.request_id DESC LIMIT 100",
             [$like, $like, $like, $like, $like]
+        );
+        // Apply the same row-level privacy rule as the Request Tracker after the search query.
+        $results['requests'] = array_slice(
+            array_values(array_filter($requestMatches, static fn(array $request): bool => request_visible_to_current_user($request))),
+            0,
+            10
         );
     }
     if (can('certificates.history')) {
