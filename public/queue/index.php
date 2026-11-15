@@ -22,6 +22,7 @@ if ($canManage) {
     echo '</select></div>'
         . '<div class="col-md-3"><label class="form-label" for="resident_id">Resident ID (optional for walk-ins)</label><input class="form-control" id="resident_id" name="resident_id" type="number" min="1" step="1"></div>'
         . '<div class="col-md-3"><label class="form-label" for="reference_no">Request reference (optional)</label><input class="form-control" id="reference_no" name="reference_no" maxlength="24"></div>'
+        . '<div class="col-md-6"><label class="form-label" for="purpose">Purpose of visit</label><input class="form-control" id="purpose" name="purpose" maxlength="255" required></div>'
         . '<div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Issue queue number</button></div></form>';
     card_end();
 }
@@ -62,12 +63,13 @@ foreach ($snapshots as $service => $snapshot) {
     if (!$snapshot['waiting']) {
         echo empty_state('bi-ticket', 'No one is waiting in this queue.');
     } else {
-        echo '<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Queue number</th><th>Issued at</th><th>Reference</th>';
+        echo '<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Queue number</th><th>Issued at</th><th>Purpose</th><th>Reference</th>';
         if ($canManage) { echo '<th>Actions</th>'; }
         echo '</tr></thead><tbody>';
         foreach ($snapshot['waiting'] as $entry) {
             echo '<tr><td class="fw-bold fs-5">#' . (int) $entry['queue_number'] . '</td>'
                 . '<td>' . e(fmt_dt((string) $entry['issued_at'])) . '</td>'
+                . '<td>' . e((string) ($entry['purpose'] ?? '—')) . '</td>'
                 . '<td>' . e((string) ($entry['reference_no'] ?? '—')) . '</td>';
             if ($canManage) {
                 echo '<td><div class="d-flex flex-wrap gap-2">';
