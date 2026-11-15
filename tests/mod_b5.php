@@ -61,8 +61,10 @@ function run_b5(array $S, string $base): void
     record('B5-6', 'Staff issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Claimed', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed');
     $bt = (string) ($row['body_text'] ?? '');
     record('B5-7', 'The wording was filled from the record (uppercase name, age, Purok, address, day, month, Captain, reference)', str_contains($bt, 'ANA MID ZZTEST5') && str_contains($bt, (string) $ageNow) && str_contains($bt, 'ZZ Test Purok B5') && str_contains($bt, 'ZZ Test Address 5') && str_contains($bt, ordinal((int) date('j')) . ' day of ' . date('F Y')) && str_contains($bt, 'Test Captain Name') && str_contains($bt, (string) $row['reference_no']) && !str_contains($bt, '{{'), $bt);
-    $audit = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_issued' AND entity_id = ?", [$row['issuance_id'] ?? 0]) + (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? AND remarks LIKE '%Claimed via%'", [$rReady]);
-    record('B5-8', 'Issuing and its two audit rows were saved together', $audit === 2);
+    $auditIssued = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_issued' AND entity_id = ?", [$row['issuance_id'] ?? 0]);
+    $auditReleased = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? AND remarks LIKE '% -> Released via %'", [$rReady]);
+    $historyReleased = (int) db_val("SELECT COUNT(*) FROM request_status_history WHERE request_id = ? AND service = 'Documents' AND previous_status = 'Approved' AND new_status = 'Released'", [$rReady]);
+    record('B5-8', 'Issuing and its audit/status-history records were saved together', $auditIssued === 1 && $auditReleased === 1 && $historyReleased === 1);
 
     $r2 = $mkReq($res, $tPaid); $dup = $issue($clk, $r2, ['or_number' => 'ZZOR-1']);
     record('B5-9', 'The same O.R. number cannot be used twice; the second request stays Ready', str_contains($dup['body'], 'already used') && $iss($r2) === null && $stat($r2) === 'Ready');
@@ -88,7 +90,19 @@ function run_b5(array $S, string $base): void
     $secPrint = $sec->post($issuancePath, ['_csrf' => $sec->token($issuancePath), 'do' => 'record_print']);
     $admPrint = $adm->post($issuancePath, ['_csrf' => $adm->token($issuancePath), 'do' => 'record_print']);
     $c5 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    record('B5-13', 'Opening a certificate does not count as printing; authorized print actions increment and audit the count', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 && $secView['status'] === 200 && $c3 === $c0 && $admView['status'] === 200 && $c4 === $c0 && str_contains($clkView['body'], 'Republic of the Philippines') && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"ok":true') && $secPrint['status'] === 200 && str_contains($secPrint['body'], '"ok":true') && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"ok":true') && $c5 === $c0 + 3 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
+    record('B5-13', 'Opening a certificate does not count as printing; only Staff/Admin print actions increment and audit the count',
+        $capView['status'] === 200 && $c1 === $c0
+        && $clkView['status'] === 200 && $c2 === $c0
+        && $secView['status'] === 200 && $c3 === $c0
+        && $admView['status'] === 200 && $c4 === $c0
+        && str_contains($clkView['body'], 'Republic of the Philippines')
+        && str_contains($capView['body'], 'Preview only')
+        && !str_contains($secView['body'], 'data-print')
+        && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"ok":true')
+        && $secPrint['status'] === 403
+        && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"ok":true')
+        && $c5 === $c0 + 2
+        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 2);
     $capPdf = $cap->get('/certificates/pdf.php?id=' . $row['issuance_id']);
     record('B5-21', 'Captain can preview an issued certificate but cannot print or download a PDF; print-authorized roles receive controls',
         $capView['status'] === 200
@@ -108,8 +122,15 @@ function run_b5(array $S, string $base): void
     record('B5-15', 'History export: secretary gets CSV with a header and it is audited; clerk is refused', $csv['status'] === 200 && str_contains($csv['body'], 'Reference') && str_contains($csv['body'], 'ZZOR-1') && $clkCsv['status'] === 403 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'issuances_exported'") >= 1);
 
     // other pages show it
-    $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $sec->get('/requests/view.php?id=' . $r2);
-    record('B5-16', 'Request view links the certificate; a Ready request shows the Issue button; the resident view lists the document', str_contains($rv['body'], (string) $row['reference_no']) && str_contains($rReady2['body'], 'Issue certificate') && str_contains($rr['body'], 'ZZ Test Cert Paid'));
+    $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $clk->get('/requests/view.php?id=' . $r2);
+    record('B5-16', 'Request view links the certificate; Staff sees Issue for a Ready request; the resident view lists issued documents',
+        str_contains($rv['body'], (string) $row['reference_no'])
+        && str_contains($rReady2['body'], 'Issue certificate')
+        && str_contains($rr['body'], 'ZZ Test Cert Paid'),
+        'issued-link=' . (str_contains($rv['body'], (string) $row['reference_no']) ? 'yes' : 'no')
+        . '; staff-issue=' . (str_contains($rReady2['body'], 'Issue certificate') ? 'yes' : 'no')
+        . '; resident-doc=' . (str_contains($rr['body'], 'ZZ Test Cert Paid') ? 'yes' : 'no')
+        . '; resident-page=' . $rr['status']);
 
     // safety
     $nt = $clk->post('/certificates/issue.php?request=' . $r2, ['request_id' => (string) $r2, 'or_number' => 'ZZOR-NT']); $cp = $issue($cap, $r2, ['or_number' => 'ZZOR-CAP']); $secretaryDirect = $issue($sec, $r2, ['or_number' => 'ZZOR-SEC']);
@@ -133,6 +154,7 @@ function run_b5(array $S, string $base): void
     // New paid-issuance tests create a separate ledger row with an FK to each issuance.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTEST5%')");
     db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTEST5%'");
+    db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
     db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
     db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest5%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
