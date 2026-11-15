@@ -154,6 +154,7 @@ if (is_post()) {
 
 render_header('Settings', [['Settings', null]], 'settings');
 page_head('Settings', 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.');
+if ($canEdit) { echo '<div class="mb-3">' . btn_link('admin/chairman_signature.php', 'Manage Chairman Signature Image', 'btn-light border', 'bi-pen') . '</div>'; }
 echo errors_box($errors);
 echo '<ul class="nav nav-pills mb-3">';
 foreach ($tabs as $k => $lab) { echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('admin/settings.php?tab=' . $k)) . '">' . e($lab) . '</a></li>'; }
