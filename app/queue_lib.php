@@ -16,7 +16,7 @@ function queue_valid_service(string $service): bool
  *
  * @return array{queue_id:int,service:string,queue_date:string,queue_number:int}
  */
-function queue_issue_number(string $service, ?int $residentId = null, ?string $referenceNo = null, string $issuedVia = 'staff'): array
+function queue_issue_number(string $service, ?int $residentId = null, ?string $referenceNo = null, string $issuedVia = 'staff', ?string $purpose = null): array
 {
     if (!queue_valid_service($service)) {
         throw new InvalidArgumentException('Choose Blotter, Documents or Venue.');
@@ -39,10 +39,14 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
     if ($referenceNo !== null && $referenceNo !== '' && !preg_match('/^[A-Za-z0-9._-]{1,24}$/', $referenceNo)) {
         throw new InvalidArgumentException('The reference number is not valid.');
     }
+    $purpose = $purpose !== null ? trim($purpose) : null;
+    if ($purpose !== null && !v_len($purpose, 3, 255)) {
+        throw new InvalidArgumentException('Enter the reason for visiting (3-255 characters).');
+    }
     $preference = (string) ($resident['notification_preference'] ?? 'email');
     if (!in_array($preference, ['email', 'sms', 'both'], true)) { $preference = 'email'; }
 
-    return db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $preference): array {
+    return db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference): array {
         $today = date('Y-m-d');
         db_exec('INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)', [$service, $today]);
         $counter = db_one('SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE', [$service, $today]);
@@ -51,9 +55,9 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
         if ($number < 1 || $number > 4294967295) { throw new RuntimeException('The queue number limit has been reached for today.'); }
         db_exec('UPDATE queue_counters SET last_number = ? WHERE service = ? AND queue_date = ?', [$number, $service, $today]);
         db_exec(
-            'INSERT INTO queue_entries (service, queue_date, queue_number, resident_id, reference_no, status, issued_via, notification_preference)
-             VALUES (?, ?, ?, ?, ?, \'Waiting\', ?, ?)',
-            [$service, $today, $number, $residentId, ($referenceNo !== '' ? $referenceNo : null), $issuedVia, $preference]
+            'INSERT INTO queue_entries (service, queue_date, queue_number, resident_id, reference_no, purpose, status, issued_via, notification_preference)
+             VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', ?, ?)',
+            [$service, $today, $number, $residentId, ($referenceNo !== '' ? $referenceNo : null), $purpose, $issuedVia, $preference]
         );
         $id = (int) db()->lastInsertId();
         audit('queue_number_issued', 'Queue', 'Success', $service . ' queue #' . $number . ' issued for ' . $today, 'queue_entry', $id);
