@@ -13,7 +13,7 @@ function run_b15(array $S, string $base): void
     $referencePrefix = 'ZB15-';
     $oldVenueId = (int) db_val('SELECT venue_id FROM venues WHERE name = ?', [$venueName]);
     if ($oldVenueId > 0) {
-        db_exec('DELETE FROM request_status_history WHERE reference_no LIKE ?', [$referencePrefix . '%']);
+        db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id = ?)', [$oldVenueId]);
         db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$oldVenueId]);
         db_exec('DELETE FROM venues WHERE venue_id = ?', [$oldVenueId]);
     }

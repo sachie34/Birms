@@ -9,7 +9,7 @@ function venue_reference_no(): string
     return 'VEN-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(4)));
 }
 
-/** Green means available; Red means in use. Pending reservations do not occupy a venue. */
+/** Green means available; Red means in use. Pending requests hold the time slot against conflicts but do not turn the live board red. */
 function venue_current_state(array $venue, ?DateTimeImmutable $now = null): string
 {
     $override = (string) ($venue['availability_override'] ?? 'automatic');
@@ -65,7 +65,7 @@ function venue_create_reservation(int $venueId, int $residentId, string $purpose
         $resident = db_one('SELECT resident_id, archived_at FROM residents WHERE resident_id = ? FOR UPDATE', [$residentId]);
         if ($resident === null || $resident['archived_at'] !== null) { throw new InvalidArgumentException('The resident is no longer active. Verify the resident and try again.'); }
         if (venue_reservations_overlap($venueId, $date, $start, $end)) {
-            throw new InvalidArgumentException('That venue is already requested or booked during the selected time. Choose another time.');
+            throw new InvalidArgumentException('That time overlaps an existing Pending request or Approved booking for this venue. Choose another time.');
         }
         $reference = venue_reference_no();
         db_exec(

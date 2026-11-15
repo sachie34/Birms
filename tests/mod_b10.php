@@ -28,8 +28,11 @@ function run_b10(array $S, string $base): void
         post_as($clk, '/residents/index.php', '/residents/import.php', ['action' => 'preview']),
         post_as($adm, '/residents/index.php', '/residents/import.php', ['action' => 'preview']),
     ];
-    $noWrites = count(array_filter($attempts, static fn(array $r): bool => $r['status'] === 302
-        && str_contains((string) $r['location'], 'residents/index.php'))) === 3
+    $noWrites = $attempts[0]['status'] === 302
+        && str_contains((string) $attempts[0]['location'], 'residents/index.php')
+        && $attempts[1]['status'] === 403
+        && $attempts[2]['status'] === 302
+        && str_contains((string) $attempts[2]['location'], 'residents/index.php')
         && (int) db_val('SELECT COUNT(*) FROM residents') === $before;
     record('B10-02', 'POST attempts cannot invoke the retired importer or modify resident records', $noWrites);
 

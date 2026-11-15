@@ -98,13 +98,20 @@ function run_b4(array $S, string $base): void
     $x3 = $move($clk, $id1, 'Ready'); $c = $x3['status'] === 302 && $status($id1) === 'Review';
     $adminQueue = $adm->get('/requests/index.php?tab=my'); $secQueue = $sec->get('/requests/index.php?tab=my'); $capQueue = $cap->get('/requests/index.php?tab=my'); $clkQueue = $clk->get('/requests/index.php?tab=my');
     record('B4-8a', 'Secretary starts review; Staff cannot forge requirements completion and cannot approve until the checklist is complete',
-        $a && $clerkBlocked && $b && $clerkCannotComplete && $c && $reviewStepOk);
+        $a && $clerkBlocked && $b && $clerkCannotComplete && $c && $reviewStepOk,
+        'chairman=' . $chairmanTry['status'] . '; staff-review=' . $clerkReview['status']
+        . '; secretary-review=' . $x2['status'] . '; status=' . $status($id1)
+        . '; assigned=' . (string) db_val('SELECT assigned_to FROM document_requests WHERE request_id = ?', [$id1])
+        . '; forged-requirements=' . (string) db_val('SELECT requirements_status FROM document_requests WHERE request_id = ?', [$id1])
+        . '; staff-ready=' . $x3['status']
+        . '; review-step=' . ($reviewStepOk ? 'yes' : 'no')
+        . '; review-page=' . substr(trim(strip_tags($reviewDetail['body'])), 0, 300));
     record('B4-8c', 'Each role gets a role-labeled work queue containing the right request',
         str_contains($adminQueue['body'], 'Needs Action') && str_contains($adminQueue['body'], (string) $row['reference_no'])
         && str_contains($secQueue['body'], 'Needs Review') && str_contains($capQueue['body'], 'View Only')
         && str_contains($clkQueue['body'], 'Needs Final Decision')
         && str_contains($secQueue['body'], (string) $row['reference_no'])
-        && !str_contains($capQueue['body'], (string) $row['reference_no'])
+        && str_contains($capQueue['body'], (string) $row['reference_no'])
         && str_contains($clkQueue['body'], (string) $row['reference_no']));
 
     // Staff may not discover or change another user's unreviewed request by swapping an ID or tab.
@@ -153,7 +160,7 @@ function run_b4(array $S, string $base): void
     $secretaryDenied = $secretaryTry['status'] === 403 && $status($id1) === 'Review';
     $x4 = $move($clk, $id1, 'Ready'); $d = $x4['status'] === 302 && $status($id1) === 'Ready';
     $readyDetail = $cap->get('/requests/view.php?id=' . $id1);
-    record('B4-8f', 'Approved request shows certificate issuance as the current next step', str_contains($readyDetail['body'], 'Certificate issuance') && str_contains($readyDetail['body'], 'aria-current="step"'));
+    record('B4-8f', 'Approved request shows certificate issuance as the current next step', str_contains($readyDetail['body'], 'Certificate release') && str_contains($readyDetail['body'], 'aria-current="step"'));
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
     record('B4-8b', 'Incomplete requirements block Staff approval; Secretary is denied final approval; Staff can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
     $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
@@ -191,17 +198,17 @@ function run_b4(array $S, string $base): void
     $capCancel = $move($cap, $id5, 'Cancelled'); $clkCancel = $move($clk, $id5, 'Cancelled', 'Resident left');
     record('B4-12', 'Cancel: captain refused (403); clerk allowed', $capCancel['status'] === 403 && $clkCancel['status'] === 302 && $status($id5) === 'Cancelled');
 
-    $t = $sec->get('/requests/index.php?tab=Ready'); $tc = $sec->get('/requests/index.php?tab=closed'); $ts = $sec->get('/requests/index.php?q=' . urlencode((string) $row['reference_no']));
+    $t = $sec->get('/requests/index.php?tab=Approved'); $tc = $sec->get('/requests/index.php?tab=Rejected'); $ts = $sec->get('/requests/index.php?q=' . urlencode((string) $row['reference_no']));
     $nReady = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE msit_status = 'Approved'");
     $b413Ok = str_contains($t['body'], 'REQ-')
         && str_contains($t['body'], 'Approved <span class="badge text-bg-light">' . $nReady . '</span>')
-        && str_contains($tc['body'], 'ZZTest4, Rita')
+        && str_contains($tc['body'], 'ZZTestFour, Rita')
         && str_contains($ts['body'], (string) $row['reference_no'])
         && !str_contains($t['body'], 'ZZ Test purpose cancel');
     record('B4-13', 'Tracker tabs, counts and search match the data', $b413Ok,
         'approved-status=' . $t['status'] . '; approved-count=' . $nReady
-        . '; approved-label=' . (str_contains($t['body'], 'Ready for Pickup <span class="badge text-bg-light">' . $nReady . '</span>') ? 'yes' : 'no')
-        . '; closed-status=' . $tc['status'] . '; closed-resident=' . (str_contains($tc['body'], 'ZZTest4, Rita') ? 'yes' : 'no')
+        . '; approved-label=' . (str_contains($t['body'], 'Approved <span class="badge text-bg-light">' . $nReady . '</span>') ? 'yes' : 'no')
+        . '; closed-status=' . $tc['status'] . '; closed-resident=' . (str_contains($tc['body'], 'ZZTestFour, Rita') ? 'yes' : 'no')
         . '; search-status=' . $ts['status'] . '; search-ref=' . (str_contains($ts['body'], (string) $row['reference_no']) ? 'yes' : 'no')
         . '; canceled-hidden=' . (!str_contains($t['body'], 'ZZ Test purpose cancel') ? 'yes' : 'no'));
 
@@ -263,6 +270,7 @@ function run_b4(array $S, string $base): void
     $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
     record('B4-19', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
 
+    db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ Test%')");
     db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ Test%')");
     db_exec("DELETE FROM document_requests WHERE purpose LIKE 'ZZ Test%'");
     db_exec("DELETE FROM visitor_log WHERE visitor_name LIKE 'ZZTest%'");

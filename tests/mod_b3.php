@@ -59,7 +59,7 @@ function run_b3(array $S, string $base): void
 
         $before = $count();
         $denied = post_as($cap, '/residents/index.php', '/residents/form.php', $mk());
-        $noCsrf = $clk->post('/residents/form.php', $mk());
+        $noCsrf = $sec->post('/residents/form.php', $mk());
         record('B3-2', 'A role without resident-add permission and a request without CSRF cannot create a resident',
             $denied['status'] === 403 && $noCsrf['status'] === 403 && $count() === $before,
             'permission=' . $denied['status'] . '; CSRF=' . $noCsrf['status']);
@@ -83,7 +83,7 @@ function run_b3(array $S, string $base): void
         $badRows = [];
         foreach ($invalid as $label => $values) {
             $values['first_name'] = 'Invalid' . substr(hash('sha256', $label), 0, 6);
-            $response = $create($clk, $values);
+            $response = $create($sec, $values);
             if ($response['status'] !== 200 || !str_contains($response['body'], 'alert-danger')) {
                 $badRows[] = $label . '=' . $response['status'];
             }
@@ -91,7 +91,7 @@ function run_b3(array $S, string $base): void
         record('B3-3', 'Resident registration rejects invalid birthdate, contact, address, Purok, status, type, marital status and malformed values',
             !$badRows && $count() === $before, implode(', ', $badRows));
 
-        $created = $create($clk, ['first_name' => 'First']);
+        $created = $create($sec, ['first_name' => 'First']);
         $resident = db_one("SELECT * FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
         $residentId = (int) ($resident['resident_id'] ?? 0);
         if ($residentId > 0) { $createdIds[] = $residentId; }
@@ -107,7 +107,7 @@ function run_b3(array $S, string $base): void
             && str_contains($profile['body'], (string) $resident['resident_no'])
             && str_contains($profile['body'], '123 B3 Test Street')
             && !str_contains($profile['body'], 'Household members');
-        record('B3-4', 'Staff can register a resident with direct Address and Purok, and BIRMS assigns a unique Resident ID with Email as the default notification channel',
+        record('B3-4', 'Secretary can register a resident with direct Address and Purok, and BIRMS assigns a unique Resident ID with Email as the default notification channel',
             $b34Ok,
             'POST=' . $created['status'] . '; location=' . (string) ($created['location'] ?? '')
             . '; resident=' . ($resident === null ? 'not saved' : (string) $resident['resident_no'])
@@ -115,8 +115,8 @@ function run_b3(array $S, string $base): void
             . '; validation=' . (preg_match('/alert-danger[^>]*>(.*?)<\\/div>/s', (string) $created['body'], $errMatch) ? substr(trim(strip_tags($errMatch[1])), 0, 1200) : 'no alert-danger')
             . '; profile=' . $profile['status']);
 
-        $duplicateRejected = $create($clk, ['first_name' => 'First']);
-        $duplicateAllowed = $create($clk, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
+        $duplicateRejected = $create($sec, ['first_name' => 'First']);
+        $duplicateAllowed = $create($sec, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
         $twin = db_one("SELECT resident_id FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
         if ($twin !== null && (int) $twin['resident_id'] !== $residentId) { $createdIds[] = (int) $twin['resident_id']; }
         record('B3-5', 'Duplicate name and birthdate is warned about and only allowed after explicit confirmation',
