@@ -25,24 +25,24 @@ function permission_map(): array
             'audit.view', 'audit.export', 'users.manage', 'backup.run', 'cash_ledger.view', 'cash_ledger.manage',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
             'hearings.view', 'hearings.add', 'hearings.edit',
-            'reports.view', 'reports.export',
+            'reports.view', 'reports.export', 'queue.view', 'queue.manage',
         ],
         'captain' => [
             'dashboard.view', 'residents.view', 'residents.export', 'requests.view', 'requests.approve',
             'certificates.history', 'settings.view', 'blotters.view', 'blotters.edit', 'hearings.view', 'hearings.edit',
-            'reports.view', 'reports.export', 'audit.view', 'cash_ledger.view',
+            'reports.view', 'reports.export', 'audit.view', 'cash_ledger.view', 'queue.view',
         ],
         'secretary' => [
             'dashboard.view', 'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.export',
             'requests.view', 'requests.add', 'requests.edit', 'requests.review',
             'certificates.history', 'certificates.issue', 'certificates.print', 'settings.view', 'settings.edit',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
-            'hearings.view', 'hearings.add', 'hearings.edit', 'reports.view', 'reports.export',
+            'hearings.view', 'hearings.add', 'hearings.edit', 'reports.view', 'reports.export', 'queue.view',
         ],
         'clerk' => [
             'dashboard.view', 'residents.view', 'residents.add', 'residents.edit',
             'requests.view', 'requests.add', 'requests.edit', 'certificates.history', 'certificates.print',
-            'blotters.view', 'blotters.add', 'hearings.view',
+            'blotters.view', 'blotters.add', 'hearings.view', 'queue.view', 'queue.manage',
         ],
     ];
 }
