@@ -270,9 +270,14 @@ function run_b4(array $S, string $base): void
     $out = []; $code = 0; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/schema_check.php') . ' 2>&1', $out, $code);
     record('B4-19', 'schema_check.php still agrees with the database (expected_schema.json in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 3)));
 
-    db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ Test%')");
-    db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ Test%')");
-    db_exec("DELETE FROM document_requests WHERE purpose LIKE 'ZZ Test%'");
+    $testRequestIds = array_map(static fn(array $r): int => (int) $r['request_id'], db_all("SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ Test%'"));
+    if ($testRequestIds) {
+        $marks = implode(',', array_fill(0, count($testRequestIds), '?'));
+        db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
+    }
     db_exec("DELETE FROM visitor_log WHERE visitor_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
