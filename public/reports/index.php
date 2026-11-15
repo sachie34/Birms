@@ -55,8 +55,9 @@ if ($isCsv) {
         $write(['Section', 'Category', 'Count']);
         $write(['Population', 'Current active residents', $data['total']]);
         foreach ([
-            'Age bracket' => $data['age_brackets'], 'Sex' => $data['sex'], 'Civil status' => $data['civil_status'],
-            'Employment status' => $data['employment_status'], 'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
+            'Age bracket' => $data['age_brackets'], 'Sex' => $data['sex'], 'Marital status' => $data['marital_status'],
+            'Resident type' => $data['resident_type'], 'Employment status' => $data['employment_status'],
+            'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
         ] as $section => $items) {
             foreach ($items as $category => $count) { $write([$section, $category, $count]); }
         }
@@ -96,6 +97,7 @@ if ($isCsv) {
         $write(['Section', 'Metric', 'Value']);
         $write(['Population', 'Current active resident snapshot (not historical population)', (int) $population['total']]);
         foreach ($population['purok'] as $purok => $count) { $write(['Population by Purok', $purok, (int) $count]); }
+        foreach ($population['resident_type'] as $residentType => $count) { $write(['Population by resident type', $residentType, (int) $count]); }
         $write(['Certificates', 'Documents issued in selected period', (int) $issuance['summary']['issued_count']]);
         $write(['Certificates', 'Recorded issuance fee amounts (not confirmed collections)', number_format((float) $issuance['summary']['recorded_fees'], 2, '.', '')]);
         $write(['Collections', 'Reconciled cash-collection ledger amount', number_format((float) $collections['collected_amount'], 2, '.', '')]);
