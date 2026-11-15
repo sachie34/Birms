@@ -180,6 +180,43 @@ function report_requests(array $range): array
     return ['summary' => $summary, 'by_type' => $byType, 'by_assignee' => $byAssignee, 'by_status' => $byStatus];
 }
 
+/** Queue statistics for a monthly, quarterly or annual reporting window. */
+function report_queueing(array $range): array
+{
+    $summary = db_one(
+        "SELECT COUNT(*) AS total,
+                COALESCE(SUM(status = 'Waiting'), 0) AS waiting_count,
+                COALESCE(SUM(status = 'Called'), 0) AS called_count,
+                COALESCE(SUM(status = 'Served'), 0) AS served_count,
+                COALESCE(SUM(status = 'Skipped'), 0) AS skipped_count,
+                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count,
+                AVG(CASE WHEN status = 'Served' AND served_at IS NOT NULL
+                    THEN TIMESTAMPDIFF(SECOND, issued_at, served_at) ELSE NULL END) AS average_wait_seconds
+         FROM queue_entries
+         WHERE issued_at >= ? AND issued_at < ?",
+        [$range['start'], $range['end']]
+    ) ?? [
+        'total' => 0, 'waiting_count' => 0, 'called_count' => 0, 'served_count' => 0,
+        'skipped_count' => 0, 'cancelled_count' => 0, 'average_wait_seconds' => null,
+    ];
+    $byService = db_all(
+        "SELECT service, COUNT(*) AS total,
+                COALESCE(SUM(status = 'Waiting'), 0) AS waiting_count,
+                COALESCE(SUM(status = 'Called'), 0) AS called_count,
+                COALESCE(SUM(status = 'Served'), 0) AS served_count,
+                COALESCE(SUM(status = 'Skipped'), 0) AS skipped_count,
+                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count,
+                AVG(CASE WHEN status = 'Served' AND served_at IS NOT NULL
+                    THEN TIMESTAMPDIFF(SECOND, issued_at, served_at) ELSE NULL END) AS average_wait_seconds
+         FROM queue_entries
+         WHERE issued_at >= ? AND issued_at < ?
+         GROUP BY service
+         ORDER BY FIELD(service, 'Blotter', 'Documents', 'Venue')",
+        [$range['start'], $range['end']]
+    );
+    return ['summary' => $summary, 'by_service' => $byService];
+}
+
 /** Compile the data-backed sections used by the monthly/quarterly administrative summary. */
 function report_periodic_administrative(array $range): array
 {
@@ -189,6 +226,7 @@ function report_periodic_administrative(array $range): array
         'collections' => report_cash_collections($range),
         'requests' => report_requests($range),
         'blotter' => report_blotters($range),
+        'queues' => report_queueing($range),
     ];
 }
 
@@ -198,33 +236,40 @@ function report_blotters(array $range): array
     $params = [$range['start'], $range['end']];
     $summary = db_one(
         "SELECT COUNT(*) AS total,
-                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
-                COALESCE(SUM(status = 'Active'), 0) AS active_count,
-                COALESCE(SUM(status = 'Scheduled'), 0) AS scheduled_count,
-                COALESCE(SUM(status = 'Resolved'), 0) AS resolved_count
-         FROM blotters WHERE archived_at IS NULL AND incident_date >= ? AND incident_date < ?", $params
-    ) ?? ['total' => 0, 'pending_count' => 0, 'active_count' => 0, 'scheduled_count' => 0, 'resolved_count' => 0];
-    $total = (int) $summary['total'];
-    $resolved = (int) $summary['resolved_count'];
-    $summary['resolution_rate'] = $total > 0 ? round(($resolved / $total) * 100, 1) : 0.0;
+                COALESCE(SUM(msit_status = 'Ongoing'), 0) AS ongoing_count,
+                COALESCE(SUM(msit_status = 'Unresolved'), 0) AS unresolved_count,
+                COALESCE(SUM(msit_status = 'Resolved'), 0) AS resolved_count,
+                COALESCE(SUM(msit_status = 'Dismissed'), 0) AS dismissed_count,
+                COALESCE(SUM(msit_status = 'Archived'), 0) AS archived_count
+         FROM blotters WHERE incident_date >= ? AND incident_date < ?", $params
+    ) ?? [
+        'total' => 0, 'ongoing_count' => 0, 'unresolved_count' => 0,
+        'resolved_count' => 0, 'dismissed_count' => 0, 'archived_count' => 0,
+    ];
+    $activeTotal = (int) $summary['total'] - (int) $summary['archived_count'];
+    $summary['resolution_rate'] = $activeTotal > 0
+        ? round(((int) $summary['resolved_count'] / $activeTotal) * 100, 1) : 0.0;
 
     $byType = db_all(
         "SELECT COALESCE(it.label, 'Unclassified') AS incident_type, COUNT(*) AS case_count,
-                COALESCE(SUM(b.status = 'Resolved'), 0) AS resolved_count
+                COALESCE(SUM(b.msit_status = 'Resolved'), 0) AS resolved_count,
+                COALESCE(SUM(b.msit_status = 'Dismissed'), 0) AS dismissed_count,
+                COALESCE(SUM(b.msit_status = 'Archived'), 0) AS archived_count
          FROM blotters b LEFT JOIN lookups it ON it.lookup_id = b.incident_type_id AND it.list_key = 'incident_type'
-         WHERE b.archived_at IS NULL AND b.incident_date >= ? AND b.incident_date < ?
+         WHERE b.incident_date >= ? AND b.incident_date < ?
          GROUP BY COALESCE(it.label, 'Unclassified') ORDER BY case_count DESC, incident_type", $params
     );
     $byPurok = db_all(
         "SELECT COALESCE(pk.label, 'Purok not assigned') AS purok, COUNT(*) AS case_count
          FROM blotters b LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id AND pk.list_key = 'purok'
-         WHERE b.archived_at IS NULL AND b.incident_date >= ? AND b.incident_date < ?
+         WHERE b.incident_date >= ? AND b.incident_date < ?
          GROUP BY COALESCE(pk.label, 'Purok not assigned') ORDER BY case_count DESC, purok", $params
     );
     $byStatus = db_all(
-        "SELECT status, COUNT(*) AS case_count
-         FROM blotters WHERE archived_at IS NULL AND incident_date >= ? AND incident_date < ?
-         GROUP BY status ORDER BY FIELD(status, 'Pending', 'Active', 'Scheduled', 'Resolved')", $params
+        "SELECT msit_status AS status, COUNT(*) AS case_count
+         FROM blotters WHERE incident_date >= ? AND incident_date < ?
+         GROUP BY msit_status
+         ORDER BY FIELD(msit_status, 'Ongoing', 'Unresolved', 'Resolved', 'Dismissed', 'Archived')", $params
     );
     return ['summary' => $summary, 'by_type' => $byType, 'by_purok' => $byPurok, 'by_status' => $byStatus];
 }
