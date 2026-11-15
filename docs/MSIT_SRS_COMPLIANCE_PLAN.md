@@ -198,3 +198,5 @@ The MSIT branch was started from the current `main` so it includes the latest me
   `SELECT blotter_id, scheduled_at, status, COUNT(*) AS total FROM hearings GROUP BY blotter_id, scheduled_at, status HAVING COUNT(*) > 1;`
   Resolve any duplicates by human review before applying the migration; never delete historical hearings to force the migration through.
 - The application still uses old resident pages and old role names, so do not deploy this branch as an MSIT-compliant build yet.
+
+- Compatibility correction from CI: the new Resident ID/status/type columns remain nullable during the staged transition because existing application routes and legacy integration fixtures still create residents using the old columns. Existing records are backfilled where possible; the revised resident form will be required to validate and populate these fields before the migration can be tightened to NOT NULL. This is intentional transitional compatibility, not the final resident-registration rule.
