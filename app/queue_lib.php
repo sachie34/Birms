@@ -206,7 +206,7 @@ function queue_service_snapshot(string $service): array
         [$service, $today]
     );
     $waiting = db_all(
-        'SELECT queue_id, queue_number, issued_at, reference_no FROM queue_entries
+        'SELECT queue_id, queue_number, issued_at, reference_no, purpose FROM queue_entries
          WHERE service = ? AND queue_date = ? AND status = \'Waiting\' ORDER BY queue_number LIMIT 50',
         [$service, $today]
     );
