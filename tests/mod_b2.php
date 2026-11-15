@@ -9,7 +9,7 @@ function run_b2(array $S, string $base): void
     $types = db_all('SELECT type_id, fee_amount, template_body, is_active FROM document_types');
 
     $bad = ''; foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'sms'] as $tab) { [$ok, $why] = rbac_page($S, '/admin/settings.php?tab=' . $tab, 'settings.view'); if (!$ok) { $bad .= "{$tab}: {$why}"; } }
-    record('B2-1', 'Settings pages: every role gets exactly what the permission map says (view = admin, captain, secretary)', $bad === '', $bad);
+    record('B2-1', 'Settings pages: every role gets exactly what the permission map says (view = Admin only)', $bad === '', $bad);
 
     $sec = $S['secretary']; $adm = $S['admin']; $cap = $S['captain'];
     $r = post_as($cap, '/admin/settings.php', '/admin/settings.php', ['do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Hacked', 'municipality' => 'X1', 'province' => 'Y1', 'age_brackets' => '0-17']);
@@ -19,9 +19,9 @@ function run_b2(array $S, string $base): void
 
     $post = fn(Http $h, array $d) => post_as($h, '/admin/settings.php', '/admin/settings.php', $d);
     $r = $post($adm, ['do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Wawa', 'municipality' => 'Balagtas', 'province' => 'Bulacan', 'captain_name' => 'x1', 'age_brackets' => '0-17,10-59']);
-    record('B2-4', 'Invalid captain name and overlapping age brackets are rejected; stored values unchanged', $r['status'] === 200 && str_contains($r['body'], 'alert-danger') && db_val("SELECT setting_value FROM settings WHERE setting_key = 'age_brackets'") === $snap['age_brackets']);
+    record('B2-4', 'Invalid Chairman name and overlapping age brackets are rejected; stored values unchanged', $r['status'] === 200 && str_contains($r['body'], 'alert-danger') && db_val("SELECT setting_value FROM settings WHERE setting_key = 'age_brackets'") === $snap['age_brackets'], 'status=' . $r['status'] . '; alert=' . (str_contains($r['body'], 'alert-danger') ? 'yes' : 'no') . '; detail=' . substr(trim(strip_tags((string) $r['body'])), 0, 350));
     $r = $post($adm, ['do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Wawa', 'municipality' => 'Balagtas', 'province' => 'Bulacan', 'captain_name' => 'Juan Dela Cruz', 'secretary_name' => 'Maria Santos', 'age_brackets' => '0-12,13-59,60-200']);
-    record('B2-5', 'Administrator saves barangay details; values stored', $r['status'] === 302 && db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'") === 'Juan Dela Cruz' && setting('age_brackets') !== null);
+    record('B2-5', 'Administrator saves barangay details; values stored', $r['status'] === 302 && db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'") === 'Juan Dela Cruz' && setting('age_brackets') !== null, 'status=' . $r['status'] . '; captain=' . (string) db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'") . '; age=' . (string) setting('age_brackets'));
 
     // lists
     $r = $post($adm, ['do' => 'lookup_add', 'tab' => 'puroks', 'list_key' => 'purok', 'label' => 'ZZ Test Purok A']);
