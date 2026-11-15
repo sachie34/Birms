@@ -74,6 +74,9 @@ function chairman_signature_store_upload(array $upload): string
     }
     $width = (int) ($image[0] ?? 0);
     $height = (int) ($image[1] ?? 0);
+    if ((int) ($image['channels'] ?? 3) !== 3) {
+        throw new InvalidArgumentException('Use a standard RGB JPEG image. Grayscale and CMYK images are not supported for reliable offline certificate printing.');
+    }
     if ($width < CHAIRMAN_SIGNATURE_MIN_WIDTH || $height < CHAIRMAN_SIGNATURE_MIN_HEIGHT
         || $width > CHAIRMAN_SIGNATURE_MAX_WIDTH || $height > CHAIRMAN_SIGNATURE_MAX_HEIGHT) {
         throw new InvalidArgumentException('Use a clear signature image between 160×60 and 3000×1600 pixels.');
