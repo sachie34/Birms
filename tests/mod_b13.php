@@ -16,7 +16,7 @@ function run_b13(array $S, string $base): void
         db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order, is_active) VALUES ('purok', ?, 999, 1)", [$purokLabel]);
         $purokId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
         $statusId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active'");
-        $typeId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None');
+        $typeId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None'");
 
         $requiredColumns = ['resident_no','address','purok_id','resident_status_id','marital_status','resident_type_id','email_address','photo_path','notification_preference'];
         $columnRows = db_all("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'residents'");
@@ -39,6 +39,7 @@ function run_b13(array $S, string $base): void
         }
         record('B13-02', 'The revised default resident statuses and resident types are preloaded', !$listProblems, implode(', ', $listProblems));
 
+        db_exec('DELETE FROM residents WHERE resident_no = ?', [$residentNo]);
         db_exec("INSERT INTO residents
             (resident_no, address, purok_id, resident_status_id, resident_type_id, marital_status,
              last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status)
