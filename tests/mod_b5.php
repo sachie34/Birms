@@ -7,6 +7,9 @@ function run_b5(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $capOld = db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'");
+    $signatureFixture = fx_upload_chairman_signature($adm);
+    record('B5-22', 'Admin uploads a valid Chairman JPG through the protected settings route',
+        $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
     db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
     db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ Test Purok B5', 9991)"); $pk = (int) db_val("SELECT lookup_id FROM lookups WHERE label = 'ZZ Test Purok B5'");
     db_exec("INSERT INTO households (household_code, purok_id, street_address) VALUES ('ZZTEST-B5', ?, 'ZZ Test Address 5')", [$pk]); $hh = (int) db()->lastInsertId();
@@ -59,7 +62,10 @@ function run_b5(array $S, string $base): void
     record('B5-5', 'Secretary cannot issue; Staff issuance still validates O.R. values without saving invalid records', $secretaryTry['status'] === 403 && $iss($rReady) === null && $stat($rReady) === 'Ready' && str_contains($a['body'], 'O.R.') && str_contains($b['body'], 'letters, numbers and dashes'));
     $ok = $issue($clk, $rReady, ['or_number' => 'ZZOR-1']); $row = $iss($rReady);
     $ageNow = age_on($birth);
-    record('B5-6', 'Staff issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Claimed', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed');
+    record('B5-6', 'Staff issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Released in the SRS field', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed' && (string) ($row['msit_status'] ?? '') === 'Released');
+    record('B5-23', 'Certificate issuance snapshots the currently configured Chairman image path', $row !== null
+        && (string) ($row['chairman_signature_path'] ?? '') === (string) ($signatureFixture['current'] ?? '')
+        && chairman_signature_path_to_absolute((string) ($row['chairman_signature_path'] ?? '')) !== null);
     $bt = (string) ($row['body_text'] ?? '');
     record('B5-7', 'The wording was filled from the record (uppercase name, age, Purok, address, day, month, Captain, reference)', str_contains($bt, 'ANA MID ZZTEST5') && str_contains($bt, (string) $ageNow) && str_contains($bt, 'ZZ Test Purok B5') && str_contains($bt, 'ZZ Test Address 5') && str_contains($bt, ordinal((int) date('j')) . ' day of ' . date('F Y')) && str_contains($bt, 'Test Captain Name') && str_contains($bt, (string) $row['reference_no']) && !str_contains($bt, '{{'), $bt);
     $auditIssued = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_issued' AND entity_id = ?", [$row['issuance_id'] ?? 0]);
@@ -171,5 +177,6 @@ function run_b5(array $S, string $base): void
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest5%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'"); db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");
     db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'captain_name'", [$capOld]);
+    fx_restore_chairman_signature($signatureFixture);
 }
 function issue_try(Http $h, int $req): array { return post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req, 'or_number' => 'ZZOR-TRY']); }
