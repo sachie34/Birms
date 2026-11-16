@@ -307,6 +307,7 @@ function backup_restore_parse(string $sql, array $allowedTables): array
     $dropped = [];
     $created = [];
     $inserts = [];
+    $blotterCases = [];
     foreach (backup_restore_split_statements($sql) as $statement) {
         if (preg_match('/^SET NAMES utf8mb4$/i', $statement) === 1
             || preg_match('/^SET FOREIGN_KEY_CHECKS\s*=\s*[01]$/i', $statement) === 1
@@ -341,6 +342,20 @@ function backup_restore_parse(string $sql, array $allowedTables): array
             if (!$columns || count($columns) !== count(array_unique($columns))) {
                 throw new InvalidArgumentException('The backup contains an empty or duplicated INSERT column list.');
             }
+            if ($table === 'blotters') {
+                if (($columns[0] ?? '') !== 'blotter_id' || ($columns[1] ?? '') !== 'case_no') {
+                    throw new InvalidArgumentException('The backup blotter rows do not contain their permanent case identifiers.');
+                }
+                preg_match_all("/\\(\\s*'([0-9]+)'\\s*,\\s*'([A-Za-z0-9_-]+)'/s", (string) $m[3], $caseMatches, PREG_SET_ORDER);
+                foreach ($caseMatches as $caseMatch) {
+                    $caseNo = (string) $caseMatch[2];
+                    $caseId = (int) $caseMatch[1];
+                    if ($caseNo === '' || $caseId < 1 || (isset($blotterCases[$caseNo]) && $blotterCases[$caseNo] !== $caseId)) {
+                        throw new InvalidArgumentException('The backup contains invalid or duplicate blotter identifiers.');
+                    }
+                    $blotterCases[$caseNo] = $caseId;
+                }
+            }
             $quote = chr(96);
             $currentColumns = array_map(
                 static fn(array $row): string => (string) $row['Field'],
@@ -369,7 +384,7 @@ function backup_restore_parse(string $sql, array $allowedTables): array
     if ($dropTables !== $expected || $createTables !== $expected) {
         throw new InvalidArgumentException('The backup does not contain the complete table set for this BIRMS database. Restore was not started.');
     }
-    return ['tables' => $expected, 'inserts' => $inserts];
+    return ['tables' => $expected, 'inserts' => $inserts, 'blotter_cases' => $blotterCases];
 }
 
 /** Restore all rows atomically while retaining the current table definitions. */
