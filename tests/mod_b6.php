@@ -24,10 +24,10 @@ function run_b6(array $S, string $base): void
     $file   = fn(Http $h, array $o = []) => post_as($h, '/blotters/form.php', '/blotters/form.php', $o + $d);
     $cid    = fn(string $tag) => (int) db_val('SELECT blotter_id FROM blotters WHERE narrative LIKE ?', ['ZZ-B6 ' . $tag . '%']);
     $cno    = fn(int $id) => (string) db_val('SELECT case_no FROM blotters WHERE blotter_id = ?', [$id]);
-    $status = fn(int $id) => (string) db_val('SELECT status FROM blotters WHERE blotter_id = ?', [$id]);
+    $status = fn(int $id) => (string) db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$id]);
     $cases  = fn() => (int) db_val("SELECT COUNT(*) FROM blotters WHERE narrative LIKE 'ZZ-B6%'");
     $page   = fn(int $id) => '/blotters/view.php?id=' . $id;
-    $move   = fn(Http $h, int $id, string $to, string $note = '') => post_as($h, $page($id), '/blotters/action.php', ['id' => (string) $id, 'do' => 'move', 'to' => $to, 'note' => $note]);
+    $move   = fn(Http $h, int $id, string $to, string $note = '') => post_as($h, $page($id), '/blotters/action.php', ['id' => (string) $id, 'do' => 'srs_move', 'to' => $to, 'note' => $note]);
     $do     = fn(Http $h, int $id, string $what) => post_as($h, $page($id), '/blotters/action.php', ['id' => (string) $id, 'do' => $what]);
     $sched  = fn(Http $h, int $id, string $when, string $venue = 'ZZ Test Hall') => post_as($h, $page($id), '/blotters/hearing_action.php', ['do' => 'schedule', 'id' => (string) $id, 'scheduled_at' => $when, 'venue' => $venue, 'notes' => '']);
     $outc   = fn(Http $h, int $id, int $hid, string $out, string $why = '') => post_as($h, $page($id), '/blotters/hearing_action.php', ['do' => 'outcome', 'hearing' => (string) $hid, 'outcome' => $out, 'reason' => $why]);
@@ -46,9 +46,9 @@ function run_b6(array $S, string $base): void
     $file($sec, ['narrative' => 'ZZ-B6 two: noise complaint', 'c_name' => 'Zzcomp Charlie', 'r_name' => 'Zzresp Delta']); $B = $cid('two'); $bNo = $cno($B);
     $adminTry = $file($adm, ['narrative' => 'ZZ-B6 admin attempt']); $AdminCase = $cid('admin attempt');
     $parts = db_all('SELECT party_role FROM blotter_parties WHERE blotter_id = ? ORDER BY party_id', [$A]);
-    record('B6-2', 'Secretary files a case: numbered BLT-YYYY-NNNN, Pending, both parties saved, audited; numbers are unique and sequential; the Administrator can also file',
-        $r['status'] === 302 && preg_match('/^BLT-' . date('Y') . '-\d{4}$/', $aNo) === 1 && $status($A) === 'Pending' && array_column($parts, 'party_role') === ['Complainant', 'Respondent']
-        && $audit('blotter_filed') >= 3 && (int) substr($bNo, -4) === (int) substr($aNo, -4) + 1 && $AdminCase > 0 && $adminTry['status'] === 302 && $status($AdminCase) === 'Pending' && $cases() === $n0 + 3);
+    record('B6-2', 'Secretary files a case: numbered BLT-YYYY-NNNN, initial SRS status Ongoing, both parties saved and audited; numbers are unique and sequential; the Administrator can also file',
+        $r['status'] === 302 && preg_match('/^BLT-' . date('Y') . '-\d{4}$/', $aNo) === 1 && $status($A) === 'Ongoing' && array_column($parts, 'party_role') === ['Complainant', 'Respondent']
+        && $audit('blotter_filed') >= 3 && (int) substr($bNo, -4) === (int) substr($aNo, -4) + 1 && $AdminCase > 0 && $adminTry['status'] === 302 && $status($AdminCase) === 'Ongoing' && $cases() === $n0 + 3);
 
     $variants = ['empty narrative' => ['narrative' => ''], 'short narrative' => ['narrative' => 'ZZ-B6'], 'future date' => ['incident_date' => date('Y-m-d', strtotime('+1 day'))], 'bad date' => ['incident_date' => '31/12/2026'],
                  'older than 10 years' => ['incident_date' => date('Y-m-d', strtotime('-11 years'))], 'short place' => ['incident_place' => 'ab'], 'no complainant name' => ['c_name' => ''], 'digits in name' => ['c_name' => 'Bob9 Cruz'],
@@ -63,23 +63,40 @@ function run_b6(array $S, string $base): void
     $e1 = post_as($sec, '/blotters/form.php?id=' . $A, '/blotters/form.php?id=' . $A, ['incident_date' => $today, 'incident_place' => 'ZZ Test Corrected Place', 'purok_id' => '', 'narrative' => 'ZZ-B6 one: fence dispute (corrected)']);
     $e2 = post_as($sec, '/blotters/form.php?id=' . $A, '/blotters/form.php?id=' . $A, ['incident_date' => 'nope', 'incident_place' => 'x', 'purok_id' => '', 'narrative' => 'short']);
     record('B6-4', 'Editing: a clerk may not; the Secretary corrects details (audited); bad edits are refused; unknown or array ids never crash',
-        $e0['status'] === 403 && $e1['status'] === 302 && db_val('SELECT incident_place FROM blotters WHERE blotter_id = ?', [$A]) === 'ZZ Test Corrected Place' && $status($A) === 'Pending' && $nPart($A) === 2
+        $e0['status'] === 403 && $e1['status'] === 302 && db_val('SELECT incident_place FROM blotters WHERE blotter_id = ?', [$A]) === 'ZZ Test Corrected Place' && $status($A) === 'Ongoing' && $nPart($A) === 2
         && $audit('blotter_updated') >= 1 && $e2['status'] === 200 && str_contains($e2['body'], 'alert-danger') && $cap->get('/blotters/form.php?id=' . $A)['status'] === 403
         && $sec->get('/blotters/form.php?id=99999999')['status'] === 404 && $sec->get('/blotters/form.php?id[]=1')['status'] < 500);
 
-    /* ---- status moves ---- */
-    $m1 = $move($clk, $A, 'Active'); $m1a = $move($adm, $AdminCase, 'Active'); $adminCaseStatus = $status($AdminCase); $s1 = $status($A);
-    $m2 = $move($cap, $A, 'Scheduled'); $s2 = $status($A);
-    $m3 = $move($sec, $A, 'Active'); $s3 = $status($A);
-    $m4 = $move($sec, $A, 'Pending'); $s4 = $status($A);
-    $m5 = $move($sec, $A, 'Resolved', ''); $s5 = $status($A);
-    $m6 = post_as($cap, $page($A), '/blotters/action.php', ['id' => (string) $A, 'do' => 'move', 'to' => ['Resolved'], 'note' => 'x']);
-    record('B6-5', 'Status rules: Staff and Chairman cannot edit a blotter case; Secretary and Administrator can make permitted moves; Scheduled is set only by a hearing; no way back; Resolved needs a note',
-        $m1['status'] === 403 && $m1a['status'] === 302 && $adminCaseStatus === 'Active' && $s1 === 'Pending' && $s2 === 'Pending' && $m3['status'] === 302 && $s3 === 'Active' && $s4 === 'Active' && $s5 === 'Active' && $m6['status'] < 500 && $status($A) === 'Active'
-        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'blotter_status_changed' AND remarks LIKE ?", [$aNo . ': Pending -> Active%']) === 1);
-    $m7 = $move($sec, $B, 'Resolved', 'ZZ withdrawn by complainant'); $rowB = db_one('SELECT status, resolution_note, resolved_at FROM blotters WHERE blotter_id = ?', [$B]);
-    $m8 = $move($sec, $B, 'Active'); $m9 = $move($sec, $B, 'Resolved', 'again');
-    record('B6-6', 'A Pending case can be resolved straight away with a note (resolved time recorded); a Resolved case is final', $m7['status'] === 302 && $rowB['status'] === 'Resolved' && $rowB['resolution_note'] === 'ZZ withdrawn by complainant' && $rowB['resolved_at'] !== null && $status($B) === 'Resolved');
+    /* ---- revised SRS status moves ---- */
+    $m1 = $move($clk, $A, 'Unresolved');                         // Staff cannot manage official case status
+    $m1a = $move($adm, $AdminCase, 'Unresolved');
+    $adminCaseStatus = $status($AdminCase);
+    $m2 = $move($cap, $A, 'Resolved', 'Chairman cannot update');
+    $s2 = $status($A);
+    $m3 = $move($sec, $A, 'Unresolved');
+    $s3 = $status($A);
+    $m4 = $move($sec, $A, 'Ongoing');
+    $s4 = $status($A);
+    $m5 = $move($sec, $A, 'Resolved', '');
+    $s5 = $status($A);
+    $legacyMove = post_as($sec, $page($A), '/blotters/action.php', ['id' => (string) $A, 'do' => 'move', 'to' => 'Resolved', 'note' => 'legacy path']);
+    record('B6-5', 'Only the five SRS statuses are accepted; Secretary/Admin can make permitted transitions; Staff/Chairman and retired legacy actions are denied; final outcomes require a reason',
+        $m1['status'] === 403 && $m1a['status'] === 302 && $adminCaseStatus === 'Unresolved'
+        && $m2['status'] === 403 && $s2 === 'Ongoing'
+        && $m3['status'] === 302 && $s3 === 'Unresolved'
+        && $m4['status'] === 302 && $s4 === 'Ongoing'
+        && $m5['status'] === 302 && $s5 === 'Ongoing'
+        && $legacyMove['status'] === 404 && $status($A) === 'Ongoing'
+        && (int) db_val("SELECT COUNT(*) FROM request_status_history WHERE service = 'Blotter' AND reference_no = ? AND previous_status = 'Ongoing' AND new_status = 'Unresolved'", [$aNo]) === 1);
+    $m7 = $move($sec, $B, 'Resolved', 'ZZ withdrawn by complainant');
+    $rowB = db_one('SELECT msit_status, resolution_note, resolved_at FROM blotters WHERE blotter_id = ?', [$B]);
+    $m8 = $move($sec, $B, 'Ongoing');
+    $m9 = $move($sec, $B, 'Resolved', 'again');
+    record('B6-6', 'An Ongoing case can be resolved with a reason and timestamp; a Resolved case cannot reopen or be resolved twice',
+        $m7['status'] === 302 && $rowB['msit_status'] === 'Resolved'
+        && $rowB['resolution_note'] === 'ZZ withdrawn by complainant'
+        && $rowB['resolved_at'] !== null && $status($B) === 'Resolved'
+        && $m8['status'] === 302 && $m9['status'] === 302 && $status($B) === 'Resolved');
 
     /* ---- parties ---- */
     $p0 = $clk->get('/blotters/party.php?case=' . $A); $np = $nPart($A);
@@ -102,8 +119,8 @@ function run_b6(array $S, string $base): void
     $okBad = true; $before = $nHear($A); foreach ($bads as $lbl => $w) { $sched($sec, $A, $w); if ($nHear($A) !== $before) { $okBad = false; } }
     $sched($sec, $A, $future(9), 'ab'); $sched($sec, $A, $future(9), 'ZZ Test Hall');  $extra = $nHear($A);
     $aw = post_as($sec, $page($A), '/blotters/hearing_action.php', ['do' => 'schedule', 'id' => (string) $A, 'scheduled_at' => ['x'], 'venue' => '', 'notes' => '']);
-    record('B6-8', 'Scheduling: only the Secretary may; it sets the case to Scheduled (audited); past, garbage, far-future, duplicate times and short venues are refused; a resolved case takes no hearing',
-        $stat === [403, 403, 302] && $hn === 0 && $r['status'] === 302 && $H1 > 0 && $status($A) === 'Scheduled' && $okBad && $extra === 2 && $aw['status'] < 500
+    record('B6-8', 'Scheduling: only authorized roles can schedule; a hearing is stored separately and never changes the case status; invalid, duplicate, past and far-future slots are refused; a Resolved case takes no hearing',
+        $stat === [403, 403, 302] && $hn === 0 && $r['status'] === 302 && $H1 > 0 && $status($A) === 'Ongoing' && $okBad && $extra === 2 && $aw['status'] < 500
         && $audit('hearing_scheduled') >= 2 && $nHear($B) === 0 && $sched($sec, $B, $future(4))['status'] === 302 && $nHear($B) === 0);
 
     /* ---- hearings: outcomes ---- */
@@ -111,9 +128,9 @@ function run_b6(array $S, string $base): void
     $o0 = $outc($sec, $A, $H1, 'Held'); $s0 = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);
     $o1 = $outc($clk, $A, $H1, 'Cancelled', 'ZZ clerk try'); $o1a = $outc($adm, $A, $H1, 'Held'); $afterAdminOutcome = db_one('SELECT status, scheduled_at FROM hearings WHERE hearing_id = ?', [$H1]);
     $o2 = $outc($sec, $A, $H1, 'Postponed', ''); $afterEmptyPostpone = db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]);
-    $o3 = $outc($sec, $A, $H1, 'Cancelled', 'ZZ complainant unavailable'); $stillSched = $status($A);   // H2 is still open
-    $o4 = $outc($sec, $A, $H2, 'Postponed', 'ZZ hall in use'); $afterAll = $status($A);                    // none left: back to Active
-    $o5 = $outc($sec, $A, $H1, 'Held');                                                                     // already final
+    $o3 = $outc($sec, $A, $H1, 'Cancelled', 'ZZ complainant unavailable'); $statusWithOpenHearing = $status($A);
+    $o4 = $outc($sec, $A, $H2, 'Postponed', 'ZZ hall in use'); $statusAfterAll = $status($A);
+    $o5 = $outc($sec, $A, $H1, 'Held'); // already final
     $sched($sec, $A, $future(5)); $H3 = $hid($A); db_exec('UPDATE hearings SET scheduled_at = ? WHERE hearing_id = ?', [date('Y-m-d H:i:s', strtotime('-2 hours')), $H3]);
     $o6 = $outc($sec, $A, $H3, 'Held');
     $outcomeChecks = [
@@ -122,52 +139,68 @@ function run_b6(array $S, string $base): void
         'admin-held-too-early-not-saved' => $o1a['status'] === 302 && $afterAdminOutcome['status'] === 'Scheduled',
         'postponed-without-reason-not-saved' => $o2['status'] === 302 && $afterEmptyPostpone === 'Scheduled',
         'cancelled-with-reason' => db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled',
-        'case-stays-scheduled-with-open-hearing' => $stillSched === 'Scheduled',
-        'case-returns-active-when-no-hearing-open' => $afterAll === 'Active',
+        'case-status-not-coupled-to-hearing' => $statusWithOpenHearing === 'Ongoing' && $statusAfterAll === 'Ongoing',
         'postponed-hearing-saved' => db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H2]) === 'Postponed',
         'cancelled-hearing-saved' => db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H1]) === 'Cancelled',
         'past-held-hearing-saved' => $o6['status'] === 302 && db_val('SELECT status FROM hearings WHERE hearing_id = ?', [$H3]) === 'Held',
-        'case-remains-active' => $status($A) === 'Active',
+        'case-remains-ongoing' => $status($A) === 'Ongoing',
         'outcomes-audited' => $audit('hearing_outcome') >= 3,
     ];
     $outcomeFailures = array_keys(array_filter($outcomeChecks, static fn(bool $ok): bool => !$ok));
-    record('B6-9', 'Hearing outcomes enforce role access, reasons, due times, case-state synchronization and audit logging',
+    record('B6-9', 'Hearing outcomes enforce role access, reasons, due times and audit logging without mutating the SRS case status',
         !$outcomeFailures, $outcomeFailures ? implode(', ', $outcomeFailures) : '');
 
     /* ---- resolve rules ---- */
-    $file($sec, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']); $D = $cid('four');
+    $file($sec, ['narrative' => 'ZZ-B6 four: boundary dispute', 'c_name' => 'Zzcomp Golf', 'r_name' => 'Zzresp Hotel']);
+    $D = $cid('four');
     $sched($sec, $D, $future(6)); $HD = $hid($D);
     $rs1 = $move($sec, $D, 'Resolved', 'ZZ settled'); $afterRefuse = $status($D);
     $outc($sec, $D, $HD, 'Cancelled', 'ZZ parties settled out of court');
-    $rs2 = $move($sec, $D, 'Resolved', 'ZZ settled at the barangay'); $rowD = db_one('SELECT status, resolved_at FROM blotters WHERE blotter_id = ?', [$D]);
+    $rs2 = $move($sec, $D, 'Resolved', 'ZZ settled at the barangay');
+    $rowD = db_one('SELECT msit_status, resolved_at FROM blotters WHERE blotter_id = ?', [$D]);
     $after = [$sched($sec, $D, $future(7))['status'], $nHear($D)]; $np2 = $nPart($D);
-    $pp = $sec->get('/blotters/party.php?case=' . $D)['status']; $ee = $sec->get('/blotters/form.php?id=' . $D)['status']; $back = $move($sec, $D, 'Active'); 
-    record('B6-10', 'A case with an open hearing cannot be resolved; after the outcome it can; a resolved case accepts no hearing, party or edit and cannot reopen',
-        $rs1['status'] === 302 && $afterRefuse === 'Scheduled' && $rs2['status'] === 302 && $rowD['status'] === 'Resolved' && $rowD['resolved_at'] !== null && $after === [302, 1] && $nPart($D) === $np2 && $pp === 403 && $ee === 403 && $status($D) === 'Resolved');
+    $pp = $sec->get('/blotters/party.php?case=' . $D)['status'];
+    $ee = $sec->get('/blotters/form.php?id=' . $D)['status'];
+    $back = $move($sec, $D, 'Ongoing');
+    record('B6-10', 'A case with an open hearing cannot be resolved; after recording its outcome it can; a Resolved case accepts no hearing, party, edit or reopen',
+        $rs1['status'] === 302 && $afterRefuse === 'Ongoing'
+        && $rs2['status'] === 302 && $rowD['msit_status'] === 'Resolved' && $rowD['resolved_at'] !== null
+        && $after === [302, 1] && $nPart($D) === $np2 && $pp === 403 && $ee === 403
+        && $back['status'] === 302 && $status($D) === 'Resolved');
 
-    /* ---- archive ---- */
-    $ar0 = $do($cap, $B, 'archive'); $ar1 = $do($clk, $B, 'archive'); $ar2 = $do($sec, $A, 'archive');   // A is not resolved
-    $ar3 = $do($sec, $B, 'archive'); $archived = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) !== null;
-    $listSec = $sec->get('/blotters/index.php')['body']; $arcSec = $sec->get('/blotters/index.php?tab=Archived')['body']; $arcClk = $clk->get('/blotters/index.php?tab=Archived')['body'];
+    /* ---- archive: resolved and dismissed cases are archived; restore is not allowed ---- */
+    $ar0 = $move($cap, $B, 'Archived');
+    $ar1 = $move($clk, $B, 'Archived');
+    $ar2 = $move($sec, $A, 'Archived'); // A is still Ongoing
+    $ar3 = $move($sec, $B, 'Archived');
+    $archived = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) !== null;
+    $file($sec, ['narrative' => 'ZZ-B6 seven: dismissed incident', 'c_name' => 'Zzcomp Seven', 'r_name' => 'Zzresp Eight']);
+    $F = $cid('seven');
+    $dismiss = $move($sec, $F, 'Dismissed', 'ZZ no conciliation proceeding');
+    $archiveDismissed = $move($sec, $F, 'Archived');
+    $dismissedArchived = $status($F) === 'Archived' && db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$F]) !== null;
+    $listSec = $sec->get('/blotters/index.php')['body'];
+    $arcSec = $sec->get('/blotters/index.php?tab=Archived')['body'];
+    $arcClk = $clk->get('/blotters/index.php?tab=Archived')['body'];
     $viewClk = $clk->get($page($B));
     $rest = $do($sec, $B, 'restore');
-    $restored = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) === null;
-    $restoredStatus = (string) db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]);
-    $do($sec, $B, 'archive');   // leave it archived for the look-up test
+    $stillArchived = db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$B]) !== null;
+    $stillArchivedStatus = (string) db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$B]);
     $b611Checks = [
-        'captain-denied' => $ar0['status'] === 403,
+        'chairman-denied' => $ar0['status'] === 403,
         'staff-denied' => $ar1['status'] === 403,
-        'cannot-archive-open' => $ar2['status'] === 302 && $status($A) === 'Active' && db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$A]) === null,
-        'secretary-archive' => $ar3['status'] === 302 && $archived,
+        'cannot-archive-open' => $ar2['status'] === 302 && $status($A) === 'Ongoing' && db_val('SELECT archived_at FROM blotters WHERE blotter_id = ?', [$A]) === null,
+        'secretary-archives-resolved' => $ar3['status'] === 302 && $archived && $status($B) === 'Archived',
+        'dismissed-case-can-be-archived' => $dismiss['status'] === 302 && $archiveDismissed['status'] === 302 && $dismissedArchived,
         'all-list-visible' => str_contains($listSec, $bNo),
         'secretary-archived-filter' => str_contains($arcSec, $bNo),
         'staff-archived-filter' => str_contains($arcClk, $bNo) && str_contains($arcClk, 'tab=Archived'),
         'archived-view' => $viewClk['status'] === 200 && str_contains(strtolower($viewClk['body']), 'archived'),
-        'restore' => $rest['status'] === 302 && $restored && $restoredStatus === 'Resolved',
-        'audit' => $audit('blotter_archived') >= 2 && $audit('blotter_restored') >= 1,
+        'restore-retired' => $rest['status'] === 404 && $stillArchived && $stillArchivedStatus === 'Archived',
+        'archive-audit' => $audit('blotter_archived') >= 2 && $audit('blotter_srs_status_changed') >= 5,
     ];
     $b611Failed = array_keys(array_filter($b611Checks, static fn(bool $ok): bool => !$ok));
-    record('B6-11', 'Resolved cases can be archived by the Secretary; archived records remain visible to authorized readers and restore preserves the SRS status',
+    record('B6-11', 'Both Resolved and Dismissed cases can be Archived by the Secretary; archived cases stay visible and cannot be restored',
         !$b611Failed, $b611Failed ? implode(', ', $b611Failed) : '');
 
     /* ---- look-up ---- */
@@ -242,7 +275,7 @@ function run_b6(array $S, string $base): void
 
     /* ---- CSRF, methods, odd input, XSS ---- */
     $snap = [$status($A), $nPart($A), $nHear($A), $cases()]; $nt = [];
-    foreach (['/blotters/action.php' => ['id' => (string) $A, 'do' => 'move', 'to' => 'Resolved', 'note' => 'ZZ no token'], '/blotters/hearing_action.php' => ['do' => 'schedule', 'id' => (string) $A, 'scheduled_at' => $future(2), 'venue' => 'x1', 'notes' => ''],
+    foreach (['/blotters/action.php' => ['id' => (string) $A, 'do' => 'srs_move', 'to' => 'Resolved', 'note' => 'ZZ no token'], '/blotters/hearing_action.php' => ['do' => 'schedule', 'id' => (string) $A, 'scheduled_at' => $future(2), 'venue' => 'x1', 'notes' => ''],
               '/blotters/party.php?case=' . $A => ['party_role' => 'Respondent', 'name' => 'Zznotoken Lima'], '/blotters/form.php' => $d] as $path => $data) { $nt[] = $sec->post($path, $data)['status']; }
     record('B6-17', 'Every blotter form refuses a POST without a CSRF token (403) and changes nothing; the action endpoints refuse GET (405)', $nt === [403, 403, 403, 403] && [$status($A), $nPart($A), $nHear($A), $cases()] === $snap && $sec->get('/blotters/action.php')['status'] === 405 && $sec->get('/blotters/hearing_action.php')['status'] === 405);
     $odd = []; $paths = ['/blotters/index.php?tab[]=x&q[]=y&page[]=2', '/blotters/index.php?page=-5&q=' . str_repeat('A', 4000), '/blotters/view.php?id[]=1', '/blotters/view.php?id=99999999', '/blotters/hearings.php?tab[]=x&page[]=1', '/blotters/lookup.php?q[]=a&q[]=b', '/blotters/party.php?case[]=1', '/blotters/party.php', '/blotters/summons.php?id[]=2'];
@@ -259,11 +292,11 @@ function run_b6(array $S, string $base): void
     $try('duplicate case number', fn() => db_exec("INSERT INTO blotters (case_no, incident_date, narrative, recorded_at) VALUES (?, CURDATE(), 'ZZ-B6 dup', NOW())", [$aNo]));
     $try('party for a missing case', fn() => db_exec("INSERT INTO blotter_parties (blotter_id, party_role, full_name) VALUES (99999999, 'Respondent', 'Zz Nobody')"));
     $try('hearing for a missing case', fn() => db_exec("INSERT INTO hearings (blotter_id, scheduled_at) VALUES (99999999, NOW())"));
-    $try('invalid status value', fn() => db_exec("UPDATE blotters SET status = 'Bogus' WHERE blotter_id = ?", [$A]));
+    $try('invalid status value', fn() => db_exec("UPDATE blotters SET msit_status = 'Bogus' WHERE blotter_id = ?", [$A]));
     $try('delete a case that has only hearings', function () use ($sec, $file, $cid, $sched, $future, $hid): void { db_exec("INSERT INTO blotters (case_no, incident_date, narrative, recorded_at) VALUES ('ZZ-ONLY-HEAR', CURDATE(), 'ZZ-B6 hearings only', NOW())"); $i = (int) db()->lastInsertId(); db_exec("INSERT INTO hearings (blotter_id, scheduled_at) VALUES (?, NOW())", [$i]); db_exec('DELETE FROM blotters WHERE blotter_id = ?', [$i]); });
     record('B6-20', 'The DATABASE refuses: deleting a case that has parties or hearings, duplicate case numbers, orphan parties or hearings, and an invalid status (findings H4)', count($blocked) === 6, implode(', ', $blocked));
 
-    $need = ['blotter_filed', 'blotter_updated', 'blotter_status_changed', 'blotter_party_added', 'blotter_party_updated', 'hearing_scheduled', 'hearing_outcome', 'blotter_archived', 'blotter_restored', 'blotter_lookup', 'summons_printed', 'hearing_refused', 'blotter_action_refused', 'blotter_rejected'];
+    $need = ['blotter_filed', 'blotter_updated', 'blotter_srs_status_changed', 'blotter_party_added', 'blotter_party_updated', 'hearing_scheduled', 'hearing_outcome', 'blotter_archived', 'blotter_lookup', 'summons_printed', 'hearing_refused', 'blotter_action_refused', 'blotter_rejected'];
     $missing = array_values(array_filter($need, fn($a) => $audit($a) < 1));
     record('B6-21', 'Every blotter action left an audit row (including refusals and searches)', !$missing, implode(',', $missing));
     $side = [];
