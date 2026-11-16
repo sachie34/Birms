@@ -75,7 +75,7 @@ if ($isExport) {
         $out = fopen('php://output', 'w');
         fwrite($out, "\xEF\xBB\xBF");
         $write = static function (array $row) use ($out): void {
-            fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\\\');
+            fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\');
         };
     }
     $write(['Prepared for', $recipientLabel]);
