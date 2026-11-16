@@ -20,6 +20,7 @@ if ($resident !== null) {
         . '<div class="kiosk-grid">'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/queue.php')) . '"><span class="kiosk-icon">#</span><strong>Get a queue number</strong><small>Blotter · Documents · Venue</small></a>'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/request.php')) . '"><span class="kiosk-icon">▤</span><strong>Request a document</strong><small>Submit a new request</small></a>'
+        . '<a class="kiosk-action" href="' . e(base_url('kiosk/blotter.php')) . '"><span class="kiosk-icon">!</span><strong>File a blotter report</strong><small>Report an incident</small></a>'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/venue.php')) . '"><span class="kiosk-icon">⌂</span><strong>Reserve a venue</strong><small>Check available venues</small></a>'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/status.php')) . '"><span class="kiosk-icon">✓</span><strong>Check request status</strong><small>Use your reference number</small></a>'
         . '</div><form method="post" action="' . e(base_url('kiosk/end.php')) . '">' . csrf_field() . '<button class="kiosk-secondary" type="submit">End session</button></form></section>';
