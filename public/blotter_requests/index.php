@@ -12,11 +12,18 @@ $statusFilter = get_str('status');
 if (!in_array($statusFilter, MSIT_BLOTTER_STATUSES, true)) { $statusFilter = ''; }
 $dateFrom = get_str('from');
 $dateTo = get_str('to');
+$q = get_str('q');
 if ($dateFrom !== '' && !v_date($dateFrom)) { $dateFrom = ''; }
 if ($dateTo !== '' && !v_date($dateTo)) { $dateTo = ''; }
+if ($dateFrom !== '' && $dateTo !== '' && $dateFrom > $dateTo) { [$dateFrom, $dateTo] = [$dateTo, $dateFrom]; }
 
 $where = [];
 $params = [];
+if ($q !== '') {
+    $like = '%' . addcslashes($q, '%_\\\\') . '%';
+    $where[] = '(br.reference_no LIKE ? OR r.resident_no LIKE ? OR r.first_name LIKE ? OR r.last_name LIKE ?)';
+    array_push($params, $like, $like, $like, $like);
+}
 if ($reviewFilter !== '') { $where[] = 'br.review_status = ?'; $params[] = $reviewFilter; }
 if ($statusFilter !== '') { $where[] = 'br.msit_status = ?'; $params[] = $statusFilter; }
 if ($dateFrom !== '') { $where[] = 'br.submitted_at >= ?'; $params[] = $dateFrom . ' 00:00:00'; }
@@ -43,6 +50,7 @@ page_head('Resident Blotter Requests', 'Review reports submitted through the res
 ?>
 <div class="card-b mb-3">
   <form method="get" action="<?= e(base_url('blotter_requests/index.php')) ?>" class="filters">
+    <div><label class="form-label" for="q">Reference or resident</label><input class="form-control" id="q" name="q" value="<?= e($q) ?>" maxlength="80" placeholder="Search reference, Resident ID or name"></div>
     <div><label class="form-label" for="review">Review status</label><select class="form-select" id="review" name="review"><option value="">All</option><?php foreach (RESIDENT_BLOTTER_REVIEW_STATUSES as $s): ?><option value="<?= e($s) ?>"<?= $reviewFilter === $s ? ' selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?></select></div>
     <div><label class="form-label" for="status">Blotter status</label><select class="form-select" id="status" name="status"><option value="">All</option><?php foreach (MSIT_BLOTTER_STATUSES as $s): ?><option value="<?= e($s) ?>"<?= $statusFilter === $s ? ' selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?></select></div>
     <div><label class="form-label" for="from">Submitted from</label><input class="form-control" id="from" name="from" type="date" value="<?= e($dateFrom) ?>"></div>
