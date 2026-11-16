@@ -19,7 +19,9 @@ function run_b5(array $S, string $base): void
     $tPaid = $mkType('ZZ Test Cert Paid', '50.00', $body); $tFree = $mkType('ZZ Test Cert Free', '0.00', 'Free for {{full_name}}'); $tNoFee = $mkType('ZZ Test Cert NoFee', null, 'x {{full_name}}'); $tNoWord = $mkType('ZZ Test Cert NoWording', '10.00', null);
     $birth = '1990-05-12';
     $mkRes = function (string $first, ?int $household = null, bool $arch = false) use ($hh, $birth): int {
-        db_exec("INSERT INTO residents (household_id, last_name, first_name, middle_name, birthdate, sex, civil_status, archived_at) VALUES (?, 'ZZTest5', ?, 'Mid', ?, 'Male', 'Single', ?)", [$household ?? $hh, $first, $birth, $arch ? date('Y-m-d H:i:s') : null]);
+        $email = 'b5-' . strtolower(preg_replace('/[^a-z0-9]+/i', '-', $first) ?? 'resident') . '@example.test';
+        db_exec("INSERT INTO residents (household_id, last_name, first_name, middle_name, birthdate, sex, civil_status, email_address, notification_preference, archived_at) VALUES (?, 'ZZTest5', ?, 'Mid', ?, 'Male', 'Single', ?, 'email', ?)",
+            [$household ?? $hh, $first, $birth, $email, $arch ? date('Y-m-d H:i:s') : null]);
         return (int) db()->lastInsertId();
     };
     $staffUserId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
@@ -73,6 +75,14 @@ function run_b5(array $S, string $base): void
     $auditReleased = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? AND remarks LIKE '% -> Released via %'", [$rReady]);
     $historyReleased = (int) db_val("SELECT COUNT(*) FROM request_status_history WHERE request_id = ? AND service = 'Documents' AND previous_status = 'Approved' AND new_status = 'Released'", [$rReady]);
     record('B5-8', 'Issuing and its audit/status-history records were saved together', $auditIssued === 1 && $auditReleased === 1 && $historyReleased === 1, 'issued=' . $auditIssued . '; release-audit=' . $auditReleased . '; history=' . $historyReleased);
+    $requestRef = (string) db_val('SELECT reference_no FROM document_requests WHERE request_id = ?', [$rReady]);
+    $releaseNotice = db_one("SELECT recipient, channel, event_type, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'document_request_status_changed' ORDER BY notification_id DESC LIMIT 1", [$res, $requestRef]);
+    record('B5-24', 'Certificate release queues a resident email notice using the document request reference',
+        $releaseNotice !== null
+        && $releaseNotice['recipient'] === 'b5-ana@example.test'
+        && $releaseNotice['channel'] === 'email'
+        && in_array($releaseNotice['delivery_status'], ['queued', 'sent'], true)
+        && str_contains((string) $releaseNotice['message'], 'Released'));
 
     $r2 = $mkReq($res, $tPaid); $dup = $issue($clk, $r2, ['or_number' => 'ZZOR-1']);
     record('B5-9', 'The same O.R. number cannot be used twice; the second request stays Ready', str_contains($dup['body'], 'already used') && $iss($r2) === null && $stat($r2) === 'Ready');
@@ -175,6 +185,7 @@ function run_b5(array $S, string $base): void
         db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
     }
+    db_exec("DELETE FROM notification_outbox WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTest5%')");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest5%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'"); db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");
     db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'captain_name'", [$capOld]);
