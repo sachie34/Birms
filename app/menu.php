@@ -11,7 +11,8 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'dashboard', 'label' => 'Operations Overview', 'icon' => 'bi-grid-1x2',     'path' => 'dashboard.php',     'perm' => 'dashboard.view', 'built' => true],
         // Each link is shown only when the route is implemented and the user's role has its permission.
         ['group' => 'Workspace', 'key' => 'residents', 'label' => 'Residents',            'icon' => 'bi-person-vcard', 'path' => 'residents/index.php', 'perm' => 'residents.view', 'built' => true],
-        ['group' => 'Workspace', 'key' => 'requests',  'label' => 'Request Tracker',      'icon' => 'bi-inbox',        'path' => 'requests/index.php',  'perm' => 'requests.view',  'built' => true],
+        ['group' => 'Workspace', 'key' => 'requests',  'label' => 'Document Requests',      'icon' => 'bi-inbox',        'path' => 'requests/index.php',  'perm' => 'requests.view',  'built' => true],
+        ['group' => 'Workspace', 'key' => 'all_requests', 'label' => 'All Services Tracker', 'icon' => 'bi-list-check', 'path' => 'requests/all.php', 'perm' => 'requests.tracker', 'built' => true],
         ['group' => 'Workspace', 'key' => 'queue', 'label' => 'Service Queue', 'icon' => 'bi-ticket-perforated', 'path' => 'queue/index.php', 'perm' => 'queue.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'venues', 'label' => 'Venue Reservations', 'icon' => 'bi-building', 'path' => 'venues/index.php', 'perm' => 'venues.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'certs',     'label' => 'Certificate Generation','icon' => 'bi-file-earmark-check', 'path' => 'certificates/issue.php', 'perm' => 'certificates.issue', 'built' => true],
