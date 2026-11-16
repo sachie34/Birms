@@ -38,7 +38,7 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
 
     db_transaction(function () use ($blotterId, $to, $note): void {
         $case = db_one(
-            'SELECT blotter_id, case_no, msit_status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE',
+            'SELECT blotter_id, case_no, msit_status, archived_at, resolution_note FROM blotters WHERE blotter_id = ? FOR UPDATE',
             [$blotterId]
         );
         if ($case === null) { throw new RuntimeException('That case was not found.'); }
@@ -69,7 +69,7 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
 
         $archiveAt = $to === 'Archived' ? 'NOW()' : 'NULL';
         $archivedFrom = $to === 'Archived' ? $from : null;
-        $resolutionNote = in_array($to, ['Resolved', 'Dismissed'], true) ? $note : null;
+        $resolutionNote = in_array($to, ['Resolved', 'Dismissed'], true) ? $note : ($to === 'Archived' ? $case['resolution_note'] : null);
         $resolvedAt = $to === 'Resolved' ? 'NOW()' : ($to === 'Dismissed' ? 'NULL' : 'resolved_at');
         $changed = db_exec(
             'UPDATE blotters
