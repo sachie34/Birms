@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 function email_provider_config(): array
 {
-    $enabledRaw = config('email.enabled', false);
-    $requested = is_bool($enabledRaw) ? $enabledRaw : filter_var($enabledRaw, FILTER_VALIDATE_BOOLEAN);
-    $from = trim((string) config('email.from_email', ''));
-    $name = trim((string) config('email.from_name', 'Barangay Office'));
+    $configuredEnabled = config('email.enabled', false);
+    $defaultEnabled = is_bool($configuredEnabled) ? $configuredEnabled : filter_var($configuredEnabled, FILTER_VALIDATE_BOOLEAN);
+    $enabledRaw = setting('email_enabled', $defaultEnabled ? '1' : '0');
+    $requested = filter_var($enabledRaw, FILTER_VALIDATE_BOOLEAN);
+    $from = trim((string) setting('email_from_email', (string) config('email.from_email', '')));
+    $name = trim((string) setting('email_from_name', (string) config('email.from_name', 'Barangay Office')));
     $available = function_exists('mail') && $from !== '' && filter_var($from, FILTER_VALIDATE_EMAIL) !== false;
     return [
         'enabled' => $requested && $available,
