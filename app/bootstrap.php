@@ -24,6 +24,7 @@ require __DIR__ . '/sms_provider.php';
 require __DIR__ . '/signature_lib.php';
 require __DIR__ . '/certificates_lib.php';
 require __DIR__ . '/blotters_lib.php';
+require __DIR__ . '/blotter_requests_lib.php';
 require __DIR__ . '/reports_lib.php';
 
 date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
