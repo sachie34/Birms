@@ -9,6 +9,7 @@ $types = [
     'issuance' => 'Issuance summary',
     'requests' => 'Request processing summary',
     'blotter' => 'Blotter summary',
+    'venues' => 'Venue usage summary',
     'queues' => 'Queue utilization and waiting time',
     'periodic' => 'Periodic Administrative Report',
 ];
@@ -24,7 +25,9 @@ $recipient = get_str('recipient');
 if (!isset($recipients[$recipient])) { $recipient = 'internal'; }
 $recipientLabel = $recipients[$recipient];
 $isCsv = get_str('format') === 'csv';
-require_permission($isCsv ? 'reports.export' : 'reports.view');
+$isExcel = get_str('format') === 'excel';
+$isExport = $isCsv || $isExcel;
+require_permission($isExport ? 'reports.export' : 'reports.view');
 
 $anchorDate = get_str('anchor_date');
 $range = report_period_range(get_str('period'), get_int('year'), get_int('month'), get_int('quarter'), $anchorDate);
@@ -33,24 +36,48 @@ $data = match ($type) {
     'issuance' => report_issuances($range),
     'requests' => report_requests($range),
     'blotter' => report_blotters($range),
+    'venues' => report_venues($range),
     'queues' => report_queueing($range),
     'periodic' => report_periodic_administrative($range),
 };
 $reportLabel = $types[$type];
 $periodLabel = $type === 'demographics' ? date('j F Y') . ' (current active resident records)' : $range['label'];
-audit_best_effort($isCsv ? 'report_exported' : 'report_generated', 'Reports', 'Success',
-    $reportLabel . ' for ' . $recipientLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label']) . ($isCsv ? ' CSV' : ' viewed'));
+audit_best_effort($isExport ? 'report_exported' : 'report_generated', 'Reports', 'Success',
+    $reportLabel . ' for ' . $recipientLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label'])
+    . ($isExcel ? ' Excel-compatible workbook' : ($isCsv ? ' CSV' : ' viewed')));
 
-if ($isCsv) {
-    $filename = 'birms-' . $recipient . '-' . $type . '-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($type === 'demographics' ? date('Y-m-d') : $range['label'])) . '.csv';
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('X-Content-Type-Options: nosniff');
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF");
-    $write = static function (array $row) use ($out): void {
-        fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\');
-    };
+if ($isExport) {
+    $stem = 'birms-' . $recipient . '-' . $type . '-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($type === 'demographics' ? date('Y-m-d') : $range['label']));
+    if ($isExcel) {
+        $filename = $stem . '.xls';
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        echo "\xEF\xBB\xBF";
+        echo '<!doctype html><html><head><meta charset="UTF-8"><title>' . e($reportLabel) . '</title>'
+            . '<style>body{font-family:Arial,sans-serif}table{border-collapse:collapse}td{border:1px solid #999;padding:5px;mso-number-format:"\\@";}tr:first-child td{font-weight:bold}</style>'
+            . '</head><body><table>';
+        $write = static function (array $row): void {
+            echo '<tr>';
+            foreach ($row as $cell) {
+                $value = is_string($cell) ? $cell : (string) $cell;
+                if (is_string($cell) && preg_match('/^\\s*[=+@-]/', $value) === 1) { $value = "'" . $value; }
+                echo '<td>' . e($value) . '</td>';
+            }
+            echo '</tr>';
+        };
+    } else {
+        $filename = $stem . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('X-Content-Type-Options: nosniff');
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF");
+        $write = static function (array $row) use ($out): void {
+            fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\\\');
+        };
+    }
     $write(['Prepared for', $recipientLabel]);
     $write(['Template status', 'Draft standardized BIRMS summary; official agency-specific format pending recipient approval']);
     $write(['Report period', $periodLabel]);
@@ -91,6 +118,24 @@ if ($isCsv) {
             $write(['Assigned to', $row['assigned_to'], (int) $row['request_count']]);
         }
         $write(['Note', 'Status reflects the saved current status when the report is generated.', '']);
+    } elseif ($type === 'venues') {
+        $s = $data['summary'];
+        $write(['Report', 'Venue usage summary']);
+        $write(['Report period (reservation date)', $range['label']]);
+        foreach (['Total reservations'=>'total','Pending'=>'pending_count','Approved'=>'approved_count','Rejected'=>'rejected_count','Completed'=>'completed_count'] as $label => $key) {
+            $write([$label, (int) $s[$key]]);
+        }
+        $write(['Booked hours (Approved and Completed)', number_format((float) $s['booked_hours'], 2, '.', '')]);
+        $write([]);
+        $write(['Venue', 'Reservations', 'Pending', 'Approved', 'Rejected', 'Completed', 'Booked hours']);
+        foreach ($data['by_venue'] as $row) {
+            $write([$row['venue_name'], (int) $row['reservation_count'], (int) $row['pending_count'],
+                (int) $row['approved_count'], (int) $row['rejected_count'], (int) $row['completed_count'],
+                number_format((float) $row['booked_hours'], 2, '.', '')]);
+        }
+        $write([]);
+        $write(['Status', 'Reservations']);
+        foreach ($data['by_status'] as $row) { $write([$row['status'], (int) $row['reservation_count']]); }
     } elseif ($type === 'queues') {
         $s = $data['summary'];
         $write(['Report', 'Queue utilization and waiting time']);
@@ -115,6 +160,7 @@ if ($isCsv) {
         $requests = $data['requests'];
         $blotter = $data['blotter'];
         $queues = $data['queues'];
+        $venues = $data['venues'];
         $write(['Section', 'Metric', 'Value']);
         $write(['Population', 'Current active resident snapshot (not historical population)', (int) $population['total']]);
         foreach ($population['purok'] as $purok => $count) { $write(['Population by Purok', $purok, (int) $count]); }
@@ -142,6 +188,12 @@ if ($isCsv) {
         }
         $write(['Queues', 'Average wait in minutes', $queues['summary']['average_wait_seconds'] === null ? 'Not available' : number_format((float) $queues['summary']['average_wait_seconds'] / 60, 1, '.', '')]);
         foreach ($queues['by_service'] as $row) { $write(['Queue by service', $row['service'], (int) $row['total']]); }
+        $write(['Venues', 'Total reservations in period', (int) $venues['summary']['total']]);
+        foreach (['Pending'=>'pending_count','Approved'=>'approved_count','Rejected'=>'rejected_count','Completed'=>'completed_count'] as $status => $key) {
+            $write(['Venue reservations by status', $status, (int) $venues['summary'][$key]]);
+        }
+        $write(['Venues', 'Booked hours (Approved and Completed)', number_format((float) $venues['summary']['booked_hours'], 2, '.', '')]);
+        foreach ($venues['by_venue'] as $row) { $write(['Venue usage', $row['venue_name'], (int) $row['reservation_count']]); }
         $write(['Note', 'Request status counts are the current saved statuses at report time; official agency-specific templates remain pending approval.', '']);
     } else {
         $s = $data['summary'];
@@ -162,7 +214,11 @@ if ($isCsv) {
             }
         }
     }
-    fclose($out);
+    if ($isExcel) {
+        echo '</table></body></html>';
+    } else {
+        fclose($out);
+    }
     exit;
 }
 
@@ -174,9 +230,13 @@ $filterQuery = ['type' => $type, 'period' => $period, 'year' => $range['year'], 
 if ($period === 'month') { $filterQuery['month'] = $range['month']; }
 if ($period === 'quarter') { $filterQuery['quarter'] = $range['quarter']; }
 if (in_array($period, ['day', 'week'], true)) { $filterQuery['anchor_date'] = $anchorDate !== '' ? $anchorDate : date('Y-m-d'); }
-$exportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
-$reportActions = '<button class="btn btn-light border" type="button" data-print><i class="bi bi-printer me-1"></i>Print</button>';
-if (can('reports.export')) { $reportActions .= ' <a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>'; }
+$excelExportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'excel']);
+$csvExportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
+$reportActions = '<button class="btn btn-light border" type="button" data-print><i class="bi bi-printer me-1"></i>Print / Save as PDF</button>';
+if (can('reports.export')) {
+    $reportActions .= ' <a class="btn btn-primary" href="' . e($excelExportUrl) . '"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Excel</a>'
+        . ' <a class="btn btn-light border" href="' . e($csvExportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>';
+}
 
 render_header('Reports & Analytics', [['Reports & Analytics', null]], 'reports');
 page_head('Reports & Analytics', 'Generate data-backed administrative summaries. Select the intended recipient and reporting period.', $reportActions);
