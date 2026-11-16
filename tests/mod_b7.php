@@ -150,7 +150,7 @@ function run_b7(array $S, string $base): void
         . '; dashboard=' . substr(trim(strip_tags((string) $dashboard['body'])), 0, 600));
     record('B7-10', 'Request-processing summaries derive totals, current status, document type and assignee from saved requests',
         (int) $afterMonthRequests['summary']['total'] === (int) $baselineMonthRequests['summary']['total'] + 1
-        && (int) $afterMonthRequests['summary']['claimed_count'] === (int) $baselineMonthRequests['summary']['claimed_count'] + 1
+        && (int) $afterMonthRequests['summary']['released_count'] === (int) $baselineMonthRequests['summary']['released_count'] + 1
         && count(array_filter($afterMonthRequests['by_type'], fn($r) => $r['type_name'] === 'Barangay Clearance' && (int) $r['request_count'] >= 1)) >= 1
         && count(array_filter($afterMonthRequests['by_assignee'], fn($r) => $r['assigned_to'] === 'Unassigned' && (int) $r['request_count'] >= 1)) >= 1);
 
