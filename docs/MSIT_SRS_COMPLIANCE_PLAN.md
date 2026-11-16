@@ -200,3 +200,46 @@ The MSIT branch was started from the current `main` so it includes the latest me
 - The application still uses old resident pages and old role names, so do not deploy this branch as an MSIT-compliant build yet.
 
 - Compatibility correction from CI: the new Resident ID/status/type columns remain nullable during the staged transition because existing application routes and legacy integration fixtures still create residents using the old columns. Existing records are backfilled where possible; the revised resident form will be required to validate and populate these fields before the migration can be tightened to NOT NULL. This is intentional transitional compatibility, not the final resident-registration rule.
+
+
+## 10. Implementation and CI progress (2026-11-17)
+
+### Implemented and integration-tested on this branch
+
+- **Resident directory foundation and workflows:** individual Address and direct Purok fields, resident number, status/type/marital-status fields, photo/contact metadata, notification preference, updated resident registration/search/profile flows, and a staged backfill that preserves the legacy household rows and references.
+- **Roles:** legacy account IDs remain in the database for compatibility, but the permission map maps `captain` to view-only Chairman and `clerk` to Staff. Chairman has no operational write permissions. Admin and Staff have the separate All Services Tracker permission; Chairman and Secretary do not.
+- **Documents and certificates:** the public request states are mapped to Pending, Approved, Rejected and Released; resident kiosk submission creates a reference and document queue ticket; request status history and status notifications are recorded. Admin can upload a private Chairman JPEG signature, which is snapshotted on eligible certificate issuance and rendered in the certificate/PDF.
+- **Blotter:** resident kiosk submission and follow-up, review/accept/reject workflow, revised MSIT case-status data, and audit/history handling are wired into the resident and staff workflows.
+- **Venues:** Admin venue setup, resident/staff reservation submission, red/green availability, manual override, transactional overlap protection, approval/rejection/completion transitions and history.
+- **Queueing and kiosk:** separate daily Blotter, Documents and Venue queues; counter issue/call/serve/skip/cancel; purpose-of-visit capture; request references; privacy-safe public queue display; resident identity verification and inactivity timeout.
+- **Resident QR:** a shared public document-request QR entry link, without personal resident information encoded in the QR.
+- **Reports:** data-backed reports for residents/Purok/type, document requests, blotter statuses and queue statistics; added venue-usage reporting and Excel-compatible `.xls` export while retaining CSV. Chairman and Secretary can view and export reports; Staff is restricted according to the permission map.
+- **FR-T6 unified tracker:** a separate Admin/Staff-only All Services Tracker combines Documents, resident Blotter requests and Venue reservations, filterable by service, current status, submission date and search term (including Resident ID). The existing Secretary document-review screen remains separate so its internal review stages are not lost.
+
+### Latest automated validation
+
+GitHub Actions run **#850** on commit `dfe0f05e11dae1e3f1d2474641241c0d766dee85` completed successfully:
+
+| Environment | Security/authentication/audit | Module integration |
+|---|---:|---:|
+| MariaDB 10.4 | 39/39 passed | 231/231 passed |
+| MariaDB 10.11 | 39/39 passed | 231/231 passed |
+
+The B20 report tests verify the venue-usage query, Chairman/Secretary view and Excel export permissions, Staff denial, and retained CSV output. The B21 tests verify that the All Services Tracker lists all three request types, enforces the Staff/Admin permission, filters service/status/date, searches by Resident ID, and links to the corresponding blotter request. The latest logs contained no audit-status warnings.
+
+These are automated integration results against disposable CI databases. They are not evidence of a completed barangay deployment or a successful local XAMPP/LAN acceptance test.
+
+### Remaining acceptance work before MSIT-compliant release
+
+1. Run the migrations on a fresh disposable XAMPP database and on a copy of the existing working database; compare row counts and resident address/Purok backfill results before any production migration.
+2. Conduct complete browser-based role journeys on the actual XAMPP setup using separate Admin, Chairman, Secretary, Staff and Resident sessions, including direct URL/POST attempts and logout/session-reset checks.
+3. Test the shared QR from an actual phone connected to the barangay LAN. Do not print/post a QR generated with `localhost`; use the LAN-reachable server address and verify it from the phone first.
+4. Verify a physical touchscreen/kiosk at the target resolution, including the inactivity reset and that admin/staff routes cannot be reached from the resident kiosk flow.
+5. Configure and test the barangay-approved email sender end-to-end. The CI tests verify queue/outbox and fallback logic, not delivery to a real resident mailbox. Configure SMS only if the barangay chooses a provider; test that provider separately and do not interpret queued as delivered.
+6. Verify the Chairman signature image and generated certificate/PDF with the actual approved signature asset and official certificate wording/layout. The current draft certificate layout remains subject to barangay approval.
+7. Test backup and restore on a separate scratch database and separately verify restoration of private attachments and the Chairman signature file. Do not test restore against the source database.
+8. Measure common-page response times using representative barangay data to verify the 3-second target, and verify LAN operation when internet access is disconnected.
+9. Reconcile the remaining open security-hardening PR #25 changes, especially any runtime hardening not already present on this branch, against the current code and CI before merge. Do not blindly merge the diverged PR.
+10. Obtain adviser/office user acceptance and update the requirement traceability matrix with the signed/manual evidence before changing the draft PR to ready or merging.
+
+**Release status:** implementation and automated integration coverage have advanced substantially, but the branch remains a draft and is **not yet declared fully MSIT-compliant or production-ready** until the manual acceptance steps above are complete.
