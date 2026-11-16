@@ -153,24 +153,23 @@ function report_issuances(array $range): array
 function report_requests(array $range): array
 {
     $params = [$range['start'], $range['end']];
+    // Report only the four public/request-tracker states defined by the revised MSIT SRS.
+    // Legacy internal review steps (Review/Ready/Claimed) are intentionally not exposed here.
     $summary = db_one(
         "SELECT COUNT(*) AS total,
-                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
-                COALESCE(SUM(status = 'Review'), 0) AS review_count,
-                COALESCE(SUM(status = 'Ready'), 0) AS ready_count,
-                COALESCE(SUM(status = 'Claimed'), 0) AS claimed_count,
-                COALESCE(SUM(status = 'Rejected'), 0) AS rejected_count,
-                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count
+                COALESCE(SUM(msit_status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(msit_status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(msit_status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(msit_status = 'Released'), 0) AS released_count
          FROM document_requests WHERE requested_at >= ? AND requested_at < ?", $params
-    ) ?? ['total' => 0, 'pending_count' => 0, 'review_count' => 0, 'ready_count' => 0,
-          'claimed_count' => 0, 'rejected_count' => 0, 'cancelled_count' => 0];
+    ) ?? ['total' => 0, 'pending_count' => 0, 'approved_count' => 0, 'rejected_count' => 0, 'released_count' => 0];
 
     $byType = db_all(
         "SELECT dt.name AS type_name, COUNT(*) AS request_count,
-                COALESCE(SUM(dr.status = 'Pending'), 0) AS pending_count,
-                COALESCE(SUM(dr.status = 'Review'), 0) AS review_count,
-                COALESCE(SUM(dr.status = 'Ready'), 0) AS ready_count,
-                COALESCE(SUM(dr.status = 'Claimed'), 0) AS claimed_count
+                COALESCE(SUM(dr.msit_status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(dr.msit_status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(dr.msit_status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(dr.msit_status = 'Released'), 0) AS released_count
          FROM document_requests dr JOIN document_types dt ON dt.type_id = dr.type_id
          WHERE dr.requested_at >= ? AND dr.requested_at < ?
          GROUP BY dt.type_id, dt.name ORDER BY dt.name", $params
@@ -184,11 +183,11 @@ function report_requests(array $range): array
     );
 
     $byStatus = db_all(
-        "SELECT status, COUNT(*) AS request_count
+        "SELECT msit_status AS status, COUNT(*) AS request_count
          FROM document_requests
          WHERE requested_at >= ? AND requested_at < ?
-         GROUP BY status
-         ORDER BY FIELD(status, 'Pending', 'Review', 'Ready', 'Claimed', 'Rejected', 'Cancelled')", $params
+         GROUP BY msit_status
+         ORDER BY FIELD(msit_status, 'Pending', 'Approved', 'Rejected', 'Released')", $params
     );
 
     return ['summary' => $summary, 'by_type' => $byType, 'by_assignee' => $byAssignee, 'by_status' => $byStatus];
