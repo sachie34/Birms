@@ -7,6 +7,8 @@ function run_b6(array $S, string $base): void
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $residue = function (): void {   // also clears rows left by an interrupted run
         db_exec("DELETE FROM hearings WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
+        // The revised workflow records every official case transition in this FK-protected history table.
+        db_exec("DELETE FROM request_status_history WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM blotters WHERE narrative LIKE 'ZZ-B6%'");
         db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B6%')");
