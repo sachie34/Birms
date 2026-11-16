@@ -116,11 +116,21 @@ function run_b18(array $S, string $base): void
             "SELECT notification_id FROM notification_outbox WHERE resident_id = ? AND reference_no = 'BLT-B18-NOEMAIL'",
             [$noEmailId]
         );
+        $noEmailSms = db_one(
+            "SELECT recipient_number, delivery, provider_status FROM sms_outbox
+             WHERE recipient_number = '09170008883' AND trigger_event = 'notification_b18'
+             ORDER BY sms_id DESC LIMIT 1"
+        );
         record('B18-04', 'SMS fallback does not invent an email address when none is on the resident record',
             $noEmailRow === null
             && $noEmailResult['email'] === 'no_email'
             && $noEmailResult['sms'] === 'not_configured'
-            && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'resident_notification_unavailable'") >= 1);
+            && $noEmailSms !== null
+            && $noEmailSms['recipient_number'] === '09170008883'
+            && $noEmailSms['provider_status'] === 'not_configured',
+            'email=' . $noEmailResult['email'] . '; sms=' . $noEmailResult['sms']
+            . '; fabricated-email=' . ($noEmailRow === null ? 'no' : 'yes')
+            . '; sms-log=' . ($noEmailSms === null ? 'missing' : (string) $noEmailSms['provider_status']));
     } finally {
         if ($ids) {
             $marks = implode(',', array_fill(0, count($ids), '?'));
