@@ -81,8 +81,8 @@ if ($isCsv) {
         $write(['Metric', 'Status / category', 'Count']);
         $write(['Requests', 'Total requests created in period', (int) $s['total']]);
         foreach ([
-            'Pending' => $s['pending_count'], 'Review' => $s['review_count'], 'Ready' => $s['ready_count'],
-            'Claimed' => $s['claimed_count'], 'Rejected' => $s['rejected_count'], 'Cancelled' => $s['cancelled_count'],
+            'Pending' => $s['pending_count'], 'Approved' => $s['approved_count'],
+            'Rejected' => $s['rejected_count'], 'Released' => $s['released_count'],
         ] as $status => $count) { $write(['Current status', $status, (int) $count]); }
         foreach ($data['by_type'] as $row) {
             $write(['Document type', $row['type_name'], (int) $row['request_count']]);
@@ -278,17 +278,17 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
   <div class="alert alert-info">This report counts requests created during <?= e($range['label']) ?>. Status counts reflect the current saved status when the report is generated, not a historical status snapshot.</div>
   <div class="row g-3 mb-3">
     <?php foreach ([
-      'Total requests' => (int) $s['total'], 'Pending' => (int) $s['pending_count'], 'In review' => (int) $s['review_count'],
-      'Ready for pickup' => (int) $s['ready_count'], 'Claimed' => (int) $s['claimed_count'],
-      'Rejected' => (int) $s['rejected_count'], 'Cancelled' => (int) $s['cancelled_count'],
+      'Total requests' => (int) $s['total'], 'Pending' => (int) $s['pending_count'],
+      'Approved' => (int) $s['approved_count'], 'Rejected' => (int) $s['rejected_count'],
+      'Released' => (int) $s['released_count'],
     ] as $label => $count): ?>
       <div class="col-6 col-lg-3"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div>
     <?php endforeach; ?>
   </div>
   <div class="card-b mb-3"><div class="card-h"><h2>Requests by document type</h2></div><div class="card-body-b">
     <?php if (!$data['by_type']): ?><?= empty_state('bi-inbox', 'No requests were filed in this period.') ?>
-    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Review</th><th class="text-end">Ready</th><th class="text-end">Claimed</th></tr></thead><tbody>
-      <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td><td class="text-end"><?= number_format((int) $row['pending_count']) ?></td><td class="text-end"><?= number_format((int) $row['review_count']) ?></td><td class="text-end"><?= number_format((int) $row['ready_count']) ?></td><td class="text-end"><?= number_format((int) $row['claimed_count']) ?></td></tr><?php endforeach; ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Approved</th><th class="text-end">Rejected</th><th class="text-end">Released</th></tr></thead><tbody>
+      <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td><td class="text-end"><?= number_format((int) $row['pending_count']) ?></td><td class="text-end"><?= number_format((int) $row['approved_count']) ?></td><td class="text-end"><?= number_format((int) $row['rejected_count']) ?></td><td class="text-end"><?= number_format((int) $row['released_count']) ?></td></tr><?php endforeach; ?>
     </tbody></table></div><?php endif; ?>
   </div></div>
   <div class="card-b mb-3"><div class="card-h"><h2>Requests by assignee</h2></div><div class="card-body-b">
