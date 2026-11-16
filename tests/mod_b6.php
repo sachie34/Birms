@@ -5,16 +5,15 @@ declare(strict_types=1);
 function run_b6(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
-    $residue = function (): void {   // also clears rows left by an interrupted run
-        db_exec("DELETE FROM hearings WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
-        // The revised workflow records every official case transition in this FK-protected history table.
-        db_exec("DELETE FROM request_status_history WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
-        db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE narrative LIKE 'ZZ-B6%')");
-        db_exec("DELETE FROM blotters WHERE narrative LIKE 'ZZ-B6%'");
+    // Blotter records are permanent under FR-B5. Give each test run unique case text and
+    // never remove cases, parties, hearings or status-history rows during test cleanup.
+    $runToken = strtoupper(strtr(bin2hex(random_bytes(3)), '0123456789abcdef', 'abcdefghijklmnop'));
+    $residue = function (): void {
         db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B6%')");
         db_exec("DELETE FROM document_requests WHERE purpose LIKE 'ZZ-B6%'");
-        db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest6%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST-B6%'");
+        db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest6%'");
+        db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST-B6%'");
     };
     $residue();
     $wOld = db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
@@ -23,11 +22,21 @@ function run_b6(array $S, string $base): void
     $today = date('Y-m-d');
     $d = ['incident_date' => $today, 'incident_place' => 'ZZ Test Plaza', 'purok_id' => '', 'narrative' => 'ZZ-B6 default narrative text', 'c_name' => 'Zzcomp Alpha', 'c_age' => '34', 'c_address' => 'ZZ Test Street', 'c_contact' => '09171230001',
           'r_name' => 'Zzresp Bravo', 'r_age' => '41', 'r_address' => 'ZZ Other Street', 'r_contact' => ''];
-    $file   = fn(Http $h, array $o = []) => post_as($h, '/blotters/form.php', '/blotters/form.php', $o + $d);
-    $cid    = fn(string $tag) => (int) db_val('SELECT blotter_id FROM blotters WHERE narrative LIKE ?', ['ZZ-B6 ' . $tag . '%']);
+    $file = function (Http $h, array $o = []) use ($d, $runToken): array {
+        $data = $o + $d;
+        $narrative = trim((string) ($data['narrative'] ?? ''));
+        if (strlen($narrative) >= 10) { $data['narrative'] = $narrative . ' [B6RUN-' . $runToken . ']'; }
+        foreach (['c_name', 'r_name'] as $field) {
+            if (isset($data[$field]) && trim((string) $data[$field]) !== '') {
+                $data[$field] = trim((string) $data[$field]) . ' ' . $runToken;
+            }
+        }
+        return post_as($h, '/blotters/form.php', '/blotters/form.php', $data);
+    };
+    $cid    = fn(string $tag) => (int) db_val('SELECT blotter_id FROM blotters WHERE narrative LIKE ?', ['ZZ-B6 ' . $tag . '% [B6RUN-' . $runToken . ']']);
     $cno    = fn(int $id) => (string) db_val('SELECT case_no FROM blotters WHERE blotter_id = ?', [$id]);
     $status = fn(int $id) => (string) db_val('SELECT msit_status FROM blotters WHERE blotter_id = ?', [$id]);
-    $cases  = fn() => (int) db_val("SELECT COUNT(*) FROM blotters WHERE narrative LIKE 'ZZ-B6%'");
+    $cases  = fn() => (int) db_val('SELECT COUNT(*) FROM blotters WHERE narrative LIKE ?', ['%[B6RUN-' . $runToken . ']']);
     $page   = fn(int $id) => '/blotters/view.php?id=' . $id;
     $move   = fn(Http $h, int $id, string $to, string $note = '') => post_as($h, $page($id), '/blotters/action.php', ['id' => (string) $id, 'do' => 'srs_move', 'to' => $to, 'note' => $note]);
     $do     = fn(Http $h, int $id, string $what) => post_as($h, $page($id), '/blotters/action.php', ['id' => (string) $id, 'do' => $what]);
@@ -208,7 +217,7 @@ function run_b6(array $S, string $base): void
     /* ---- look-up ---- */
     $lk = fn(Http $h, string $q) => $h->get('/blotters/lookup.php?q=' . rawurlencode($q));
     $before = $audit('blotter_lookup');
-    $l1 = $lk($clk, 'zzcomp alpha'); $l2 = $lk($clk, 'alpha ZZCOMP'); $l3 = $lk($sec, 'Charlie'); $l4 = $lk($clk, 'z'); $l5 = $lk($clk, '%%'); $l6 = $lk($clk, 'Zznobody Qxz'); $l7 = $lk($adm, 'alpha');
+    $l1 = $lk($clk, 'zzcomp alpha ' . $runToken); $l2 = $lk($clk, 'alpha ZZCOMP ' . $runToken); $l3 = $lk($sec, 'Charlie ' . $runToken); $l4 = $lk($clk, 'z'); $l5 = $lk($clk, '%%'); $l6 = $lk($clk, 'Zznobody Qxz'); $l7 = $lk($adm, 'alpha ' . $runToken);
     record('B6-12', 'Look-up: finds a person by name words in any order across all cases including archived ones; one letter is not enough; % and _ are plain text; each real search is audited; Administrator access is also available',
         str_contains($l1['body'], $aNo) && str_contains($l2['body'], $aNo) && str_contains($l3['body'], $bNo) && str_contains($l3['body'], 'Archived') && str_contains($l4['body'], 'at least two letters') && !str_contains($l4['body'], $aNo)
         && str_contains($l5['body'], 'No blotter record') && str_contains($l6['body'], 'No blotter record') && $audit('blotter_lookup') === $before + 6 && $l7['status'] === 200 && str_contains($l7['body'], $aNo) && $clk->get('/blotters/lookup.php?q[]=x')['status'] < 500);
@@ -216,8 +225,11 @@ function run_b6(array $S, string $base): void
     /* ---- clearance hint ---- */
     db_exec("INSERT INTO households (household_code, street_address) VALUES ('ZZTEST-B6', 'ZZ Test Street B6')"); $hh = (int) db()->lastInsertId();
     $mk = function (string $first, string $last) use ($hh): int { db_exec("INSERT INTO residents (household_id, last_name, first_name, birthdate, sex, civil_status, contact_number) VALUES (?, ?, ?, '1990-01-01', 'Male', 'Single', NULL)", [$hh, $last, $first]); return (int) db()->lastInsertId(); };
-    $rMatch = $mk('Zzcomp', 'Alpha'); $rNone = $mk('Zznone', 'ZZTest6Nomatch'); db_exec("UPDATE residents SET last_name = 'ZZTest6Alpha' WHERE resident_id = ?", [$rMatch]);
-    db_exec("UPDATE blotter_parties SET full_name = 'Zzcomp ZZTest6Alpha' WHERE blotter_id = ? AND full_name = 'Zzcomp Alpha'", [$A]);
+    $matchPartyOld = 'Zzcomp Alpha ' . $runToken;
+    $matchPartyNew = 'Zzcomp ZZTest6Alpha ' . $runToken;
+    $rMatch = $mk('Zzcomp', 'ZZTest6Alpha ' . $runToken);
+    $rNone = $mk('Zznone', 'ZZTest6Nomatch ' . $runToken);
+    db_exec('UPDATE blotter_parties SET full_name = ? WHERE blotter_id = ? AND full_name = ?', [$matchPartyNew, $A, $matchPartyOld]);
     $clr = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'"); $res = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Certificate of Residency'");
     $req = function (int $resident, int $type, string $purpose) use ($clk): int {
         post_as($clk, '/requests/form.php?resident=' . $resident, '/requests/form.php?resident=' . $resident, [
@@ -295,8 +307,32 @@ function run_b6(array $S, string $base): void
     $try('party for a missing case', fn() => db_exec("INSERT INTO blotter_parties (blotter_id, party_role, full_name) VALUES (99999999, 'Respondent', 'Zz Nobody')"));
     $try('hearing for a missing case', fn() => db_exec("INSERT INTO hearings (blotter_id, scheduled_at) VALUES (99999999, NOW())"));
     $try('invalid status value', fn() => db_exec("UPDATE blotters SET msit_status = 'Bogus' WHERE blotter_id = ?", [$A]));
-    $try('delete a case that has only hearings', function () use ($sec, $file, $cid, $sched, $future, $hid): void { db_exec("INSERT INTO blotters (case_no, incident_date, narrative, recorded_at) VALUES ('ZZ-ONLY-HEAR', CURDATE(), 'ZZ-B6 hearings only', NOW())"); $i = (int) db()->lastInsertId(); db_exec("INSERT INTO hearings (blotter_id, scheduled_at) VALUES (?, NOW())", [$i]); db_exec('DELETE FROM blotters WHERE blotter_id = ?', [$i]); });
-    record('B6-20', 'The DATABASE refuses: deleting a case that has parties or hearings, duplicate case numbers, orphan parties or hearings, and an invalid status (findings H4)', count($blocked) === 6, implode(', ', $blocked));
+    $try('delete a case that has only hearings', function (): void {
+        db_transaction(function (): void {
+            db_exec("INSERT INTO blotters (case_no, incident_date, narrative, recorded_at) VALUES ('ZZ-B6-ONLY-HEAR', CURDATE(), 'ZZ-B6 hearings only', NOW())");
+            $i = (int) db()->lastInsertId();
+            db_exec("INSERT INTO hearings (blotter_id, scheduled_at) VALUES (?, NOW())", [$i]);
+            db_exec('DELETE FROM blotters WHERE blotter_id = ?', [$i]);
+        });
+    });
+    $noDeleteGuard = (int) db_val(
+        "SELECT COUNT(*) FROM information_schema.TRIGGERS
+         WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME = 'trg_blotters_no_delete'"
+    );
+    $emptyDeleteBlocked = false;
+    try {
+        db_transaction(function (): void {
+            db_exec("INSERT INTO blotters (case_no, incident_date, narrative, recorded_at) VALUES ('ZZ-B6-EMPTY-DELETE', CURDATE(), 'ZZ-B6 empty delete guard check', NOW())");
+            $emptyId = (int) db()->lastInsertId();
+            db_exec('DELETE FROM blotters WHERE blotter_id = ?', [$emptyId]);
+        });
+    } catch (PDOException $e) {
+        $emptyDeleteBlocked = true;
+    }
+    $emptyDeleteRolledBack = (int) db_val("SELECT COUNT(*) FROM blotters WHERE case_no = 'ZZ-B6-EMPTY-DELETE'") === 0;
+    record('B6-20', 'The DATABASE refuses all case deletion, including a case with no linked records; related-record, uniqueness, orphan and status constraints also hold',
+        count($blocked) === 6 && $noDeleteGuard === 1 && $emptyDeleteBlocked && $emptyDeleteRolledBack,
+        implode(', ', $blocked) . '; trigger=' . $noDeleteGuard . '; empty-case-delete-blocked=' . ($emptyDeleteBlocked ? 'yes' : 'no') . '; rollback=' . ($emptyDeleteRolledBack ? 'yes' : 'no'));
 
     $need = ['blotter_filed', 'blotter_updated', 'blotter_srs_status_changed', 'blotter_party_added', 'blotter_party_updated', 'hearing_scheduled', 'hearing_outcome', 'blotter_archived', 'blotter_lookup', 'summons_printed', 'hearing_refused', 'blotter_action_refused', 'blotter_rejected'];
     $missing = array_values(array_filter($need, fn($a) => $audit($a) < 1));
