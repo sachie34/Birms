@@ -209,14 +209,18 @@ function run_b4(array $S, string $base): void
 
     $t = $sec->get('/requests/index.php?tab=Approved'); $tc = $sec->get('/requests/index.php?tab=Rejected'); $ts = $sec->get('/requests/index.php?q=' . urlencode((string) $row['reference_no']));
     $nReady = (int) db_val("SELECT COUNT(*) FROM document_requests WHERE msit_status = 'Approved'");
+    $approvedLabel = preg_match(
+        '/>Approved\\s*<span class="badge text-bg-light">\\s*' . preg_quote((string) $nReady, '/') . '\\s*<\\/span>/',
+        $t['body']
+    ) === 1;
     $b413Ok = str_contains($t['body'], 'REQ-')
-        && str_contains($t['body'], 'Approved <span class="badge text-bg-light">' . $nReady . '</span>')
+        && $approvedLabel
         && str_contains($tc['body'], 'ZZTestFour, Rita')
         && str_contains($ts['body'], (string) $row['reference_no'])
         && !str_contains($t['body'], 'ZZ Test purpose cancel');
     record('B4-13', 'Tracker tabs, counts and search match the data', $b413Ok,
         'approved-status=' . $t['status'] . '; approved-count=' . $nReady
-        . '; approved-label=' . (str_contains($t['body'], 'Approved <span class="badge text-bg-light">' . $nReady . '</span>') ? 'yes' : 'no')
+        . '; approved-label=' . ($approvedLabel ? 'yes' : 'no')
         . '; closed-status=' . $tc['status'] . '; closed-resident=' . (str_contains($tc['body'], 'ZZTestFour, Rita') ? 'yes' : 'no')
         . '; search-status=' . $ts['status'] . '; search-ref=' . (str_contains($ts['body'], (string) $row['reference_no']) ? 'yes' : 'no')
         . '; canceled-hidden=' . (!str_contains($t['body'], 'ZZ Test purpose cancel') ? 'yes' : 'no'));
