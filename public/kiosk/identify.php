@@ -11,6 +11,8 @@ $residentNo = post_str('resident_no');
 $lastName = post_str('last_name');
 $firstName = post_str('first_name');
 $birthdate = post_str('birthdate');
+$next = post_str('next') === 'request' ? 'request' : 'home';
+$_SESSION['kiosk_after_verify'] = $next === 'request' ? 'request' : null;
 
 if (!v_date($birthdate) || $birthdate > date('Y-m-d')) {
     kiosk_flash('Enter your correct birthdate.', 'error');
@@ -30,7 +32,9 @@ if ($residentNo !== '') {
         kiosk_set_resident((int) $matches[0]['resident_id']);
         audit_best_effort('kiosk_identity_verified', 'Kiosk', 'Success', 'Resident verified using Resident ID and birthdate.');
         kiosk_flash('Identity verified. Choose the service you need.', 'success');
-        redirect('kiosk/index.php');
+        $destination = $_SESSION['kiosk_after_verify'] ?? null;
+        unset($_SESSION['kiosk_after_verify']);
+        redirect($destination === 'request' ? 'kiosk/request.php' : 'kiosk/index.php');
     }
     audit_best_effort('kiosk_identity_denied', 'Kiosk', 'Failed', 'Resident ID and birthdate did not match an active resident record.');
     kiosk_flash('The details could not be verified. Check your Resident ID and birthdate or ask Staff for help.', 'error');
