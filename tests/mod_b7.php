@@ -92,8 +92,8 @@ function run_b7(array $S, string $base): void
     $issuanceRef = 'ZB7I' . $stamp;
     $caseNo = 'ZB7C' . $stamp;
     $issuedAt = date('Y-m-d H:i:s');
-    db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at)
-             VALUES (?, ?, ?, 'ZZ B7 report test', 'Claimed', ?)", [$requestRef, $residentId, $typeId, $issuedAt]);
+    db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, msit_status, requested_at)
+             VALUES (?, ?, ?, 'ZZ B7 report test', 'Claimed', 'Released', ?)", [$requestRef, $residentId, $typeId, $issuedAt]);
     $requestId = (int) db()->lastInsertId();
     db_exec("INSERT INTO issuances (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number, body_text, captain_name, issued_by, issued_by_name, issued_at)
              VALUES (?, ?, ?, ?, 'ZZB7Report, ReportTest', 'Barangay Clearance', 'ZZ B7 report test', 37.25, NULL, 'ZZ B7 test certificate', NULL, NULL, 'B7 test', ?)",
