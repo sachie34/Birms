@@ -21,8 +21,17 @@ if ($reference !== '') {
             if ($venue !== null) {
                 $result = ['service' => 'Venue', 'reference_no' => $venue['reference_no'], 'status' => $venue['status'], 'created_at' => $venue['created_at']];
             } else {
-                $blotter = db_one('SELECT case_no AS reference_no, msit_status AS status, recorded_at AS created_at FROM blotters WHERE case_no = ?', [$reference]);
-                if ($blotter !== null) { $result = ['service' => 'Blotter', 'reference_no' => $blotter['reference_no'], 'status' => $blotter['status'], 'created_at' => $blotter['created_at']]; }
+                $blotterRequest = db_one(
+                    'SELECT reference_no, msit_status AS status, submitted_at AS created_at
+                     FROM resident_blotter_requests WHERE reference_no = ?',
+                    [$reference]
+                );
+                if ($blotterRequest !== null) {
+                    $result = ['service' => 'Blotter', 'reference_no' => $blotterRequest['reference_no'], 'status' => $blotterRequest['status'], 'created_at' => $blotterRequest['created_at']];
+                } else {
+                    $blotter = db_one('SELECT case_no AS reference_no, msit_status AS status, recorded_at AS created_at FROM blotters WHERE case_no = ?', [$reference]);
+                    if ($blotter !== null) { $result = ['service' => 'Blotter', 'reference_no' => $blotter['reference_no'], 'status' => $blotter['status'], 'created_at' => $blotter['created_at']]; }
+                }
             }
         }
         if ($result !== null) {
