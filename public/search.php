@@ -66,7 +66,7 @@ if ($searched) {
     }
     if (can('blotters.view')) {
         $results['blotters'] = db_all(
-            "SELECT DISTINCT b.blotter_id, b.case_no, b.incident_date, b.incident_place, b.status,
+            "SELECT DISTINCT b.blotter_id, b.case_no, b.incident_date, b.incident_place, b.msit_status AS status,
                     p.full_name AS party_name
              FROM blotters b LEFT JOIN blotter_parties p ON p.blotter_id = b.blotter_id
              WHERE b.case_no LIKE ? OR COALESCE(b.incident_place, '') LIKE ?
