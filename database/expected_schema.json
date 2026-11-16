@@ -3265,5 +3265,219 @@
         "on_update": "CASCADE"
       }
     }
+  },
+  "resident_blotter_requests": {
+    "columns": {
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "reference_no": {
+        "type": "varchar(24)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_date": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_time": {
+        "type": "time",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_place": {
+        "type": "varchar(150)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purok_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "incident_type_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "narrative": {
+        "type": "text",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "respondent_name": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "respondent_age": {
+        "type": "tinyint unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "respondent_address": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "respondent_contact": {
+        "type": "varchar(20)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "review_status": {
+        "type": "enum('pending','accepted','rejected')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      },
+      "msit_status": {
+        "type": "enum('ongoing','unresolved','resolved','dismissed','archived')",
+        "nullable": false,
+        "default": "ongoing",
+        "extra": ""
+      },
+      "status_note": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "blotter_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "reviewed_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "submitted_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "reviewed_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "uq_resident_blotter_request_ref": {
+        "unique": true,
+        "columns": [
+          "reference_no"
+        ]
+      },
+      "uq_resident_blotter_request_case": {
+        "unique": true,
+        "columns": [
+          "blotter_id"
+        ]
+      },
+      "idx_resident_blotter_review": {
+        "unique": false,
+        "columns": [
+          "review_status",
+          "submitted_at"
+        ]
+      },
+      "idx_resident_blotter_status": {
+        "unique": false,
+        "columns": [
+          "msit_status",
+          "submitted_at"
+        ]
+      },
+      "idx_resident_blotter_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "submitted_at"
+        ]
+      },
+      "idx_resident_blotter_purok": {
+        "unique": false,
+        "columns": [
+          "purok_id",
+          "incident_date"
+        ]
+      }
+    },
+    "fks": {
+      "fk_resident_blotter_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_purok": {
+        "columns": [
+          "purok_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_type": {
+        "columns": [
+          "incident_type_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_case": {
+        "columns": [
+          "blotter_id"
+        ],
+        "ref": "blotters(blotter_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_reviewer": {
+        "columns": [
+          "reviewed_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
   }
 }
