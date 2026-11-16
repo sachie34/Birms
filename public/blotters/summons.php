@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('hearings.view');
 $hid = get_int('id');
-$h = $hid === null ? null : db_one('SELECT h.hearing_id, h.scheduled_at, h.venue, h.status, h.summons_count, b.blotter_id, b.case_no, b.status AS case_status, b.archived_at
+$h = $hid === null ? null : db_one('SELECT h.hearing_id, h.scheduled_at, h.venue, h.status, h.summons_count, b.blotter_id, b.case_no, b.msit_status AS case_status, b.archived_at
     FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id WHERE h.hearing_id = ?', [$hid]);
 if ($h === null) { abort(404, 'That hearing was not found.'); }
 $case = ['case_no' => $h['case_no']];
