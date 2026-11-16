@@ -371,65 +371,95 @@ function demo_seed_apply(): array
             $status = $caseStatuses[$i];
             $archivedFrom = $archivedFromStatuses[$i];
             $incidentTypeId = $incidentIds[$i % count($incidentIds)];
-            $resolution = $archivedFrom === 'Resolved'
-                ? '[DEMO ONLY] Sample resolution; not a real incident.'
-                : ($archivedFrom === 'Dismissed' ? '[DEMO ONLY] Sample dismissal; not a real incident.' : null);
-            $resolvedAt = $archivedFrom === 'Resolved' ? demo_date_in_months_ago(0, 1, 16) : null;
-            $archivedAt = $status === 'Archived' ? demo_date_in_months_ago(0, 1 + $i, 16) : null;
-            db_exec(
-                'INSERT INTO blotters (case_no, incident_date, incident_place, purok_id, incident_type_id, narrative,
-                    status, msit_status, archived_from_status, archived_at, resolution_note, resolved_at, recorded_at, recorded_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NULL)',
-                [
-                    DEMO_SEED_CASE_REFS[$i], $incidentDates[$i], 'DEMO ONLY - Sample location ' . ($i + 1),
-                    $puroks[$i % count($puroks)], $incidentTypeId,
-                    '[DEMO ONLY] Fictional community case narrative ' . ($i + 1) . '. No real persons or events are represented.',
-                    $legacyCaseStatuses[$i], $status, $archivedFrom, $archivedAt, $resolution, $resolvedAt,
-                ]
+            $existingCase = db_one(
+                'SELECT blotter_id, narrative FROM blotters WHERE case_no = ?',
+                [DEMO_SEED_CASE_REFS[$i]]
             );
-            $caseIds[] = (int) db()->lastInsertId();
-            $firstStatus = $archivedFrom ?? $status;
-            db_exec(
-                "INSERT INTO request_status_history
-                 (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
-                 VALUES ('Blotter', ?, NULL, ?, NULL, ?, ?)",
-                [
-                    DEMO_SEED_CASE_REFS[$i], $firstStatus,
-                    '[DEMO ONLY] Initial fictitious case status; no real incident.',
-                    $caseIds[$i],
-                ]
-            );
-            if ($status === 'Archived') {
+
+            if ($existingCase !== null) {
+                if (!$reusePermanentCases || !str_starts_with((string) $existingCase['narrative'], '[DEMO ONLY]')) {
+                    throw new RuntimeException('A reserved demo case number is already used by a non-demo or unexpected record. No existing blotter was changed.');
+                }
+                $caseIds[] = (int) $existingCase['blotter_id'];
+            } else {
+                if ($reusePermanentCases) {
+                    throw new RuntimeException('A permanent demo blotter case is missing. The seeder will not recreate or renumber permanent cases automatically.');
+                }
+                $resolution = $archivedFrom === 'Resolved'
+                    ? '[DEMO ONLY] Sample resolution; not a real incident.'
+                    : ($archivedFrom === 'Dismissed' ? '[DEMO ONLY] Sample dismissal; not a real incident.' : null);
+                $resolvedAt = $archivedFrom === 'Resolved' ? demo_date_in_months_ago(0, 1, 16) : null;
+                $archivedAt = $status === 'Archived' ? demo_date_in_months_ago(0, 1 + $i, 16) : null;
+                db_exec(
+                    'INSERT INTO blotters (case_no, incident_date, incident_place, purok_id, incident_type_id, narrative,
+                        status, msit_status, archived_from_status, archived_at, resolution_note, resolved_at, recorded_at, recorded_by)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NULL)',
+                    [
+                        DEMO_SEED_CASE_REFS[$i], $incidentDates[$i], 'DEMO ONLY - Sample location ' . ($i + 1),
+                        $puroks[$i % count($puroks)], $incidentTypeId,
+                        '[DEMO ONLY] Fictional community case narrative ' . ($i + 1) . '. No real persons or events are represented.',
+                        $legacyCaseStatuses[$i], $status, $archivedFrom, $archivedAt, $resolution, $resolvedAt,
+                    ]
+                );
+                $caseIds[] = (int) db()->lastInsertId();
+                $firstStatus = $archivedFrom ?? $status;
                 db_exec(
                     "INSERT INTO request_status_history
                      (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
-                     VALUES ('Blotter', ?, ?, 'Archived', NULL, ?, ?)",
+                     VALUES ('Blotter', ?, NULL, ?, NULL, ?, ?)",
                     [
-                        DEMO_SEED_CASE_REFS[$i], $archivedFrom,
-                        '[DEMO ONLY] Fictitious case moved to Archived under FR-B5.',
+                        DEMO_SEED_CASE_REFS[$i], $firstStatus,
+                        '[DEMO ONLY] Initial fictitious case status; no real incident.',
                         $caseIds[$i],
                     ]
                 );
+                if ($status === 'Archived') {
+                    db_exec(
+                        "INSERT INTO request_status_history
+                         (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
+                         VALUES ('Blotter', ?, ?, 'Archived', NULL, ?, ?)",
+                        [
+                            DEMO_SEED_CASE_REFS[$i], $archivedFrom,
+                            '[DEMO ONLY] Fictitious case moved to Archived under FR-B5.',
+                            $caseIds[$i],
+                        ]
+                    );
+                }
             }
+
             $partyNames = [
                 ['DEMO ONLY Complainant ' . ($i + 1), 'Complainant', 30 + $i],
                 ['DEMO ONLY Respondent ' . ($i + 1), 'Respondent', 35 + $i],
             ];
             foreach ($partyNames as [$partyName, $role, $age]) {
-                db_exec(
-                    'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number)
-                     VALUES (?, ?, ?, ?, ?, NULL)',
-                    [$caseIds[$i], $role, $partyName, $age, 'DEMO ONLY - Sample address']
+                $partyExists = (int) db_val(
+                    'SELECT COUNT(*) FROM blotter_parties WHERE blotter_id = ? AND party_role = ? AND full_name = ?',
+                    [$caseIds[$i], $role, $partyName]
                 );
+                if ($partyExists === 0) {
+                    db_exec(
+                        'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number)
+                         VALUES (?, ?, ?, ?, ?, NULL)',
+                        [$caseIds[$i], $role, $partyName, $age, 'DEMO ONLY - Sample address']
+                    );
+                }
             }
         }
 
-        $hearingAt = (new DateTimeImmutable('now'))->modify('+5 days')->setTime(10, 0)->format('Y-m-d H:i:s');
-        db_exec(
-            'INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, status, created_by)
-             VALUES (?, ?, ?, ?, ?, NULL)',
-            [$caseIds[1], $hearingAt, 'DEMO ONLY - Sample meeting room', '[DEMO ONLY] Sample future hearing.', 'Scheduled']
+        $demoHearingCount = (int) db_val(
+            "SELECT COUNT(*) FROM hearings WHERE blotter_id IN (" . implode(',', array_fill(0, count($caseIds), '?')) . ") AND venue LIKE 'DEMO ONLY - %'",
+            $caseIds
         );
+        if ($demoHearingCount === 0) {
+            $hearingAt = (new DateTimeImmutable('now'))->modify('+5 days')->setTime(10, 0)->format('Y-m-d H:i:s');
+            db_exec(
+                'INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, status, created_by)
+                 VALUES (?, ?, ?, ?, ?, NULL)',
+                [$caseIds[1], $hearingAt, 'DEMO ONLY - Sample meeting room', '[DEMO ONLY] Sample future hearing.', 'Scheduled']
+            );
+        } elseif ($demoHearingCount !== 1) {
+            throw new RuntimeException('The permanent demo cases have an unexpected hearing count. No hearing was added or removed.');
+        }
 
         audit('demo_data_seeded', 'Demo data', 'Success',
             'Inserted 24 fictitious residents, 8 households, 12 requests, 4 demo-only issuance records, 8 visitor entries, 4 fictitious blotter cases, and 1 hearing.');
