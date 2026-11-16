@@ -334,7 +334,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     <div class="col-md-3"><div class="card-b h-100"><div class="card-h"><h2>Pending collection</h2></div><div class="card-body-b"><div class="fs-3 fw-bold">₱<?= number_format((float) $collections['pending_amount'], 2) ?></div><small class="text-muted">Awaiting reconciliation</small></div></div></div>
   </div>
   <div class="card-b mb-3">
-    <div class="card-h"><h2>Current population by Purok</h2><p>Grouped from active residents and their household assignments.</p></div>
+    <div class="card-h"><h2>Current population by Purok</h2><p>Grouped from active resident records by Purok.</p></div>
     <div class="card-body-b">
       <?php if (!$population['purok']): ?><?= empty_state('bi-people', 'No active resident records are available.') ?>
       <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Residents</th></tr></thead><tbody>
@@ -345,7 +345,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
   <div class="card-b mb-3">
     <div class="card-h"><h2>Request queue summary</h2><p>Requests created in the selected period; displayed status counts reflect current status at generation time.</p></div>
     <div class="card-body-b"><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Status</th><th class="text-end">Requests</th></tr></thead><tbody>
-      <?php foreach (['Pending'=>'pending_count','Review'=>'review_count','Ready'=>'ready_count','Claimed'=>'claimed_count','Rejected'=>'rejected_count','Cancelled'=>'cancelled_count'] as $status => $key): ?><tr><td><?= e($status) ?></td><td class="text-end"><?= number_format((int) $requests['summary'][$key]) ?></td></tr><?php endforeach; ?>
+      <?php foreach (['Pending'=>'pending_count','Approved'=>'approved_count','Rejected'=>'rejected_count','Released'=>'released_count'] as $status => $key): ?><tr><td><?= e($status) ?></td><td class="text-end"><?= number_format((int) $requests['summary'][$key]) ?></td></tr><?php endforeach; ?>
     </tbody></table></div></div>
   </div>
   <div class="row g-3 mb-3">
