@@ -77,6 +77,11 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
              VALUES ('Blotter', ?, ?, ?, ?, ?, ?)",
             [$case['case_no'], $from, $to, $actorId, $note !== '' ? $note : null, $blotterId]
         );
+        // Keep the resident's reference-number tracker synchronized with the official case.
+        db_exec(
+            'UPDATE resident_blotter_requests SET msit_status = ?, status_note = ? WHERE blotter_id = ?',
+            [$to, $note !== '' ? $note : null, $blotterId]
+        );
         audit('blotter_srs_status_changed', 'Blotter', 'Success',
             $case['case_no'] . ': ' . $from . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''),
             'blotter', $blotterId);
