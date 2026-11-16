@@ -100,8 +100,8 @@ if (is_post()) {
                     'Your approved certificate has been generated and is ready for release.'
                 );
             } catch (Throwable $notificationError) {
-                error_log('BIRMS certificate-release notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError));
-                audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+                error_log('BIRMS certificate-release notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+                audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
                     'Document request ' . (string) $r['reference_no'] . ' was released but the resident notification could not be queued.');
             }
             redirect('certificates/print.php', ['id' => $iid]);
