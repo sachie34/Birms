@@ -14,7 +14,9 @@ if (is_post()) {
     $code = post_str('code');
     if (kiosk_verify_code($token, $code)) {
         kiosk_flash('Identity verified. Your kiosk session is now active.', 'success');
-        redirect('kiosk/index.php');
+        $destination = $_SESSION['kiosk_after_verify'] ?? null;
+        unset($_SESSION['kiosk_after_verify']);
+        redirect($destination === 'request' ? 'kiosk/request.php' : 'kiosk/index.php');
     }
     kiosk_flash('The code is incorrect, expired or already used. Check the message and try again, or ask Staff for help.', 'error');
     redirect('kiosk/verify.php');
