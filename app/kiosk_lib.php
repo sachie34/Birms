@@ -24,7 +24,8 @@ function kiosk_clear_session(): void
         $_SESSION['kiosk_resident_id'],
         $_SESSION['kiosk_last_activity'],
         $_SESSION['kiosk_expires_at'],
-        $_SESSION['kiosk_challenge_token']
+        $_SESSION['kiosk_challenge_token'],
+        $_SESSION['kiosk_after_verify']
     );
 }
 
