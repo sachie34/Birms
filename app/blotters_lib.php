@@ -2,24 +2,11 @@
 /** Blotter rules: statuses, who may move a case, hearing rules, name matching for the look-up, summons wording checks. */
 declare(strict_types=1);
 
-const BLOTTER_STATUSES = ['Pending', 'Active', 'Scheduled', 'Resolved']; // retained for hearing workflow compatibility
 const MSIT_BLOTTER_STATUSES = ['Ongoing', 'Unresolved', 'Resolved', 'Dismissed', 'Archived'];
 const HEARING_OUTCOMES = ['Held', 'Postponed', 'Cancelled'];
-/** current status => [new status => permission]. 'Scheduled' is never set by hand: scheduling a hearing sets it and recording the last open hearing clears it. */
-const BLOTTER_MOVES = [
-    'Pending'   => ['Active' => 'blotters.edit', 'Resolved' => 'blotters.edit'],
-    'Active'    => ['Resolved' => 'blotters.edit'],
-    'Scheduled' => ['Resolved' => 'blotters.edit'],
-];
 /** Placeholders allowed inside the official summons wording. The wording itself is NOT shipped. */
 const SUMMONS_TOKENS = ['case_no', 'complainant_names', 'respondent_names', 'hearing_date', 'hearing_time', 'venue', 'barangay', 'municipality', 'province', 'captain_name', 'secretary_name', 'date_issued'];
 
-function blotter_allowed_moves(string $status): array
-{
-    $out = [];
-    foreach (BLOTTER_MOVES[$status] ?? [] as $to => $perm) { if (can($perm)) { $out[] = $to; } }
-    return $out;
-}
 function new_case_no(): string
 {
     $y = (int) date('Y');
@@ -42,34 +29,62 @@ function blotter_srs_allowed_moves(string $status): array
     return $out;
 }
 
-/** Change the authoritative SRS status and write both the shared history and the audit event atomically. */
+/** Change the authoritative SRS status and write shared history and audit events atomically. */
 function blotter_srs_change_status(int $blotterId, string $to, string $note = ''): void
 {
     if (!in_array($to, MSIT_BLOTTER_STATUSES, true)) {
-        throw new InvalidArgumentException('Choose a valid MSIT case status.');
+        throw new InvalidArgumentException('Choose a valid case status.');
     }
+
     db_transaction(function () use ($blotterId, $to, $note): void {
-        $case = db_one('SELECT blotter_id, case_no, msit_status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE', [$blotterId]);
+        $case = db_one(
+            'SELECT blotter_id, case_no, msit_status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE',
+            [$blotterId]
+        );
         if ($case === null) { throw new RuntimeException('That case was not found.'); }
+
         $from = (string) ($case['msit_status'] ?? 'Ongoing');
         $permission = MSIT_BLOTTER_MOVES[$from][$to] ?? null;
-        if ($permission === null) { throw new InvalidArgumentException('A ' . $from . ' case cannot move to ' . $to . '.'); }
-        if (!can($permission)) { throw new DomainException('Your role cannot make this case-status change.'); }
+        if ($permission === null) {
+            throw new InvalidArgumentException('A ' . $from . ' case cannot move to ' . $to . '.');
+        }
+        if (!can($permission)) {
+            throw new DomainException('Your role cannot make this case-status change.');
+        }
+        if ($from === 'Archived' || $case['archived_at'] !== null) {
+            throw new InvalidArgumentException('Archived cases cannot be changed or restored.');
+        }
+        if (in_array($to, ['Resolved', 'Dismissed', 'Archived'], true)) {
+            $openHearings = (int) db_val(
+                "SELECT COUNT(*) FROM hearings WHERE blotter_id = ? AND status = 'Scheduled'",
+                [$blotterId]
+            );
+            if ($openHearings > 0) {
+                throw new InvalidArgumentException('Record the outcome of every scheduled hearing before resolving, dismissing or archiving this case.');
+            }
+        }
         if (in_array($to, ['Resolved', 'Dismissed'], true) && !v_len($note, 3, 500)) {
-            throw new InvalidArgumentException('Enter a reason or outcome (3-500 characters).');
+            throw new InvalidArgumentException('Enter the resolution or dismissal reason (3-500 characters).');
         }
-        if ($to === 'Archived' && $case['archived_at'] !== null) {
-            throw new InvalidArgumentException('This case is already archived.');
-        }
+
         $archiveAt = $to === 'Archived' ? 'NOW()' : 'NULL';
         $archivedFrom = $to === 'Archived' ? $from : null;
+        $resolutionNote = in_array($to, ['Resolved', 'Dismissed'], true) ? $note : null;
+        $resolvedAt = $to === 'Resolved' ? 'NOW()' : ($to === 'Dismissed' ? 'NULL' : 'resolved_at');
         $changed = db_exec(
             'UPDATE blotters
-             SET msit_status = ?, archived_at = ' . $archiveAt . ', archived_from_status = ?
-             WHERE blotter_id = ? AND msit_status = ?',
-            [$to, $archivedFrom, $blotterId, $from]
+             SET msit_status = ?,
+                 archived_at = ' . $archiveAt . ',
+                 archived_from_status = ?,
+                 resolution_note = ?,
+                 resolved_at = ' . $resolvedAt . '
+             WHERE blotter_id = ? AND msit_status = ? AND archived_at IS NULL',
+            [$to, $archivedFrom, $resolutionNote, $blotterId, $from]
         );
-        if ($changed !== 1) { throw new RuntimeException('The case changed before this action completed. Refresh and try again.'); }
+        if ($changed !== 1) {
+            throw new RuntimeException('The case changed before this action completed. Refresh and try again.');
+        }
+
         $actorId = audit_actor()['user_id'] ?? null;
         db_exec(
             "INSERT INTO request_status_history
@@ -77,7 +92,6 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
              VALUES ('Blotter', ?, ?, ?, ?, ?, ?)",
             [$case['case_no'], $from, $to, $actorId, $note !== '' ? $note : null, $blotterId]
         );
-        // Keep the resident's reference-number tracker synchronized with the official case.
         db_exec(
             'UPDATE resident_blotter_requests SET msit_status = ?, status_note = ? WHERE blotter_id = ?',
             [$to, $note !== '' ? $note : null, $blotterId]
@@ -85,9 +99,13 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
         audit('blotter_srs_status_changed', 'Blotter', 'Success',
             $case['case_no'] . ': ' . $from . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''),
             'blotter', $blotterId);
+        if ($to === 'Archived') {
+            audit('blotter_archived', 'Blotter', 'Success',
+                $case['case_no'] . ' archived from ' . $from, 'blotter', $blotterId);
+        }
     });
 
-    // Update every resident tracker linked to this official case after the status commit.
+    // Notifications are sent after commit; a delivery failure cannot roll back the saved case status.
     $requesters = db_all(
         'SELECT resident_id, reference_no FROM resident_blotter_requests WHERE blotter_id = ?',
         [$blotterId]
@@ -110,12 +128,10 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
     }
 }
 
-/** A case stays editable only before either SRS final outcome/archive or the legacy resolved state. */
+/** A case is editable and may receive hearings only while Ongoing or Unresolved. */
 function case_is_open(array $c): bool
 {
-    $srs = (string) ($c['msit_status'] ?? 'Ongoing');
-    return !in_array($srs, ['Resolved', 'Dismissed', 'Archived'], true)
-        && (string) ($c['status'] ?? '') !== 'Resolved'
+    return in_array((string) ($c['msit_status'] ?? 'Ongoing'), ['Ongoing', 'Unresolved'], true)
         && ($c['archived_at'] ?? null) === null;
 }
 
@@ -152,7 +168,7 @@ function blotter_people_search(array $tokens, int $limit = 100): array
     if (!$tokens) { return []; }
     $w = []; $p = [];
     foreach ($tokens as $t) { $w[] = 'p.full_name LIKE ?'; $p[] = '%' . addcslashes($t, '%_\\') . '%'; }
-    return db_all('SELECT p.party_id, p.party_role, p.full_name, p.age, p.address, b.blotter_id, b.case_no, b.status, b.incident_date, b.archived_at
+    return db_all('SELECT p.party_id, p.party_role, p.full_name, p.age, p.address, b.blotter_id, b.case_no, b.msit_status AS status, b.incident_date, b.archived_at
                    FROM blotter_parties p JOIN blotters b ON b.blotter_id = p.blotter_id WHERE ' . implode(' AND ', $w) . ' ORDER BY b.incident_date DESC, p.party_id LIMIT ' . (int) $limit, $p);
 }
 /** Possible blotter records for a resident (same first and last name). A hint for staff, never proof. */
