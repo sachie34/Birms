@@ -32,6 +32,7 @@ $union = "
         dr.msit_status AS status,
         dr.requested_at AS submitted_at,
         TRIM(CONCAT(r.last_name, ', ', r.first_name, ' ', COALESCE(r.middle_name, ''), ' ', COALESCE(r.suffix, ''))) AS resident_name,
+        r.resident_no AS resident_no,
         dt.name AS item,
         dr.purpose,
         dr.request_id AS document_request_id,
@@ -52,6 +53,7 @@ $union = "
         br.msit_status AS status,
         br.submitted_at,
         TRIM(CONCAT(r.last_name, ', ', r.first_name, ' ', COALESCE(r.middle_name, ''), ' ', COALESCE(r.suffix, ''))) AS resident_name,
+        r.resident_no AS resident_no,
         COALESCE(it.label, 'Blotter report') AS item,
         br.incident_place AS purpose,
         NULL AS document_request_id,
@@ -72,6 +74,7 @@ $union = "
         vr.status,
         vr.created_at AS submitted_at,
         TRIM(CONCAT(r.last_name, ', ', r.first_name, ' ', COALESCE(r.middle_name, ''), ' ', COALESCE(r.suffix, ''))) AS resident_name,
+        r.resident_no AS resident_no,
         v.name AS item,
         vr.purpose,
         NULL AS document_request_id,
@@ -93,8 +96,8 @@ if ($from !== '') { $where[] = 'all_requests.submitted_at >= ?'; $params[] = $fr
 if ($to !== '') { $where[] = 'all_requests.submitted_at < DATE_ADD(?, INTERVAL 1 DAY)'; $params[] = $to; }
 if ($q !== '') {
     $like = '%' . addcslashes($q, '%_\\') . '%';
-    $where[] = '(all_requests.reference_no LIKE ? OR all_requests.resident_name LIKE ? OR all_requests.item LIKE ? OR all_requests.purpose LIKE ?)';
-    array_push($params, $like, $like, $like, $like);
+    $where[] = '(all_requests.reference_no LIKE ? OR all_requests.resident_no LIKE ? OR all_requests.resident_name LIKE ? OR all_requests.item LIKE ? OR all_requests.purpose LIKE ?)';
+    array_push($params, $like, $like, $like, $like, $like);
 }
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $source = '(' . $union . ') all_requests';
