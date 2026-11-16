@@ -91,8 +91,8 @@ if (!$done) {
                 $flashMessage .= ' The resident notification was accepted by the SMS provider.';
             }
         } catch (Throwable $notificationError) {
-            error_log('BIRMS document status notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError));
-            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+            error_log('BIRMS document status notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
                 'Document request ' . (string) $r['reference_no'] . ' changed status but notification could not be queued.');
             $flashType = 'warning';
             $flashMessage .= ' The status was saved, but the resident notification could not be queued. Check the notification log.';
