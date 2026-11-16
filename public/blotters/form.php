@@ -40,26 +40,44 @@ if (is_post()) {
         if ($v['r_name'] . $v['r_age'] . $v['r_address'] . $v['r_contact'] !== '') { $r = party_clean($v['r_name'], $v['r_age'], $v['r_address'], $v['r_contact'], 'Respondent', $errors); }
     }
     if (!$errors) {
-        $nid = db_transaction(function () use ($v, $ex, $c, $r): int {
-            $purok = $v['purok_id'] !== '' ? (int) $v['purok_id'] : null; $incidentType = $v['incident_type_id'] !== '' ? (int) $v['incident_type_id'] : null; $place = $v['incident_place'] !== '' ? $v['incident_place'] : null;
-            $incidentTime = $v['incident_time'] . ':00';
-            if ($ex) {
-                db_exec("UPDATE blotters SET incident_date = ?, incident_time = ?, incident_place = ?, purok_id = ?, incident_type_id = ?, narrative = ? WHERE blotter_id = ? AND status <> 'Resolved' AND archived_at IS NULL", [$v['incident_date'], $incidentTime, $place, $purok, $incidentType, $v['narrative'], $ex['blotter_id']]);
-                audit('blotter_updated', 'Blotter', 'Success', $ex['case_no'] . ' details corrected', 'blotter', (int) $ex['blotter_id']);
-                return (int) $ex['blotter_id'];
-            }
-            $no = new_case_no();
-            db_exec('INSERT INTO blotters (case_no, incident_date, incident_time, incident_place, purok_id, incident_type_id, narrative, recorded_at, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
-                [$no, $v['incident_date'], $incidentTime, $place, $purok, $incidentType, $v['narrative'], audit_actor()['user_id'] ?? null]);
-            $new = (int) db()->lastInsertId();
-            foreach ([['Complainant', $c], ['Respondent', $r]] as [$role, $pty]) {
-                if ($pty) { db_exec('INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number) VALUES (?, ?, ?, ?, ?, ?)', [$new, $role, $pty['name'], $pty['age'], $pty['address'], $pty['contact']]); }
-            }
-            audit('blotter_filed', 'Blotter', 'Success', $no . ' filed: ' . $c['name'] . ($r ? ' vs ' . $r['name'] : ''), 'blotter', $new);
-            return $new;
-        });
-        flash_add('success', $ex ? 'Case details saved.' : 'Case filed.');
-        redirect('blotters/view.php', ['id' => $nid]);
+        try {
+            $nid = db_transaction(function () use ($v, $ex, $c, $r): int {
+                $purok = $v['purok_id'] !== '' ? (int) $v['purok_id'] : null;
+                $incidentType = $v['incident_type_id'] !== '' ? (int) $v['incident_type_id'] : null;
+                $place = $v['incident_place'] !== '' ? $v['incident_place'] : null;
+                $incidentTime = $v['incident_time'] . ':00';
+                if ($ex) {
+                    $locked = db_one('SELECT blotter_id, case_no, msit_status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE', [$ex['blotter_id']]);
+                    if ($locked === null || !case_is_open($locked)) {
+                        throw new DomainException('This case is no longer editable because it has been resolved, dismissed or archived.');
+                    }
+                    $changed = db_exec(
+                        "UPDATE blotters SET incident_date = ?, incident_time = ?, incident_place = ?, purok_id = ?, incident_type_id = ?, narrative = ?
+                         WHERE blotter_id = ? AND msit_status IN ('Ongoing','Unresolved') AND archived_at IS NULL",
+                        [$v['incident_date'], $incidentTime, $place, $purok, $incidentType, $v['narrative'], $ex['blotter_id']]
+                    );
+                    if ($changed !== 1) { throw new DomainException('The case status changed before these details could be saved. Refresh and try again.'); }
+                    audit('blotter_updated', 'Blotter', 'Success', $locked['case_no'] . ' details corrected', 'blotter', (int) $ex['blotter_id']);
+                    return (int) $ex['blotter_id'];
+                }
+                $no = new_case_no();
+                db_exec('INSERT INTO blotters (case_no, incident_date, incident_time, incident_place, purok_id, incident_type_id, narrative, recorded_at, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
+                    [$no, $v['incident_date'], $incidentTime, $place, $purok, $incidentType, $v['narrative'], audit_actor()['user_id'] ?? null]);
+                $new = (int) db()->lastInsertId();
+                foreach ([['Complainant', $c], ['Respondent', $r]] as [$role, $pty]) {
+                    if ($pty) {
+                        db_exec('INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number) VALUES (?, ?, ?, ?, ?, ?)',
+                            [$new, $role, $pty['name'], $pty['age'], $pty['address'], $pty['contact']]);
+                    }
+                }
+                audit('blotter_filed', 'Blotter', 'Success', $no . ' filed: ' . $c['name'] . ($r ? ' vs ' . $r['name'] : ''), 'blotter', $new);
+                return $new;
+            });
+            flash_add('success', $ex ? 'Case details saved.' : 'Case filed.');
+            redirect('blotters/view.php', ['id' => $nid]);
+        } catch (DomainException | RuntimeException $e) {
+            $errors[] = $e->getMessage();
+        }
     }
     audit_best_effort('blotter_rejected', 'Blotter', 'Failed', ($ex ? 'edit' : 'file') . ': ' . implode(' ', array_slice($errors, 0, 3)));
 }
