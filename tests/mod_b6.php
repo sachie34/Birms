@@ -24,8 +24,13 @@ function run_b6(array $S, string $base): void
           'r_name' => 'Zzresp Bravo', 'r_age' => '41', 'r_address' => 'ZZ Other Street', 'r_contact' => ''];
     $file = function (Http $h, array $o = []) use ($d, $runToken): array {
         $data = $o + $d;
-        $narrative = trim((string) ($data['narrative'] ?? ''));
-        if (strlen($narrative) >= 10) { $data['narrative'] = $narrative . ' [B6RUN-' . $runToken . ']'; }
+        $narrativeValue = $data['narrative'] ?? '';
+        if (is_string($narrativeValue)) {
+            $narrative = trim($narrativeValue);
+            if (strlen($narrative) >= 10) {
+                $data['narrative'] = $narrative . ' [B6RUN-' . $runToken . ']';
+            }
+        }
         foreach (['c_name', 'r_name'] as $field) {
             if (isset($data[$field]) && trim((string) $data[$field]) !== '') {
                 $data[$field] = trim((string) $data[$field]) . ' ' . $runToken;
