@@ -149,8 +149,8 @@ function venue_change_status(int $reservationId, string $to, string $note = ''):
                 $note
             );
         } catch (Throwable $notificationError) {
-            error_log('BIRMS venue status notification failed for ' . (string) $saved['reference_no'] . ': ' . get_class($notificationError));
-            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+            error_log('BIRMS venue status notification failed for ' . (string) $saved['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
                 'Venue reservation ' . (string) $saved['reference_no'] . ' changed status but notification could not be queued.');
         }
     }
