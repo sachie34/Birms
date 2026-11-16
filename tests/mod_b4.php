@@ -177,9 +177,9 @@ function run_b4(array $S, string $base): void
     $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone');
     $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($clk, $id2, 'Ready');
     $noContactNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE reference_no = (SELECT reference_no FROM document_requests WHERE request_id = ?)", [$id2]);
-    $noContactSms = (int) db_val('SELECT COUNT(*) FROM sms_outbox WHERE recipient_number IS NULL');
+    $noContactSms = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     record('B4-10', 'When the resident has no saved email or mobile number, the request still advances but no impossible delivery is reported',
-        $status($id2) === 'Ready' && $noContactNotice === 0 && $noContactSms === 0);
+        $status($id2) === 'Ready' && $noContactNotice === 0 && $noContactSms === $outBefore);
 
     $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject');
     $pendingReject = $move($cap, $id4, 'Rejected', 'Attempt before review');
