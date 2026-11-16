@@ -86,6 +86,28 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
             $case['case_no'] . ': ' . $from . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''),
             'blotter', $blotterId);
     });
+
+    // Update every resident tracker linked to this official case after the status commit.
+    $requesters = db_all(
+        'SELECT resident_id, reference_no FROM resident_blotter_requests WHERE blotter_id = ?',
+        [$blotterId]
+    );
+    foreach ($requesters as $requester) {
+        try {
+            resident_notify_status_change(
+                (int) $requester['resident_id'],
+                'Blotter',
+                (string) $requester['reference_no'],
+                $to,
+                'blotter_case_status_changed',
+                $note
+            );
+        } catch (Throwable $notificationError) {
+            error_log('BIRMS blotter status notification failed for ' . (string) $requester['reference_no'] . ': ' . get_class($notificationError));
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+                'Blotter case ' . (string) $requester['reference_no'] . ' changed status but the resident notification could not be queued.');
+        }
+    }
 }
 
 /** A case stays editable only before either SRS final outcome/archive or the legacy resolved state. */
