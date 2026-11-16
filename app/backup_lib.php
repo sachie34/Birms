@@ -287,7 +287,7 @@ function backup_restore_values_are_literals(string $values): bool
  * DROP/CREATE are validated but never executed: restore replaces rows and preserves the installed schema.
  *
  * @param list<string> $allowedTables Current base-table names.
- * @return array{tables:list<string>,inserts:list<string>}
+ * @return array{tables:list<string>,inserts:list<string>,blotter_cases:array<string,int>}
  */
 function backup_restore_parse(string $sql, array $allowedTables): array
 {
