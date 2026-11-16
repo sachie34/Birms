@@ -387,17 +387,70 @@ function backup_restore_parse(string $sql, array $allowedTables): array
     return ['tables' => $expected, 'inserts' => $inserts, 'blotter_cases' => $blotterCases];
 }
 
-/** Restore all rows atomically while retaining the current table definitions. */
+/** Restore all rows atomically while retaining the current table definitions and permanent blotter cases. */
 function backup_restore_apply(string $sql): array
 {
     $parsed = backup_restore_parse($sql, backup_table_names());
     $pdo = db();
     $quote = chr(96);
+
+    // FR-B5 prohibits deleting a blotter case, including through the restore feature.
+    // A restore is permitted only when its snapshot contains every current case with
+    // the same permanent ID. This prevents an older backup from erasing newer cases
+    // or relinking their child records to a different case.
+    $currentCases = db_all('SELECT blotter_id, case_no FROM blotters');
+    $currentIds = [];
+    foreach ($currentCases as $case) {
+        $caseNo = (string) $case['case_no'];
+        $caseId = (int) $case['blotter_id'];
+        if (!isset($parsed['blotter_cases'][$caseNo])) {
+            throw new RuntimeException(
+                'Restore refused because the uploaded backup does not contain permanent blotter case '
+                . $caseNo . '. FR-B5 does not allow a restore to delete newer case records. Use a backup that includes every current case.'
+            );
+        }
+        if ($parsed['blotter_cases'][$caseNo] !== $caseId) {
+            throw new RuntimeException(
+                'Restore refused because permanent blotter case ' . $caseNo
+                . ' has a different database ID in the uploaded backup. No records were changed.'
+            );
+        }
+        $currentIds[$caseId] = $caseNo;
+    }
+    foreach ($parsed['blotter_cases'] as $caseNo => $caseId) {
+        if (isset($currentIds[$caseId]) && $currentIds[$caseId] !== $caseNo) {
+            throw new RuntimeException(
+                'Restore refused because the uploaded backup reuses a permanent blotter ID for another case. No records were changed.'
+            );
+        }
+    }
+
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
     try {
         db_transaction(function () use ($parsed, $quote): void {
-            foreach ($parsed['tables'] as $table) { db_exec('DELETE FROM ' . $quote . $table . $quote); }
-            foreach ($parsed['inserts'] as $statement) { db()->exec($statement); }
+            foreach ($parsed['tables'] as $table) {
+                // Never DELETE from blotters. Its current rows were checked against the
+                // snapshot above and are synchronized with an upsert below.
+                if ($table === 'blotters') { continue; }
+                db_exec('DELETE FROM ' . $quote . $table . $quote);
+            }
+
+            foreach ($parsed['inserts'] as $statement) {
+                $pattern = '/^INSERT INTO ' . preg_quote($quote . 'blotters' . $quote, '/') . '\s*\((.*?)\)\s+VALUES\s+(.+)$/is';
+                if (preg_match($pattern, $statement, $m) === 1) {
+                    preg_match_all('/' . preg_quote($quote, '/') . '([A-Za-z0-9_$]+)' . preg_quote($quote, '/') . '/', (string) $m[1], $matches);
+                    $columns = $matches[1] ?? [];
+                    $updates = [];
+                    foreach ($columns as $column) {
+                        if ($column === 'blotter_id') { continue; }
+                        $identifier = $quote . $column . $quote;
+                        $updates[] = $identifier . ' = VALUES(' . $identifier . ')';
+                    }
+                    if (!$updates) { throw new RuntimeException('The backup blotter rows cannot be safely restored.'); }
+                    $statement .= ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updates);
+                }
+                db()->exec($statement);
+            }
         });
     } finally {
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
