@@ -7,6 +7,10 @@ require_once __DIR__ . '/../app/backup_lib.php';
 function run_b7(array $S, string $base): void
 {
     $adm = $S['admin']; $cap = $S['captain']; $sec = $S['secretary']; $clk = $S['clerk'];
+    $runToken = strtoupper(strtr(bin2hex(random_bytes(3)), '0123456789abcdef', 'abcdefghijklmnop'));
+    $employmentLabel = 'ZZ B7 Employment ' . $runToken;
+    $incidentTypeLabel = 'ZZ B7 Incident ' . $runToken;
+    $purokLabel = 'ZZ B7 Purok ' . $runToken;
 
     // Clean interrupted B7 test rows only. Remove request-history and ledger children before parent requests/issuances.
     db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZB7R%' OR purpose = 'ZZ B7 Fee matrix quote test')");
@@ -17,12 +21,10 @@ function run_b7(array $S, string $base): void
     db_exec("DELETE FROM document_types WHERE name = 'ZZ B7 Matrix Certificate'");
     db_exec("DELETE FROM issuances WHERE reference_no LIKE 'ZB7I%'");
     db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZB7R%'");
-    db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no LIKE 'ZB7C%')");
-    db_exec("DELETE FROM hearings WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no LIKE 'ZB7C%')");
-    db_exec("DELETE FROM blotters WHERE case_no LIKE 'ZB7C%'");
+    // FR-B5 requires permanent blotter records. Previous test cases and their Purok/incident-type
+    // lookups remain as historical rows; this run uses a unique case reference and lookup labels.
     db_exec("DELETE FROM residents WHERE last_name = 'ZZB7Report'");
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZB7H%'");
-    db_exec("DELETE FROM lookups WHERE (list_key = 'employment_status' AND label = 'ZZ B7 Employment') OR (list_key = 'incident_type' AND label = 'ZZ B7 Incident') OR (list_key = 'purok' AND label = 'ZZ B7 Purok')");
 
     $signatureFixture = fx_upload_chairman_signature($adm);
     record('B7-17', 'Admin configures the Chairman signature before fee-quote certificate issuance',
@@ -58,11 +60,11 @@ function run_b7(array $S, string $base): void
         && $year['start'] === date('Y-01-01') . ' 00:00:00'
         && $year['end'] === ((int) date('Y') + 1) . '-01-01 00:00:00');
 
-    db_exec("INSERT INTO lookups (list_key, label, sort_order) VALUES ('employment_status', 'ZZ B7 Employment', 9907)");
+    db_exec('INSERT INTO lookups (list_key, label, sort_order) VALUES (?, ?, 9907)', ['employment_status', $employmentLabel]);
     $employmentId = (int) db()->lastInsertId();
-    db_exec("INSERT INTO lookups (list_key, label, sort_order) VALUES ('incident_type', 'ZZ B7 Incident', 9907)");
+    db_exec('INSERT INTO lookups (list_key, label, sort_order) VALUES (?, ?, 9907)', ['incident_type', $incidentTypeLabel]);
     $incidentTypeId = (int) db()->lastInsertId();
-    db_exec("INSERT INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ B7 Purok', 9907)");
+    db_exec('INSERT INTO lookups (list_key, label, sort_order) VALUES (?, ?, 9907)', ['purok', $purokLabel]);
     $purokId = (int) db()->lastInsertId();
 
     $stamp = date('ymdHis') . random_int(10, 99);
@@ -106,8 +108,8 @@ function run_b7(array $S, string $base): void
     $afterMonthIssuance = report_issuances($month);
     $afterMonthBlotters = report_blotters($month);
     $afterMonthRequests = report_requests($month);
-    $employmentCountOkay = (int) ($afterDemo['employment_status']['ZZ B7 Employment'] ?? 0) === (int) ($baselineDemo['employment_status']['ZZ B7 Employment'] ?? 0) + 1;
-    $purokCountOkay = (int) ($afterDemo['purok']['ZZ B7 Purok'] ?? 0) === (int) ($baselineDemo['purok']['ZZ B7 Purok'] ?? 0) + 1;
+    $employmentCountOkay = (int) ($afterDemo['employment_status'][$employmentLabel] ?? 0) === (int) ($baselineDemo['employment_status'][$employmentLabel] ?? 0) + 1;
+    $purokCountOkay = (int) ($afterDemo['purok'][$purokLabel] ?? 0) === (int) ($baselineDemo['purok'][$purokLabel] ?? 0) + 1;
     $voterCountOkay = (int) ($afterDemo['voter_status']['Registered'] ?? 0) === (int) ($baselineDemo['voter_status']['Registered'] ?? 0) + 1;
     record('B7-4', 'Demographic reports calculate population, age, employment, voter status and Purok totals from stored residents',
         $afterDemo['total'] === $baselineDemo['total'] + 1 && $employmentCountOkay && $purokCountOkay && $voterCountOkay
@@ -120,8 +122,8 @@ function run_b7(array $S, string $base): void
     record('B7-6', 'Blotter report aggregates real cases by period, current status, configured incident type and Purok',
         (int) $afterMonthBlotters['summary']['total'] === (int) $baselineMonthBlotters['summary']['total'] + 1
         && (int) ($afterMonthBlotters['summary']['ongoing_count']) === (int) $baselineMonthBlotters['summary']['ongoing_count'] + 1
-        && count(array_filter($afterMonthBlotters['by_type'], fn($r) => $r['incident_type'] === 'ZZ B7 Incident' && (int) $r['case_count'] >= 1)) === 1
-        && count(array_filter($afterMonthBlotters['by_purok'], fn($r) => $r['purok'] === 'ZZ B7 Purok' && (int) $r['case_count'] >= 1)) === 1);
+        && count(array_filter($afterMonthBlotters['by_type'], fn($r) => $r['incident_type'] === $incidentTypeLabel && (int) $r['case_count'] >= 1)) === 1
+        && count(array_filter($afterMonthBlotters['by_purok'], fn($r) => $r['purok'] === $purokLabel && (int) $r['case_count'] >= 1)) === 1);
 
     $reportPage = $sec->get('/reports/index.php?type=demographics');
     $issuancePage = $sec->get('/reports/index.php?type=issuance&period=month&year=' . date('Y') . '&month=' . date('n'));
@@ -130,14 +132,14 @@ function run_b7(array $S, string $base): void
     $periodicPage = $sec->get('/reports/index.php?type=periodic&period=month&year=' . date('Y') . '&month=' . date('n') . '&recipient=pnp');
     $dashboard = $sec->get('/dashboard.php');
     $b77Checks = [
-        'demographic-category' => $reportPage['status'] === 200 && str_contains($reportPage['body'], 'ZZ B7 Employment'),
+        'demographic-category' => $reportPage['status'] === 200 && str_contains($reportPage['body'], $employmentLabel),
         'issuance-report' => $issuancePage['status'] === 200 && !str_contains($issuancePage['body'], 'ZZ B7 report test'),
         'request-report' => $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary'),
-        'blotter-report' => $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident'),
+        'blotter-report' => $blotterPage['status'] === 200 && str_contains($blotterPage['body'], $incidentTypeLabel),
         'periodic-title' => $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Periodic Administrative Report'),
         'periodic-recipient' => str_contains($periodicPage['body'], 'Philippine National Police (PNP)'),
         'periodic-collections' => str_contains($periodicPage['body'], 'Revenue collected'),
-        'dashboard-purok' => $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'),
+        'dashboard-purok' => $dashboard['status'] === 200 && str_contains($dashboard['body'], $purokLabel),
     ];
     $b77Failures = array_keys(array_filter($b77Checks, static fn(bool $ok): bool => !$ok));
     record('B7-7', 'Report screens and dashboard expose the configured categories and real operational summaries',
@@ -341,9 +343,9 @@ function run_b7(array $S, string $base): void
     db_exec('DELETE FROM document_requests WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
     if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
-    db_exec('DELETE FROM blotters WHERE case_no = ?', [$caseNo]);
+    // Keep the blotter case and its referenced incident type/Purok as permanent FR-B5 history.
     db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     db_exec('DELETE FROM households WHERE household_id = ?', [$houseId]);
-    db_exec('DELETE FROM lookups WHERE lookup_id IN (?, ?, ?)', [$employmentId, $incidentTypeId, $purokId]);
+    db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$employmentId]);
     fx_restore_chairman_signature($signatureFixture);
 }
