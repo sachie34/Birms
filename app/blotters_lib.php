@@ -103,8 +103,8 @@ function blotter_srs_change_status(int $blotterId, string $to, string $note = ''
                 $note
             );
         } catch (Throwable $notificationError) {
-            error_log('BIRMS blotter status notification failed for ' . (string) $requester['reference_no'] . ': ' . get_class($notificationError));
-            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+            error_log('BIRMS blotter status notification failed for ' . (string) $requester['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
                 'Blotter case ' . (string) $requester['reference_no'] . ' changed status but the resident notification could not be queued.');
         }
     }
