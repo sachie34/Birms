@@ -90,6 +90,20 @@ if (is_post()) {
                 return $iid;
             });
             flash_add('success', 'Certificate issued.');
+            try {
+                resident_notify_status_change(
+                    (int) $r['resident_id'],
+                    'Documents',
+                    (string) $r['reference_no'],
+                    'Released',
+                    'document_request_status_changed',
+                    'Your approved certificate has been generated and is ready for release.'
+                );
+            } catch (Throwable $notificationError) {
+                error_log('BIRMS certificate-release notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError));
+                audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+                    'Document request ' . (string) $r['reference_no'] . ' was released but the resident notification could not be queued.');
+            }
             redirect('certificates/print.php', ['id' => $iid]);
         } catch (PDOException $e) {
             if (str_contains($e->getMessage(), 'uq_issuance_or')) {
