@@ -3329,7 +3329,7 @@
         "extra": ""
       },
       "respondent_age": {
-        "type": "tinyint unsigned",
+        "type": "tinyint(3) unsigned",
         "nullable": true,
         "default": "null",
         "extra": ""
