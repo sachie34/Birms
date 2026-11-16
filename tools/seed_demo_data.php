@@ -168,6 +168,18 @@ function demo_seed_has_markers(array $c): bool
     }
     return ($c['demo_lookups'] ?? 0) > 0;
 }
+/** True when only the permanent case/party/hearing fixture remains after --remove. */
+function demo_seed_only_permanent_cases(array $c): bool
+{
+    return ($c['households'] ?? 0) === 0
+        && ($c['residents'] ?? 0) === 0
+        && ($c['document_types'] ?? 0) === 0
+        && ($c['requests'] ?? 0) === 0
+        && ($c['issuances'] ?? 0) === 0
+        && ($c['visitors'] ?? 0) === 0
+        && ($c['blotters'] ?? 0) === 4
+        && ($c['hearings'] ?? 0) === 1;
+}
 function demo_seed_output_counts(array $counts): void
 {
     foreach ($counts as $label => $value) {
@@ -184,11 +196,19 @@ function demo_seed_apply(): array
 {
     return db_transaction(function (): array {
         $before = demo_seed_marker_counts();
+        $reusePermanentCases = false;
         if (demo_seed_has_markers($before)) {
             if (demo_seed_counts_are_complete($before)) {
                 return ['already_seeded' => true, 'counts' => $before];
             }
-            throw new RuntimeException('Reserved DEMO markers already exist but the full seed set is not present. No rows were changed. Inspect the database before retrying or use --remove --confirm-demo-only to remove only the reserved demo dataset.');
+            if (demo_seed_only_permanent_cases($before)) {
+                // --remove intentionally retains official-style case history under FR-B5.
+                // A later --apply may rebuild the removable demo fixtures and reuse those
+                // same permanent cases instead of attempting to duplicate or delete them.
+                $reusePermanentCases = true;
+            } else {
+                throw new RuntimeException('Reserved DEMO markers already exist but the full seed set is not present. No rows were changed. Inspect the database before retrying; permanent blotter cases are never removed.');
+            }
         }
 
         // Existing active configuration is reused, never updated. DEMO ONLY fallback lookups are added only when a list is empty.
