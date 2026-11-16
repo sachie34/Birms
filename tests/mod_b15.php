@@ -111,9 +111,11 @@ function run_b15(array $S, string $base): void
 
         venue_change_status((int) $reopenedSlot['reservation_id'], 'Completed');
         $completed = db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$reopenedSlot['reservation_id']]);
-        $completedNotice = db_one("SELECT new_status, delivery_status FROM notification_outbox n JOIN request_status_history h ON h.reference_no = n.reference_no WHERE n.resident_id = ? AND n.reference_no = ? AND n.event_type = 'venue_reservation_status_changed' ORDER BY n.notification_id DESC LIMIT 1", [$residentId, $reopenedSlot['reference_no']]);
+        $completedNotice = db_one("SELECT delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'venue_reservation_status_changed' ORDER BY notification_id DESC LIMIT 1", [$residentId, $reopenedSlot['reference_no']]);
         record('B15-07', 'Only an Approved reservation can be marked Completed and the resident receives the Completed status',
-            $completed === 'Completed' && $completedNotice !== null && $completedNotice['new_status'] === 'Completed');
+            $completed === 'Completed' && $completedNotice !== null
+            && in_array($completedNotice['delivery_status'], ['queued','sent'], true)
+            && str_contains((string) $completedNotice['message'], 'Completed'));
 
         $staffView = $clk->get('/venues/index.php');
         $chairmanAction = post_as($cap, '/venues/index.php', '/venues/action.php', [
