@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('settings.view');
 $canEdit = can('settings.edit');
-$tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'sms' => 'SMS text'];
+$tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'notifications' => 'Notifications', 'sms' => 'SMS gateway and text'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'general';
 $errors = [];
 
@@ -139,6 +139,23 @@ if (is_post()) {
                     audit('settings_saved', 'Settings', 'Success', 'Hearing summons wording ' . ($t === '' ? 'cleared' : 'updated'), 'settings', null);
                     flash_add('success', 'Summons wording saved.');
                     break;
+                case 'email_settings_save':
+                    $enabled = post_str('email_enabled');
+                    $from = trim(post_str('email_from_email'));
+                    $name = trim(post_str('email_from_name'));
+                    if (!in_array($enabled, ['0', '1'], true)) { $errors[] = 'Choose whether email notifications are enabled.'; }
+                    if ($enabled === '1' && !v_email($from)) { $errors[] = 'Enter a valid sender email address before enabling email notifications.'; }
+                    elseif ($from !== '' && !v_email($from)) { $errors[] = 'Sender email address is invalid.'; }
+                    if (!v_len($name, 2, 100)) { $errors[] = 'Sender display name must be 2-100 characters.'; }
+                    if (preg_match('/[\\r\\n]/', $name) === 1) { $errors[] = 'Sender display name cannot contain line breaks.'; }
+                    if ($errors) { throw new RuntimeException('invalid'); }
+                    setting_set('email_enabled', $enabled);
+                    setting_set('email_from_email', $from);
+                    setting_set('email_from_name', $name);
+                    audit('notification_email_settings_saved', 'Notifications', 'Success',
+                        'Email notifications ' . ($enabled === '1' ? 'enabled' : 'disabled') . '; sender identity updated.');
+                    flash_add('success', 'Email notification settings saved. The PHP mail transport must also be configured on the server before messages can be delivered.');
+                    break;
                 case 'sms_save':
                     $t = post_str('sms_ready_text');
                     if (str_len($t) > 300) { $errors[] = 'SMS text is limited to 300 characters.'; }
@@ -265,6 +282,23 @@ if ($tab === 'general') {
     echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('summons_save');
     echo f_textarea('summons_wording', 'Official wording', (string) setting('summons_wording', ''), ['rows' => 7, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
+    card_end();
+} elseif ($tab === 'notifications') {
+    $emailStatus = email_provider_config();
+    card_start('Default email notifications', 'Email is the default resident notification channel. The server must have a working PHP mail transport; setting a sender address alone does not create an email account or SMTP relay.');
+    echo '<div class="alert alert-' . ($emailStatus['enabled'] ? 'success' : 'secondary') . '"><strong>Email status: ' . ($emailStatus['enabled'] ? 'Enabled' : 'Not ready') . '</strong><br>' . e((string) $emailStatus['reason']) . '</div>';
+    echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('email_settings_save');
+    echo f_select('email_enabled', 'Email notification channel', ['1' => 'Enabled', '0' => 'Disabled'], $emailStatus['requested_enabled'] ? '1' : '0', ['required' => true, 'disabled' => !$canEdit, 'col' => 'col-md-4', 'help' => 'New resident status notices use email by default.']);
+    echo f_text('email_from_email', 'Sender email address', (string) $emailStatus['from_email'], ['type' => 'email', 'maxlength' => 100, 'required' => $emailStatus['requested_enabled'], 'disabled' => !$canEdit, 'col' => 'col-md-4']);
+    echo f_text('email_from_name', 'Sender display name', (string) $emailStatus['from_name'], ['maxlength' => 100, 'required' => true, 'disabled' => !$canEdit, 'col' => 'col-md-4']);
+    echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save email settings</button>' : '') . '</form>';
+    echo '<p class="small text-muted mt-3 mb-0">Do not put SMTP passwords or provider API keys in this page. Configure the approved mail relay in the private server configuration. Email notices remain in the outbox when delivery is not configured.</p>';
+    card_end();
+    $smsStatus = sms_provider_status_summary();
+    card_start('Optional SMS gateway', 'SMS is optional. The gateway and API key are configured in the private server configuration and are never displayed in this page.');
+    echo '<div class="alert alert-' . ($smsStatus['enabled'] ? 'success' : 'secondary') . '"><strong>' . e((string) $smsStatus['provider']) . ': ' . ($smsStatus['enabled'] ? 'Enabled' : 'Disabled') . '</strong><br>' . e((string) $smsStatus['reason']) . '</div>';
+    if ($canEdit) { echo '<p>' . btn_link('admin/sms.php', 'Open SMS Delivery Log', 'btn-primary', 'bi-chat-dots') . '</p>'; }
+    echo '<p class="small text-muted mb-0">Residents can choose SMS, email or both. When SMS is unavailable or a provider confirms failure, BIRMS falls back to email where a valid address is on record. The queue display remains the final visible source for queue numbers.</p>';
     card_end();
 } else {
     $smsStatus = sms_provider_status_summary();
