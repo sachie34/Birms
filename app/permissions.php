@@ -14,7 +14,7 @@ function permission_map(): array
         'admin' => [
             'dashboard.view',
             'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.restore', 'residents.export',
-            'requests.view', 'requests.add', 'requests.edit', 'requests.review', 'requests.approve',
+            'requests.view', 'requests.add', 'requests.edit', 'requests.review', 'requests.approve', 'requests.tracker',
             'certificates.history', 'certificates.issue', 'certificates.print',
             'settings.view', 'settings.edit',
             'audit.view', 'audit.export', 'users.manage', 'backup.run', 'cash_ledger.view', 'cash_ledger.manage',
@@ -46,7 +46,7 @@ function permission_map(): array
         // Staff handles resident-facing services, final request decisions, certificate generation, venues and queues.
         'clerk' => [
             'dashboard.view', 'residents.view',
-            'requests.view', 'requests.add', 'requests.edit', 'requests.approve',
+            'requests.view', 'requests.add', 'requests.edit', 'requests.approve', 'requests.tracker',
             'certificates.history', 'certificates.issue', 'certificates.print',
             'blotters.view', 'blotter_requests.view', 'blotter_requests.review', 'hearings.view',
             'venues.view', 'venues.manage', 'venues.approve',
