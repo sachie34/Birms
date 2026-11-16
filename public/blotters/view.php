@@ -27,7 +27,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
       <?= $row('Incident date / time', e(date('d M Y', strtotime((string) $b['incident_date']))) . ' · ' . e(!empty($b['incident_time']) ? date('g:i A', strtotime((string) $b['incident_time'])) : 'Time not recorded')) ?>
       <?= $row('Place', e((string) ($b['incident_place'] ?? '—'))) ?><?= $row('Purok', e((string) ($b['purok'] ?? '—'))) ?><?= $row('Incident type', e((string) ($b['incident_type'] ?? 'Unclassified'))) ?>
       <?= $row('Recorded', e(fmt_dt((string) $b['recorded_at'])) . ' by ' . e((string) ($b['recorder'] ?? '—'))) ?>
-      <?php if ($b['status'] === 'Resolved'): ?><?= $row('Resolved', e(fmt_dt((string) $b['resolved_at'])) . ' · ' . e((string) $b['resolution_note'])) ?><?php endif; ?>
+      <?php if (in_array((string) $b['msit_status'], ['Resolved', 'Dismissed'], true)): ?><?= $row($b['msit_status'] === 'Resolved' ? 'Resolved' : 'Dismissal reason', ($b['msit_status'] === 'Resolved' ? e(fmt_dt((string) $b['resolved_at'])) . ' · ' : '') . e((string) ($b['resolution_note'] ?? '—'))) ?><?php endif; ?>
     </tbody></table></div></div>
     <div class="card-b mb-3"><div class="card-h"><h2>What happened</h2></div><div class="card-body-b"><p class="mb-0"><?= nl2br(e((string) $b['narrative'])) ?></p></div></div>
 
