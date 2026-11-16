@@ -345,7 +345,6 @@ function run_b7(array $S, string $base): void
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
     // Keep the blotter case and its referenced incident type/Purok as permanent FR-B5 history.
     db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
-    db_exec('DELETE FROM households WHERE household_id = ?', [$houseId]);
     db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$employmentId]);
     fx_restore_chairman_signature($signatureFixture);
 }
