@@ -197,8 +197,8 @@ function resident_blotter_request_accept(int $requestId, string $note = ''): int
                 'Your report was accepted by Staff and an official blotter case was created.'
             );
         } catch (Throwable $notificationError) {
-            error_log('BIRMS blotter acceptance notification failed for ' . (string) $savedRequest['reference_no'] . ': ' . get_class($notificationError));
-            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+            error_log('BIRMS blotter acceptance notification failed for ' . (string) $savedRequest['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
                 'Blotter report ' . (string) $savedRequest['reference_no'] . ' was accepted but the resident notification could not be queued.');
         }
     }
@@ -259,8 +259,8 @@ function resident_blotter_request_reject(int $requestId, string $reason): void
                 'Your report was dismissed by Staff. Reason: ' . $reason
             );
         } catch (Throwable $notificationError) {
-            error_log('BIRMS blotter rejection notification failed for ' . (string) $savedRequest['reference_no'] . ': ' . get_class($notificationError));
-            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+            error_log('BIRMS blotter rejection notification failed for ' . (string) $savedRequest['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
                 'Blotter report ' . (string) $savedRequest['reference_no'] . ' was dismissed but the resident notification could not be queued.');
         }
     }
