@@ -121,7 +121,7 @@ function resident_notify_status_change(
         audit_best_effort(
             'resident_notification_unavailable',
             'Notifications',
-            'Warning',
+            'Failed',
             $service . ' request ' . $referenceNo . ' changed to ' . $status . '; no configured resident contact channel was available.'
         );
     }
