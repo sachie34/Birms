@@ -18,10 +18,11 @@ function run_b4(array $S, string $base): void
             (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
              last_name, first_name, birthdate, sex, civil_status, contact_number, email_address,
              notification_preference, residency_status, household_id, is_household_head, archived_at)
-            VALUES (?, 'ZZ-B4 Test Street', ?, ?, 'Single', ?, 'ZZTestFour', ?, '1991-01-01', 'Female', 'Single', ?, NULL,
+            VALUES (?, 'ZZ-B4 Test Street', ?, ?, 'Single', ?, 'ZZTestFour', ?, '1991-01-01', 'Female', 'Single', ?, ?,
                     'email', 'Active', NULL, 0, ?)",
             [$residentNo, $purokId > 0 ? $purokId : null, $statusId > 0 ? $statusId : null,
-             $typeIdNone > 0 ? $typeIdNone : null, $first, $phone, $arch ? date('Y-m-d H:i:s') : null]);
+             $typeIdNone > 0 ? $typeIdNone : null, $first, $phone, $first === 'Rita' ? 'b4-rita@example.test' : null,
+             $arch ? date('Y-m-d H:i:s') : null]);
         return (int) db()->lastInsertId();
     };
     $rita = $mkRes('Rita', '09170004444'); $nophone = $mkRes('NoPhone', null); $gone = $mkRes('Gone', '09170004445', true);
@@ -164,14 +165,21 @@ function run_b4(array $S, string $base): void
     record('B4-8f', 'Approved request shows certificate issuance as the current next step', str_contains($readyDetail['body'], 'Certificate release') && str_contains($readyDetail['body'], 'aria-current="step"'));
     $x5 = $move($cap, $id1, 'Review'); $x6 = $move($sec, $id1, 'Cancelled'); $e = $status($id1) === 'Ready';
     record('B4-8b', 'Incomplete requirements block Staff approval; Secretary is denied final approval; Staff can approve completed requirements; a Ready request cannot move backward or cancel', $invalidRequirements && $blocked && $markedComplete['status'] === 302 && $savedComplete && $secretaryDenied && $d && $e);
-    $o = db_one('SELECT recipient_number, message, delivery, trigger_event FROM sms_outbox WHERE request_id = ? ORDER BY sms_id DESC LIMIT 1', [$id1]);
-    record('B4-9', 'With SMS provider disabled, approval records a log-only outbox entry: recipient, default text and reference', $o !== null && $o['recipient_number'] === '09170004444' && str_contains((string) $o['message'], (string) $row['reference_no']) && $o['delivery'] === 'Logged only' && (int) db_val('SELECT COUNT(*) FROM sms_outbox') === $outBefore + 1);
-    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone'); $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($clk, $id2, 'Ready');
-    $o2 = db_one('SELECT recipient_number, delivery FROM sms_outbox WHERE request_id = ?', [$id2]);
-    $oldTxt = db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'"); db_exec("UPDATE settings SET setting_value = 'Custom: {{reference_no}} / {{document_name}}' WHERE setting_key = 'sms_ready_text'");
-    $filed('ZZ Test purpose custom'); $id3 = $rid('ZZ Test purpose custom'); $move($sec, $id3, 'Review'); $completeRequirements($sec, $id3); $move($clk, $id3, 'Ready');
-    $o3 = (string) db_val('SELECT message FROM sms_outbox WHERE request_id = ?', [$id3]); db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'sms_ready_text'", [$oldTxt]);
-    record('B4-10', 'No phone number: logged as "No number"; a custom SMS text from Settings is used', $o2 !== null && $o2['recipient_number'] === null && $o2['delivery'] === 'No number' && str_starts_with($o3, 'Custom: REQ-') && str_contains($o3, 'Barangay Clearance'));
+    $emailNotice = db_one("SELECT recipient, channel, event_type, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'document_request_status_changed' ORDER BY notification_id DESC LIMIT 1", [$rita, $row['reference_no']]);
+    record('B4-9', 'Staff approval queues an email status notice for the selected resident address and request reference',
+        $emailNotice !== null
+        && $emailNotice['recipient'] === 'b4-rita@example.test'
+        && $emailNotice['channel'] === 'email'
+        && in_array($emailNotice['delivery_status'], ['queued', 'sent'], true)
+        && str_contains((string) $emailNotice['message'], 'Approved')
+        && str_contains((string) $emailNotice['message'], (string) $row['reference_no']));
+
+    $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone');
+    $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($clk, $id2, 'Ready');
+    $noContactNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE reference_no = (SELECT reference_no FROM document_requests WHERE request_id = ?)", [$id2]);
+    $noContactSms = (int) db_val('SELECT COUNT(*) FROM sms_outbox WHERE recipient_number IS NULL');
+    record('B4-10', 'When the resident has no saved email or mobile number, the request still advances but no impossible delivery is reported',
+        $status($id2) === 'Ready' && $noContactNotice === 0 && $noContactSms === 0);
 
     $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject');
     $pendingReject = $move($cap, $id4, 'Rejected', 'Attempt before review');
@@ -279,6 +287,7 @@ function run_b4(array $S, string $base): void
         db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
     }
+    db_exec("DELETE FROM notification_outbox WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTestFour%')");
     db_exec("DELETE FROM visitor_log WHERE visitor_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
