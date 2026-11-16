@@ -10,7 +10,7 @@ function run_b16(array $S, string $base): void
     $staff = $S['clerk'];
 
     $residentNo = 'RES-B16-' . strtoupper(bin2hex(random_bytes(4)));
-    $purokLabel = 'ZZ B16 Resident Purok';
+    $purokLabel = 'ZZ B16 Resident Purok ' . strtoupper(strtr(bin2hex(random_bytes(3)), '0123456789abcdef', 'abcdefghijklmnop'));
     $residentId = 0;
     $purokId = 0;
     $references = [];
@@ -185,26 +185,9 @@ function run_b16(array $S, string $base): void
             && (int) db_val('SELECT COUNT(*) FROM resident_blotter_requests WHERE resident_id = ?', [$residentId]) === 2);
 
     } finally {
-        if ($references) {
-            $marks = implode(',', array_fill(0, count($references), '?'));
-            db_exec('DELETE FROM request_status_history WHERE reference_no IN (' . $marks . ')', $references);
-            db_exec('DELETE FROM queue_entries WHERE reference_no IN (' . $marks . ')', $references);
-            $linkedCases = db_all('SELECT blotter_id FROM resident_blotter_requests WHERE reference_no IN (' . $marks . ') AND blotter_id IS NOT NULL', $references);
-            db_exec('DELETE FROM resident_blotter_requests WHERE reference_no IN (' . $marks . ')', $references);
-            $caseIds = array_values(array_unique(array_filter(array_merge($officialCaseIds, array_map(static fn(array $r): int => (int) $r['blotter_id'], $linkedCases)))));
-            if ($caseIds) {
-                $caseMarks = implode(',', array_fill(0, count($caseIds), '?'));
-                db_exec('DELETE FROM blotter_parties WHERE blotter_id IN (' . $caseMarks . ')', $caseIds);
-                db_exec('DELETE FROM blotters WHERE blotter_id IN (' . $caseMarks . ')', $caseIds);
-            }
-            foreach ($references as $reference) {
-                db_exec('DELETE FROM audit_log WHERE remarks LIKE ?', ['%' . $reference . '%']);
-            }
-        }
-        if ($residentId > 0) {
-            db_exec('DELETE FROM notification_outbox WHERE resident_id = ?', [$residentId]);
-            db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
-        }
-        if ($purokId > 0) { db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$purokId]); }
+        // FR-B5 makes official blotter cases permanent. Keep the resident submission,
+        // created case, parties, status history, audit rows, queue ticket, resident and
+        // its Purok together so the fixture never destroys evidence or violates the
+        // database no-delete guard. Run-specific resident/Purok IDs prevent collisions.
     }
 }
