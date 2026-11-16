@@ -1,9 +1,15 @@
 <?php
-/** Resident-only self-service kiosk. No staff/admin controls are exposed on this route. */
+/** Resident-only self-service kiosk. A QR scan can preserve the intended document-request destination. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
+$requestedNext = get_str('next') === 'request' || ($_SESSION['kiosk_after_verify'] ?? '') === 'request';
+if ($requestedNext) { $_SESSION['kiosk_after_verify'] = 'request'; }
 $resident = kiosk_current_resident();
+if ($resident !== null && $requestedNext) {
+    unset($_SESSION['kiosk_after_verify']);
+    redirect('kiosk/request.php');
+}
 kiosk_page_start('Welcome to Barangay Services', 'Identify yourself to get a queue number, request a document, reserve a venue or check request progress.');
 
 if ($resident !== null) {
@@ -23,6 +29,7 @@ if ($resident !== null) {
         . '<p>Use your Resident ID and birthdate. If you do not know your ID, enter your name and birthdate to receive a one-time code at your registered email or mobile number.</p>'
         . '<form method="post" action="' . e(base_url('kiosk/identify.php')) . '" class="kiosk-form">'
         . csrf_field()
+        . '<input type="hidden" name="next" value="' . ($requestedNext ? 'request' : 'home') . '">'
         . '<div class="kiosk-field"><label for="resident_no">Resident ID (if known)</label><input id="resident_no" name="resident_no" maxlength="30" autocomplete="off" placeholder="Example: RES-2026-000001"></div>'
         . '<div class="kiosk-field"><label for="last_name">Last name (for code verification)</label><input id="last_name" name="last_name" maxlength="100" autocomplete="family-name"></div>'
         . '<div class="kiosk-field"><label for="first_name">First name</label><input id="first_name" name="first_name" maxlength="100" autocomplete="given-name"></div>'
