@@ -24,10 +24,10 @@ function run_b15(array $S, string $base): void
     db_exec(
         "INSERT INTO residents
          (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
-          last_name, first_name, birthdate, sex, civil_status, contact_number, notification_preference,
+          last_name, first_name, birthdate, sex, civil_status, contact_number, email_address, notification_preference,
           residency_status, household_id, is_household_head, archived_at)
          VALUES (?, ?, ?, ?, 'Single', ?, 'ZZVenueFifteen', 'Rita', '1990-01-01', 'Female', 'Single',
-                 '09170005555', 'email', 'Active', NULL, 0, NULL)",
+                 '09170005555', 'b15-rita@example.test', 'email', 'Active', NULL, 0, NULL)",
         ['RES-B15-' . strtoupper(bin2hex(random_bytes(4))), '15 Queue Lane', $purok['lookup_id'] ?? null, $statusId ?: null, $typeId ?: null]
     );
     $residentId = (int) db()->lastInsertId();
@@ -85,10 +85,15 @@ function run_b15(array $S, string $base): void
         }
         $rejected = db_one('SELECT previous_status,new_status FROM request_status_history WHERE reservation_id = ? ORDER BY history_id DESC LIMIT 1', [$first['reservation_id']]);
         $approved = db_one('SELECT previous_status,new_status FROM request_status_history WHERE reservation_id = ? ORDER BY history_id DESC LIMIT 1', [$reopenedSlot['reservation_id']]);
-        record('B15-05', 'Rejection frees a time slot; approval blocks later overlaps and both decisions are written to history',
+        $rejectedNotice = db_one("SELECT recipient, channel, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'venue_reservation_status_changed' ORDER BY notification_id DESC LIMIT 1", [$residentId, $first['reference_no']]);
+        $approvedNotice = db_one("SELECT recipient, channel, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'venue_reservation_status_changed' ORDER BY notification_id DESC LIMIT 1", [$residentId, $reopenedSlot['reference_no']]);
+        record('B15-05', 'Rejection frees a time slot; approval blocks later overlaps and both decisions are written to history and resident notices',
             $approvedOverlapRejected
             && $rejected !== null && $rejected['previous_status'] === 'Pending' && $rejected['new_status'] === 'Rejected'
-            && $approved !== null && $approved['previous_status'] === 'Pending' && $approved['new_status'] === 'Approved',
+            && $approved !== null && $approved['previous_status'] === 'Pending' && $approved['new_status'] === 'Approved'
+            && $rejectedNotice !== null && $rejectedNotice['recipient'] === 'b15-rita@example.test'
+            && $rejectedNotice['channel'] === 'email' && in_array($rejectedNotice['delivery_status'], ['queued','sent'], true)
+            && $approvedNotice !== null && $approvedNotice['channel'] === 'email',
             'approved-overlap=' . ($approvedOverlapRejected ? 'yes' : 'no') . '; rejected=' . json_encode($rejected) . '; approved=' . json_encode($approved));
 
         $start = '00:00:00';
@@ -106,7 +111,9 @@ function run_b15(array $S, string $base): void
 
         venue_change_status((int) $reopenedSlot['reservation_id'], 'Completed');
         $completed = db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$reopenedSlot['reservation_id']]);
-        record('B15-07', 'Only an Approved reservation can be marked Completed', $completed === 'Completed');
+        $completedNotice = db_one("SELECT new_status, delivery_status FROM notification_outbox n JOIN request_status_history h ON h.reference_no = n.reference_no WHERE n.resident_id = ? AND n.reference_no = ? AND n.event_type = 'venue_reservation_status_changed' ORDER BY n.notification_id DESC LIMIT 1", [$residentId, $reopenedSlot['reference_no']]);
+        record('B15-07', 'Only an Approved reservation can be marked Completed and the resident receives the Completed status',
+            $completed === 'Completed' && $completedNotice !== null && $completedNotice['new_status'] === 'Completed');
 
         $staffView = $clk->get('/venues/index.php');
         $chairmanAction = post_as($cap, '/venues/index.php', '/venues/action.php', [
@@ -135,8 +142,10 @@ function run_b15(array $S, string $base): void
             $marks = implode(',', array_fill(0, count($ids), '?'));
             db_exec('DELETE FROM request_status_history WHERE reservation_id IN (' . $marks . ')', array_column($ids, 'reservation_id'));
         }
+        db_exec('DELETE FROM notification_outbox WHERE reference_no IN (SELECT reference_no FROM venue_reservations WHERE venue_id = ?)', [$venueId ?? 0]);
         db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$venueId ?? 0]);
         db_exec('DELETE FROM venues WHERE venue_id = ?', [$venueId ?? 0]);
+        db_exec('DELETE FROM notification_outbox WHERE resident_id = ?', [$residentId]);
         db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
     }
 }
