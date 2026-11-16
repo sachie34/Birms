@@ -17,6 +17,7 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'certs',     'label' => 'Certificate Generation','icon' => 'bi-file-earmark-check', 'path' => 'certificates/issue.php', 'perm' => 'certificates.issue', 'built' => true],
         ['group' => 'Workspace', 'key' => 'history',   'label' => 'Issuance History',     'icon' => 'bi-clock-history','path' => 'certificates/history.php', 'perm' => 'certificates.history', 'built' => true],
         ['group' => 'Workspace', 'key' => 'blotters',  'label' => 'Blotter',              'icon' => 'bi-shield-exclamation', 'path' => 'blotters/index.php', 'perm' => 'blotters.view', 'built' => true],
+        ['group' => 'Workspace', 'key' => 'blotter_requests', 'label' => 'Resident Blotter Requests', 'icon' => 'bi-clipboard2-check', 'path' => 'blotter_requests/index.php', 'perm' => 'blotter_requests.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'hearings',  'label' => 'Hearings',             'icon' => 'bi-calendar-event', 'path' => 'blotters/hearings.php', 'perm' => 'hearings.view', 'built' => true],
         ['group' => 'Workspace', 'key' => 'lookup',    'label' => 'Case Look-up',         'icon' => 'bi-search',       'path' => 'blotters/lookup.php',   'perm' => 'blotters.view',  'built' => true],
         ['group' => 'Workspace', 'key' => 'reports',   'label' => 'Reports',              'icon' => 'bi-bar-chart-line','path' => 'reports/index.php',  'perm' => 'reports.view',   'built' => true],
