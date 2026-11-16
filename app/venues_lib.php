@@ -132,6 +132,28 @@ function venue_change_status(int $reservationId, string $to, string $note = ''):
             $reservation['reference_no'] . ': ' . $from . ' -> ' . $to,
             'venue_reservation', $reservationId);
     });
+
+    // Send the resident-facing update only after the reservation status transaction commits.
+    $saved = db_one(
+        'SELECT resident_id, reference_no, status FROM venue_reservations WHERE reservation_id = ?',
+        [$reservationId]
+    );
+    if ($saved !== null) {
+        try {
+            resident_notify_status_change(
+                (int) $saved['resident_id'],
+                'Venue',
+                (string) $saved['reference_no'],
+                (string) $saved['status'],
+                'venue_reservation_status_changed',
+                $note
+            );
+        } catch (Throwable $notificationError) {
+            error_log('BIRMS venue status notification failed for ' . (string) $saved['reference_no'] . ': ' . get_class($notificationError));
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Warning',
+                'Venue reservation ' . (string) $saved['reference_no'] . ' changed status but notification could not be queued.');
+        }
+    }
 }
 
 function venue_set_override(int $venueId, string $override): void
