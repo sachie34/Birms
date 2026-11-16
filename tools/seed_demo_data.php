@@ -96,7 +96,7 @@ function demo_require_safe_database(): void
     foreach ([
         ['households', 'household_code'], ['residents', 'employment_status_id'],
         ['lookups', 'list_key'], ['document_types', 'template_body'], ['document_requests', 'requirements_status'],
-        ['issuances', 'body_text'], ['visitor_log', 'purpose'], ['blotters', 'incident_type_id'],
+        ['issuances', 'body_text'], ['visitor_log', 'purpose'], ['blotters', 'incident_type_id'], ['blotters', 'msit_status'], ['blotters', 'archived_from_status'],
         ['blotter_parties', 'party_role'], ['hearings', 'scheduled_at'],
     ] as [$table, $column]) {
         if (!demo_table_exists($table) || !demo_column_exists($table, $column)) {
@@ -337,7 +337,11 @@ function demo_seed_apply(): array
         }
 
         $incidentIds = $incidentTypes;
-        $caseStatuses = ['Pending','Active','Scheduled','Resolved'];
+        // The demo cases use only the revised MSIT lifecycle. Resolved and Dismissed
+        // examples are already archived, as required by FR-B5.
+        $caseStatuses = ['Ongoing', 'Unresolved', 'Archived', 'Archived'];
+        $legacyCaseStatuses = ['Pending', 'Active', 'Resolved', 'Resolved'];
+        $archivedFromStatuses = [null, null, 'Resolved', 'Dismissed'];
         $incidentDates = [
             date('Y-m-d', strtotime('-3 days')), date('Y-m-d', strtotime('-9 days')),
             date('Y-m-d', strtotime('-15 days')), date('Y-m-d', strtotime('-24 days')),
@@ -345,21 +349,48 @@ function demo_seed_apply(): array
         $caseIds = [];
         for ($i = 0; $i < count(DEMO_SEED_CASE_REFS); $i++) {
             $status = $caseStatuses[$i];
+            $archivedFrom = $archivedFromStatuses[$i];
             $incidentTypeId = $incidentIds[$i % count($incidentIds)];
-            $resolution = $status === 'Resolved' ? '[DEMO ONLY] Sample resolution; not a real incident.' : null;
-            $resolvedAt = $status === 'Resolved' ? demo_date_in_months_ago(0, 1, 16) : null;
+            $resolution = $archivedFrom === 'Resolved'
+                ? '[DEMO ONLY] Sample resolution; not a real incident.'
+                : ($archivedFrom === 'Dismissed' ? '[DEMO ONLY] Sample dismissal; not a real incident.' : null);
+            $resolvedAt = $archivedFrom === 'Resolved' ? demo_date_in_months_ago(0, 1, 16) : null;
+            $archivedAt = $status === 'Archived' ? demo_date_in_months_ago(0, 1 + $i, 16) : null;
             db_exec(
                 'INSERT INTO blotters (case_no, incident_date, incident_place, purok_id, incident_type_id, narrative,
-                    status, resolution_note, resolved_at, recorded_at, recorded_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NULL)',
+                    status, msit_status, archived_from_status, archived_at, resolution_note, resolved_at, recorded_at, recorded_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NULL)',
                 [
                     DEMO_SEED_CASE_REFS[$i], $incidentDates[$i], 'DEMO ONLY - Sample location ' . ($i + 1),
                     $puroks[$i % count($puroks)], $incidentTypeId,
                     '[DEMO ONLY] Fictional community case narrative ' . ($i + 1) . '. No real persons or events are represented.',
-                    $status, $resolution, $resolvedAt,
+                    $legacyCaseStatuses[$i], $status, $archivedFrom, $archivedAt, $resolution, $resolvedAt,
                 ]
             );
             $caseIds[] = (int) db()->lastInsertId();
+            $firstStatus = $archivedFrom ?? $status;
+            db_exec(
+                "INSERT INTO request_status_history
+                 (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
+                 VALUES ('Blotter', ?, NULL, ?, NULL, ?, ?)",
+                [
+                    DEMO_SEED_CASE_REFS[$i], $firstStatus,
+                    '[DEMO ONLY] Initial fictitious case status; no real incident.',
+                    $caseIds[$i],
+                ]
+            );
+            if ($status === 'Archived') {
+                db_exec(
+                    "INSERT INTO request_status_history
+                     (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
+                     VALUES ('Blotter', ?, ?, 'Archived', NULL, ?, ?)",
+                    [
+                        DEMO_SEED_CASE_REFS[$i], $archivedFrom,
+                        '[DEMO ONLY] Fictitious case moved to Archived under FR-B5.',
+                        $caseIds[$i],
+                    ]
+                );
+            }
             $partyNames = [
                 ['DEMO ONLY Complainant ' . ($i + 1), 'Complainant', 30 + $i],
                 ['DEMO ONLY Respondent ' . ($i + 1), 'Respondent', 35 + $i],
@@ -377,7 +408,7 @@ function demo_seed_apply(): array
         db_exec(
             'INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, status, created_by)
              VALUES (?, ?, ?, ?, ?, NULL)',
-            [$caseIds[2], $hearingAt, 'DEMO ONLY - Sample meeting room', '[DEMO ONLY] Sample future hearing.', 'Scheduled']
+            [$caseIds[1], $hearingAt, 'DEMO ONLY - Sample meeting room', '[DEMO ONLY] Sample future hearing.', 'Scheduled']
         );
 
         audit('demo_data_seeded', 'Demo data', 'Success',
@@ -479,9 +510,6 @@ function demo_seed_remove(): array
         db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no IN ({$requestSql}))", DEMO_SEED_REQUEST_REFS);
         db_exec("DELETE FROM issuances WHERE reference_no IN ({$issuanceSql})", DEMO_SEED_ISSUANCE_REFS);
         db_exec("DELETE FROM document_requests WHERE reference_no IN ({$requestSql})", DEMO_SEED_REQUEST_REFS);
-        db_exec("DELETE FROM hearings WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no IN ({$caseSql}))", DEMO_SEED_CASE_REFS);
-        db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no IN ({$caseSql}))", DEMO_SEED_CASE_REFS);
-        db_exec("DELETE FROM blotters WHERE case_no IN ({$caseSql})", DEMO_SEED_CASE_REFS);
         db_exec("DELETE FROM visitor_log WHERE visitor_name IN ({$visitorSql})", DEMO_SEED_VISITOR_NAMES);
         db_exec("DELETE FROM residents WHERE last_name IN ({$residentSql})", DEMO_SEED_LAST_NAMES);
         db_exec("DELETE FROM households WHERE household_code IN ({$householdSql})", DEMO_SEED_HOUSEHOLD_CODES);
@@ -489,13 +517,27 @@ function demo_seed_remove(): array
 
         $labelGroups = demo_seed_lookup_labels();
         foreach ($labelGroups as $key => $labels) {
+            // Permanent demo blotter records still reference their Purok and incident-type
+            // lookups. Keep those reference rows with the cases under FR-B5.
+            if (in_array($key, ['purok', 'incident_type'], true)) { continue; }
             $lsql = demo_placeholders($labels);
             db_exec("DELETE FROM lookups WHERE list_key = ? AND label IN ({$lsql})", array_merge([$key], $labels));
         }
 
+        $preservedCases = (int) db_val(
+            'SELECT COUNT(*) FROM blotters WHERE case_no IN (' . $caseSql . ')',
+            DEMO_SEED_CASE_REFS
+        );
         audit('demo_data_removed', 'Demo data', 'Success',
-            'Removed only the reserved DEMO ONLY presentation dataset and its unused demo-only lookup values/types.');
-        return ['removed' => true, 'counts' => $markers, 'message' => 'Reserved demo records were removed. Audit entries were retained.'];
+            'Removed removable demo requests, issuances, residents, households, visitors, document types and unused lookup rows; preserved '
+            . $preservedCases . ' DEMO ONLY blotter case records, their parties/hearing/history, and required Purok/incident type lookups under FR-B5.');
+        return [
+            'removed' => true,
+            'preserved_cases' => $preservedCases,
+            'counts' => $markers,
+            'message' => 'Removable demo data was removed. ' . $preservedCases
+                . ' fictitious blotter cases were retained as Archived or active demo history under FR-B5, together with their parties, hearing, history and required lookups.',
+        ];
     });
 }
 
@@ -504,7 +546,7 @@ function demo_seed_usage(): void
     demo_out('BIRMS demo data seeder (CLI only)');
     demo_out('  php tools/seed_demo_data.php                 Read-only plan / current marker summary');
     demo_out('  php tools/seed_demo_data.php --apply         Add fictitious demonstration records');
-    demo_out('  php tools/seed_demo_data.php --remove --confirm-demo-only  Remove only reserved demo records');
+    demo_out('  php tools/seed_demo_data.php --remove --confirm-demo-only  Remove removable demo data; keep permanent blotter cases');
     demo_out('No official settings, user accounts, existing residents, official document types, fees, or cash-ledger entries are changed.');
 }
 
