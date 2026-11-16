@@ -2,6 +2,9 @@
 /** B15 tests: venue availability, overlap prevention, reservation decisions and audit history. */
 declare(strict_types=1);
 require_once __DIR__ . '/../app/venues_lib.php';
+require_once __DIR__ . '/../app/email_provider.php';
+require_once __DIR__ . '/../app/sms_provider.php';
+require_once __DIR__ . '/../app/notifications_lib.php';
 
 function run_b15(array $S, string $base): void
 {
