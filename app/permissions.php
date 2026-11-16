@@ -19,6 +19,7 @@ function permission_map(): array
             'settings.view', 'settings.edit',
             'audit.view', 'audit.export', 'users.manage', 'backup.run', 'cash_ledger.view', 'cash_ledger.manage',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
+            'blotter_requests.view', 'blotter_requests.review',
             'hearings.view', 'hearings.add', 'hearings.edit',
             'venues.view', 'venues.manage', 'venues.approve',
             'queue.view', 'queue.manage',
@@ -27,7 +28,7 @@ function permission_map(): array
         // Chairman / Punong Barangay is strictly read-only. The stored signature is applied by staff.
         'captain' => [
             'dashboard.view', 'residents.view', 'requests.view',
-            'certificates.history', 'blotters.view', 'hearings.view', 'venues.view', 'queue.view',
+            'certificates.history', 'blotters.view', 'blotter_requests.view', 'hearings.view', 'venues.view', 'queue.view',
             'reports.view', 'reports.export', 'cash_ledger.view',
         ],
         // Secretary maintains resident, document and blotter records and reviews document requests.
@@ -37,6 +38,7 @@ function permission_map(): array
             'requests.view', 'requests.add', 'requests.edit', 'requests.review',
             'certificates.history',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
+            'blotter_requests.view',
             'hearings.view', 'hearings.add', 'hearings.edit',
             'venues.view', 'queue.view',
             'reports.view', 'reports.export',
@@ -46,7 +48,7 @@ function permission_map(): array
             'dashboard.view', 'residents.view',
             'requests.view', 'requests.add', 'requests.edit', 'requests.approve',
             'certificates.history', 'certificates.issue', 'certificates.print',
-            'blotters.view', 'hearings.view',
+            'blotters.view', 'blotter_requests.view', 'blotter_requests.review', 'hearings.view',
             'venues.view', 'venues.manage', 'venues.approve',
             'queue.view', 'queue.manage',
         ],
