@@ -239,6 +239,7 @@ function report_periodic_administrative(array $range): array
         'collections' => report_cash_collections($range),
         'requests' => report_requests($range),
         'blotter' => report_blotters($range),
+        'venues' => report_venues($range),
         'queues' => report_queueing($range),
     ];
 }
@@ -285,4 +286,64 @@ function report_blotters(array $range): array
          ORDER BY FIELD(msit_status, 'Ongoing', 'Unresolved', 'Resolved', 'Dismissed', 'Archived')", $params
     );
     return ['summary' => $summary, 'by_type' => $byType, 'by_purok' => $byPurok, 'by_status' => $byStatus];
+}
+
+
+/** Venue use within the selected reservation-date window, grouped by venue and public status. */
+function report_venues(array $range): array
+{
+    $startDate = substr((string) $range['start'], 0, 10);
+    $endDate = substr((string) $range['end'], 0, 10);
+    $params = [$startDate, $endDate];
+
+    $summary = db_one(
+        "SELECT COUNT(*) AS total,
+                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(status = 'Completed'), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN status IN ('Approved','Completed')
+                    THEN TIME_TO_SEC(TIMEDIFF(end_time, start_time)) ELSE 0 END), 0) AS booked_seconds
+         FROM venue_reservations
+         WHERE reservation_date >= ? AND reservation_date < ?",
+        $params
+    ) ?? [
+        'total' => 0, 'pending_count' => 0, 'approved_count' => 0,
+        'rejected_count' => 0, 'completed_count' => 0, 'booked_seconds' => 0,
+    ];
+
+    $byVenue = db_all(
+        "SELECT v.venue_id, v.name AS venue_name,
+                COUNT(vr.reservation_id) AS reservation_count,
+                COALESCE(SUM(vr.status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(vr.status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(vr.status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(vr.status = 'Completed'), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN vr.status IN ('Approved','Completed')
+                    THEN TIME_TO_SEC(TIMEDIFF(vr.end_time, vr.start_time)) ELSE 0 END), 0) AS booked_seconds
+         FROM venues v
+         LEFT JOIN venue_reservations vr
+           ON vr.venue_id = v.venue_id
+          AND vr.reservation_date >= ? AND vr.reservation_date < ?
+         GROUP BY v.venue_id, v.name
+         ORDER BY reservation_count DESC, v.name",
+        $params
+    );
+
+    $byStatus = db_all(
+        "SELECT status, COUNT(*) AS reservation_count
+         FROM venue_reservations
+         WHERE reservation_date >= ? AND reservation_date < ?
+         GROUP BY status
+         ORDER BY FIELD(status, 'Pending', 'Approved', 'Rejected', 'Completed')",
+        $params
+    );
+
+    $summary['booked_hours'] = round((float) $summary['booked_seconds'] / 3600, 2);
+    foreach ($byVenue as &$venue) {
+        $venue['booked_hours'] = round((float) $venue['booked_seconds'] / 3600, 2);
+    }
+    unset($venue);
+
+    return ['summary' => $summary, 'by_venue' => $byVenue, 'by_status' => $byStatus];
 }
