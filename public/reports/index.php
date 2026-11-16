@@ -358,6 +358,40 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     </tbody></table></div><?php endif; ?>
   </div></div>
 
+<?php elseif ($type === 'venues'): ?>
+  <?php $s = $data['summary']; ?>
+  <div class="alert alert-info">Venue usage is grouped by the reservation date. Booked hours include reservations that are Approved or Completed; Pending and Rejected requests are shown separately and are not counted as used hours.</div>
+  <div class="row g-3 mb-3">
+    <?php foreach ([
+      'Total reservations' => (int) $s['total'],
+      'Approved' => (int) $s['approved_count'],
+      'Completed' => (int) $s['completed_count'],
+      'Booked hours' => number_format((float) $s['booked_hours'], 2),
+    ] as $label => $value): ?>
+      <div class="col-6 col-lg-3"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= e((string) $value) ?></div></div></div></div>
+    <?php endforeach; ?>
+  </div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Reservations by venue</h2><p>Counts use the current reservation status for each reservation date in the selected period.</p></div><div class="card-body-b">
+    <?php if (!$data['by_venue']): ?><?= empty_state('bi-building', 'No venues or reservations are available for this report.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Venue</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Approved</th><th class="text-end">Rejected</th><th class="text-end">Completed</th><th class="text-end">Booked hours</th></tr></thead><tbody>
+      <?php foreach ($data['by_venue'] as $row): ?><tr>
+        <td><?= e((string) $row['venue_name']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['reservation_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['pending_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['approved_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['rejected_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['completed_count']) ?></td>
+        <td class="text-end"><?= number_format((float) $row['booked_hours'], 2) ?></td>
+      </tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+  <div class="card-b"><div class="card-h"><h2>Reservations by status</h2></div><div class="card-body-b">
+    <?php if (!$data['by_status']): ?><?= empty_state('bi-calendar-check', 'No reservation status records are available for this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Status</th><th class="text-end">Reservations</th></tr></thead><tbody>
+      <?php foreach ($data['by_status'] as $row): ?><tr><td><?= e((string) $row['status']) ?></td><td class="text-end"><?= number_format((int) $row['reservation_count']) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+
 <?php elseif ($type === 'queues'): ?>
   <?php $s = $data['summary']; ?>
   <div class="alert alert-info">Queue totals are counted by ticket issue time. Average waiting time uses served tickets only; waiting, called, skipped and cancelled tickets are not included in that average.</div>
