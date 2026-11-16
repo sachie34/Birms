@@ -31,7 +31,7 @@ function run_b16(array $S, string $base): void
               last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status,
               contact_number, email_address, notification_preference, household_id, is_household_head, archived_at)
              VALUES (?, 'B16 Resident Address', ?, ?, 'Single', ?, 'Baker', 'Jordan', '1990-05-20',
-                     'female', 'single', 'active', 'unverified', NULL, NULL, 'email', NULL, 0, NULL)",
+                     'female', 'single', 'active', 'unverified', NULL, 'b16-jordan@example.test', 'email', NULL, 0, NULL)",
             [$residentNo, $purokId, $statusId ?: null, $typeId ?: null]
         );
         $residentId = (int) db()->lastInsertId();
@@ -118,12 +118,16 @@ function run_b16(array $S, string $base): void
         $duplicateAccept = $requestId > 0 ? post_as($staff, '/blotter_requests/index.php', '/blotter_requests/action.php', [
             'do' => 'accept', 'request_id' => (string) $requestId, 'note' => '',
         ]) : ['status' => 0];
-        record('B16-04', 'Staff acceptance creates one official blotter case with the resident as complainant; duplicate acceptance is blocked',
+        $acceptNotice = db_one("SELECT recipient, channel, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'resident_blotter_reviewed' ORDER BY notification_id DESC LIMIT 1", [$residentId, $firstReference]);
+        record('B16-04', 'Staff acceptance creates one official blotter case with the resident as complainant; duplicate acceptance is blocked and resident is notified',
             $accepted['status'] === 302 && $firstAfter !== null && $firstAfter['review_status'] === 'Accepted'
             && $official !== null && $official['case_no'] === $firstReference && $official['msit_status'] === 'Ongoing'
             && $complainant !== null && $complainant['full_name'] === 'Jordan Baker'
             && $duplicateAccept['status'] === 302
-            && (int) db_val('SELECT COUNT(*) FROM blotters WHERE case_no = ?', [$firstReference]) === 1);
+            && (int) db_val('SELECT COUNT(*) FROM blotters WHERE case_no = ?', [$firstReference]) === 1
+            && $acceptNotice !== null && $acceptNotice['recipient'] === 'b16-jordan@example.test'
+            && $acceptNotice['channel'] === 'email' && in_array($acceptNotice['delivery_status'], ['queued','sent'], true)
+            && str_contains($acceptNotice['message'], 'accepted by Staff'));
 
         $officialId = (int) ($firstAfter['blotter_id'] ?? 0);
         $changed = $officialId > 0 ? post_as($sec, '/blotters/view.php?id=' . $officialId, '/blotters/action.php', [
@@ -131,9 +135,13 @@ function run_b16(array $S, string $base): void
         ]) : ['status' => 0];
         $afterChange = $firstReference !== '' ? db_one('SELECT msit_status FROM resident_blotter_requests WHERE reference_no = ?', [$firstReference]) : null;
         $statusAfter = $firstReference !== '' ? $kiosk->get('/kiosk/status.php?ref=' . rawurlencode($firstReference)) : ['body' => ''];
-        record('B16-05', 'Official case status changes synchronize to the resident reference tracker',
+        $caseNotice = db_one("SELECT recipient, channel, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'blotter_case_status_changed' ORDER BY notification_id DESC LIMIT 1", [$residentId, $firstReference]);
+        record('B16-05', 'Official case status changes synchronize to the resident reference tracker and notify the resident',
             $changed['status'] === 302 && ($afterChange['msit_status'] ?? '') === 'Unresolved'
-            && str_contains($statusAfter['body'], 'Unresolved'));
+            && str_contains($statusAfter['body'], 'Unresolved')
+            && $caseNotice !== null && $caseNotice['recipient'] === 'b16-jordan@example.test'
+            && $caseNotice['channel'] === 'email' && in_array($caseNotice['delivery_status'], ['queued','sent'], true)
+            && str_contains($caseNotice['message'], 'Unresolved'));
 
         // Submit a second report in the same verified resident session, then reject it as Staff.
         $secondSubmit = $submit($kiosk, 'B16 Test Street Two', 'B16 second test report which will be rejected with a reason.');
@@ -145,12 +153,16 @@ function run_b16(array $S, string $base): void
         ]) : ['status' => 0];
         $secondAfter = $secondReference !== '' ? db_one('SELECT * FROM resident_blotter_requests WHERE reference_no = ?', [$secondReference]) : null;
         $secondStatus = $secondReference !== '' ? $kiosk->get('/kiosk/status.php?ref=' . rawurlencode($secondReference)) : ['body' => ''];
-        record('B16-06', 'Staff rejection is reasoned, audited and appears as Dismissed to the resident without creating an official case',
+        $rejectNotice = db_one("SELECT recipient, channel, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'resident_blotter_reviewed' ORDER BY notification_id DESC LIMIT 1", [$residentId, $secondReference]);
+        record('B16-06', 'Staff rejection is reasoned, audited and appears as Dismissed to the resident without creating an official case; resident is notified',
             $secondSubmit['status'] === 302 && $secondRow !== null && $rejected['status'] === 302
             && $secondAfter !== null && $secondAfter['review_status'] === 'Rejected'
             && $secondAfter['msit_status'] === 'Dismissed' && $secondAfter['blotter_id'] === null
             && str_contains($secondStatus['body'], 'Dismissed')
-            && (int) db_val('SELECT COUNT(*) FROM blotters WHERE case_no = ?', [$secondReference]) === 0);
+            && (int) db_val('SELECT COUNT(*) FROM blotters WHERE case_no = ?', [$secondReference]) === 0
+            && $rejectNotice !== null && $rejectNotice['recipient'] === 'b16-jordan@example.test'
+            && $rejectNotice['channel'] === 'email' && in_array($rejectNotice['delivery_status'], ['queued','sent'], true)
+            && str_contains($rejectNotice['message'], 'dismissed by Staff'));
 
         $historyOk = true;
         foreach ($references as $ref) {
@@ -189,7 +201,10 @@ function run_b16(array $S, string $base): void
                 db_exec('DELETE FROM audit_log WHERE remarks LIKE ?', ['%' . $reference . '%']);
             }
         }
-        if ($residentId > 0) { db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]); }
+        if ($residentId > 0) {
+            db_exec('DELETE FROM notification_outbox WHERE resident_id = ?', [$residentId]);
+            db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
+        }
         if ($purokId > 0) { db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$purokId]); }
     }
 }
