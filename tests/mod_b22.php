@@ -211,6 +211,23 @@ function run_b22(array $S, string $base): void
             'An invalid notification choice is rejected without issuing a ticket or changing the saved preference',
             $invalidPost['status'] === 302 && $afterInvalidCount === 2 && $profileAfterInvalid === 'email'
         );
+
+        $issuedAt = date('Y-m-d H:i:s', time() - 300);
+        $calledAt = date('Y-m-d H:i:s', time() - 120);
+        $servedAt = date('Y-m-d H:i:s');
+        db_exec(
+            "UPDATE queue_entries
+             SET status = 'Served', issued_at = ?, called_at = ?, served_at = ?
+             WHERE queue_id = ?",
+            [$issuedAt, $calledAt, $servedAt, (int) $rows[0]['queue_id']]
+        );
+        $snapshot = queue_service_snapshot('Venue');
+        record(
+            'B22-06',
+            'Average completed queue wait ends at the call time and excludes the time spent being served',
+            $snapshot['average_wait_seconds'] === 180,
+            'expected wait=180 seconds; actual=' . var_export($snapshot['average_wait_seconds'], true)
+        );
     } finally {
         $ids = db_all('SELECT queue_id FROM queue_entries WHERE resident_id = ? AND queue_id > ?', [$residentId, $queueStartId]);
         if ($ids) {
