@@ -488,7 +488,7 @@ These are **multi-column** uniqueness constraints. They do not make each listed 
 | RESIDENT_BLOTTER_REQUESTS → BLOTTERS | 0..1 to 0..1 | An accepted resident blotter request creates one official blotter case; rejected requests remain in intake history. The unique blotter_id prevents multiple intake rows linking to the same case. |
 | BLOTTERS → BLOTTER_PARTIES / HEARINGS | 1 to many | Official cases have complainant/respondent party rows and hearing records. |
 | RESIDENTS → RESIDENT_VERIFICATIONS / RESIDENT_VERIFICATION_CHALLENGES | 1 to many | Manual verification history and short-lived kiosk OTP challenge records. |
-| RESIDENTS → NOTIFICATION_OUTBOX | 1 to many, optional resident link | Email/SMS status notifications are queued against resident records where available. |
+| RESIDENTS → NOTIFICATION_OUTBOX | 1 to many, optional resident link | Resident-linked email notification jobs are stored here; SMS provider attempts are tracked separately in `sms_outbox`. |
 | DOCUMENT_REQUESTS / BLOTTERS / VENUE_RESERVATIONS → REQUEST_STATUS_HISTORY | 1 to many | Shared status-history rows retain public service status transitions. |
 | VISITOR_LOG / DOCUMENT_REQUESTS → DOCUMENT_ATTACHMENTS | 1 to many | Supporting files may be attached to visitor entries or document requests. |
 
