@@ -271,6 +271,29 @@ function run_b22(array $S, string $base): void
             . '; POST submit=' . (str_contains($kioskJs, 'form.submit();') ? 'yes' : 'no')
             . '; stale GET timer=' . (str_contains($kioskJs, 'end.php?timeout=1') ? 'yes' : 'no')
         );
+
+        $savedTestSession = $_SESSION;
+        $kioskArtifactKeys = [
+            'kiosk_resident_id', 'kiosk_last_activity', 'kiosk_expires_at',
+            'kiosk_challenge_token', 'kiosk_after_verify', 'kiosk_flash',
+            'kiosk_last_queue_ticket', 'kiosk_last_request',
+            'kiosk_last_venue', 'kiosk_last_blotter_request',
+        ];
+        foreach ($kioskArtifactKeys as $artifactKey) {
+            $_SESSION[$artifactKey] = ['previous-resident' => 'sensitive-test-payload'];
+        }
+        kiosk_clear_session();
+        $remainingKioskKeys = array_values(array_filter(
+            $kioskArtifactKeys,
+            static fn(string $key): bool => array_key_exists($key, $_SESSION)
+        ));
+        $_SESSION = $savedTestSession;
+        record(
+            'B22-10',
+            'Kiosk reset clears resident identity, OTP, flash messages and all four previous-visitor receipt/ticket payloads',
+            $remainingKioskKeys === [],
+            'remaining session keys=' . implode(', ', $remainingKioskKeys)
+        );
         $getLogout = $kiosk->get('/kiosk/end.php');
         $stillFirstResident = $kiosk->get('/kiosk/index.php');
         record(
