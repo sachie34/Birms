@@ -115,6 +115,13 @@ function run_b3(array $S, string $base): void
             . '; validation=' . (preg_match('/alert-danger[^>]*>(.*?)<\\/div>/s', (string) $created['body'], $errMatch) ? substr(trim(strip_tags($errMatch[1])), 0, 1200) : 'no alert-danger')
             . '; profile=' . $profile['status']);
 
+        $expectedAge = (string) age_on('1990-05-12');
+        record('B3-14', 'Resident profile calculates age from the saved birthdate',
+            $profile['status'] === 200
+            && str_contains($profile['body'], 'Birthdate / age')
+            && str_contains($profile['body'], $expectedAge),
+            'expected age=' . $expectedAge);
+
         $duplicateRejected = $create($adm, ['first_name' => 'First']);
         $duplicateAllowed = $create($adm, ['first_name' => 'First', 'confirm_dup' => '1', 'address' => '456 Different B3 Street']);
         $twin = db_one("SELECT resident_id FROM residents WHERE last_name = 'ZZBThree' AND first_name = 'First' ORDER BY resident_id DESC LIMIT 1");
@@ -182,6 +189,16 @@ function run_b3(array $S, string $base): void
             && $stillArchived
             && $adminRestore['status'] === 302
             && db_val('SELECT archived_at FROM residents WHERE resident_id = ?', [$residentId]) === null);
+
+        $residentAuditActions = ['resident_created', 'resident_updated', 'resident_status_changed', 'resident_archived', 'resident_restored'];
+        $missingResidentAudit = [];
+        foreach ($residentAuditActions as $auditAction) {
+            if ((int) db_val('SELECT COUNT(*) FROM audit_log WHERE action = ? AND entity_type = \'resident\' AND entity_id = ?', [$auditAction, $residentId]) < 1) {
+                $missingResidentAudit[] = $auditAction;
+            }
+        }
+        record('B3-15', 'Resident creation, profile edits, status changes, archive and restore each leave an audit record',
+            !$missingResidentAudit, implode(', ', $missingResidentAudit));
 
         $oldAction = post_as($adm, '/residents/view.php?id=' . $residentId, '/residents/action.php',
             ['id' => (string) $residentId, 'action' => 'set_relocated']);
