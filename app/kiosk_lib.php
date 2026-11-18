@@ -18,6 +18,17 @@ function kiosk_take_flash(): ?array
     return is_array($flash) ? $flash : null;
 }
 
+/** Remove one resident's temporary receipt and ticket data before kiosk reuse. */
+function kiosk_clear_session_artifacts(): void
+{
+    unset(
+        $_SESSION['kiosk_last_queue_ticket'],
+        $_SESSION['kiosk_last_request'],
+        $_SESSION['kiosk_last_venue'],
+        $_SESSION['kiosk_last_blotter_request']
+    );
+}
+
 function kiosk_clear_session(): void
 {
     unset(
@@ -27,6 +38,7 @@ function kiosk_clear_session(): void
         $_SESSION['kiosk_challenge_token'],
         $_SESSION['kiosk_after_verify']
     );
+    kiosk_clear_session_artifacts();
 }
 
 function kiosk_set_resident(int $residentId): void
@@ -38,6 +50,9 @@ function kiosk_set_resident(int $residentId): void
     if ($resident === null || $resident['archived_at'] !== null) {
         throw new RuntimeException('The resident record is not active. Please ask Staff for assistance.');
     }
+    // A physical kiosk browser is reused by different residents. Never carry the
+    // previous visitor's ticket or receipt payload into the next verified session.
+    kiosk_clear_session_artifacts();
     session_regenerate_id(true);
     $_SESSION['kiosk_resident_id'] = $residentId;
     $_SESSION['kiosk_last_activity'] = time();
