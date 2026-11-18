@@ -273,6 +273,11 @@ function run_b22(array $S, string $base): void
             . '; stale GET timer=' . (str_contains($kioskJs, 'end.php?timeout=1') ? 'yes' : 'no')
         );
 
+        // The HTTP kiosk session lives in a separate cookie jar; initialize this
+        // CLI process's own session array before directly exercising the cleanup helper.
+        if (!isset($_SESSION) || !is_array($_SESSION)) {
+            $_SESSION = [];
+        }
         $savedTestSession = $_SESSION;
         $kioskArtifactKeys = [
             'kiosk_resident_id', 'kiosk_last_activity', 'kiosk_expires_at',
