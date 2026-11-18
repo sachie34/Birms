@@ -245,5 +245,8 @@ function kiosk_page_start(string $title, string $subtitle = ''): void
 function kiosk_page_end(): void
 {
     echo '<footer class="kiosk-footer"><span>BIRMS · Barangay Information and Records Management System</span><a href="' . e(base_url('kiosk/index.php')) . '">Home</a></footer>'
-        . '</main></body></html>';
+        // The inactivity timer uses this CSRF-protected POST form; end.php intentionally rejects GET.
+        . '<form id="kiosk-timeout-form" method="post" action="' . e(base_url('kiosk/end.php')) . '" hidden>'
+        . csrf_field()
+        . '</form></main></body></html>';
 }
