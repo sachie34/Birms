@@ -77,18 +77,18 @@ function run_b22(array $S, string $base): void
         );
 
         $firstPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
-            'service' => 'Blotter',
+            'service' => 'Venue',
             'purpose' => 'Test SMS preference for queue ticket',
             'notification_preference' => 'sms',
         ]);
         $secondPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
-            'service' => 'Blotter',
+            'service' => 'Venue',
             'purpose' => 'Test Both preference for queue ticket',
             'notification_preference' => 'both',
         ]);
         $rows = db_all(
             'SELECT queue_id, queue_number, notification_preference, status
-             FROM queue_entries WHERE resident_id = ? AND queue_id > ? AND service = \'Blotter\'
+             FROM queue_entries WHERE resident_id = ? AND queue_id > ? AND service = \'Venue\'
              ORDER BY queue_id',
             [$residentId, $queueStartId]
         );
@@ -123,7 +123,7 @@ function run_b22(array $S, string $base): void
         db_exec("UPDATE residents SET notification_preference = 'email' WHERE resident_id = ?", [$residentId]);
         $called = post_as($S['clerk'], '/queue/index.php', '/queue/action.php', [
             'do' => 'call_next',
-            'service' => 'Blotter',
+            'service' => 'Venue',
         ]);
         $calledSms = (int) db_val(
             "SELECT COUNT(*) FROM sms_outbox WHERE recipient_number = ? AND trigger_event = 'queue_called'
@@ -145,7 +145,7 @@ function run_b22(array $S, string $base): void
         );
         $recalledRows = db_all(
             'SELECT queue_number, notification_preference, status FROM queue_entries
-             WHERE resident_id = ? AND queue_id > ? AND service = \'Blotter\' ORDER BY queue_number',
+             WHERE resident_id = ? AND queue_id > ? AND service = \'Venue\' ORDER BY queue_number',
             [$residentId, $queueStartId]
         );
         $perTicketApplied = $called['status'] === 302
