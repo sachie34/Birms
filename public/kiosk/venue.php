@@ -26,9 +26,10 @@ if (is_post()) {
                     post_str('reservation_date'), post_str('start_time'), post_str('end_time'), null
                 );
                 $ticket = queue_issue_number('Venue', (int) $resident['resident_id'], $reservation['reference_no'], 'kiosk', $purpose,
-                    $requestedPreference !== '' ? $requestedPreference : null);
+                    $requestedPreference !== '' ? $requestedPreference : null, true);
                 return ['reservation' => $reservation, 'ticket' => $ticket];
             });
+            queue_notify_ticket_issued((int) $result['ticket']['queue_id']);
             $_SESSION['kiosk_last_venue'] = $result;
             kiosk_flash('Your venue reservation request is Pending approval.', 'success');
             redirect('kiosk/venue_receipt.php');
