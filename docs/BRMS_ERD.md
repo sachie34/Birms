@@ -513,3 +513,13 @@ These are **multi-column** uniqueness constraints. They do not make each listed 
 `users`, `login_failures`, `audit_log`, `settings`, `lookups`, `document_types`, `counters`, `households`, `residents`, `visitor_log`, `document_requests`, `sms_outbox`, `issuances`, `fee_matrix`, `blotters`, `blotter_parties`, `hearings`, `resident_verifications`, `document_attachments`, `cash_collection_ledger`, `venues`, `venue_reservations`, `queue_counters`, `queue_entries`, `request_status_history`, `resident_verification_challenges`, `notification_outbox`, `rate_limit_buckets`, and `resident_blotter_requests`.
 
 **Verification boundary:** This diagram is generated from the checked-in expected schema and compared against the migration set on `john/msit-srs-compliance`. It documents the repository branch; it does not prove that the user's local XAMPP database has already run every migration. Run the project's migration/status check locally before claiming the deployed database is identical.
+
+
+## Repository files used to verify the ERD
+
+- Database snapshot: `database/expected_schema.json`.
+- Database definitions and additions: `database/migrations/001_core.sql` through the latest SRS migrations in `database/migrations/018_blotter_no_delete.sql`, including the two separate `016_*.sql` migrations.
+- Resident and identity paths: `public/residents/form.php`, `public/residents/action.php`, `public/kiosk/identify.php`, `public/kiosk/verify.php`, `app/kiosk_lib.php`.
+- Requests, issuance and notifications: `app/requests_lib.php`, `public/requests/action.php`, `app/certificates_lib.php`, `public/certificates/issue.php`, `app/notifications_lib.php`, `app/email_provider.php`.
+- Blotter, venue and queue paths: `app/blotter_requests_lib.php`, `app/blotters_lib.php`, `app/venues_lib.php`, `app/queue_lib.php`, and the corresponding `public/blotters`, `public/blotter_requests`, `public/venues`, `public/queue` routes.
+- Permissions and navigation: `app/permissions.php` and `app/menu.php`.
