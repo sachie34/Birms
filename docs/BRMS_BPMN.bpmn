@@ -64,7 +64,7 @@
   <bpmndi:BPMNDiagram id="Diagram_BRMS_Document">
     <bpmndi:BPMNPlane id="Plane_BRMS_Document" bpmnElement="Collaboration_BRMS">
       <bpmndi:BPMNShape id="Shape_Participant_Document" bpmnElement="Participant_Document" isHorizontal="true">
-        <dc:Bounds x="80" y="80" width="2250" height="430"/>
+        <dc:Bounds x="80" y="80" width="2800" height="430"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start_Resident"><dc:Bounds x="110" y="250" width="36" height="36"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_FindResident" bpmnElement="Task_FindResident"><dc:Bounds x="190" y="225" width="150" height="86"/></bpmndi:BPMNShape>
