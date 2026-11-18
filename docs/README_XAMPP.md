@@ -18,7 +18,7 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
 
 ## Repair an incomplete or outdated local project folder
 
-If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The current `main` branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
+If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The `john/msit-srs-compliance` branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
 
 1. Back up the current project folder. Keep your MySQL database as it is.
 2. Download a fresh ZIP from the [MSIT compliance branch](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip) and extract it into a **new folder**, for example `C:\xampp\htdocs\Birms-main-fixed`. Do not extract over the old folder.
@@ -45,7 +45,7 @@ This process fixes a missing/mixed local source tree without replacing your data
 
 ## 2. Install manually (advanced)
 1. **Back up first** (see section 7). Never skip this.
-2. Copy this folder to `C:\xampp\htdocs\birms_work`.
+2. Copy this folder to `C:\xampp\htdocs\Birms-main`.
 3. Start **Apache** and **MySQL** in the XAMPP Control Panel.
 4. Create a limited database user (phpMyAdmin → SQL tab). Choose your own password:
    ```sql
@@ -55,7 +55,7 @@ This process fixes a missing/mixed local source tree without replacing your data
 5. Copy `app\config.local.php.example` to `app\config.local.php` and put the same password in it.
 6. Open **XAMPP Shell** (or Command Prompt) and run:
    ```
-   cd C:\xampp\htdocs\birms_work
+   cd C:\xampp\htdocs\Birms-main
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
@@ -99,7 +99,7 @@ automatically. Keep the firewall limited to your office network and do not forwa
 
 ## 6. Run the tests on YOUR XAMPP
 ```
-cd C:\xampp\htdocs\birms_work
+cd C:\xampp\htdocs\Birms-main
 C:\xampp\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 ```
@@ -109,7 +109,7 @@ C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 - The module runner refuses to run while the selected SMS provider or email notification channel is enabled, because test flows create synthetic notifications. Disable both before testing. Use a separate intentional, authorized live-send test for a real provider.
 - Expect `FAIL 0`. `NOT TESTED` means a check could not run. Send me the full output, including any FAIL lines.
 - The `--root` check confirms private folders are not downloadable through Apache. `app`, `storage`, and other project folders use `.htaccess` deny rules; the PHP built-in server ignores `.htaccess`, so run that particular protection check under Apache on XAMPP.
-  It depends on Apache's `AllowOverride All` (the XAMPP default). Under Apache, also verify that these URLs return 403/404: `http://localhost/birms_work/.git/config` (if using a Git clone), `http://localhost/birms_work/README.md`, `http://localhost/birms_work/MANIFEST.txt`, `http://localhost/birms_work/SETUP_XAMPP.bat`, `http://localhost/birms_work/.gitignore`, and `http://localhost/birms_work/Api`. The last URL should remain blocked even if the file exists in an older extracted folder.
+  It depends on Apache's `AllowOverride All` (the XAMPP default). Under Apache, also verify that these URLs return 403/404: `http://localhost/Birms-main/.git/config` (if using a Git clone), `http://localhost/Birms-main/README.md`, `http://localhost/Birms-main/MANIFEST.txt`, `http://localhost/Birms-main/SETUP_XAMPP.bat`, `http://localhost/Birms-main/.gitignore`, and `http://localhost/Birms-main/Api`. The last URL should remain blocked even if the file exists in an older extracted folder.
 
 ## 7. Backup before any change
 ```
@@ -123,7 +123,7 @@ Do not add `--databases`. Test the restore into a scratch database. Copy the pro
 - Migrations 007–011 are required for the latest branch. Enter the barangay-approved employment-status and incident-type categories under Settings → Other lists and approved fee rules under Settings → Multi-tier fee matrix. No categories or rates are guessed.
 - Resident identity and voter-list checks can be recorded manually in the resident profile with actor/date/history. The system does not query COMELEC. The separate cash-collection ledger records staff-entered amounts and reconciliation state; this is not a payment gateway and not independent proof of a bank deposit. Issuance history totals use ledger entries and label missing entries.
 - The backup page downloads a local SQL file only. Cloud storage, scheduled backups, automatic restore verification, and a completed restoration test are not included.
-- SMS providers are optional and disabled by default. When one is explicitly configured/enabled, the code can submit a Ready-for-pickup notification through Semaphore or Infobip. CI uses mocked provider calls; real-phone delivery must still be tested on the local system.
+- Email and SMS delivery are disabled unless explicitly configured. The MSIT branch supports the configured email transport and SMS API PH/Semaphore/Infobip adapters. CI checks outbox and mocked logic; actual mailbox/phone delivery must still be tested on the local system.
 - Blotter look-up shows matching parties' information to roles with blotter lookup access. The role matrix is still provisional and needs approval by the Barangay Secretary / system owner.
 - Visitor and request attachments accept PDF/JPG/PNG up to 10 MB, are stored in `storage/private_uploads` with randomized names (outside `public/`), and are served only through an authenticated, permission-checked download endpoint. Confirm the folder is writable by Apache and not served directly by the web server.
 - Paid certificate issuance records a Pending item in the cash-collection ledger. Ledger management is Administrator-only; reconciled entries should be supported by the office's approved evidence process.
@@ -136,5 +136,5 @@ Do not add `--databases`. Test the restore into a scratch database. Copy the pro
 ## 9. Troubleshooting
 - **Blank page or "Something went wrong":** read `storage\logs\php-error.log`.
 - **Cannot connect to the database:** check `app\config.local.php` and that MySQL is running.
-- **Links or styles broken:** set `'base_url' => '/birms_work/public'` in `config.local.php`.
+- **Links or styles broken:** set `'base_url' => '/Birms-main/public'` in `config.local.php` (or use the actual folder name under `htdocs`).
 - **Plain unstyled page:** the browser may be blocking assets; press F12 → Console and send me the messages.
