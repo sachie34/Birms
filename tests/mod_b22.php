@@ -300,6 +300,36 @@ function run_b22(array $S, string $base): void
             $remainingKioskKeys === [],
             'remaining session keys=' . implode(', ', $remainingKioskKeys)
         );
+
+        $otpChannelCases = [
+            ['sms', true, true, 'sms'],
+            ['both', true, true, 'sms'],
+            ['email', true, true, 'email'],
+            ['sms', false, true, 'email'],
+            ['both', false, true, 'email'],
+            ['email', false, true, 'email'],
+            ['sms', true, false, 'sms'],
+            ['both', true, false, 'sms'],
+            ['email', true, false, 'sms'],
+            ['sms', false, false, null],
+            ['both', false, false, null],
+            ['email', false, false, null],
+            ['invalid', true, true, 'email'],
+        ];
+        $otpChannelFailures = [];
+        foreach ($otpChannelCases as [$preference, $smsAvailable, $emailAvailable, $expected]) {
+            $actual = kiosk_verification_channel($preference, $smsAvailable, $emailAvailable);
+            if ($actual !== $expected) {
+                $otpChannelFailures[] = $preference . '/sms=' . (int) $smsAvailable . '/email=' . (int) $emailAvailable
+                    . ': expected=' . var_export($expected, true) . ', actual=' . var_export($actual, true);
+            }
+        }
+        record(
+            'B22-11',
+            'OTP delivery honors Email/SMS/Both and falls back to an available registered channel when the preferred gateway is unavailable',
+            !$otpChannelFailures,
+            implode('; ', $otpChannelFailures)
+        );
         $getLogout = $kiosk->get('/kiosk/end.php');
         $stillFirstResident = $kiosk->get('/kiosk/index.php');
         record(
