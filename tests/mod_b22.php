@@ -367,6 +367,54 @@ function run_b22(array $S, string $base): void
             'remaining session keys=' . implode(', ', $remainingKioskKeys)
         );
 
+        $fallbackStatusCases = ['failed', 'refunded', 'not_configured', 'no_number', 'unknown'];
+        $nonFallbackStatusCases = ['queued', 'pending', 'sent', 'sending'];
+        $fallbackDecisionsOk = true;
+        foreach ($fallbackStatusCases as $fallbackStatus) {
+            $fallbackDecisionsOk = $fallbackDecisionsOk && resident_sms_needs_email_fallback($fallbackStatus);
+        }
+        foreach ($nonFallbackStatusCases as $safeStatus) {
+            $fallbackDecisionsOk = $fallbackDecisionsOk && !resident_sms_needs_email_fallback($safeStatus);
+        }
+        record(
+            'B22-17',
+            'SMS failure and unconfirmed outcomes require email fallback, but accepted/in-progress SMS statuses do not',
+            $fallbackDecisionsOk,
+            'fallback statuses=' . implode(',', $fallbackStatusCases)
+            . '; no-fallback statuses=' . implode(',', $nonFallbackStatusCases)
+        );
+
+        $fallbackReference = 'B22FB-' . strtoupper(bin2hex(random_bytes(3)));
+        $fallback = resident_queue_email_fallback(
+            $residentId,
+            $email,
+            'Documents',
+            'Your document request status changed. SMS delivery could not be confirmed; this email is the fallback.',
+            'document_request_status_changed',
+            $fallbackReference,
+            'unknown'
+        );
+        $fallbackRow = db_one(
+            'SELECT resident_id, channel, recipient, event_type, reference_no, delivery_status
+             FROM notification_outbox WHERE notification_id = ?',
+            [(int) $fallback['notification_id']]
+        );
+        record(
+            'B22-18',
+            'An Unknown SMS result queues exactly one durable resident email fallback without retrying SMS',
+            $fallbackRow !== null
+            && (int) $fallbackRow['resident_id'] === $residentId
+            && $fallbackRow['channel'] === 'email'
+            && $fallbackRow['recipient'] === $email
+            && $fallbackRow['event_type'] === 'document_request_status_changed_email_fallback'
+            && $fallbackRow['reference_no'] === $fallbackReference
+            && $fallbackRow['delivery_status'] === 'queued'
+            && $fallback['status'] === 'queued',
+            'fallback ID=' . $fallback['notification_id']
+            . '; delivery=' . (string) ($fallbackRow['delivery_status'] ?? 'missing')
+            . '; event=' . (string) ($fallbackRow['event_type'] ?? 'missing')
+        );
+
         $otpChannelCases = [
             ['sms', true, true, 'sms'],
             ['both', true, true, 'sms'],
