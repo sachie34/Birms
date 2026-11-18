@@ -122,6 +122,33 @@ function run_b23(array $S, string $base): void
             && (int) db_val('SELECT COUNT(*) FROM lookups WHERE lookup_id = ?', [$statusId]) === 1,
             'HTTP=' . $hideStatus['status']
         );
+
+        $activeStatusId = (int) db_val(
+            "SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active' AND is_active = 1 LIMIT 1"
+        );
+        $renameBuiltIn = post_as($admin, '/admin/settings.php?tab=lists', '/admin/settings.php', [
+            'do' => 'lookup_rename', 'tab' => 'lists', 'id' => $activeStatusId, 'label' => 'Active Test Rename',
+        ]);
+        record(
+            'B23-09',
+            'Admin cannot rename the required Active resident status used by system logic',
+            $activeStatusId > 0 && $renameBuiltIn['status'] === 200
+            && db_val('SELECT label FROM lookups WHERE lookup_id = ?', [$activeStatusId]) === 'Active',
+            'HTTP=' . $renameBuiltIn['status'] . '; saved label='
+            . (string) db_val('SELECT label FROM lookups WHERE lookup_id = ?', [$activeStatusId])
+        );
+
+        $hideBuiltIn = post_as($admin, '/admin/settings.php?tab=lists', '/admin/settings.php', [
+            'do' => 'lookup_toggle', 'tab' => 'lists', 'id' => $activeStatusId,
+        ]);
+        record(
+            'B23-10',
+            'Admin cannot hide the required Active resident status',
+            $activeStatusId > 0 && $hideBuiltIn['status'] === 200
+            && (int) db_val('SELECT is_active FROM lookups WHERE lookup_id = ?', [$activeStatusId]) === 1,
+            'HTTP=' . $hideBuiltIn['status'] . '; still active='
+            . ((int) db_val('SELECT is_active FROM lookups WHERE lookup_id = ?', [$activeStatusId]) === 1 ? 'yes' : 'no')
+        );
     } finally {
         if ($typeId !== null) { db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$typeId]); }
         if ($statusId !== null) { db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$statusId]); }
