@@ -231,6 +231,24 @@ function run_b3(array $S, string $base): void
         }
         record('B3-12', 'Malformed, array, oversized and unknown-id parameters do not crash resident pages or leak database errors',
             !$badOdd, implode(', ', $badOdd));
+
+        // Regression coverage retained from the former resident suite: a value stored directly
+        // in the database must still be escaped when displayed on the revised Address field.
+        $xssPayload = '<script>alert(1)</script>';
+        db_exec('UPDATE residents SET address = ? WHERE resident_id = ?', [$xssPayload, $residentId]);
+        $xssView = $adm->get('/residents/view.php?id=' . $residentId);
+        $xssForm = $adm->get('/residents/form.php?id=' . $residentId);
+        $escapedPayload = '&lt;script&gt;alert(1)&lt;/script&gt;';
+        $xssSafe = $xssView['status'] === 200
+            && $xssForm['status'] === 200
+            && !str_contains($xssView['body'], $xssPayload)
+            && !str_contains($xssForm['body'], $xssPayload)
+            && str_contains($xssView['body'], $escapedPayload)
+            && str_contains($xssForm['body'], $escapedPayload);
+        record('B3-13', 'Stored script content in the revised resident Address field is rendered as text in the profile and edit form (XSS regression)',
+            $xssSafe,
+            'profile=' . $xssView['status'] . '; edit=' . $xssForm['status']
+            . '; raw payload leaked=' . (str_contains($xssView['body'], $xssPayload) || str_contains($xssForm['body'], $xssPayload) ? 'yes' : 'no'));
     } finally {
         if ($createdIds) {
             $ids = array_values(array_unique(array_filter($createdIds)));
