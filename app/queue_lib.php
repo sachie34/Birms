@@ -10,13 +10,42 @@ function queue_valid_service(string $service): bool
     return in_array($service, QUEUE_SERVICES, true);
 }
 
+function queue_valid_notification_preference(string $preference): bool
+{
+    return in_array($preference, ['email', 'sms', 'both'], true);
+}
+
+/** Resolve a kiosk choice, or retain the resident's saved preference when older callers omit it. */
+function queue_resolve_notification_preference(?string $requested, ?string $fallback = 'email'): string
+{
+    $fallback = is_string($fallback) && queue_valid_notification_preference($fallback) ? $fallback : 'email';
+    if ($requested === null || trim($requested) === '') { return $fallback; }
+    $requested = trim($requested);
+    if (!queue_valid_notification_preference($requested)) {
+        throw new InvalidArgumentException('Choose Email, SMS or Both for queue notifications.');
+    }
+    return $requested;
+}
+
+/** Render the same safe option list on every resident-facing kiosk form. */
+function queue_notification_preference_options(?string $selected = 'email'): string
+{
+    $selected = is_string($selected) && queue_valid_notification_preference($selected) ? $selected : 'email';
+    $labels = ['email' => 'Email', 'sms' => 'SMS', 'both' => 'Both'];
+    $html = '';
+    foreach ($labels as $value => $label) {
+        $html .= '<option value="' . e($value) . '"' . ($selected === $value ? ' selected' : '') . '>' . e($label) . '</option>';
+    }
+    return $html;
+}
+
 /**
  * Issue the next number for a service/day. The counter row is locked inside the transaction,
  * so simultaneous counter/kiosk requests cannot receive the same number.
  *
  * @return array{queue_id:int,service:string,queue_date:string,queue_number:int}
  */
-function queue_issue_number(string $service, ?int $residentId = null, ?string $referenceNo = null, string $issuedVia = 'staff', ?string $purpose = null): array
+function queue_issue_number(string $service, ?int $residentId = null, ?string $referenceNo = null, string $issuedVia = 'staff', ?string $purpose = null, ?string $notificationPreference = null): array
 {
     if (!queue_valid_service($service)) {
         throw new InvalidArgumentException('Choose Blotter, Documents or Venue.');
@@ -43,10 +72,11 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
     if ($purpose !== null && !v_len($purpose, 3, 255)) {
         throw new InvalidArgumentException('Enter the reason for visiting (3-255 characters).');
     }
-    $preference = (string) ($resident['notification_preference'] ?? 'email');
-    if (!in_array($preference, ['email', 'sms', 'both'], true)) { $preference = 'email'; }
+    $savedPreference = (string) ($resident['notification_preference'] ?? 'email');
+    $preference = queue_resolve_notification_preference($notificationPreference, $savedPreference);
+    $persistPreference = $residentId !== null && $notificationPreference !== null && trim($notificationPreference) !== '';
 
-    return db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference): array {
+    return db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference, $persistPreference, $resident): array {
         $today = date('Y-m-d');
         db_exec('INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)', [$service, $today]);
         $counter = db_one('SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE', [$service, $today]);
@@ -59,22 +89,35 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
              VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', ?, ?)',
             [$service, $today, $number, $residentId, ($referenceNo !== '' ? $referenceNo : null), $purpose, $issuedVia, $preference]
         );
+        // A resident's kiosk choice is saved for later request-status notifications too.
+        if ($persistPreference && (string) ($resident['notification_preference'] ?? 'email') !== $preference) {
+            db_exec(
+                'UPDATE residents SET notification_preference = ? WHERE resident_id = ? AND archived_at IS NULL',
+                [$preference, $residentId]
+            );
+            audit_best_effort(
+                'resident_notification_preference_changed',
+                'Notifications',
+                'Success',
+                'Resident #' . $residentId . ' changed their self-service notification preference to ' . $preference . '.'
+            );
+        }
         $id = (int) db()->lastInsertId();
         audit('queue_number_issued', 'Queue', 'Success', $service . ' queue #' . $number . ' issued for ' . $today, 'queue_entry', $id);
         $entry = ['queue_id' => $id, 'service' => $service, 'queue_date' => $today, 'queue_number' => $number];
         if ($residentId !== null) {
-            queue_enqueue_notifications($residentId, $service, $number, 'queue_issued', 'Your queue number is ' . $number . ' for ' . $service . '. Please watch the queue display.');
+            queue_enqueue_notifications($residentId, $service, $number, 'queue_issued', 'Your queue number is ' . $number . ' for ' . $service . '. Please watch the queue display.', $preference);
         }
         return $entry;
     });
 }
 
 /** Put a queue notice in the outbox. Dispatch/delivery is a separate adapter and is not implied by enqueueing. */
-function queue_enqueue_notifications(int $residentId, string $service, int $number, string $event, string $message): void
+function queue_enqueue_notifications(int $residentId, string $service, int $number, string $event, string $message, ?string $preferenceOverride = null): void
 {
     $resident = db_one('SELECT email_address, contact_number, notification_preference FROM residents WHERE resident_id = ?', [$residentId]);
     if ($resident === null) { return; }
-    $preference = (string) ($resident['notification_preference'] ?? 'email');
+    $preference = queue_resolve_notification_preference($preferenceOverride, (string) ($resident['notification_preference'] ?? 'email'));
     $email = trim((string) ($resident['email_address'] ?? ''));
     $mobile = trim((string) ($resident['contact_number'] ?? ''));
     $reference = $service . '-' . date('Ymd') . '-' . $number;
@@ -133,7 +176,7 @@ function queue_call_next(string $service): ?array
         );
         if ($current !== null) { throw new RuntimeException('Serve, skip or cancel the current called number before calling the next one.'); }
         $next = db_one(
-            'SELECT queue_id, queue_number, resident_id, reference_no FROM queue_entries
+            'SELECT queue_id, queue_number, resident_id, reference_no, notification_preference FROM queue_entries
              WHERE service = ? AND queue_date = ? AND status = \'Waiting\'
              ORDER BY queue_number LIMIT 1 FOR UPDATE',
             [$service, $today]
@@ -148,17 +191,19 @@ function queue_call_next(string $service): ?array
         audit('queue_number_called', 'Queue', 'Success', $service . ' queue #' . (int) $next['queue_number'] . ' called', 'queue_entry', (int) $next['queue_id']);
         if (!empty($next['resident_id'])) {
             queue_enqueue_notifications((int) $next['resident_id'], $service, (int) $next['queue_number'], 'queue_called',
-                'Your queue number ' . (int) $next['queue_number'] . ' for ' . $service . ' is now being called. Please proceed to the counter.');
+                'Your queue number ' . (int) $next['queue_number'] . ' for ' . $service . ' is now being called. Please proceed to the counter.',
+                (string) ($next['notification_preference'] ?? 'email'));
         }
         $near = db_one(
-            'SELECT queue_number, resident_id FROM queue_entries
+            'SELECT queue_number, resident_id, notification_preference FROM queue_entries
              WHERE service = ? AND queue_date = ? AND status = \'Waiting\'
              ORDER BY queue_number LIMIT 1',
             [$service, $today]
         );
         if ($near !== null && !empty($near['resident_id'])) {
             queue_enqueue_notifications((int) $near['resident_id'], $service, (int) $near['queue_number'], 'queue_near',
-                'Your queue number ' . (int) $near['queue_number'] . ' for ' . $service . ' is next after the number now being served. Please get ready.');
+                'Your queue number ' . (int) $near['queue_number'] . ' for ' . $service . ' is next after the number now being served. Please get ready.',
+                (string) ($near['notification_preference'] ?? 'email'));
         }
         return $next;
     });
