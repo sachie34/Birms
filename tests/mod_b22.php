@@ -256,6 +256,21 @@ function run_b22(array $S, string $base): void
             [$secondResidentNo, $purokId, $statusId ?: null, $typeId ?: null]
         );
         $secondResidentId = (int) db()->lastInsertId();
+        $kioskHomeForTimer = $kiosk->get('/kiosk/index.php');
+        $kioskJs = (string) file_get_contents(APP_ROOT . '/public/assets/js/kiosk.js');
+        $timeoutFormReady = $kioskHomeForTimer['status'] === 200
+            && preg_match('/<form id="kiosk-timeout-form" method="post" action="[^"]*kiosk\\/end\\.php" hidden>.*?name="_csrf" value="[a-f0-9]{64}"/s', $kioskHomeForTimer['body']) === 1
+            && str_contains($kioskJs, "form.submit();")
+            && !str_contains($kioskJs, 'end.php?timeout=1');
+        record(
+            'B22-09',
+            'Kiosk inactivity timer submits the CSRF-protected POST logout form instead of a rejected GET request',
+            $timeoutFormReady,
+            'page=' . $kioskHomeForTimer['status']
+            . '; protected form=' . (str_contains($kioskHomeForTimer['body'], 'kiosk-timeout-form') ? 'yes' : 'no')
+            . '; POST submit=' . (str_contains($kioskJs, 'form.submit();') ? 'yes' : 'no')
+            . '; stale GET timer=' . (str_contains($kioskJs, 'end.php?timeout=1') ? 'yes' : 'no')
+        );
         $getLogout = $kiosk->get('/kiosk/end.php');
         $stillFirstResident = $kiosk->get('/kiosk/index.php');
         record(
