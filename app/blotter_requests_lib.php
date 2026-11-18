@@ -68,7 +68,7 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
     }
     if ($errors) { return null; }
 
-    return db_transaction(function () use ($resident, $residentId, $incidentDate, $incidentTime, $place, $purokId, $incidentTypeId, $narrative, $respondent, $notificationPreference): array {
+    $result = db_transaction(function () use ($resident, $residentId, $incidentDate, $incidentTime, $place, $purokId, $incidentTypeId, $narrative, $respondent, $notificationPreference): array {
         // Reserve a case reference at submission. A rejected request may leave a gap, but references remain unique and auditable.
         $reference = new_case_no();
         db_exec(
@@ -94,7 +94,7 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
             'resident_blotter_request', $requestId, 'resident-kiosk', null);
 
         $ticket = queue_issue_number('Blotter', $residentId, $reference, 'kiosk', 'Resident blotter report',
-            $notificationPreference !== '' ? $notificationPreference : null);
+            $notificationPreference !== '' ? $notificationPreference : null, true);
         return [
             'request_id' => $requestId,
             'reference_no' => $reference,
@@ -102,6 +102,9 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
             'submitted_at' => date('Y-m-d H:i:s'),
         ];
     });
+    queue_notify_ticket_issued((int) $result['ticket']['queue_id']);
+    return $result;
+
 }
 
 /** Staff or Admin accepts an intake and creates the permanent official blotter record atomically. */
