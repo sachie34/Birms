@@ -3,6 +3,67 @@
 declare(strict_types=1);
 
 /**
+ * SRS FR-Q10: fall back to email when SMS is unavailable, rejected, failed or cannot be confirmed.
+ * "unknown" is deliberately not retried as SMS; an email fallback prevents silent loss while
+ * preserving the provider's uncertainty and avoiding a duplicate SMS attempt.
+ */
+function resident_sms_needs_email_fallback(string $status): bool
+{
+    return in_array(strtolower(trim($status)), [
+        'failed', 'refunded', 'not_configured', 'no_number', 'unknown',
+    ], true);
+}
+
+/**
+ * Queue a single email fallback for an SMS outcome that cannot notify the resident.
+ * The queued email is durable even when the mail transport is not configured.
+ *
+ * @return array{notification_id:int,status:string}
+ */
+function resident_queue_email_fallback(
+    int $residentId,
+    string $email,
+    string $service,
+    string $message,
+    string $eventType,
+    string $referenceNo,
+    string $smsStatus
+): array {
+    if ($residentId < 1 || !filter_var($email, FILTER_VALIDATE_EMAIL)
+        || !in_array($service, ['Blotter', 'Documents', 'Venue'], true)
+        || !resident_sms_needs_email_fallback($smsStatus)) {
+        throw new InvalidArgumentException('The SMS email-fallback details are invalid.');
+    }
+    $notificationId = email_queue_notification(
+        $residentId,
+        $email,
+        'Barangay ' . $service . ' update',
+        $message,
+        $eventType . '_email_fallback',
+        $referenceNo
+    );
+    $status = 'queued';
+    if (email_provider_is_enabled()) {
+        try {
+            $result = email_send_notification($notificationId);
+            $status = (string) ($result['status'] ?? 'unknown');
+        } catch (Throwable $emailError) {
+            error_log('BIRMS SMS fallback email failed for outbox #' . $notificationId . ': ' . get_class($emailError));
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+                $service . ' update ' . $referenceNo . ' has a queued email fallback that could not be sent immediately.');
+            $status = 'failed';
+        }
+    }
+    audit_best_effort(
+        'resident_sms_email_fallback_queued',
+        'Notifications',
+        'Success',
+        $service . ' update ' . $referenceNo . ' queued email fallback after SMS status ' . strtolower($smsStatus) . '.'
+    );
+    return ['notification_id' => $notificationId, 'status' => $status];
+}
+
+/**
  * Notify a verified resident that a document, blotter or venue request has changed status.
  * Delivery attempts happen after the related status transaction commits; provider failures never
  * reverse an approval, rejection, release or case update.
@@ -90,28 +151,27 @@ function resident_notify_status_change(
         );
         $smsId = (int) db()->lastInsertId();
         if ($enabled) {
-            $smsResult = sms_send_outbox($smsId, false);
-            $smsStatus = (string) ($smsResult['status'] ?? 'unknown');
-
-            // A confirmed provider failure triggers the specified email fallback.
-            if (in_array($smsStatus, ['failed', 'refunded', 'not_configured', 'no_number'], true)
-                && !$emailQueued && $email !== '') {
-                $emailId = email_queue_notification(
-                    $residentId,
-                    $email,
-                    'Barangay ' . $service . ' request update',
-                    $message,
-                    $eventType . '_email_fallback',
-                    $referenceNo
-                );
-                $emailQueued = true;
-                $emailResult = email_provider_is_enabled()
-                    ? email_send_notification($emailId)
-                    : ['ok' => false, 'status' => 'queued'];
-                $emailStatus = (string) ($emailResult['status'] ?? 'unknown');
+            try {
+                $smsResult = sms_send_outbox($smsId, false);
+                $smsStatus = (string) ($smsResult['status'] ?? 'unknown');
+            } catch (Throwable $smsError) {
+                // Do not retry a call with an uncertain provider result. Queue email fallback instead.
+                $smsStatus = 'unknown';
+                error_log('BIRMS SMS status notification failed for outbox #' . $smsId . ': ' . get_class($smsError));
+                audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+                    $service . ' request ' . $referenceNo . ' SMS result could not be confirmed.');
             }
         } else {
             $smsStatus = 'not_configured';
+        }
+
+        if (!$emailQueued && $email !== '' && resident_sms_needs_email_fallback($smsStatus)) {
+            $fallback = resident_queue_email_fallback(
+                $residentId, $email, $service, $message, $eventType,
+                $referenceNo, $smsStatus
+            );
+            $emailQueued = true;
+            $emailStatus = $fallback['status'];
         }
     } elseif ($wantsSms) {
         $smsStatus = 'no_number';
