@@ -46,7 +46,7 @@ if (in_array($currentStatus, ['Rejected', 'Cancelled'], true)) {
     if ($currentStatus === 'Review') { $stepCurrent = $r['requirements_status'] === 'Complete' ? 2 : 1; }
     elseif ($currentStatus === 'Ready') { $stepCurrent = 3; }
     elseif ($currentStatus === 'Claimed') { $stepCurrent = 4; } // all steps complete
-    $workflowSteps = ['Request submitted', 'Secretary requirements review', 'Captain/Administrator final decision', 'Certificate issuance'];
+    $workflowSteps = ['Request submitted', 'Secretary requirements review', 'Staff final decision', 'Certificate release'];
     echo '<section class="card-b mb-3" aria-labelledby="request-progress-title"><div class="card-h"><h2 id="request-progress-title">Request progress</h2><p>Follow each step from submission to certificate issuance.</p></div><div class="card-body-b"><ol class="row g-2 list-unstyled mb-0" aria-label="Request progress">';
     foreach ($workflowSteps as $stepIndex => $stepLabel) {
         $isDone = $stepCurrent === 4 || $stepIndex < $stepCurrent;
@@ -73,7 +73,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card-b mb-3"><div class="card-h"><h2>Details</h2></div><div class="card-body-b"><table class="table table-sm mb-0"><tbody>
-      <?= $row('Status', status_pill((string) $r['status']) . ($r['status_note'] ? ' <span class="text-muted small">' . e((string) $r['status_note']) . '</span>' : '')) ?>
+      <?= $row('Status', status_pill((string) $r['msit_status']) . ($r['status_note'] ? ' <span class="text-muted small">' . e((string) $r['status_note']) . '</span>' : '')) ?>
       <?= $row('Resident', can('residents.view') ? '<a href="' . e(base_url('residents/view.php?id=' . (int) $r['resident_id'])) . '">' . e(resident_name($r)) . '</a> ' . residency_pill((string) $r['residency_status']) : e(resident_name($r))) ?>
       <?= $row('Document', e((string) $r['type_name'])) ?><?= $row('Purpose', e((string) $r['purpose'])) ?>
       <?= $row('Requirements review', status_pill((string) $r['requirements_status'])) ?><?= $row('Requirements / follow-up notes', e((string) ($r['requirements_note'] ?? '—') ?: '—')) ?>
@@ -88,7 +88,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
     <?php if ($attachments): ?><div class="card-b mb-3"><div class="card-h"><h2>Supporting documents</h2><p>Private files uploaded with this request.</p></div><div class="card-body-b"><?php foreach ($attachments as $attachment): ?><div class="border-bottom py-2"><a href="<?= e(base_url('files/download.php?id=' . (int) $attachment['attachment_id'])) ?>"><?= e((string) $attachment['original_name']) ?></a><div class="small text-muted"><?= e((string) $attachment['mime_type']) ?> · <?= e(number_format(((int) $attachment['byte_size']) / 1024, 1)) ?> KB · <?= e(fmt_dt((string) $attachment['uploaded_at'])) ?></div></div><?php endforeach; ?></div></div><?php endif; ?>
     <?php if ($moves): ?><div class="card-b"><div class="card-h"><h2>Next step</h2><p>Only steps your role may take are shown.</p></div><div class="card-body-b">
       <?php foreach ($moves as $to):
-        $label = ['Review' => 'Start review', 'Ready' => 'Approve and mark Ready for Pickup', 'Rejected' => 'Reject', 'Cancelled' => 'Cancel request'][$to] ?? $to;
+        $label = ['Review' => 'Start review', 'Ready' => 'Approve request', 'Rejected' => 'Reject', 'Cancelled' => 'Cancel request'][$to] ?? $to;
         $needNote = $to === 'Rejected'; ?>
         <form method="post" action="<?= e(base_url('requests/action.php')) ?>" class="mb-3" data-confirm="<?= e($label . '?') ?>"><?= csrf_field() ?>
           <input type="hidden" name="id" value="<?= (int) $id ?>"><input type="hidden" name="to" value="<?= e($to) ?>">

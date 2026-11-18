@@ -12,8 +12,8 @@ function certificate_vars(array $r, ?DateTimeImmutable $now = null): array
 {
     $now ??= new DateTimeImmutable('now');
     return [
-        'full_name' => strtoupper(resident_name_natural($r)), 'age' => (string) age_on((string) $r['birthdate'], $now->format('Y-m-d')), 'civil_status' => (string) $r['civil_status'],
-        'address' => (string) ($r['street_address'] ?? ''), 'purok' => (string) ($r['purok'] ?? ''), 'purpose' => (string) $r['purpose'],
+        'full_name' => strtoupper(resident_name_natural($r)), 'age' => (string) age_on((string) $r['birthdate'], $now->format('Y-m-d')), 'civil_status' => (string) ($r['marital_status'] ?? $r['civil_status'] ?? ''),
+        'address' => (string) ($r['street_address'] ?? $r['address'] ?? ''), 'purok' => (string) ($r['purok'] ?? ''), 'purpose' => (string) $r['purpose'],
         'date_issued' => $now->format('j F Y'), 'day_ordinal' => ordinal((int) $now->format('j')), 'month_year' => $now->format('F Y'),
         'barangay' => (string) setting('barangay_name', ''), 'municipality' => (string) setting('municipality', ''), 'province' => (string) setting('province', ''),
         'reference_no' => (string) ($r['reference_no'] ?? ''), 'captain_name' => (string) setting('captain_name', ''), 'document_name' => (string) $r['type_name'],
@@ -33,6 +33,9 @@ function certificate_blockers(array $r, array $vars): array
         if (str_contains($body, '{{' . $tok . '}}') && $vars[$tok] === '') { $b[] = 'The wording uses {{' . $tok . '}} but ' . $what . ' is empty.'; }
     }
     if (($r['resident_archived'] ?? null) !== null) { $b[] = 'This resident is archived. Restore the resident first.'; }
+    if ((int) ($r['requires_chairman_signature'] ?? 1) === 1 && chairman_signature_current_absolute() === null) {
+        $b[] = 'The Admin must upload the Chairman / Punong Barangay signature image in Settings before this certificate can be issued.';
+    }
     return $b;
 }
 function v_or_number(string $s): bool { return preg_match('/^[A-Za-z0-9-]{1,30}$/', $s) === 1; }
@@ -40,13 +43,13 @@ function v_or_number(string $s): bool { return preg_match('/^[A-Za-z0-9-]{1,30}$
 /** Request + resident + household + document type, for issuing. */
 function issuable_request(int $id): ?array
 {
-    return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.requirements_status, dr.requirements_note, dr.fee_rule_id,
+    return db_one('SELECT dr.request_id, dr.reference_no, dr.status, dr.msit_status, dr.requirements_status, dr.requirements_note, dr.fee_rule_id,
             dr.fee_category_snapshot, dr.fee_tier_snapshot, dr.fee_quantity, dr.fee_unit_rate, dr.quoted_fee_amount,
-            dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status,
-            r.archived_at AS resident_archived, h.street_address, pk.label AS purok, dt.name AS type_name,
+            dr.purpose, dr.resident_id, dr.type_id, r.last_name, r.first_name, r.middle_name, r.suffix, r.birthdate, r.civil_status, r.marital_status,
+            r.archived_at AS resident_archived, COALESCE(r.address, h.street_address) AS street_address, pk.label AS purok, dt.name AS type_name, dt.requires_chairman_signature,
             COALESCE(dr.quoted_fee_amount, dt.fee_amount) AS fee_amount, dt.template_body
         FROM document_requests dr JOIN residents r ON r.resident_id = dr.resident_id JOIN document_types dt ON dt.type_id = dr.type_id
-        LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id WHERE dr.request_id = ?', [$id]);
+        LEFT JOIN households h ON h.household_id = r.household_id LEFT JOIN lookups pk ON pk.lookup_id = COALESCE(r.purok_id, h.purok_id) WHERE dr.request_id = ?', [$id]);
 }
 
 /**
@@ -61,22 +64,31 @@ function certificate_pdf_bytes(array $issuance): string
     $esc = static fn(string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $draft = 'DRAFT - PENDING OFFICIAL LAYOUT APPROVAL';
     $body = (string) ($issuance['body_text'] ?? '');
-    $signature = trim((string) ($issuance['signature_text'] ?? ''));
-    if ($signature === '') { $signature = trim((string) ($issuance['captain_name'] ?? '')); }
+    $signature = trim((string) ($issuance['captain_name'] ?? ''));
+    $signatureImage = chairman_signature_read(isset($issuance['chairman_signature_path']) ? (string) $issuance['chairman_signature_path'] : null);
+    $signatureImageHtml = $signatureImage !== null
+        ? '<div class="signature-image"><img src="data:image/jpeg;base64,' . base64_encode($signatureImage['bytes']) . '" alt="Chairman signature"></div>'
+        : '';
+    if (!empty($issuance['chairman_signature_path']) && $signatureImage === null) {
+        throw new RuntimeException('The saved Chairman signature image for this issuance is unavailable. Restore the private signature file from backup before generating this PDF.');
+    }
     $html = '<!doctype html><html><head><meta charset="utf-8"><style>'
         . 'body{font-family:DejaVu Sans,Arial,sans-serif;font-size:12px;color:#172033;margin:34px;}'
         . '.draft{border:2px solid #9b2c2c;color:#9b2c2c;text-align:center;font-weight:bold;padding:8px;margin-bottom:22px;}'
         . '.head{text-align:center;line-height:1.65}.title{text-align:center;font-size:20px;font-weight:bold;margin:28px 0;}'
         . '.body{font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:220px;}'
-        . '.sign{margin:48px 0 8px;text-align:center;font-weight:bold;text-decoration:underline;}'
-        . '.muted{font-size:10px;color:#555;margin-top:28px;border-top:1px solid #aaa;padding-top:8px;}.signature-note{text-align:center;font-size:10px;color:#555;}'
+        . '.signature-image{text-align:center;margin:28px auto 4px;}.signature-image img{max-width:190px;max-height:80px;object-fit:contain;}'
+        . '.sign{text-align:center;font-weight:bold;text-decoration:underline;margin:2px 0 4px;}'
+        . '.signature-note{text-align:center;font-size:10px;color:#555;}'
+        . '.muted{font-size:10px;color:#555;margin-top:28px;border-top:1px solid #aaa;padding-top:8px;}'
         . '</style></head><body><div class="draft">' . $draft . '</div>'
         . '<div class="head">Republic of the Philippines<br>Province of ' . $esc((string) setting('province', ''))
         . '<br>Municipality of ' . $esc((string) setting('municipality', '')) . '<br><strong>' . $esc(barangay_title()) . '</strong></div>'
         . '<div class="title">' . $esc((string) ($issuance['type_name'] ?? 'Certificate')) . '</div>'
         . '<div class="body">' . $esc($body) . '</div>'
-        . '<div class="sign">' . $esc($signature !== '' ? $signature : 'Authorized signatory') . '</div>'
-        . '<div class="signature-note">Typed signature field — not a verified cryptographic digital signature.</div>'
+        . $signatureImageHtml
+        . '<div class="sign">' . $esc($signature !== '' ? $signature : 'Chairman / Punong Barangay') . '</div>'
+        . '<div class="signature-note">Chairman / Punong Barangay</div>'
         . '<div class="muted">Reference: ' . $esc((string) ($issuance['reference_no'] ?? ''))
         . ' | Issued: ' . $esc(isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'))
         . ' | Recorded issuance fee: PHP ' . $esc(number_format((float) ($issuance['fee_amount'] ?? 0), 2))
@@ -100,8 +112,7 @@ function certificate_pdf_bytes(array $issuance): string
         foreach (explode("\n", wordwrap($paragraph, 86, "\n", true)) as $wrapped) { $lines[] = $wrapped; }
     }
     $lines[] = '';
-    $lines[] = 'Typed signature: ' . ($signature !== '' ? $signature : 'Authorized signatory');
-    $lines[] = 'Typed signature field - not a verified cryptographic digital signature.';
+    $lines[] = 'Chairman / Punong Barangay: ' . ($signature !== '' ? $signature : 'Authorized signatory');
     $lines[] = 'Reference: ' . (string) ($issuance['reference_no'] ?? '');
     $lines[] = 'Issued: ' . (isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'));
     $lines[] = 'Recorded issuance fee: PHP ' . number_format((float) ($issuance['fee_amount'] ?? 0), 2);
@@ -112,6 +123,7 @@ function certificate_pdf_bytes(array $issuance): string
     $objects = [];
     $pageIds = [];
     $fontId = 3 + count($pages) * 2;
+    $signatureImageId = $signatureImage !== null ? $fontId + 1 : null;
     $objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
     foreach ($pages as $idx => $pageLines) {
         $pageId = 3 + ($idx * 2); $streamId = $pageId + 1; $pageIds[] = $pageId . ' 0 R';
@@ -126,11 +138,26 @@ function certificate_pdf_bytes(array $issuance): string
             $y -= 14;
         }
         $stream .= "ET\n";
-        $objects[$pageId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ' . $fontId . ' 0 R >> >> /Contents ' . $streamId . ' 0 R >>';
+        if ($idx === 0 && $signatureImageId !== null && $signatureImage !== null) {
+            $imageWidth = 150.0;
+            $imageHeight = min(64.0, $imageWidth * $signatureImage['height'] / max(1, $signatureImage['width']));
+            $imageY = max(50.0, $y - $imageHeight - 8.0);
+            $stream .= "q\n" . number_format($imageWidth, 2, '.', '') . " 0 0 "
+                . number_format($imageHeight, 2, '.', '') . " 220 "
+                . number_format($imageY, 2, '.', '') . " cm\n/ChairmanSig Do\nQ\n";
+        }
+        $resourceEntries = '/Font << /F1 ' . $fontId . ' 0 R >>';
+        if ($signatureImageId !== null) { $resourceEntries .= ' /XObject << /ChairmanSig ' . $signatureImageId . ' 0 R >>'; }
+        $objects[$pageId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << ' . $resourceEntries . ' >> /Contents ' . $streamId . ' 0 R >>';
         $objects[$streamId] = '<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "endstream";
     }
     $objects[2] = '<< /Type /Pages /Kids [' . implode(' ', $pageIds) . '] /Count ' . count($pages) . ' >>';
     $objects[$fontId] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    if ($signatureImageId !== null && $signatureImage !== null) {
+        $objects[$signatureImageId] = '<< /Type /XObject /Subtype /Image /Width ' . $signatureImage['width']
+            . ' /Height ' . $signatureImage['height'] . ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '
+            . strlen($signatureImage['bytes']) . " >>\nstream\n" . $signatureImage['bytes'] . "\nendstream";
+    }
     ksort($objects);
     $pdf = "%PDF-1.4\n% BIRMS draft certificate\n"; $offsets = [0]; $maxId = max(array_keys($objects));
     for ($i = 1; $i <= $maxId; $i++) {

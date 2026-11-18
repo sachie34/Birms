@@ -9,6 +9,7 @@ if (PHP_SAPI !== 'cli') { exit("Command line only.\n"); }
 require __DIR__ . '/../app/core.php';
 date_default_timezone_set((string) config('timezone', 'Asia/Manila'));   // same clock as the app, or date checks fail for 8 hours a day
 require __DIR__ . '/../app/lookups.php';
+require __DIR__ . '/../app/email_provider.php';
 require __DIR__ . '/../app/permissions.php';
 require __DIR__ . '/lib.php';
 if (!function_exists('curl_init')) { fwrite(STDERR, "The PHP curl extension is required.\n"); exit(2); }
@@ -30,6 +31,12 @@ if ($smsEnabled) {
     fwrite(STDERR, "REFUSED: the selected SMS provider is enabled. Disable it in app/config.local.php/environment before running module tests; test requests can transition to Ready. Use tools/test_smsapiph_sms.php only for an intentional, authorized live-send test.\n");
     exit(2);
 }
+$defaultEmailEnabled = filter_var(config('email.enabled', false), FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+$emailEnabled = filter_var(setting('email_enabled', $defaultEmailEnabled), FILTER_VALIDATE_BOOLEAN);
+if ($emailEnabled) {
+    fwrite(STDERR, "REFUSED: real email notifications are enabled. Disable email in the database Settings and app/config.local.php/environment before running module tests; test requests may create outbound notifications.\n");
+    exit(2);
+}
 $base = rtrim('http://127.0.0.1:8080', '/');
 foreach (array_slice($argv, 1) as $a) { if (!str_starts_with($a, '--')) { $base = rtrim($a, '/'); } }
 define('TP', 'Test-Pass-2026a');
@@ -39,14 +46,47 @@ $S = fx_sessions($base, TP);
 $only = array_values(array_filter(array_slice($argv, 1), fn($a) => str_starts_with($a, '--only=')));
 $want = $only ? explode(',', substr($only[0], 7)) : null;
 foreach (glob(__DIR__ . '/mod_b*.php') ?: [] as $f) {
-    $id = strtoupper(preg_replace('/^mod_(b\d+)\.php$/', '$1', basename($f)));
+    $id = strtoupper(preg_replace('/^mod_(b\\d+)\\.php$/', '$1', basename($f)));
     if ($want !== null && !in_array($id, $want, true)) { continue; }
-    require $f;
     echo "== {$id} ==\n";
-    ($GLOBALS['run_' . strtolower($id)] ?? 'run_' . strtolower($id))($S, $base);
+    try {
+        require $f;
+        $runnerName = 'run_' . strtolower($id);
+        $runner = $GLOBALS[$runnerName] ?? $runnerName;
+        if (!is_callable($runner)) {
+            throw new RuntimeException("Module runner {$runnerName} is missing or not callable.");
+        }
+        $runner($S, $base);
+    } catch (Throwable $e) {
+        $message = preg_replace('/[\r\n]+/', ' ', $e->getMessage()) ?? 'No exception message.';
+        error_log("BIRMS module test {$id} aborted: " . (string) $e);
+        record($id . '-EXCEPTION', "Module {$id} aborted unexpectedly; this is a test failure", false,
+            get_class($e) . ': ' . substr($message, 0, 500));
+        record($id . '-REMAINDER', "Remaining assertions in module {$id} did not execute", null,
+            'Module aborted after an exception; inspect the failure above.');
+        // Continue with the next module so one exception does not hide unrelated failures.
+    }
 }
 db_exec("DELETE FROM users WHERE username LIKE 'zz\\_test\\_%'");
 db_exec("DELETE FROM login_failures WHERE username LIKE 'zz\\_test\\_%'");
-$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS')); $fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL')); $skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
+$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS'));
+$fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL'));
+$skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
 echo str_repeat('-', 78) . "\nPASS {$pass}   FAIL {$fail}   NOT TESTED {$skip}   (total " . count($results) . ")\n";
-exit($fail > 0 ? 1 : 0);
+if ($fail > 0) {
+    echo "FAILED CHECKS (retained; fix the cause rather than removing the test):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'FAIL') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+if ($skip > 0) {
+    echo "NOT TESTED CHECKS (investigate before release):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'NOT TESTED') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+exit($fail > 0 || $skip > 0 ? 1 : 0);

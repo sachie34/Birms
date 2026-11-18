@@ -33,10 +33,9 @@ if (is_post()) {
     require_csrf();
     $or = post_str('or_number');
     $paymentMethod = post_str('payment_method') !== '' ? post_str('payment_method') : 'cash';
-    $signatureText = trim(post_str('signature_text'));
-    if ($signatureText === '') { $signatureText = trim((string) ($vars['captain_name'] ?? '')); }
+    // The signatory image is controlled by Admin and snapshotted automatically; staff cannot type or substitute it.
+    $signatureText = trim((string) ($vars['captain_name'] ?? ''));
     if (!in_array($paymentMethod, ['cash', 'bank_transfer', 'other'], true)) { $errors[] = 'Choose a valid payment method.'; }
-    if (str_len($signatureText) > 150) { $errors[] = 'Typed signature is limited to 150 characters.'; }
     if ($blockers) { $errors = $blockers; }
     else {
         $fee = (float) $r['fee_amount'];
@@ -51,8 +50,14 @@ if (is_post()) {
                 if ($x === null || $x['status'] !== 'Ready') { throw new RuntimeException('state'); }
                 $v = certificate_vars($x);
                 if (certificate_blockers($x, $v)) { throw new RuntimeException('blocked'); }
-                $n = db_exec("UPDATE document_requests SET status = 'Claimed', status_note = NULL WHERE request_id = ? AND status = 'Ready'", [$rid]);
+                $requiresChairmanSignature = (int) ($x['requires_chairman_signature'] ?? 1) === 1;
+                $chairmanSignaturePath = $requiresChairmanSignature ? chairman_signature_current_relative() : null;
+                if ($requiresChairmanSignature && chairman_signature_path_to_absolute($chairmanSignaturePath) === null) {
+                    throw new RuntimeException('The Chairman signature image changed or became unavailable. Refresh and ask Admin to verify Settings before issuing.');
+                }
+                $n = db_exec("UPDATE document_requests SET status = 'Claimed', msit_status = 'Released', status_note = NULL WHERE request_id = ? AND status = 'Ready'", [$rid]);
                 if ($n !== 1) { throw new RuntimeException('state'); }
+                $documentReference = (string) $x['reference_no'];
                 $y = (int) date('Y'); $ref = sprintf('CERT-%d-%04d', $y, next_counter('certificate', $y));
                 $x['reference_no'] = $ref; $v = certificate_vars($x);
                 $body = render_template((string) $x['template_body'], $v);
@@ -60,12 +65,14 @@ if (is_post()) {
                 db_exec('INSERT INTO issuances
                          (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount,
                           fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate,
-                          or_number, body_text, captain_name, signature_text, issued_by, issued_by_name, issued_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+                          or_number, body_text, captain_name, signature_text, chairman_signature_path, issued_by, issued_by_name, issued_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
                     [$ref, $rid, $x['resident_id'], $x['type_id'], resident_name_natural($x), $x['type_name'], $x['purpose'], $x['fee_amount'],
                      $x['fee_rule_id'] ?? null, $x['fee_category_snapshot'] ?? null, $x['fee_tier_snapshot'] ?? null,
                      $x['fee_quantity'] ?? 1, $x['fee_unit_rate'] ?? null,
-                     $or !== '' ? $or : null, $body, $v['captain_name'] !== '' ? $v['captain_name'] : null, $signatureText !== '' ? $signatureText : null, $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
+                     $or !== '' ? $or : null, $body, $v['captain_name'] !== '' ? $v['captain_name'] : null,
+                     $signatureText !== '' ? $signatureText : null, $chairmanSignaturePath,
+                     $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
                 // Capture the issuance ID before a cash-ledger insert changes PDO::lastInsertId().
                 $iid = (int) db()->lastInsertId();
                 if ((float) $x['fee_amount'] > 0) {
@@ -75,10 +82,28 @@ if (is_post()) {
                         [$iid, resident_name_natural($x), (float) $x['fee_amount'], $paymentMethod, $actor['user_id'] ?? null, (string) ($actor['full_name'] ?? 'system')]);
                 }
                 audit('certificate_issued', 'Certificates', 'Success', $ref . ' (' . $x['type_name'] . ') for ' . $x['last_name'] . ', ' . $x['first_name'] . '; fee ' . $x['fee_amount'] . ($or !== '' ? '; O.R. ' . $or : ''), 'issuance', $iid);
-                audit('request_status_changed', 'Requests', 'Success', $x['reference_no'] . ' -> Claimed via ' . $ref, 'request', $rid);
+                db_exec("INSERT INTO request_status_history
+                         (service, reference_no, previous_status, new_status, changed_by, note, request_id)
+                         VALUES ('Documents', ?, 'Approved', 'Released', ?, ?, ?)",
+                    [$documentReference, $actor['user_id'] ?? null, 'Certificate issued: ' . $ref, $rid]);
+                audit('request_status_changed', 'Requests', 'Success', $documentReference . ' -> Released via ' . $ref, 'request', $rid);
                 return $iid;
             });
             flash_add('success', 'Certificate issued.');
+            try {
+                resident_notify_status_change(
+                    (int) $r['resident_id'],
+                    'Documents',
+                    (string) $r['reference_no'],
+                    'Released',
+                    'document_request_status_changed',
+                    'Your approved certificate has been generated and is ready for release.'
+                );
+            } catch (Throwable $notificationError) {
+                error_log('BIRMS certificate-release notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+                audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+                    'Document request ' . (string) $r['reference_no'] . ' was released but the resident notification could not be queued.');
+            }
             redirect('certificates/print.php', ['id' => $iid]);
         } catch (PDOException $e) {
             if (str_contains($e->getMessage(), 'uq_issuance_or')) {
@@ -109,7 +134,7 @@ if (!$blockers && !$existing) {
     <form method="post" action="<?= e(base_url('certificates/issue.php?request=' . $rid)) ?>" class="needs-validation" novalidate data-confirm="Issue this certificate? This cannot be undone."><?= csrf_field() ?><input type="hidden" name="request_id" value="<?= (int) $rid ?>"><div class="row">
       <?= f_text('or_number', 'Official Receipt (O.R.) number', $or, ['maxlength' => 30, 'required' => (float) $r['fee_amount'] > 0, 'col' => 'col-12', 'help' => (float) $r['fee_amount'] > 0 ? 'Required because a fee is charged. Each O.R. number can be used only once.' : 'Optional: this document is free.']) ?>
       <?= f_select('payment_method', 'Payment method', ['cash' => 'Cash', 'bank_transfer' => 'Bank transfer', 'other' => 'Other'], $paymentMethod, ['required' => true, 'col' => 'col-12', 'help' => 'For paid issuances, a pending cash-collection ledger entry is created for reconciliation.']) ?>
-      <?= f_text('signature_text', 'Typed signatory / signature name', $signatureText, ['maxlength' => 150, 'col' => 'col-12', 'help' => 'A typed name is not a cryptographically verified digital signature. This certificate remains marked as a draft until the official layout is approved.']) ?>
+      <div class="col-12"><div class="alert alert-info mb-2">The Chairman / Punong Barangay signature image configured by Admin will be applied automatically. Staff cannot replace it while issuing a certificate.</div></div>
     </div><button class="btn btn-primary" type="submit"><i class="bi bi-file-earmark-check me-1"></i>Issue certificate</button></form>
   </div></div></div>
 </div>

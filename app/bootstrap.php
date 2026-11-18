@@ -6,6 +6,20 @@
 declare(strict_types=1);
 
 require __DIR__ . '/core.php';
+
+// Fail closed before loading application routes on a known-unpatched runtime.
+// This does not replace updating Apache's PHP package; an interpreter vulnerability
+// may be exploitable before userland PHP code is reached.
+$phpRuntimeIssue = php_runtime_security_issue(PHP_VERSION_ID);
+if ($phpRuntimeIssue !== null) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=UTF-8');
+    header('Cache-Control: no-store');
+    echo "BIRMS is temporarily disabled because the active PHP runtime needs a security update.\n"
+        . $phpRuntimeIssue . "\n"
+        . "Check both the CLI PHP version and the PHP version loaded by Apache in XAMPP.\n";
+    exit;
+}
 require __DIR__ . '/auth.php';
 require __DIR__ . '/permissions.php';
 require __DIR__ . '/attachments_lib.php';
@@ -16,9 +30,16 @@ require __DIR__ . '/ui.php';
 require __DIR__ . '/residents_lib.php';
 require __DIR__ . '/residents_import_lib.php';
 require __DIR__ . '/requests_lib.php';
+require __DIR__ . '/queue_lib.php';
+require __DIR__ . '/venues_lib.php';
+require __DIR__ . '/kiosk_lib.php';
+require __DIR__ . '/email_provider.php';
 require __DIR__ . '/sms_provider.php';
+require __DIR__ . '/notifications_lib.php';
+require __DIR__ . '/signature_lib.php';
 require __DIR__ . '/certificates_lib.php';
 require __DIR__ . '/blotters_lib.php';
+require __DIR__ . '/blotter_requests_lib.php';
 require __DIR__ . '/reports_lib.php';
 
 date_default_timezone_set((string) config('timezone', 'Asia/Manila'));

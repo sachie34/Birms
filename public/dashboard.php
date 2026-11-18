@@ -16,22 +16,35 @@ $nextMonth = $today->modify('first day of next month')->format('Y-m-d 00:00:00')
 
 $residentCounts = can('residents.view') ? (db_one(
     "SELECT COUNT(*) AS total_n,
-            COALESCE(SUM(residency_status = 'Active'), 0) AS active_n,
-            COALESCE(SUM(residency_status = 'Relocated'), 0) AS relocated_n
-     FROM residents WHERE archived_at IS NULL"
-) ?? ['total_n' => 0, 'active_n' => 0, 'relocated_n' => 0]) : null;
+            COALESCE(SUM(COALESCE(rs.label, r.residency_status) = 'Active'), 0) AS active_n,
+            COALESCE(SUM(COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) = 'Transferred'), 0) AS transferred_n,
+            COALESCE(SUM(COALESCE(rs.label, r.residency_status) = 'Deceased'), 0) AS deceased_n,
+            COALESCE(SUM(COALESCE(rs.label, r.residency_status) = 'Non-resident'), 0) AS nonresident_n
+     FROM residents r
+     LEFT JOIN lookups rs ON rs.lookup_id = r.resident_status_id AND rs.list_key = 'resident_status'
+     WHERE r.archived_at IS NULL"
+) ?? ['total_n' => 0, 'active_n' => 0, 'transferred_n' => 0, 'deceased_n' => 0, 'nonresident_n' => 0]) : null;
 
 $requestCounts = can('requests.view') ? (db_one(
     "SELECT COUNT(*) AS total_n,
-            COALESCE(SUM(status IN ('Pending','Review','Ready')), 0) AS active_n,
-            COALESCE(SUM(status = 'Claimed'), 0) AS claimed_n,
-            COALESCE(SUM(status = 'Rejected'), 0) AS rejected_n
+            COALESCE(SUM(msit_status = 'Pending'), 0) AS pending_n,
+            COALESCE(SUM(msit_status = 'Approved'), 0) AS approved_n,
+            COALESCE(SUM(msit_status = 'Rejected'), 0) AS rejected_n,
+            COALESCE(SUM(msit_status = 'Released'), 0) AS released_n
      FROM document_requests"
-) ?? ['total_n' => 0, 'active_n' => 0, 'claimed_n' => 0, 'rejected_n' => 0]) : null;
+) ?? ['total_n' => 0, 'pending_n' => 0, 'approved_n' => 0, 'rejected_n' => 0, 'released_n' => 0]) : null;
 
-$householdCounts = can('residents.view') ? (db_one(
-    'SELECT COUNT(*) AS total_n FROM households'
-) ?? ['total_n' => 0]) : null;
+$queueCounts = can('queue.view') ? (db_one(
+    "SELECT COUNT(*) AS total_n,
+            COALESCE(SUM(status = 'Waiting'), 0) AS waiting_n,
+            COALESCE(SUM(status = 'Called'), 0) AS called_n,
+            COALESCE(SUM(status = 'Served'), 0) AS served_n
+     FROM queue_entries WHERE queue_date = CURDATE()"
+) ?? ['total_n' => 0, 'waiting_n' => 0, 'called_n' => 0, 'served_n' => 0]) : null;
+
+$venueCounts = can('venues.view') ? (db_one(
+    "SELECT COUNT(*) AS pending_n FROM venue_reservations WHERE status = 'Pending'"
+) ?? ['pending_n' => 0]) : null;
 
 $monthlyIssuance = can('certificates.history') ? (db_one(
     'SELECT COUNT(*) AS issued_n FROM issuances WHERE issued_at >= ? AND issued_at < ?',
@@ -44,19 +57,21 @@ $monthlyCollections = can('reports.view')
 
 $blotterCounts = can('blotters.view') ? (db_one(
     "SELECT COUNT(*) AS total_n,
-            COALESCE(SUM(status = 'Pending'), 0) AS pending_n,
-            COALESCE(SUM(status = 'Active'), 0) AS active_n,
-            COALESCE(SUM(status = 'Scheduled'), 0) AS scheduled_n,
-            COALESCE(SUM(status = 'Resolved'), 0) AS resolved_n
-     FROM blotters WHERE archived_at IS NULL"
-) ?? ['total_n' => 0, 'pending_n' => 0, 'active_n' => 0, 'scheduled_n' => 0, 'resolved_n' => 0]) : null;
+            COALESCE(SUM(msit_status = 'Ongoing'), 0) AS ongoing_n,
+            COALESCE(SUM(msit_status = 'Unresolved'), 0) AS unresolved_n,
+            COALESCE(SUM(msit_status = 'Resolved'), 0) AS resolved_n,
+            COALESCE(SUM(msit_status = 'Dismissed'), 0) AS dismissed_n,
+            COALESCE(SUM(msit_status = 'Archived'), 0) AS archived_n
+     FROM blotters"
+) ?? ['total_n' => 0, 'ongoing_n' => 0, 'unresolved_n' => 0, 'resolved_n' => 0, 'dismissed_n' => 0, 'archived_n' => 0]) : null;
 
 $populationByPurok = can('reports.view') ? db_all(
     "SELECT COALESCE(pk.label, 'Purok not assigned') AS label, COUNT(*) AS total_n
      FROM residents r
-     LEFT JOIN households h ON h.household_id = r.household_id
-     LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id AND pk.list_key = 'purok'
-     WHERE r.archived_at IS NULL AND r.residency_status = 'Active'
+     LEFT JOIN lookups pk ON pk.lookup_id = r.purok_id AND pk.list_key = 'purok'
+     LEFT JOIN lookups rs ON rs.lookup_id = r.resident_status_id AND rs.list_key = 'resident_status'
+     WHERE r.archived_at IS NULL
+       AND COALESCE(rs.label, r.residency_status) = 'Active'
      GROUP BY COALESCE(pk.label, 'Purok not assigned')
      ORDER BY total_n DESC, label"
 ) : [];
@@ -72,13 +87,16 @@ render_header('Operations Overview', [['Operations Overview', null]], 'dashboard
 
 <div class="row g-3 mb-3">
   <?php if ($residentCounts !== null): ?>
-  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Residents</h2><p>Current registry</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $residentCounts['total_n']) ?></div><div class="small text-muted"><?= number_format((int) $residentCounts['active_n']) ?> active · <?= number_format((int) $residentCounts['relocated_n']) ?> relocated</div></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Residents</h2><p>Current registry</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $residentCounts['total_n']) ?></div><div class="small text-muted"><?= number_format((int) $residentCounts['active_n']) ?> active · <?= number_format((int) $residentCounts['transferred_n']) ?> transferred</div></div></div></div>
   <?php endif; ?>
-  <?php if ($householdCounts !== null): ?>
-  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Households</h2><p>Registered household records</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $householdCounts['total_n']) ?></div><div class="small text-muted">Centralized household directory</div></div></div></div>
+  <?php if ($queueCounts !== null): ?>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Queue tickets today</h2><p>Blotter · Documents · Venue</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $queueCounts['total_n']) ?></div><div class="small text-muted"><?= number_format((int) $queueCounts['waiting_n']) ?> waiting · <?= number_format((int) $queueCounts['called_n']) ?> called · <?= number_format((int) $queueCounts['served_n']) ?> served</div></div></div></div>
+  <?php endif; ?>
+  <?php if ($venueCounts !== null): ?>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Venue requests</h2><p>Awaiting staff decision</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $venueCounts['pending_n']) ?></div><div class="small text-muted">Pending reservations</div></div></div></div>
   <?php endif; ?>
   <?php if ($requestCounts !== null): ?>
-  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Active requests</h2><p>Pending, under review or ready for pickup</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $requestCounts['active_n']) ?></div><div class="small text-muted"><?= number_format((int) $requestCounts['claimed_n']) ?> issued · <?= number_format((int) $requestCounts['rejected_n']) ?> rejected</div></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Document requests</h2><p>Pending, approved, rejected and released</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $requestCounts['total_n']) ?></div><div class="small text-muted"><?= number_format((int) $requestCounts['pending_n']) ?> pending · <?= number_format((int) $requestCounts['approved_n']) ?> approved · <?= number_format((int) $requestCounts['released_n']) ?> released</div></div></div></div>
   <?php endif; ?>
   <?php if ($monthlyIssuance !== null): ?>
   <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Certificates issued</h2><p><?= e($today->format('F Y')) ?></p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $monthlyIssuance['issued_n']) ?></div><div class="small text-muted">Issued documents recorded this month</div></div></div></div>
@@ -87,20 +105,20 @@ render_header('Operations Overview', [['Operations Overview', null]], 'dashboard
   <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Revenue collected</h2><p><?= e($today->format('F Y')) ?> · reconciled ledger</p></div><div class="card-body-b"><div class="fs-2 fw-bold">₱<?= number_format((float) $monthlyCollections['collected_amount'], 2) ?></div><div class="small text-muted">Pending reconciliation: ₱<?= number_format((float) $monthlyCollections['pending_amount'], 2) ?></div></div></div></div>
   <?php endif; ?>
   <?php if ($blotterCounts !== null): ?>
-  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Open blotter cases</h2><p>Not archived or resolved</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $blotterCounts['pending_n'] + (int) $blotterCounts['active_n'] + (int) $blotterCounts['scheduled_n']) ?></div><div class="small text-muted"><?= number_format((int) $blotterCounts['pending_n']) ?> pending · <?= number_format((int) $blotterCounts['scheduled_n']) ?> scheduled</div></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card-b h-100"><div class="card-h"><h2>Open blotter cases</h2><p>Ongoing and unresolved</p></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((int) $blotterCounts['ongoing_n'] + (int) $blotterCounts['unresolved_n']) ?></div><div class="small text-muted"><?= number_format((int) $blotterCounts['ongoing_n']) ?> ongoing · <?= number_format((int) $blotterCounts['unresolved_n']) ?> unresolved</div></div></div></div>
   <?php endif; ?>
 </div>
 
 <div class="card-b mb-3" id="quick-start">
   <div class="card-h">
     <h2>Start here: quick workflows</h2>
-    <p>Choose the task you need. These shortcuts follow your current role's permissions.</p>
+    <p>Choose the task you need. Each shortcut follows your role's permissions. Residents use the public kiosk or the shared request QR code.</p>
   </div>
   <div class="card-body-b">
     <div class="border rounded-3 p-3 mb-3">
       <strong>Document request flow</strong>
-      <p class="mb-1 mt-1 small">Find or register resident <span class="text-muted">→</span> create request <span class="text-muted">→</span> complete requirements check <span class="text-muted">→</span> Administrator/Captain approval <span class="text-muted">→</span> Ready for Pickup <span class="text-muted">→</span> issue and print certificate.</p>
-      <p class="mb-0 small text-muted">Incomplete requirements block issuance. Approval moves a request directly to Ready for Pickup; there is no separate saved “Approved” status. Issuance displays the final request status as Issued.</p>
+      <p class="mb-1 mt-1 small">Resident submits through the kiosk/request QR <span class="text-muted">→</span> Secretary reviews records and requirements <span class="text-muted">→</span> Staff approves or rejects <span class="text-muted">→</span> BIRMS generates the approved document <span class="text-muted">→</span> Staff releases it.</p>
+      <p class="mb-0 small text-muted">The request tracker shows Pending, Approved, Rejected or Released. Every submitted document request receives a reference number that residents can use to check its status.</p>
     </div>
     <div class="row g-3">
       <?php if (can('residents.view')): ?>
@@ -118,7 +136,7 @@ render_header('Operations Overview', [['Operations Overview', null]], 'dashboard
         <p class="small text-muted"><?= can('requests.add') ? 'Choose an existing active resident, then select the document and review its requirements.' : 'Open the queue to see requests and the next permitted steps.' ?></p>
         <a class="btn btn-sm btn-light border" href="<?= e(base_url('requests/index.php')) ?>">Open request queue</a>
         <?php if (can('requests.add')): ?><a class="btn btn-sm btn-primary mt-1" href="<?= e(base_url('requests/form.php')) ?>">New request</a><?php endif; ?>
-        <?php if (can('requests.add')): ?><a class="btn btn-sm btn-light border mt-1" href="<?= e(base_url('visitors/index.php')) ?>">Visitor logbook</a><?php endif; ?>
+
       </div></div>
       <?php endif; ?>
 
@@ -134,17 +152,34 @@ render_header('Operations Overview', [['Operations Overview', null]], 'dashboard
       <?php if (can('blotters.view')): ?>
       <div class="col-md-6 col-xl-4"><div class="border rounded-3 p-3 h-100">
         <div class="small text-muted mb-1">04 · BLOTTER</div><h3 class="h6">Record or follow up a case</h3>
-        <p class="small text-muted">Open the case list to search, check status and review hearing dates.</p>
+        <p class="small text-muted">Search and filter cases by date, Purok and the five required statuses: Ongoing, Unresolved, Resolved, Dismissed and Archived.</p>
         <a class="btn btn-sm btn-light border" href="<?= e(base_url('blotters/index.php')) ?>">Open blotter</a>
         <?php if (can('blotters.add')): ?><a class="btn btn-sm btn-primary mt-1" href="<?= e(base_url('blotters/form.php')) ?>">File a case</a><?php endif; ?>
         <?php if (can('hearings.view')): ?><a class="btn btn-sm btn-light border mt-1" href="<?= e(base_url('blotters/hearings.php')) ?>">Hearings</a><?php endif; ?>
       </div></div>
       <?php endif; ?>
 
+      <?php if (can('queue.view')): ?>
+      <div class="col-md-6 col-xl-4"><div class="border rounded-3 p-3 h-100">
+        <div class="small text-muted mb-1">05 · SERVICE QUEUE</div><h3 class="h6">Call and monitor queue numbers</h3>
+        <p class="small text-muted">Manage separate Blotter, Documents and Venue queues, or open the public number display.</p>
+        <a class="btn btn-sm btn-light border" href="<?= e(base_url('queue/index.php')) ?>">Open service queue</a>
+        <a class="btn btn-sm btn-primary mt-1" href="<?= e(base_url('queue/display.php')) ?>" target="_blank" rel="noopener">Public display</a>
+      </div></div>
+      <?php endif; ?>
+
+      <?php if (can('venues.view')): ?>
+      <div class="col-md-6 col-xl-4"><div class="border rounded-3 p-3 h-100">
+        <div class="small text-muted mb-1">06 · VENUES</div><h3 class="h6">Review venue availability</h3>
+        <p class="small text-muted">Check green/red venue availability and review reservation requests.</p>
+        <a class="btn btn-sm btn-light border" href="<?= e(base_url('venues/index.php')) ?>">Open venues</a>
+      </div></div>
+      <?php endif; ?>
+
       <?php if (can('reports.view')): ?>
       <div class="col-md-6 col-xl-4"><div class="border rounded-3 p-3 h-100">
         <div class="small text-muted mb-1">05 · REPORTS</div><h3 class="h6">Review totals and export</h3>
-        <p class="small text-muted">Choose the report type and period, then validate totals before printing or exporting CSV.</p>
+        <p class="small text-muted">Choose the report type and period, then review resident, request, blotter, venue and queue statistics.</p>
         <a class="btn btn-sm btn-light border" href="<?= e(base_url('reports/index.php')) ?>">Open reports</a>
       </div></div>
       <?php endif; ?>
@@ -208,7 +243,7 @@ render_header('Operations Overview', [['Operations Overview', null]], 'dashboard
 
 <?php if (can('reports.view')): ?>
 <div class="card-b mt-3">
-  <div class="card-h d-flex justify-content-between align-items-start flex-wrap gap-2"><div><h2>Population by Purok</h2><p>Active, non-archived resident profiles, grouped from household assignments.</p></div><a class="btn btn-light border btn-sm" href="<?= e(base_url('reports/index.php?type=demographics')) ?>">Open demographic report</a></div>
+  <div class="card-h d-flex justify-content-between align-items-start flex-wrap gap-2"><div><h2>Population by Purok</h2><p>Active, non-archived resident profiles grouped by their saved Purok.</p></div><a class="btn btn-light border btn-sm" href="<?= e(base_url('reports/index.php?type=demographics')) ?>">Open demographic report</a></div>
   <div class="card-body-b">
     <?php if (!$populationByPurok): ?><?= empty_state('bi-people', 'No resident records are available for this summary.') ?>
     <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Residents</th></tr></thead><tbody>

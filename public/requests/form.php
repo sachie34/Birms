@@ -206,6 +206,10 @@ if (is_post() && $resident !== null) {
                 [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
                  $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
+            db_exec("INSERT INTO request_status_history
+                     (service, reference_no, previous_status, new_status, changed_by, note, request_id)
+                     VALUES ('Documents', ?, NULL, 'Pending', ?, 'Request submitted through the office intake form.', ?)",
+                [$ref, audit_actor()['user_id'] ?? null, $new]);
             store_document_upload('request', $new, $file);
             audit('request_created', 'Requests', 'Success',
                 $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'] . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
@@ -228,13 +232,17 @@ page_head($title, $resident ? 'For ' . resident_name($resident) . ($resident['re
 echo errors_box($errors);
 if ($resident === null) {
     $q = get_str('q') !== '' ? get_str('q') : (string) ($visit['visitor_name'] ?? '');
-    $found = $q !== '' ? resident_search(['q' => $q, 'purok' => '', 'status' => '', 'category' => '', 'show' => ''], 10, 0)[0] : [];
-    card_start('Find the resident', 'Search by name or household code.');
+    $searchFilters = resident_filters(['q' => $q, 'purok' => '', 'status' => '', 'type' => '', 'show' => ''], false);
+    $found = $q !== '' ? resident_search($searchFilters, 10, 0)[0] : [];
+    card_start('Find the resident', 'Search by name, Resident ID, address or email. Purok is shown in each result.');
     echo '<form method="get" action="' . e(base_url('requests/form.php')) . '" class="filters px-0 border-0">' . ($visit ? '<input type="hidden" name="visit" value="' . (int) $visit['visit_id'] . '">' : '')
-       . '<div><label class="form-label" for="q">Name</label><input class="form-control" id="q" name="q" value="' . e($q) . '" maxlength="60" required autofocus></div><div><button class="btn btn-primary" type="submit">Search</button></div></form>';
+       . '<div><label class="form-label" for="q">Resident name, ID, address or email</label><input class="form-control" id="q" name="q" value="' . e($q) . '" maxlength="80" required autofocus></div><div><button class="btn btn-primary" type="submit">Search</button></div></form>';
     if ($q !== '' && !$found) { echo empty_state('bi-person-x', 'No resident matches. Register the resident first.') . (can('residents.add') ? '<p class="text-center">' . btn_link('residents/form.php', 'Register resident', 'btn-light border') . '</p>' : ''); }
-    foreach ($found as $r) { echo '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><strong>' . e(resident_name($r)) . '</strong><div class="small text-muted">' . e((string) ($r['household_code'] ?? 'no household')) . ' · ' . e((string) ($r['purok'] ?? '')) . '</div></div>'
-        . '<a class="btn btn-sm btn-primary" href="' . e(base_url('requests/form.php?resident=' . (int) $r['resident_id'] . ($visit ? '&visit=' . (int) $visit['visit_id'] : ''))) . '">Select</a></div>'; }
+    foreach ($found as $r) {
+        $details = trim((string) ($r['resident_no'] ?? 'Resident ID not assigned') . ' · ' . (string) ($r['address'] ?? 'Address not recorded') . ' · ' . (string) ($r['purok'] ?? 'Purok not assigned'));
+        echo '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><strong>' . e(resident_name($r)) . '</strong><div class="small text-muted">' . e($details) . '</div></div>'
+            . '<a class="btn btn-sm btn-primary" href="' . e(base_url('requests/form.php?resident=' . (int) $r['resident_id'] . ($visit ? '&visit=' . (int) $visit['visit_id'] : ''))) . '">Select</a></div>';
+    }
     card_end();
 } else {
     $action = base_url('requests/form.php' . ($ex ? '?id=' . (int) $ex['request_id'] : ''));

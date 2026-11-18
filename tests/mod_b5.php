@@ -7,6 +7,9 @@ function run_b5(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $capOld = db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'");
+    $signatureFixture = fx_upload_chairman_signature($adm);
+    record('B5-22', 'Admin uploads a valid Chairman JPG through the protected settings route',
+        $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
     db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
     db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ Test Purok B5', 9991)"); $pk = (int) db_val("SELECT lookup_id FROM lookups WHERE label = 'ZZ Test Purok B5'");
     db_exec("INSERT INTO households (household_code, purok_id, street_address) VALUES ('ZZTEST-B5', ?, 'ZZ Test Address 5')", [$pk]); $hh = (int) db()->lastInsertId();
@@ -16,14 +19,17 @@ function run_b5(array $S, string $base): void
     $tPaid = $mkType('ZZ Test Cert Paid', '50.00', $body); $tFree = $mkType('ZZ Test Cert Free', '0.00', 'Free for {{full_name}}'); $tNoFee = $mkType('ZZ Test Cert NoFee', null, 'x {{full_name}}'); $tNoWord = $mkType('ZZ Test Cert NoWording', '10.00', null);
     $birth = '1990-05-12';
     $mkRes = function (string $first, ?int $household = null, bool $arch = false) use ($hh, $birth): int {
-        db_exec("INSERT INTO residents (household_id, last_name, first_name, middle_name, birthdate, sex, civil_status, archived_at) VALUES (?, 'ZZTest5', ?, 'Mid', ?, 'Male', 'Single', ?)", [$household ?? $hh, $first, $birth, $arch ? date('Y-m-d H:i:s') : null]);
+        $email = 'b5-' . strtolower(preg_replace('/[^a-z0-9]+/i', '-', $first) ?? 'resident') . '@example.test';
+        db_exec("INSERT INTO residents (household_id, last_name, first_name, middle_name, birthdate, sex, civil_status, email_address, notification_preference, archived_at) VALUES (?, 'ZZTest5', ?, 'Mid', ?, 'Male', 'Single', ?, 'email', ?)",
+            [$household ?? $hh, $first, $birth, $email, $arch ? date('Y-m-d H:i:s') : null]);
         return (int) db()->lastInsertId();
     };
-    $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n): int {
+    $staffUserId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
+    $n = 0; $mkReq = function (int $res, int $type, string $status = 'Ready', string $purpose = 'ZZ Test purpose') use (&$n, $staffUserId): int {
         $n++;
         $requirementsStatus = $status === 'Ready' ? 'Complete' : 'Not checked';
-        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requirements_status, requested_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $requirementsStatus]);
+        db_exec('INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, msit_status, requirements_status, requested_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)',
+            ['ZZREQ-' . substr(md5((string) microtime(true) . $n), 0, 10), $res, $type, $purpose, $status, $status === 'Ready' ? 'Approved' : 'Pending', $requirementsStatus, $staffUserId ?: null]);
         return (int) db()->lastInsertId();
     };
     $issue = fn(Http $h, int $req, array $o = []) => post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req] + $o);
@@ -34,7 +40,7 @@ function run_b5(array $S, string $base): void
     $bad = ''; foreach (['/certificates/issue.php' => 'certificates.issue', '/certificates/history.php' => 'certificates.history', '/certificates/history_export.php' => 'reports.export'] as $p => $perm) { [$ok, $why] = rbac_page($S, $p, $perm); if (!$ok) { $bad .= "$p: $why"; } }
     record('B5-1', 'Issue, history and export pages: every role gets exactly what the permission map says', $bad === '', $bad);
     $rReady = $mkReq($res, $tPaid); $rPend = $mkReq($res, $tPaid, 'Pending');
-    $list = $sec->get('/certificates/issue.php');
+    $list = $clk->get('/certificates/issue.php');
     record('B5-2', 'The issue list shows Ready requests only', str_contains($list['body'], 'request=' . $rReady) && !str_contains($list['body'], 'request=' . $rPend));
 
     // blockers
@@ -46,29 +52,43 @@ function run_b5(array $S, string $base): void
         $rFee => 'fee for', $rWord => 'wording', $rArch => 'archived', $rNoAddr => '{{purok}}',
         $rNoCap => 'Captain', $rNoRequirements => 'requirements have not been marked Complete',
     ];
-    $miss = []; foreach ($pgs as $id => $needle) { $pg = $sec->get('/certificates/issue.php?request=' . $id); $pp = issue_try($sec, $id); if (!str_contains($pg['body'], $needle) || $iss($id) !== null || $stat($id) !== 'Ready' || str_contains($pg['body'], 'name="or_number"')) { $miss[] = $needle; } }
+    $miss = []; foreach ($pgs as $id => $needle) { $pg = $clk->get('/certificates/issue.php?request=' . $id); $pp = issue_try($clk, $id); if (!str_contains($pg['body'], $needle) || $iss($id) !== null || $stat($id) !== 'Ready' || str_contains($pg['body'], 'name="or_number"')) { $miss[] = $needle; } }
     db_exec("UPDATE settings SET setting_value = 'Test Captain Name' WHERE setting_key = 'captain_name'");
     record('B5-3', 'Certificate issuance is blocked for unchecked requirements, unset fee, unset wording, missing Captain name, missing Purok and archived residents (no certificate, status unchanged)', !$miss, implode(',', $miss));
-    $pp = $issue($sec, $rPend, ['or_number' => 'ZZOR-P']);
+    $pp = $issue($clk, $rPend, ['or_number' => 'ZZOR-P']);
     record('B5-4', 'A request that is not Ready cannot be issued', $iss($rPend) === null && $stat($rPend) === 'Pending');
 
     // payment rules
-    $clerkTry = $issue($clk, $rReady, ['or_number' => 'ZZOR-CLEK']);
-    $a = $issue($sec, $rReady, ['or_number' => '']); $b = $issue($sec, $rReady, ['or_number' => 'bad number!']);
-    record('B5-5', 'Clerk cannot issue; authorized issuance still validates O.R. values without saving invalid records', $clerkTry['status'] === 403 && $iss($rReady) === null && $stat($rReady) === 'Ready' && str_contains($a['body'], 'O.R.') && str_contains($b['body'], 'letters, numbers and dashes'));
-    $ok = $issue($sec, $rReady, ['or_number' => 'ZZOR-1']); $row = $iss($rReady);
+    $secretaryTry = $issue($sec, $rReady, ['or_number' => 'ZZOR-SEC']);
+    $a = $issue($clk, $rReady, ['or_number' => '']); $b = $issue($clk, $rReady, ['or_number' => 'bad number!']);
+    record('B5-5', 'Secretary cannot issue; Staff issuance still validates O.R. values without saving invalid records', $secretaryTry['status'] === 403 && $iss($rReady) === null && $stat($rReady) === 'Ready' && str_contains($a['body'], 'O.R.') && str_contains($b['body'], 'letters, numbers and dashes'));
+    $ok = $issue($clk, $rReady, ['or_number' => 'ZZOR-1']); $row = $iss($rReady);
     $ageNow = age_on($birth);
-    record('B5-6', 'Secretary issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Claimed', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed');
+    record('B5-6', 'Staff issues: reference CERT-YYYY-NNNN, fee snapshot, O.R., request becomes Released in the SRS field', $ok['status'] === 302 && str_contains((string) loc($ok), 'print.php') && $row !== null && preg_match('/^CERT-' . date('Y') . '-\d{4,}$/', (string) $row['reference_no']) === 1 && (float) $row['fee_amount'] === 50.0 && $row['or_number'] === 'ZZOR-1' && $stat($rReady) === 'Claimed'
+        && (string) db_val('SELECT msit_status FROM document_requests WHERE request_id = ?', [$rReady]) === 'Released');
+    record('B5-23', 'Certificate issuance snapshots the currently configured Chairman image path', $row !== null
+        && (string) ($row['chairman_signature_path'] ?? '') === (string) ($signatureFixture['current'] ?? '')
+        && chairman_signature_path_to_absolute((string) ($row['chairman_signature_path'] ?? '')) !== null);
     $bt = (string) ($row['body_text'] ?? '');
     record('B5-7', 'The wording was filled from the record (uppercase name, age, Purok, address, day, month, Captain, reference)', str_contains($bt, 'ANA MID ZZTEST5') && str_contains($bt, (string) $ageNow) && str_contains($bt, 'ZZ Test Purok B5') && str_contains($bt, 'ZZ Test Address 5') && str_contains($bt, ordinal((int) date('j')) . ' day of ' . date('F Y')) && str_contains($bt, 'Test Captain Name') && str_contains($bt, (string) $row['reference_no']) && !str_contains($bt, '{{'), $bt);
-    $audit = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_issued' AND entity_id = ?", [$row['issuance_id'] ?? 0]) + (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? AND remarks LIKE '%Claimed via%'", [$rReady]);
-    record('B5-8', 'Issuing and its two audit rows were saved together', $audit === 2);
+    $auditIssued = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_issued' AND entity_id = ?", [$row['issuance_id'] ?? 0]);
+    $auditReleased = (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'request_status_changed' AND entity_id = ? AND remarks LIKE '% -> Released via %'", [$rReady]);
+    $historyReleased = (int) db_val("SELECT COUNT(*) FROM request_status_history WHERE request_id = ? AND service = 'Documents' AND previous_status = 'Approved' AND new_status = 'Released'", [$rReady]);
+    record('B5-8', 'Issuing and its audit/status-history records were saved together', $auditIssued === 1 && $auditReleased === 1 && $historyReleased === 1, 'issued=' . $auditIssued . '; release-audit=' . $auditReleased . '; history=' . $historyReleased);
+    $requestRef = (string) db_val('SELECT reference_no FROM document_requests WHERE request_id = ?', [$rReady]);
+    $releaseNotice = db_one("SELECT recipient, channel, event_type, delivery_status, message FROM notification_outbox WHERE resident_id = ? AND reference_no = ? AND event_type = 'document_request_status_changed' ORDER BY notification_id DESC LIMIT 1", [$res, $requestRef]);
+    record('B5-24', 'Certificate release queues a resident email notice using the document request reference',
+        $releaseNotice !== null
+        && $releaseNotice['recipient'] === 'b5-ana@example.test'
+        && $releaseNotice['channel'] === 'email'
+        && in_array($releaseNotice['delivery_status'], ['queued', 'sent'], true)
+        && str_contains((string) $releaseNotice['message'], 'Released'));
 
-    $r2 = $mkReq($res, $tPaid); $dup = $issue($sec, $r2, ['or_number' => 'ZZOR-1']);
+    $r2 = $mkReq($res, $tPaid); $dup = $issue($clk, $r2, ['or_number' => 'ZZOR-1']);
     record('B5-9', 'The same O.R. number cannot be used twice; the second request stays Ready', str_contains($dup['body'], 'already used') && $iss($r2) === null && $stat($r2) === 'Ready');
-    $again = $issue($sec, $rReady, ['or_number' => 'ZZOR-2']);
+    $again = $issue($clk, $rReady, ['or_number' => 'ZZOR-2']);
     record('B5-10', 'Issuing the same request again is refused (only one certificate per request)', (int) db_val('SELECT COUNT(*) FROM issuances WHERE request_id = ?', [$rReady]) === 1);
-    $rFree = $mkReq($res, $tFree); $f1 = $issue($sec, $rFree, ['or_number' => '']); $frow = $iss($rFree);
+    $rFree = $mkReq($res, $tFree); $f1 = $issue($clk, $rFree, ['or_number' => '']); $frow = $iss($rFree);
     record('B5-11', 'A free document (fee 0, not "unset") issues without an O.R. number', $f1['status'] === 302 && $frow !== null && (float) $frow['fee_amount'] === 0.0 && $frow['or_number'] === null);
 
     // permanence
@@ -88,7 +108,23 @@ function run_b5(array $S, string $base): void
     $secPrint = $sec->post($issuancePath, ['_csrf' => $sec->token($issuancePath), 'do' => 'record_print']);
     $admPrint = $adm->post($issuancePath, ['_csrf' => $adm->token($issuancePath), 'do' => 'record_print']);
     $c5 = (int) db_val('SELECT print_count FROM issuances WHERE issuance_id = ?', [$row['issuance_id']]);
-    record('B5-13', 'Opening a certificate does not count as printing; authorized print actions increment and audit the count', $capView['status'] === 200 && $c1 === $c0 && $clkView['status'] === 200 && $c2 === $c0 && $secView['status'] === 200 && $c3 === $c0 && $admView['status'] === 200 && $c4 === $c0 && str_contains($clkView['body'], 'Republic of the Philippines') && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"ok":true') && $secPrint['status'] === 200 && str_contains($secPrint['body'], '"ok":true') && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"ok":true') && $c5 === $c0 + 3 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 3);
+    record('B5-13', 'Opening a certificate does not count as printing; only Staff/Admin print actions increment and audit the count',
+        $capView['status'] === 200 && $c1 === $c0
+        && $clkView['status'] === 200 && $c2 === $c0
+        && $secView['status'] === 200 && $c3 === $c0
+        && $admView['status'] === 200 && $c4 === $c0
+        && str_contains($clkView['body'], 'Republic of the Philippines')
+        && str_contains($capView['body'], 'Preview only')
+        && !str_contains($secView['body'], 'data-print')
+        && $clkPrint['status'] === 200 && str_contains($clkPrint['body'], '"ok":true')
+        && $secPrint['status'] === 403
+        && $admPrint['status'] === 200 && str_contains($admPrint['body'], '"ok":true')
+        && $c5 === $c0 + 2
+        && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'certificate_printed'") >= 2,
+        'chairman-view=' . $capView['status'] . '; staff-view=' . $clkView['status']
+        . '; secretary-view=' . $secView['status'] . '; admin-view=' . $admView['status']
+        . '; staff-print=' . $clkPrint['status'] . '; secretary-print=' . $secPrint['status']
+        . '; admin-print=' . $admPrint['status'] . '; counts=' . $c0 . '/' . $c5);
     $capPdf = $cap->get('/certificates/pdf.php?id=' . $row['issuance_id']);
     record('B5-21', 'Captain can preview an issued certificate but cannot print or download a PDF; print-authorized roles receive controls',
         $capView['status'] === 200
@@ -108,17 +144,24 @@ function run_b5(array $S, string $base): void
     record('B5-15', 'History export: secretary gets CSV with a header and it is audited; clerk is refused', $csv['status'] === 200 && str_contains($csv['body'], 'Reference') && str_contains($csv['body'], 'ZZOR-1') && $clkCsv['status'] === 403 && (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'issuances_exported'") >= 1);
 
     // other pages show it
-    $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $sec->get('/requests/view.php?id=' . $r2);
-    record('B5-16', 'Request view links the certificate; a Ready request shows the Issue button; the resident view lists the document', str_contains($rv['body'], (string) $row['reference_no']) && str_contains($rReady2['body'], 'Issue certificate') && str_contains($rr['body'], 'ZZ Test Cert Paid'));
+    $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $clk->get('/requests/view.php?id=' . $r2);
+    record('B5-16', 'Request view links the certificate; Staff sees Issue for a Ready request; the resident view lists issued documents',
+        str_contains($rv['body'], (string) $row['reference_no'])
+        && $rReady2['status'] === 200 && str_contains($rReady2['body'], 'Issue certificate')
+        && str_contains($rr['body'], 'ZZ Test Cert Paid'),
+        'issued-link=' . (str_contains($rv['body'], (string) $row['reference_no']) ? 'yes' : 'no')
+        . '; staff-issue=' . (str_contains($rReady2['body'], 'Issue certificate') ? 'yes' : 'no')
+        . '; resident-doc=' . (str_contains($rr['body'], 'ZZ Test Cert Paid') ? 'yes' : 'no')
+        . '; resident-page=' . $rr['status']);
 
     // safety
-    $nt = $sec->post('/certificates/issue.php?request=' . $r2, ['request_id' => (string) $r2, 'or_number' => 'ZZOR-NT']); $cp = $issue($cap, $r2, ['or_number' => 'ZZOR-CAP']); $clerkDirect = $issue($clk, $r2, ['or_number' => 'ZZOR-CLERK']);
+    $nt = $clk->post('/certificates/issue.php?request=' . $r2, ['request_id' => (string) $r2, 'or_number' => 'ZZOR-NT']); $cp = $issue($cap, $r2, ['or_number' => 'ZZOR-CAP']); $secretaryDirect = $issue($sec, $r2, ['or_number' => 'ZZOR-SEC']);
     $odd = [$clk->get('/certificates/issue.php?request[]=1'), $clk->get('/certificates/issue.php?request=99999999'), $sec->get('/certificates/print.php?id[]=1'), $sec->get('/certificates/print.php?id=99999999'), $sec->get('/certificates/history.php?q[]=x&type[]=1&from[]=a&to=garbage&page[]=2'),
             $clk->post('/certificates/issue.php', ['_csrf' => $clk->token('/certificates/issue.php'), 'request_id' => ['1'], 'or_number' => ['x']])];
     $bad = []; foreach ($odd as $i => $o) { if ($o['status'] >= 500 || leaks($o)) { $bad[] = $i . ':' . $o['status']; } }
-    record('B5-17', 'No-token issue refused; Clerk and Captain cannot issue; odd parameters never crash', $nt['status'] === 403 && $cp['status'] === 403 && $clerkDirect['status'] === 403 && $iss($r2) === null && !$bad, implode(',', $bad));
+    record('B5-17', 'No-token issue refused; Chairman and Secretary cannot issue; Staff can process valid requests; odd parameters never crash', $nt['status'] === 403 && $cp['status'] === 403 && $secretaryDirect['status'] === 403 && $iss($r2) === null && !$bad, implode(',', $bad));
 
-    $ids = []; for ($i = 0; $i < 8; $i++) { $q = $mkReq($res, $tFree); $issue($sec, $q); $ids[] = (string) ($iss($q)['reference_no'] ?? ''); }
+    $ids = []; for ($i = 0; $i < 8; $i++) { $q = $mkReq($res, $tFree); $issue($clk, $q); $ids[] = (string) ($iss($q)['reference_no'] ?? ''); }
     record('B5-18', '8 certificates issued in a row all get different reference numbers', count(array_unique($ids)) === 8 && !in_array('', $ids, true));
 
     // database protections (findings H4 and M1)
@@ -133,10 +176,19 @@ function run_b5(array $S, string $base): void
     // New paid-issuance tests create a separate ledger row with an FK to each issuance.
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTEST5%')");
     db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTEST5%'");
-    db_exec("DELETE FROM sms_outbox WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
-    db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'");
+    db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%')");
+    $testRequestIds = array_map(static fn(array $r): int => (int) $r['request_id'], db_all("SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZZREQ-%'"));
+    if ($testRequestIds) {
+        $marks = implode(',', array_fill(0, count($testRequestIds), '?'));
+        db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
+    }
+    db_exec("DELETE FROM notification_outbox WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTest5%')");
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest5%'"); db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'"); db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");
     db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'captain_name'", [$capOld]);
+    fx_restore_chairman_signature($signatureFixture);
 }
 function issue_try(Http $h, int $req): array { return post_as($h, '/certificates/issue.php?request=' . $req, '/certificates/issue.php?request=' . $req, ['request_id' => (string) $req, 'or_number' => 'ZZOR-TRY']); }

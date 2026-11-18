@@ -39,10 +39,23 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 32, 'captain' => 15, 'secretary' => 24, 'clerk' => 12];
+$expect = ['admin' => 40, 'captain' => 12, 'secretary' => 19, 'clerk' => 19];
 $counts = array_map('count', permission_map());
-record('U1', 'Administrator has full module access; role counts match current map (32/15/24/12)', $counts === $expect, json_encode($counts));
-record('U2', 'Deny by default; Secretary/Admin can review; Captain/Admin decide; Clerk print-only; Captain ledger read-only; Secretary cannot restore residents or manage users', !role_can('ghost', 'dashboard.view') && role_can('secretary', 'requests.review') && role_can('admin', 'requests.review') && !role_can('clerk', 'requests.review') && !role_can('secretary', 'requests.approve') && role_can('captain', 'requests.approve') && role_can('clerk', 'certificates.print') && !role_can('clerk', 'certificates.issue') && role_can('secretary', 'certificates.issue') && role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore') && role_can('admin', 'residents.restore') && role_can('secretary', 'settings.edit') && !role_can('secretary', 'users.manage') && role_can('captain', 'cash_ledger.view') && !role_can('captain', 'cash_ledger.manage') && role_can('admin', 'cash_ledger.manage') && !role_can('clerk', 'users.manage') && role_can('admin', 'residents.edit') && role_can('admin', 'reports.view') && !role_can('clerk', 'reports.view') && !role_can('clerk', 'nonsense.perm'));
+record('U1', 'Admin has full module access; Chairman is view-only; Secretary manages records; Staff handles final decisions, certificates, queues and the unified request tracker (40/12/19/19 permissions)', $counts === $expect, json_encode($counts));
+record('U2', 'Chairman is read-only; Secretary reviews and manages records; Staff approves requests, issues certificates and manages queues; Admin manages accounts and settings',
+    !role_can('ghost', 'dashboard.view')
+    && role_can('secretary', 'requests.review') && !role_can('secretary', 'requests.approve')
+    && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
+    && !role_can('clerk', 'settings.edit') && !role_can('clerk', 'users.manage')
+    && role_can('clerk', 'queue.manage') && role_can('clerk', 'venues.approve')
+     && role_can('admin', 'requests.tracker') && role_can('clerk', 'requests.tracker')
+     && !role_can('secretary', 'requests.tracker') && !role_can('captain', 'requests.tracker')
+    && !role_can('secretary', 'residents.add') && !role_can('secretary', 'residents.edit')
+    && !role_can('secretary', 'residents.archive') && !role_can('secretary', 'residents.restore')
+    && role_can('admin', 'residents.restore') && role_can('admin', 'settings.edit')
+    && role_can('admin', 'users.manage') && !role_can('captain', 'requests.approve')
+    && !role_can('captain', 'residents.edit') && !role_can('captain', 'queue.manage')
+    && role_can('captain', 'reports.view') && role_can('captain', 'venues.view'));
 $bad = ['short1', 'allletterspassword', '12345678901', 'zz_test_admin1X', 'Password123'];
 $okPw = ['Tidy-Horse-2026'];
 $pwOk = true; foreach ($bad as $p) { if (!password_policy_errors($p, 'zz_test_admin')) { $pwOk = false; } } foreach ($okPw as $p) { if (password_policy_errors($p, 'x')) { $pwOk = false; } }
@@ -93,12 +106,124 @@ if ($guardScript !== false) {
 }
 $guardText = implode("\n", $guardOutput);
 record('U8', 'Module test runner refuses before tests when a real SMS provider is enabled', $guardExit === 2 && str_contains($guardText, 'REFUSED: the selected SMS provider is enabled.') && !str_contains($guardText, 'BIRMS module tests  base='));
+
+record('U9', 'Database-backed rate limiter enforces a fixed window, separates identities and resets at the next window', (function (): bool {
+    $scope = 'unit-test-' . bin2hex(random_bytes(4));
+    $now = time(); $window = 60; $nextWindow = (intdiv($now, $window) + 1) * $window;
+    $hashA = hash('sha256', $scope . "\0" . 'synthetic-user-a');
+    $hashB = hash('sha256', $scope . "\0" . 'synthetic-user-b');
+    try {
+        $a = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $now);
+        $b = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $now);
+        $c = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $now);
+        $other = rate_limit_allow($scope, 'synthetic-user-b', 2, $window, $now);
+        $reset = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $nextWindow);
+        return $a && $b && !$c && $other && $reset;
+    } finally {
+        db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash IN (?, ?)', [$hashA, $hashB]);
+    }
+})());
+
+record('U10', 'PHP runtime guard rejects known-unpatched and unsupported versions while accepting patched supported branches', (function (): bool {
+    $cases = [
+        80100 => false,
+        80234 => false, 80235 => true,
+        80335 => false, 80336 => true,
+        80426 => false, 80427 => true,
+        80511 => false, 80512 => true,
+        80600 => false,
+        90000 => false,
+    ];
+    foreach ($cases as $version => $expectedSafe) {
+        if ((php_runtime_security_issue($version, '2026-11-19') === null) !== $expectedSafe) { return false; }
+    }
+    return php_runtime_upgrade_notice(80235, '2026-11-19') !== null
+        && php_runtime_upgrade_notice(80336, '2026-11-19') === null
+        && php_runtime_security_issue(80235, '2027-01-01') !== null
+        && php_runtime_upgrade_notice(80235, '2027-01-01') === null;
+})());
+
+$promptSource = (string) file_get_contents(APP_ROOT . '/tools/cli_prompt.php');
+$setupPromptSource = (string) file_get_contents(APP_ROOT . '/tools/setup_xampp.php');
+$adminPromptSource = (string) file_get_contents(APP_ROOT . '/tools/create_admin.php');
+record('U11', 'Setup/admin password input uses the shared hidden-input helper instead of echoing typed secrets',
+    str_contains($promptSource, 'Read-Host -Prompt $prompt -AsSecureString')
+    && str_contains($promptSource, 'stty -echo')
+    && str_contains($setupPromptSource, 'cli_prompt_secret(')
+    && str_contains($adminPromptSource, 'cli_prompt_secret(')
+    && !str_contains($setupPromptSource, 'input is visible')
+    && !str_contains($adminPromptSource, 'it is visible on Windows'));
+
+$resultsBeforeReporterProbe = $results;
+$results = [];
+ob_start();
+record('U12-PROBE', 'Synthetic failure-reporting probe', false, 'intentional diagnostic probe');
+$reportProbeOutput = (string) ob_get_clean();
+$reportProbeRows = $results;
+$results = $resultsBeforeReporterProbe;
+$reportProbeRow = $reportProbeRows[0] ?? null;
+record('U12', 'A failed assertion remains recorded as FAIL with its diagnostic text and does not disappear from the result collection',
+    is_array($reportProbeRow)
+    && ($reportProbeRow[0] ?? '') === 'U12-PROBE'
+    && ($reportProbeRow[2] ?? '') === 'FAIL'
+    && ($reportProbeRow[3] ?? '') === 'intentional diagnostic probe'
+    && str_contains($reportProbeOutput, 'FAIL')
+    && str_contains($reportProbeOutput, 'intentional diagnostic probe'));
+
+$emailSettingBefore = db_val("SELECT setting_value FROM settings WHERE setting_key = 'email_enabled'");
+$emailGuardOutput = [];
+$emailGuardExit = 99;
+$emailGuardScript = tempnam(sys_get_temp_dir(), 'birms-email-guard-');
+if ($emailGuardScript !== false) {
+    try {
+        db_exec(
+            "INSERT INTO settings (setting_key, setting_value) VALUES ('email_enabled', '1')
+             ON DUPLICATE KEY UPDATE setting_value = '1'"
+        );
+        $emailGuardProbe = "<?php\n"
+            . "putenv('BIRMS_EMAIL_ENABLED=false');\n"
+            . "putenv('BIRMS_DB_NAME=barangay_db_work');\n"
+            . "require " . var_export(APP_ROOT . '/tests/run_modules.php', true) . ";\n";
+        if (file_put_contents($emailGuardScript, $emailGuardProbe) !== false) {
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($emailGuardScript) . ' 2>&1', $emailGuardOutput, $emailGuardExit);
+        } else {
+            $emailGuardOutput[] = 'Unable to write the email-preflight probe.';
+        }
+    } finally {
+        @unlink($emailGuardScript);
+        if ($emailSettingBefore === null) {
+            db_exec("DELETE FROM settings WHERE setting_key = 'email_enabled'");
+        } else {
+            db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'email_enabled'", [(string) $emailSettingBefore]);
+        }
+    }
+}
+$emailGuardText = implode("\\n", $emailGuardOutput);
+record('U13', 'Module tests refuse to run when the saved email setting is enabled, preventing delivery to real residents',
+    $emailGuardExit === 2
+    && str_contains($emailGuardText, 'REFUSED: real email notifications are enabled.')
+    && !str_contains($emailGuardText, 'BIRMS module tests  base='));
+
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
 $appPhpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/app', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $appPhpFiles[] = (string) $f; } }
 $inline = array_filter(array_merge($phpFiles, $appPhpFiles), fn($f) => preg_match('/\sstyle="|\son[a-z]+="|<script(?![^>]*\ssrc=)/i', (string) file_get_contents($f)));
 record('S2', 'No inline styles or scripts (strict Content-Security-Policy)', !$inline, $inline ? implode(',', array_map('basename', $inline)) : '');
+
+$bootstrapCss = (string) file_get_contents(APP_ROOT . '/public/assets/vendor/bootstrap/css/bootstrap.min.css');
+$bootstrapJs = (string) file_get_contents(APP_ROOT . '/public/assets/vendor/bootstrap/js/bootstrap.bundle.min.js');
+$iconsCss = (string) file_get_contents(APP_ROOT . '/public/assets/vendor/bootstrap-icons/bootstrap-icons.min.css');
+$fontWoff2 = APP_ROOT . '/public/assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2';
+$fontWoff = APP_ROOT . '/public/assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff';
+record('S3', 'Bundled Bootstrap assets use pinned reviewed releases and both referenced icon fonts exist',
+    str_contains($bootstrapCss, 'Bootstrap  v5.3.8')
+    && str_contains($bootstrapJs, 'Bootstrap v5.3.8')
+    && str_contains($iconsCss, 'Bootstrap Icons v1.13.1')
+    && str_contains($iconsCss, 'fonts/bootstrap-icons.woff2')
+    && str_contains($iconsCss, 'fonts/bootstrap-icons.woff')
+    && is_file($fontWoff2) && filesize($fontWoff2) > 1000
+    && is_file($fontWoff) && filesize($fontWoff) > 1000);
 
 /* ------------------------------------------------------------ http: access control */
 $anon = new Http($base);
@@ -117,12 +242,22 @@ $pre = new Http($base); $pre->get('/index.php'); $before = file_get_contents($pr
 preg_match('/BIRMSSESS\s+(\S+)/', (string) $before, $m1);
 $r = $pre->login($fx['clerk'], TP); $cookie = implode(' | ', $r['cookies']); $afterJar = file_get_contents($pre->jar); preg_match('/BIRMSSESS\s+(\S+)/', (string) $afterJar, $m2);
 record('H6', 'Sign-in works; cookie is HttpOnly + SameSite; session id changes at login', $r['status'] === 302 && str_contains(loc($r), 'dashboard.php') && stripos($cookie, 'httponly') !== false && stripos($cookie, 'samesite=lax') !== false && ($m1[1] ?? 'a') !== ($m2[1] ?? 'a'), $cookie === '' ? 'no cookie' : '');
-$roleLabel = ['admin' => 'Administrator', 'captain' => 'Barangay Captain', 'secretary' => 'Barangay Secretary', 'clerk' => 'Barangay Staff'];
-$okAll = true; foreach ($sessions as $role => $s) { $r = $s->get('/dashboard.php'); if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) { $okAll = false; } }
-record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll);
+$roleLabel = ['admin' => 'Admin', 'captain' => 'Chairman (Punong Barangay)', 'secretary' => 'Secretary', 'clerk' => 'Staff'];
+$okAll = true; $dashboardProblems = [];
+foreach ($sessions as $role => $s) {
+    $r = $s->get('/dashboard.php');
+    if ($r['status'] !== 200 || !str_contains($r['body'], $roleLabel[$role]) || leaks($r)) {
+        $okAll = false;
+        $dashboardProblems[] = $role . ': HTTP ' . $r['status']
+            . '; role-label=' . (str_contains($r['body'], $roleLabel[$role]) ? 'yes' : 'no')
+            . '; leaks=' . (leaks($r) ? 'yes' : 'no')
+            . '; body=' . substr(trim(strip_tags((string) $r['body'])), 0, 600);
+    }
+}
+record('H7', 'Dashboard loads for all four roles with no error text or file paths', $okAll, implode(' | ', $dashboardProblems));
 
-/* RBAC matrix: users.manage = admin; audit.view = admin+captain; audit.export = admin */
-$matrix = ['/admin/users.php' => ['admin'], '/admin/user_edit.php' => ['admin'], '/admin/audit.php' => ['admin', 'captain'], '/admin/audit_export.php' => ['admin']];
+/* RBAC matrix aligned with the revised SRS: account and audit administration are Admin-only. */
+$matrix = ['/admin/users.php' => ['admin'], '/admin/user_edit.php' => ['admin'], '/admin/audit.php' => ['admin'], '/admin/audit_export.php' => ['admin']];
 $okAll = true; $why = '';
 foreach ($matrix as $path => $allowed) { foreach ($sessions as $role => $s) {
     $r = $s->get($path); $want = in_array($role, $allowed, true) ? 200 : 403;
@@ -275,6 +410,24 @@ db_exec("DELETE FROM users WHERE username LIKE 'zz\\_test\\_%'");
 db_exec("DELETE FROM login_failures WHERE username LIKE 'zz\\_test\\_%' OR username LIKE 'x%'");
 db_exec("DELETE FROM audit_log WHERE module = 'Test'");
 
-$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS')); $fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL')); $skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
+$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS'));
+$fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL'));
+$skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
 echo str_repeat('-', 78) . "\nPASS {$pass}   FAIL {$fail}   NOT TESTED {$skip}   (total " . count($results) . ")\n";
-exit($fail > 0 ? 1 : 0);
+if ($fail > 0) {
+    echo "FAILED CHECKS (retained; fix the cause rather than removing the test):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'FAIL') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+if ($skip > 0) {
+    echo "NOT TESTED CHECKS (investigate before release):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'NOT TESTED') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+exit($fail > 0 || $skip > 0 ? 1 : 0);

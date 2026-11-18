@@ -1,0 +1,24 @@
+.resident-request-qr {
+    display: inline-flex;
+    min-width: 340px;
+    min-height: 340px;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: #fff;
+}
+.resident-request-qr canvas,
+.resident-request-qr img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+@media (max-width: 480px) {
+    .resident-request-qr {
+        min-width: 0;
+        width: 100%;
+        min-height: 300px;
+    }
+}

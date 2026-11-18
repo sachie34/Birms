@@ -7,8 +7,13 @@ require_once __DIR__ . '/../app/backup_lib.php';
 function run_b7(array $S, string $base): void
 {
     $adm = $S['admin']; $cap = $S['captain']; $sec = $S['secretary']; $clk = $S['clerk'];
+    $runToken = strtoupper(strtr(bin2hex(random_bytes(3)), '0123456789abcdef', 'abcdefghijklmnop'));
+    $employmentLabel = 'ZZ B7 Employment ' . $runToken;
+    $incidentTypeLabel = 'ZZ B7 Incident ' . $runToken;
+    $purokLabel = 'ZZ B7 Purok ' . $runToken;
 
-    // Clean interrupted B7 test rows only. Delete any ledger children before deleting issuance parents.
+    // Clean interrupted B7 test rows only. Remove request-history and ledger children before parent requests/issuances.
+    db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'ZB7R%' OR purpose = 'ZZ B7 Fee matrix quote test')");
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no LIKE 'ZB7I%' OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))");
     db_exec("DELETE FROM issuances WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test')");
     db_exec("DELETE FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'");
@@ -16,12 +21,14 @@ function run_b7(array $S, string $base): void
     db_exec("DELETE FROM document_types WHERE name = 'ZZ B7 Matrix Certificate'");
     db_exec("DELETE FROM issuances WHERE reference_no LIKE 'ZB7I%'");
     db_exec("DELETE FROM document_requests WHERE reference_no LIKE 'ZB7R%'");
-    db_exec("DELETE FROM blotter_parties WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no LIKE 'ZB7C%')");
-    db_exec("DELETE FROM hearings WHERE blotter_id IN (SELECT blotter_id FROM blotters WHERE case_no LIKE 'ZB7C%')");
-    db_exec("DELETE FROM blotters WHERE case_no LIKE 'ZB7C%'");
+    // FR-B5 requires permanent blotter records. Previous test cases and their Purok/incident-type
+    // lookups remain as historical rows; this run uses a unique case reference and lookup labels.
     db_exec("DELETE FROM residents WHERE last_name = 'ZZB7Report'");
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZB7H%'");
-    db_exec("DELETE FROM lookups WHERE (list_key = 'employment_status' AND label = 'ZZ B7 Employment') OR (list_key = 'incident_type' AND label = 'ZZ B7 Incident') OR (list_key = 'purok' AND label = 'ZZ B7 Purok')");
+
+    $signatureFixture = fx_upload_chairman_signature($adm);
+    record('B7-17', 'Admin configures the Chairman signature before fee-quote certificate issuance',
+        $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
 
     $bad = '';
     foreach (['/reports/index.php' => 'reports.view', '/admin/backup.php' => 'backup.run'] as $path => $perm) {
@@ -53,17 +60,17 @@ function run_b7(array $S, string $base): void
         && $year['start'] === date('Y-01-01') . ' 00:00:00'
         && $year['end'] === ((int) date('Y') + 1) . '-01-01 00:00:00');
 
-    db_exec("INSERT INTO lookups (list_key, label, sort_order) VALUES ('employment_status', 'ZZ B7 Employment', 9907)");
+    db_exec('INSERT INTO lookups (list_key, label, sort_order) VALUES (?, ?, 9907)', ['employment_status', $employmentLabel]);
     $employmentId = (int) db()->lastInsertId();
-    db_exec("INSERT INTO lookups (list_key, label, sort_order) VALUES ('incident_type', 'ZZ B7 Incident', 9907)");
+    db_exec('INSERT INTO lookups (list_key, label, sort_order) VALUES (?, ?, 9907)', ['incident_type', $incidentTypeLabel]);
     $incidentTypeId = (int) db()->lastInsertId();
-    db_exec("INSERT INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ B7 Purok', 9907)");
+    db_exec('INSERT INTO lookups (list_key, label, sort_order) VALUES (?, ?, 9907)', ['purok', $purokLabel]);
     $purokId = (int) db()->lastInsertId();
 
     $stamp = date('ymdHis') . random_int(10, 99);
-    $houseCode = 'ZB7H' . $stamp;
-    db_exec('INSERT INTO households (household_code, purok_id, street_address) VALUES (?, ?, ?)', [$houseCode, $purokId, 'ZZ B7 Test Address']);
-    $houseId = (int) db()->lastInsertId();
+    $residentNo = 'RES-ZB7-' . $stamp;
+    $residentStatusId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active' LIMIT 1");
+    $residentTypeId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None' LIMIT 1");
 
     $baselineDemo = report_demographics();
     $baselineMonthIssuance = report_issuances($month);
@@ -74,9 +81,12 @@ function run_b7(array $S, string $base): void
         if (age_on('1990-01-01') >= $lo && age_on('1990-01-01') <= $hi) { $ageLabel = $label; break; }
     }
 
-    db_exec("INSERT INTO residents (household_id, last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status, employment_status_id)
-             VALUES (?, 'ZZB7Report', 'ReportTest', '1990-01-01', 'Male', 'Single', 'Active', 'Registered', ?)",
-        [$houseId, $employmentId]);
+    db_exec("INSERT INTO residents
+             (resident_no, address, purok_id, resident_status_id, resident_type_id, marital_status,
+              household_id, last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status, employment_status_id)
+             VALUES (?, 'ZZ B7 Test Address', ?, ?, ?, 'Single', NULL,
+                     'ZZB7Report', 'ReportTest', '1990-01-01', 'Male', 'Single', 'Active', 'Registered', ?)",
+        [$residentNo, $purokId, $residentStatusId, $residentTypeId, $employmentId]);
     $residentId = (int) db()->lastInsertId();
 
     $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance' LIMIT 1");
@@ -84,8 +94,8 @@ function run_b7(array $S, string $base): void
     $issuanceRef = 'ZB7I' . $stamp;
     $caseNo = 'ZB7C' . $stamp;
     $issuedAt = date('Y-m-d H:i:s');
-    db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, requested_at)
-             VALUES (?, ?, ?, 'ZZ B7 report test', 'Claimed', ?)", [$requestRef, $residentId, $typeId, $issuedAt]);
+    db_exec("INSERT INTO document_requests (reference_no, resident_id, type_id, purpose, status, msit_status, requested_at)
+             VALUES (?, ?, ?, 'ZZ B7 report test', 'Claimed', 'Released', ?)", [$requestRef, $residentId, $typeId, $issuedAt]);
     $requestId = (int) db()->lastInsertId();
     db_exec("INSERT INTO issuances (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number, body_text, captain_name, issued_by, issued_by_name, issued_at)
              VALUES (?, ?, ?, ?, 'ZZB7Report, ReportTest', 'Barangay Clearance', 'ZZ B7 report test', 37.25, NULL, 'ZZ B7 test certificate', NULL, NULL, 'B7 test', ?)",
@@ -98,8 +108,8 @@ function run_b7(array $S, string $base): void
     $afterMonthIssuance = report_issuances($month);
     $afterMonthBlotters = report_blotters($month);
     $afterMonthRequests = report_requests($month);
-    $employmentCountOkay = (int) ($afterDemo['employment_status']['ZZ B7 Employment'] ?? 0) === (int) ($baselineDemo['employment_status']['ZZ B7 Employment'] ?? 0) + 1;
-    $purokCountOkay = (int) ($afterDemo['purok']['ZZ B7 Purok'] ?? 0) === (int) ($baselineDemo['purok']['ZZ B7 Purok'] ?? 0) + 1;
+    $employmentCountOkay = (int) ($afterDemo['employment_status'][$employmentLabel] ?? 0) === (int) ($baselineDemo['employment_status'][$employmentLabel] ?? 0) + 1;
+    $purokCountOkay = (int) ($afterDemo['purok'][$purokLabel] ?? 0) === (int) ($baselineDemo['purok'][$purokLabel] ?? 0) + 1;
     $voterCountOkay = (int) ($afterDemo['voter_status']['Registered'] ?? 0) === (int) ($baselineDemo['voter_status']['Registered'] ?? 0) + 1;
     record('B7-4', 'Demographic reports calculate population, age, employment, voter status and Purok totals from stored residents',
         $afterDemo['total'] === $baselineDemo['total'] + 1 && $employmentCountOkay && $purokCountOkay && $voterCountOkay
@@ -111,9 +121,9 @@ function run_b7(array $S, string $base): void
 
     record('B7-6', 'Blotter report aggregates real cases by period, current status, configured incident type and Purok',
         (int) $afterMonthBlotters['summary']['total'] === (int) $baselineMonthBlotters['summary']['total'] + 1
-        && (int) ($afterMonthBlotters['summary']['pending_count']) === (int) $baselineMonthBlotters['summary']['pending_count'] + 1
-        && count(array_filter($afterMonthBlotters['by_type'], fn($r) => $r['incident_type'] === 'ZZ B7 Incident' && (int) $r['case_count'] >= 1)) === 1
-        && count(array_filter($afterMonthBlotters['by_purok'], fn($r) => $r['purok'] === 'ZZ B7 Purok' && (int) $r['case_count'] >= 1)) === 1);
+        && (int) ($afterMonthBlotters['summary']['ongoing_count']) === (int) $baselineMonthBlotters['summary']['ongoing_count'] + 1
+        && count(array_filter($afterMonthBlotters['by_type'], fn($r) => $r['incident_type'] === $incidentTypeLabel && (int) $r['case_count'] >= 1)) === 1
+        && count(array_filter($afterMonthBlotters['by_purok'], fn($r) => $r['purok'] === $purokLabel && (int) $r['case_count'] >= 1)) === 1);
 
     $reportPage = $sec->get('/reports/index.php?type=demographics');
     $issuancePage = $sec->get('/reports/index.php?type=issuance&period=month&year=' . date('Y') . '&month=' . date('n'));
@@ -121,18 +131,28 @@ function run_b7(array $S, string $base): void
     $blotterPage = $sec->get('/reports/index.php?type=blotter&period=month&year=' . date('Y') . '&month=' . date('n'));
     $periodicPage = $sec->get('/reports/index.php?type=periodic&period=month&year=' . date('Y') . '&month=' . date('n') . '&recipient=pnp');
     $dashboard = $sec->get('/dashboard.php');
+    $b77Checks = [
+        'demographic-category' => $reportPage['status'] === 200 && str_contains($reportPage['body'], $employmentLabel),
+        'issuance-report' => $issuancePage['status'] === 200 && !str_contains($issuancePage['body'], 'ZZ B7 report test'),
+        'request-report' => $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary'),
+        'blotter-report' => $blotterPage['status'] === 200 && str_contains($blotterPage['body'], $incidentTypeLabel),
+        'periodic-title' => $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Periodic Administrative Report'),
+        'periodic-recipient' => str_contains($periodicPage['body'], 'Philippine National Police (PNP)'),
+        'periodic-collections' => str_contains($periodicPage['body'], 'Revenue collected'),
+        'dashboard-purok' => $dashboard['status'] === 200 && str_contains($dashboard['body'], $purokLabel),
+    ];
+    $b77Failures = array_keys(array_filter($b77Checks, static fn(bool $ok): bool => !$ok));
     record('B7-7', 'Report screens and dashboard expose the configured categories and real operational summaries',
-        $reportPage['status'] === 200 && str_contains($reportPage['body'], 'ZZ B7 Employment') && $issuancePage['status'] === 200
-        && str_contains($issuancePage['body'], 'ZZ B7 report test') === false
-        && $requestsPage['status'] === 200 && str_contains($requestsPage['body'], 'Request processing summary')
-        && $blotterPage['status'] === 200 && str_contains($blotterPage['body'], 'ZZ B7 Incident')
-        && $periodicPage['status'] === 200 && str_contains($periodicPage['body'], 'Monthly / Quarterly Administrative Report')
-        && str_contains($periodicPage['body'], 'Philippine National Police (PNP)')
-        && str_contains($periodicPage['body'], 'Revenue collected')
-        && $dashboard['status'] === 200 && str_contains($dashboard['body'], 'ZZ B7 Purok'));
+        !$b77Failures,
+        ($b77Failures ? implode(',', $b77Failures) : 'all report checks passed')
+        . '; page-statuses=' . $reportPage['status'] . '/' . $issuancePage['status'] . '/' . $requestsPage['status'] . '/' . $blotterPage['status'] . '/' . $periodicPage['status'] . '/' . $dashboard['status']
+        . '; demographic=' . ($b77Checks['demographic-category'] ? 'yes' : 'no')
+        . '; blotter=' . ($b77Checks['blotter-report'] ? 'yes' : 'no')
+        . '; periodic=' . substr(trim(strip_tags((string) $periodicPage['body'])), 0, 600)
+        . '; dashboard=' . substr(trim(strip_tags((string) $dashboard['body'])), 0, 600));
     record('B7-10', 'Request-processing summaries derive totals, current status, document type and assignee from saved requests',
         (int) $afterMonthRequests['summary']['total'] === (int) $baselineMonthRequests['summary']['total'] + 1
-        && (int) $afterMonthRequests['summary']['claimed_count'] === (int) $baselineMonthRequests['summary']['claimed_count'] + 1
+        && (int) $afterMonthRequests['summary']['released_count'] === (int) $baselineMonthRequests['summary']['released_count'] + 1
         && count(array_filter($afterMonthRequests['by_type'], fn($r) => $r['type_name'] === 'Barangay Clearance' && (int) $r['request_count'] >= 1)) >= 1
         && count(array_filter($afterMonthRequests['by_assignee'], fn($r) => $r['assigned_to'] === 'Unassigned' && (int) $r['request_count'] >= 1)) >= 1);
 
@@ -152,7 +172,7 @@ function run_b7(array $S, string $base): void
         && str_contains($badLegacyQuantity['body'], 'Quantity must be 1 when using the per-document fee')
         && (int) db_val('SELECT COUNT(*) FROM document_requests WHERE purpose = ?', [$badLegacyPurpose]) === 0;
 
-    $feeRuleResponse = post_as($sec, '/admin/settings.php', '/admin/settings.php', [
+    $feeRuleResponse = post_as($adm, '/admin/settings.php', '/admin/settings.php', [
         'do' => 'fee_rule_add', 'tab' => 'fee_matrix', 'type_id' => (string) $matrixTypeId,
         'fee_category' => 'ZZ B7 Fee Category', 'fee_tier' => 'ZZ B7 Fee Tier',
         'unit_rate' => '18.50', 'min_quantity' => '1', 'max_quantity' => '4',
@@ -196,9 +216,9 @@ function run_b7(array $S, string $base): void
         'requirements_status' => 'Complete', 'requirements_note' => '',
         'fee_rule_id' => (string) $matrixRuleId, 'fee_quantity' => '3',
     ]);
-    $quoteReady = post_as($cap, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
+    $quoteReady = post_as($clk, '/requests/view.php?id=' . $quoteRequestId, '/requests/action.php', ['id' => (string) $quoteRequestId, 'to' => 'Ready']);
     $quoteOr = 'ZB7OR' . $stamp;
-    $quoteIssue = post_as($sec, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
+    $quoteIssue = post_as($clk, '/certificates/issue.php?request=' . $quoteRequestId, '/certificates/issue.php?request=' . $quoteRequestId, [
         'request_id' => (string) $quoteRequestId, 'or_number' => $quoteOr,
     ]);
     $quoteIssuance = db_one('SELECT issuance_id, fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate, body_text FROM issuances WHERE request_id = ?', [$quoteRequestId]);
@@ -309,15 +329,22 @@ function run_b7(array $S, string $base): void
         && str_contains($periodicCsvBody, 'Recorded issuance fee amounts (not confirmed collections)')
         && str_contains($periodicCsvBody, 'Pending reconciliation amount'));
 
-    // Clean ledger children before removing issuances, and issuances before requests.
+    // Clean child history/outbox/ledger rows before removing issuances and requests.
+    $cleanupRequestIds = array_values(array_filter([(int) $requestId, (int) ($quoteRequestId ?? 0)], static fn(int $id): bool => $id > 0));
+    if ($cleanupRequestIds) {
+        $marks = implode(',', array_fill(0, count($cleanupRequestIds), '?'));
+        db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
+        db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
+        db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $cleanupRequestIds);
+    }
     db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE reference_no = ? OR request_id IN (SELECT request_id FROM document_requests WHERE purpose = 'ZZ B7 Fee matrix quote test'))", [$issuanceRef]);
-    if (isset($quoteRequestId) && $quoteRequestId > 0) { db_exec('DELETE FROM issuances WHERE request_id = ?', [$quoteRequestId]); db_exec('DELETE FROM document_requests WHERE request_id = ?', [$quoteRequestId]); }
+    db_exec('DELETE FROM issuances WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
+    db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
+    db_exec('DELETE FROM document_requests WHERE request_id IN (' . implode(',', array_fill(0, count($cleanupRequestIds), '?')) . ')', $cleanupRequestIds);
     if (isset($matrixRuleId) && $matrixRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$matrixRuleId]); }
     if (isset($matrixTypeId) && $matrixTypeId > 0) { db_exec('DELETE FROM document_types WHERE type_id = ?', [$matrixTypeId]); }
-    db_exec('DELETE FROM issuances WHERE reference_no = ?', [$issuanceRef]);
-    db_exec('DELETE FROM document_requests WHERE request_id = ?', [$requestId]);
-    db_exec('DELETE FROM blotters WHERE case_no = ?', [$caseNo]);
+    // Keep the blotter case and its referenced incident type/Purok as permanent FR-B5 history.
     db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
-    db_exec('DELETE FROM households WHERE household_id = ?', [$houseId]);
-    db_exec('DELETE FROM lookups WHERE lookup_id IN (?, ?, ?)', [$employmentId, $incidentTypeId, $purokId]);
+    db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$employmentId]);
+    fx_restore_chairman_signature($signatureFixture);
 }
