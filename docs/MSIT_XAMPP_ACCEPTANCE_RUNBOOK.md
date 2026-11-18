@@ -139,6 +139,7 @@ Use a synthetic resident with a unique Resident ID, birthdate, email and mobile 
 5. Confirm the selected notification preference is saved to the resident and queue ticket. Change the profile preference and verify existing tickets still use their saved preference for called/near alerts.
 6. Confirm the public queue screen shows service and current queue number but no resident-identifying information.
 7. Leave the kiosk untouched and verify it returns to the resident home screen after the inactivity timeout. Confirm that the resident flow cannot access Admin/Staff routes.
+8. Verify timeout submits the CSRF-protected POST logout form, not GET. Confirm it clears the resident identity, OTP token, flash message and all saved queue/request/venue/blotter receipt data, and that a second resident using the same browser cannot see the previous resident's receipt.
 8. Test the request tracker using the reference number. Confirm document, blotter and venue statuses are shown according to their respective workflows.
 
 Physical touchscreen sizing, kiosk inactivity behavior, the actual QR scan from a phone, and local-network access are **NOT RUN** until tested on the target equipment.
