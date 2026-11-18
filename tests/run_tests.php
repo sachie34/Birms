@@ -161,6 +161,20 @@ $appPhpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectory
 $inline = array_filter(array_merge($phpFiles, $appPhpFiles), fn($f) => preg_match('/\sstyle="|\son[a-z]+="|<script(?![^>]*\ssrc=)/i', (string) file_get_contents($f)));
 record('S2', 'No inline styles or scripts (strict Content-Security-Policy)', !$inline, $inline ? implode(',', array_map('basename', $inline)) : '');
 
+$bootstrapCss = (string) file_get_contents(APP_ROOT . '/public/assets/vendor/bootstrap/css/bootstrap.min.css');
+$bootstrapJs = (string) file_get_contents(APP_ROOT . '/public/assets/vendor/bootstrap/js/bootstrap.bundle.min.js');
+$iconsCss = (string) file_get_contents(APP_ROOT . '/public/assets/vendor/bootstrap-icons/bootstrap-icons.min.css');
+$fontWoff2 = APP_ROOT . '/public/assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2';
+$fontWoff = APP_ROOT . '/public/assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff';
+record('S3', 'Bundled Bootstrap assets use pinned reviewed releases and both referenced icon fonts exist',
+    str_contains($bootstrapCss, 'Bootstrap  v5.3.8')
+    && str_contains($bootstrapJs, 'Bootstrap v5.3.8')
+    && str_contains($iconsCss, 'Bootstrap Icons v1.13.1')
+    && str_contains($iconsCss, 'fonts/bootstrap-icons.woff2')
+    && str_contains($iconsCss, 'fonts/bootstrap-icons.woff')
+    && is_file($fontWoff2) && filesize($fontWoff2) > 1000
+    && is_file($fontWoff) && filesize($fontWoff) > 1000);
+
 /* ------------------------------------------------------------ http: access control */
 $anon = new Http($base);
 $prot = ['/dashboard.php', '/admin/users.php', '/admin/user_edit.php', '/admin/audit.php', '/admin/audit_export.php', '/account/password.php', '/search.php'];
