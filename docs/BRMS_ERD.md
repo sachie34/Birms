@@ -14,7 +14,7 @@ The diagram below is generated from the branch's expected schema: entity attribu
 ```mermaid
 erDiagram
     AUDIT_LOG {
-      bigint audit_id PK
+      bigint audit_id PK,UK
       datetime occurred_at
       int user_id FK
       varchar username_snapshot
@@ -27,7 +27,7 @@ erDiagram
       varchar ip_address
     }
     BLOTTER_PARTIES {
-      int party_id PK
+      int party_id PK,UK
       int blotter_id FK
       enum party_role
       varchar full_name
@@ -37,7 +37,7 @@ erDiagram
       timestamp created_at
     }
     BLOTTERS {
-      int blotter_id PK
+      int blotter_id PK,UK
       varchar case_no UK
       date incident_date
       time incident_time
@@ -56,7 +56,7 @@ erDiagram
       enum archived_from_status
     }
     CASH_COLLECTION_LEDGER {
-      int ledger_id PK
+      int ledger_id PK,UK
       int issuance_id FK,UK
       datetime transaction_date
       varchar requester_name
@@ -77,7 +77,7 @@ erDiagram
       int last_value
     }
     DOCUMENT_ATTACHMENTS {
-      int attachment_id PK
+      int attachment_id PK,UK
       int visit_id FK
       int request_id FK
       varchar original_name
@@ -89,7 +89,7 @@ erDiagram
       datetime uploaded_at
     }
     DOCUMENT_REQUESTS {
-      int request_id PK
+      int request_id PK,UK
       varchar reference_no UK
       int visit_id FK
       int resident_id FK
@@ -112,7 +112,7 @@ erDiagram
       enum msit_status
     }
     DOCUMENT_TYPES {
-      int type_id PK
+      int type_id PK,UK
       varchar name UK
       decimal fee_amount
       text template_body
@@ -121,26 +121,26 @@ erDiagram
       int sort_order
     }
     FEE_MATRIX {
-      int fee_rule_id PK
-      int type_id FK,UK
-      varchar fee_category UK
-      varchar fee_tier UK
+      int fee_rule_id PK,UK
+      int type_id FK
+      varchar fee_category
+      varchar fee_tier
       decimal unit_rate
       int min_quantity
       int max_quantity
-      date effective_from UK
+      date effective_from
       date effective_to
       tinyint is_active
       int created_by FK
       timestamp created_at
     }
     HEARINGS {
-      int hearing_id PK
-      int blotter_id FK,UK
-      datetime scheduled_at UK
+      int hearing_id PK,UK
+      int blotter_id FK
+      datetime scheduled_at
       varchar venue
       varchar notes
-      enum status UK
+      enum status
       varchar status_note
       int summons_count
       int created_by FK
@@ -148,7 +148,7 @@ erDiagram
       timestamp updated_at
     }
     HOUSEHOLDS {
-      int household_id PK
+      int household_id PK,UK
       varchar household_code UK
       int purok_id FK
       varchar street_address
@@ -156,7 +156,7 @@ erDiagram
       timestamp updated_at
     }
     ISSUANCES {
-      int issuance_id PK
+      int issuance_id PK,UK
       varchar reference_no UK
       int request_id FK,UK
       int resident_id FK
@@ -182,21 +182,21 @@ erDiagram
       varchar chairman_signature_path
     }
     LOGIN_FAILURES {
-      bigint id PK
+      bigint id PK,UK
       varchar username
       varchar ip_address
       datetime attempted_at
     }
     LOOKUPS {
-      int lookup_id PK
-      varchar list_key UK
-      varchar label UK
+      int lookup_id PK,UK
+      varchar list_key
+      varchar label
       int sort_order
       tinyint is_active
       timestamp created_at
     }
     NOTIFICATION_OUTBOX {
-      bigint notification_id PK
+      bigint notification_id PK,UK
       int resident_id FK
       enum channel
       varchar recipient
@@ -218,10 +218,10 @@ erDiagram
       int last_number
     }
     QUEUE_ENTRIES {
-      bigint queue_id PK
-      enum service UK
-      date queue_date UK
-      int queue_number UK
+      bigint queue_id PK,UK
+      enum service
+      date queue_date
+      int queue_number
       int resident_id FK
       varchar reference_no
       varchar purpose
@@ -241,7 +241,7 @@ erDiagram
       timestamp updated_at
     }
     REQUEST_STATUS_HISTORY {
-      bigint history_id PK
+      bigint history_id PK,UK
       enum service
       varchar reference_no
       varchar previous_status
@@ -254,7 +254,7 @@ erDiagram
       int reservation_id FK
     }
     RESIDENT_VERIFICATION_CHALLENGES {
-      bigint challenge_id PK
+      bigint challenge_id PK,UK
       char challenge_token_hash UK
       char code_hash
       int resident_id FK
@@ -267,7 +267,7 @@ erDiagram
       datetime created_at
     }
     RESIDENT_VERIFICATIONS {
-      int verification_id PK
+      int verification_id PK,UK
       int resident_id FK
       enum verification_subject
       enum verification_method
@@ -278,7 +278,7 @@ erDiagram
       timestamp verified_at
     }
     RESIDENTS {
-      int resident_id PK
+      int resident_id PK,UK
       int household_id FK
       varchar last_name
       varchar first_name
@@ -308,13 +308,13 @@ erDiagram
       enum notification_preference
     }
     SETTINGS {
-      varchar setting_key PK
+      varchar setting_key PK,UK
       text setting_value
       int updated_by FK
       timestamp updated_at
     }
     SMS_OUTBOX {
-      int sms_id PK
+      int sms_id PK,UK
       datetime created_at
       varchar recipient_number
       varchar message
@@ -331,7 +331,7 @@ erDiagram
       timestamp updated_at
     }
     USERS {
-      int user_id PK
+      int user_id PK,UK
       varchar username UK
       varchar password_hash
       varchar full_name
@@ -345,7 +345,7 @@ erDiagram
       timestamp updated_at
     }
     VENUE_RESERVATIONS {
-      int reservation_id PK
+      int reservation_id PK,UK
       varchar reference_no UK
       int venue_id FK
       int resident_id FK
@@ -360,7 +360,7 @@ erDiagram
       timestamp updated_at
     }
     VENUES {
-      int venue_id PK
+      int venue_id PK,UK
       varchar name UK
       varchar description
       enum availability_override
@@ -370,7 +370,7 @@ erDiagram
       timestamp updated_at
     }
     VISITOR_LOG {
-      int visit_id PK
+      int visit_id PK,UK
       datetime visited_at
       varchar visitor_name
       varchar purpose
@@ -379,7 +379,7 @@ erDiagram
       timestamp created_at
     }
     RESIDENT_BLOTTER_REQUESTS {
-      int request_id PK
+      int request_id PK,UK
       varchar reference_no UK
       int resident_id FK
       date incident_date
@@ -459,6 +459,17 @@ erDiagram
     BLOTTERS o|--o| RESIDENT_BLOTTER_REQUESTS : "blotter_id"
     USERS o|--o{ RESIDENT_BLOTTER_REQUESTS : "reviewed_by"
 ```
+
+## Composite unique indexes
+
+These are **multi-column** uniqueness constraints. They do not make each listed column individually unique:
+
+| Table | Constraint | Columns |
+|---|---|---|
+| `fee_matrix` | `uq_fee_matrix_effective` | `type_id`, `fee_category`, `fee_tier`, `effective_from` |
+| `hearings` | `uq_hearing_case_time_status` | `blotter_id`, `scheduled_at`, `status` |
+| `lookups` | `uq_lookup` | `list_key`, `label` |
+| `queue_entries` | `uq_queue_service_day_number` | `service`, `queue_date`, `queue_number` |
 
 ## Key relationship/cardinality interpretation
 
