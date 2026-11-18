@@ -212,20 +212,21 @@ The MSIT branch was started from the current `main` so it includes the latest me
 - **Blotter:** resident kiosk submission and follow-up, review/accept/reject workflow, revised MSIT case-status data, and audit/history handling are wired into the resident and staff workflows.
 - **Venues:** Admin venue setup, resident/staff reservation submission, red/green availability, manual override, transactional overlap protection, approval/rejection/completion transitions and history.
 - **Queueing and kiosk:** separate daily Blotter, Documents and Venue queues; counter issue/call/serve/skip/cancel; purpose-of-visit capture; request references; privacy-safe public queue display; resident identity verification and inactivity timeout.
+- **Resident notification choice (FR-Q9):** the queue, document-request, blotter-report and venue-reservation kiosk forms let residents select Email, SMS or Both. The choice is saved to the resident record and each queue ticket; called/near alerts use the ticket's saved choice even if the resident later changes their profile preference. Unconfigured SMS fallbacks are recorded with an explicit email-fallback event type.
 - **Resident QR:** a shared public document-request QR entry link, without personal resident information encoded in the QR.
 - **Reports:** data-backed reports for residents/Purok/type, document requests, blotter statuses and queue statistics; added venue-usage reporting and Excel-compatible `.xls` export while retaining CSV. Chairman and Secretary can view and export reports; Staff is restricted according to the permission map.
 - **FR-T6 unified tracker:** a separate Admin/Staff-only All Services Tracker combines Documents, resident Blotter requests and Venue reservations, filterable by service, current status, submission date and search term (including Resident ID). The existing Secretary document-review screen remains separate so its internal review stages are not lost.
 
 ### Latest automated validation
 
-GitHub Actions run **#850** on commit `dfe0f05e11dae1e3f1d2474641241c0d766dee85` completed successfully:
+GitHub Actions run **#885** on commit `b0bca45ce154f7044f204c60cc8e9ee07afb30d4` completed successfully:
 
 | Environment | Security/authentication/audit | Module integration |
 |---|---:|---:|
-| MariaDB 10.4 | 39/39 passed | 231/231 passed |
-| MariaDB 10.11 | 39/39 passed | 231/231 passed |
+| MariaDB 10.4 | 39/39 passed | 235/235 passed |
+| MariaDB 10.11 | 39/39 passed | 235/235 passed |
 
-The B20 report tests verify the venue-usage query, Chairman/Secretary view and Excel export permissions, Staff denial, and retained CSV output. The B21 tests verify that the All Services Tracker lists all three request types, enforces the Staff/Admin permission, filters service/status/date, searches by Resident ID, and links to the corresponding blotter request. The latest logs contained no audit-status warnings.
+The B20 report tests verify the venue-usage query, Chairman/Secretary view and Excel export permissions, Staff denial, and retained CSV output. The B21 tests verify that the All Services Tracker lists all three request types, enforces the Staff/Admin permission, filters service/status/date, searches by Resident ID, and links to the corresponding blotter request. The new B22 tests verify the resident's notification selector on all four kiosk forms, saving Email/SMS/Both choices, SMS-to-email fallback, per-ticket call/near preferences, and rejection of invalid choices.
 
 These are automated integration results against disposable CI databases. They are not evidence of a completed barangay deployment or a successful local XAMPP/LAN acceptance test.
 
