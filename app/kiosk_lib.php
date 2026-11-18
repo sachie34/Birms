@@ -201,15 +201,12 @@ function kiosk_send_verification_code(array $resident): array
 }
 
 /** Verify a one-time code, enforce expiry/attempt limits, and establish a short resident-only kiosk session. */
-function kiosk_verify_code(string $token, string $code): bool
+/** Consume a valid one-time code in one transaction, returning its resident only after commit. */
+function kiosk_consume_verification_code(string $token, string $code): ?int
 {
-    if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1 || preg_match('/^\\d{6}$/', $code) !== 1) { return false; }
-    rate_limit_require('kiosk_verify_ip', client_ip(), 15, 600, 'Too many verification attempts from this device. Please wait 10 minutes.');
+    if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1 || preg_match('/^\\d{6}$/', $code) !== 1) { return null; }
     $tokenHash = hash('sha256', $token);
-
-    // Consume and verify the OTP atomically first. Do not establish a PHP session
-    // until the database has confirmed the one-time challenge was committed.
-    $residentId = db_transaction(function () use ($tokenHash, $token, $code): ?int {
+    return db_transaction(function () use ($tokenHash, $token, $code): ?int {
         $challenge = db_one(
             'SELECT challenge_id, resident_id, code_hash, expires_at, attempt_count, verified_at, consumed_at
              FROM resident_verification_challenges WHERE challenge_token_hash = ? FOR UPDATE',
@@ -234,7 +231,16 @@ function kiosk_verify_code(string $token, string $code): bool
         if ($changed !== 1) { return null; }
         return (int) $challenge['resident_id'];
     });
+}
 
+/** Verify a one-time code, enforce expiry/attempt limits, and establish a short resident-only kiosk session. */
+function kiosk_verify_code(string $token, string $code): bool
+{
+    if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1 || preg_match('/^\\d{6}$/', $code) !== 1) { return false; }
+    rate_limit_require('kiosk_verify_ip', client_ip(), 15, 600, 'Too many verification attempts from this device. Please wait 10 minutes.');
+
+    // The challenge is consumed and committed before the PHP resident session is created.
+    $residentId = kiosk_consume_verification_code($token, $code);
     if ($residentId === null) { return false; }
 
     try {
