@@ -8,7 +8,14 @@
   function reset() {
     if (handle !== null) window.clearTimeout(handle);
     handle = window.setTimeout(function () {
-      window.location.replace('end.php?timeout=1');
+      // end.php is POST-only to prevent cross-site logouts. Submit its server-rendered
+      // CSRF form so the inactivity timer actually clears the resident session.
+      var form = document.getElementById('kiosk-timeout-form');
+      if (form && form.method.toLowerCase() === 'post') {
+        form.submit();
+      } else {
+        window.location.replace('index.php?timeout=1');
+      }
     }, timeout);
   }
   ['pointerdown', 'keydown', 'touchstart', 'click', 'input', 'change'].forEach(function (eventName) {
