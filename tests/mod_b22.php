@@ -332,7 +332,7 @@ function run_b22(array $S, string $base): void
         );
 
         $challengeFixtures = [];
-        $makeChallenge = static function (string $state, int $attempts = 0) use ($residentId, &$challengeFixtures): array {
+        $makeChallenge = static function (string $state, int $attempts = 0) use ($residentId, $email, &$challengeFixtures): array {
             $token = bin2hex(random_bytes(24));
             $code = (string) random_int(100000, 999999);
             $hash = hash('sha256', $token);
