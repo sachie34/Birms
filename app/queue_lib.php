@@ -245,26 +245,20 @@ function queue_enqueue_notifications(
     }
 
     if ($smsId !== null && $smsEnabled) {
+        $status = 'unknown';
         try {
             $result = sms_send_outbox((int) $smsId, false);
             $status = (string) ($result['status'] ?? 'unknown');
-            if (in_array($status, ['failed', 'refunded'], true) && !$emailQueued && $email !== '') {
-                $fallbackId = db_transaction(function () use ($residentId, $email, $message, $event, $reference): int {
-                    return email_queue_notification(
-                        $residentId, $email, 'Barangay queue update', $message,
-                        $event . '_email_fallback', $reference
-                    );
-                });
-                if (email_provider_is_enabled()) {
-                    try {
-                        email_send_notification($fallbackId);
-                    } catch (Throwable $emailError) {
-                        error_log('BIRMS queue fallback email failed for outbox #' . $fallbackId . ': ' . get_class($emailError));
-                    }
-                }
-            }
         } catch (Throwable $smsError) {
+            // Preserve the SMS row as an uncertain attempt; never resend it automatically.
             error_log('BIRMS queue SMS send failed for outbox #' . (int) $smsId . ': ' . get_class($smsError));
+            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+                $service . ' queue #' . $number . ' SMS result could not be confirmed.');
+        }
+        if (!$emailQueued && $email !== '' && resident_sms_needs_email_fallback($status)) {
+            resident_queue_email_fallback(
+                $residentId, $email, $service, $message, $event, $reference, $status
+            );
         }
     }
 }
