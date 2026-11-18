@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_BRMS_Verified" targetNamespace="https://sachie34.github.io/Birms/brms">
+  <bpmn:process id="BRMS_Resident_Service_Process" name="BRMS Resident Service and Processing Workflow" isExecutable="false">
+    <bpmn:startEvent id="Start" name="Resident starts" />
+  <bpmn:task id="Verify" name="Verify Resident ID and birthdate" />
+  <bpmn:exclusiveGateway id="IdentityOK" name="Identity verified?" />
+  <bpmn:task id="OtpFallback" name="Name and birthdate; send one-time code" />
+  <bpmn:exclusiveGateway id="OtpValid" name="OTP valid?" />
+  <bpmn:endEvent id="IdentityFail" name="Identity not verified" />
+  <bpmn:task id="SelectService" name="Open verified kiosk session and choose service" />
+  <bpmn:exclusiveGateway id="ServiceChoice" name="Select service" />
+  <bpmn:task id="DocSubmit" name="Submit document type and purpose" />
+  <bpmn:task id="DocCreate" name="Create request, reference and Documents ticket" />
+  <bpmn:task id="DocQueue" name="Wait in queue; Staff calls and serves / skips / cancels" />
+  <bpmn:task id="DocReview" name="Secretary checks requirements" />
+  <bpmn:exclusiveGateway id="ReqComplete" name="Requirements complete?" />
+  <bpmn:task id="ReqIncomplete" name="Record missing requirements; keep pending" />
+  <bpmn:task id="DocDecision" name="Staff / Admin makes final decision" />
+  <bpmn:exclusiveGateway id="DocApproved" name="Approved?" />
+  <bpmn:task id="DocReject" name="Record rejection and notify resident" />
+  <bpmn:endEvent id="DocRejectEnd" name="Document request rejected" />
+  <bpmn:task id="DocGenerate" name="Generate certificate from saved request data" />
+  <bpmn:exclusiveGateway id="SignatureRequired" name="Chairman signature required?" />
+  <bpmn:task id="ApplySignature" name="Apply stored Chairman signature snapshot" />
+  <bpmn:task id="IssueCertificate" name="Issue certificate and save issuance / fee record" />
+  <bpmn:task id="PrintNotify" name="Print / PDF and queue resident notification" />
+  <bpmn:endEvent id="DocEnd" name="Document released" />
+  <bpmn:task id="BlotterSubmit" name="Submit incident and respondent details" />
+  <bpmn:task id="BlotterCreate" name="Create report reference and Blotter ticket" />
+  <bpmn:task id="BlotterQueue" name="Wait in queue; Staff calls and serves / skips / cancels" />
+  <bpmn:task id="BlotterReview" name="Staff reviews resident report" />
+  <bpmn:exclusiveGateway id="BlotterAccepted" name="Accept report?" />
+  <bpmn:task id="BlotterReject" name="Reject intake; tracker shows Dismissed" />
+  <bpmn:endEvent id="BlotterRejectEnd" name="Blotter intake rejected" />
+  <bpmn:task id="CreateCase" name="Create official case and party records" />
+  <bpmn:task id="CaseManage" name="Manage case status; schedule hearing / summons" />
+  <bpmn:task id="ArchiveCase" name="Archive resolved or dismissed case" />
+  <bpmn:task id="BlotterNotify" name="Record status history and notify if configured" />
+  <bpmn:endEvent id="BlotterEnd" name="Blotter case tracked" />
+  <bpmn:task id="VenueSelect" name="Choose venue, purpose, date and time" />
+  <bpmn:exclusiveGateway id="VenueAvailable" name="No overlapping Pending / Approved booking?" />
+  <bpmn:task id="VenueRetry" name="Choose another date or time" />
+  <bpmn:task id="VenueCreate" name="Create Pending reservation and Venue ticket" />
+  <bpmn:task id="VenueQueue" name="Wait in queue; Staff calls and serves / skips / cancels" />
+  <bpmn:task id="VenueReview" name="Staff reviews reservation" />
+  <bpmn:exclusiveGateway id="VenueApproved" name="Approved?" />
+  <bpmn:task id="VenueReject" name="Record rejection and notify resident" />
+  <bpmn:endEvent id="VenueRejectEnd" name="Venue request rejected" />
+  <bpmn:task id="VenueComplete" name="Set Approved; later mark Completed" />
+  <bpmn:task id="VenueNotify" name="Record status history and notify if configured" />
+  <bpmn:endEvent id="VenueEnd" name="Venue reservation completed" />
+    <bpmn:sequenceFlow id="f1" sourceRef="Start" targetRef="Verify" />
+  <bpmn:sequenceFlow id="f2" sourceRef="Verify" targetRef="IdentityOK" />
+  <bpmn:sequenceFlow id="f3" sourceRef="IdentityOK" targetRef="SelectService" name="Yes" />
+  <bpmn:sequenceFlow id="f4" sourceRef="IdentityOK" targetRef="OtpFallback" name="No" />
+  <bpmn:sequenceFlow id="f5" sourceRef="OtpFallback" targetRef="OtpValid" />
+  <bpmn:sequenceFlow id="f6" sourceRef="OtpValid" targetRef="SelectService" name="Yes" />
+  <bpmn:sequenceFlow id="f7" sourceRef="OtpValid" targetRef="IdentityFail" name="No" />
+  <bpmn:sequenceFlow id="f8" sourceRef="SelectService" targetRef="ServiceChoice" />
+  <bpmn:sequenceFlow id="f9" sourceRef="ServiceChoice" targetRef="DocSubmit" name="Documents" />
+  <bpmn:sequenceFlow id="f10" sourceRef="ServiceChoice" targetRef="BlotterSubmit" name="Blotter" />
+  <bpmn:sequenceFlow id="f11" sourceRef="ServiceChoice" targetRef="VenueSelect" name="Venue" />
+  <bpmn:sequenceFlow id="f12" sourceRef="DocSubmit" targetRef="DocCreate" />
+  <bpmn:sequenceFlow id="f13" sourceRef="DocCreate" targetRef="DocQueue" />
+  <bpmn:sequenceFlow id="f14" sourceRef="DocQueue" targetRef="DocReview" />
+  <bpmn:sequenceFlow id="f15" sourceRef="DocReview" targetRef="ReqComplete" />
+  <bpmn:sequenceFlow id="f16" sourceRef="ReqComplete" targetRef="ReqIncomplete" name="No" />
+  <bpmn:sequenceFlow id="f17" sourceRef="ReqIncomplete" targetRef="DocReview" name="Requirements supplied / recheck" />
+  <bpmn:sequenceFlow id="f18" sourceRef="ReqComplete" targetRef="DocDecision" name="Yes" />
+  <bpmn:sequenceFlow id="f19" sourceRef="DocDecision" targetRef="DocApproved" />
+  <bpmn:sequenceFlow id="f20" sourceRef="DocApproved" targetRef="DocReject" name="No" />
+  <bpmn:sequenceFlow id="f21" sourceRef="DocReject" targetRef="DocRejectEnd" />
+  <bpmn:sequenceFlow id="f22" sourceRef="DocApproved" targetRef="DocGenerate" name="Yes" />
+  <bpmn:sequenceFlow id="f23" sourceRef="DocGenerate" targetRef="SignatureRequired" />
+  <bpmn:sequenceFlow id="f24" sourceRef="SignatureRequired" targetRef="ApplySignature" name="Yes" />
+  <bpmn:sequenceFlow id="f25" sourceRef="ApplySignature" targetRef="IssueCertificate" />
+  <bpmn:sequenceFlow id="f26" sourceRef="SignatureRequired" targetRef="IssueCertificate" name="No" />
+  <bpmn:sequenceFlow id="f27" sourceRef="IssueCertificate" targetRef="PrintNotify" />
+  <bpmn:sequenceFlow id="f28" sourceRef="PrintNotify" targetRef="DocEnd" />
+  <bpmn:sequenceFlow id="f29" sourceRef="BlotterSubmit" targetRef="BlotterCreate" />
+  <bpmn:sequenceFlow id="f30" sourceRef="BlotterCreate" targetRef="BlotterQueue" />
+  <bpmn:sequenceFlow id="f31" sourceRef="BlotterQueue" targetRef="BlotterReview" />
+  <bpmn:sequenceFlow id="f32" sourceRef="BlotterReview" targetRef="BlotterAccepted" />
+  <bpmn:sequenceFlow id="f33" sourceRef="BlotterAccepted" targetRef="BlotterReject" name="No" />
+  <bpmn:sequenceFlow id="f34" sourceRef="BlotterReject" targetRef="BlotterRejectEnd" />
+  <bpmn:sequenceFlow id="f35" sourceRef="BlotterAccepted" targetRef="CreateCase" name="Yes" />
+  <bpmn:sequenceFlow id="f36" sourceRef="CreateCase" targetRef="CaseManage" />
+  <bpmn:sequenceFlow id="f37" sourceRef="CaseManage" targetRef="ArchiveCase" />
+  <bpmn:sequenceFlow id="f38" sourceRef="ArchiveCase" targetRef="BlotterNotify" />
+  <bpmn:sequenceFlow id="f39" sourceRef="BlotterNotify" targetRef="BlotterEnd" />
+  <bpmn:sequenceFlow id="f40" sourceRef="VenueSelect" targetRef="VenueAvailable" />
+  <bpmn:sequenceFlow id="f41" sourceRef="VenueAvailable" targetRef="VenueRetry" name="No" />
+  <bpmn:sequenceFlow id="f42" sourceRef="VenueRetry" targetRef="VenueSelect" name="Try another slot" />
+  <bpmn:sequenceFlow id="f43" sourceRef="VenueAvailable" targetRef="VenueCreate" name="Yes" />
+  <bpmn:sequenceFlow id="f44" sourceRef="VenueCreate" targetRef="VenueQueue" />
+  <bpmn:sequenceFlow id="f45" sourceRef="VenueQueue" targetRef="VenueReview" />
+  <bpmn:sequenceFlow id="f46" sourceRef="VenueReview" targetRef="VenueApproved" />
+  <bpmn:sequenceFlow id="f47" sourceRef="VenueApproved" targetRef="VenueReject" name="No" />
+  <bpmn:sequenceFlow id="f48" sourceRef="VenueReject" targetRef="VenueRejectEnd" />
+  <bpmn:sequenceFlow id="f49" sourceRef="VenueApproved" targetRef="VenueComplete" name="Yes" />
+  <bpmn:sequenceFlow id="f50" sourceRef="VenueComplete" targetRef="VenueNotify" />
+  <bpmn:sequenceFlow id="f51" sourceRef="VenueNotify" targetRef="VenueEnd" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BRMS_Diagram">
+    <bpmndi:BPMNPlane id="BRMS_Plane" bpmnElement="BRMS_Resident_Service_Process">
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start"><dc:Bounds x="80" y="360" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Verify_di" bpmnElement="Verify"><dc:Bounds x="160" y="340" width="130" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="IdentityOK_di" bpmnElement="IdentityOK"><dc:Bounds x="350" y="355" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="OtpFallback_di" bpmnElement="OtpFallback"><dc:Bounds x="440" y="500" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="OtpValid_di" bpmnElement="OtpValid"><dc:Bounds x="650" y="515" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="IdentityFail_di" bpmnElement="IdentityFail"><dc:Bounds x="770" y="560" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="SelectService_di" bpmnElement="SelectService"><dc:Bounds x="800" y="340" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ServiceChoice_di" bpmnElement="ServiceChoice"><dc:Bounds x="1010" y="355" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocSubmit_di" bpmnElement="DocSubmit"><dc:Bounds x="1160" y="80" width="140" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocCreate_di" bpmnElement="DocCreate"><dc:Bounds x="1340" y="80" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocQueue_di" bpmnElement="DocQueue"><dc:Bounds x="1540" y="80" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocReview_di" bpmnElement="DocReview"><dc:Bounds x="1750" y="80" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ReqComplete_di" bpmnElement="ReqComplete"><dc:Bounds x="1940" y="95" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ReqIncomplete_di" bpmnElement="ReqIncomplete"><dc:Bounds x="2050" y="5" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocDecision_di" bpmnElement="DocDecision"><dc:Bounds x="2110" y="130" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocApproved_di" bpmnElement="DocApproved"><dc:Bounds x="2310" y="145" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocReject_di" bpmnElement="DocReject"><dc:Bounds x="2420" y="5" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocRejectEnd_di" bpmnElement="DocRejectEnd"><dc:Bounds x="2610" y="25" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocGenerate_di" bpmnElement="DocGenerate"><dc:Bounds x="2420" y="190" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="SignatureRequired_di" bpmnElement="SignatureRequired"><dc:Bounds x="2620" y="205" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ApplySignature_di" bpmnElement="ApplySignature"><dc:Bounds x="2730" y="110" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="IssueCertificate_di" bpmnElement="IssueCertificate"><dc:Bounds x="2730" y="290" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="PrintNotify_di" bpmnElement="PrintNotify"><dc:Bounds x="2940" y="290" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="DocEnd_di" bpmnElement="DocEnd"><dc:Bounds x="3150" y="310" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterSubmit_di" bpmnElement="BlotterSubmit"><dc:Bounds x="1160" y="370" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterCreate_di" bpmnElement="BlotterCreate"><dc:Bounds x="1350" y="370" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterQueue_di" bpmnElement="BlotterQueue"><dc:Bounds x="1550" y="370" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterReview_di" bpmnElement="BlotterReview"><dc:Bounds x="1760" y="370" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterAccepted_di" bpmnElement="BlotterAccepted"><dc:Bounds x="1950" y="385" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterReject_di" bpmnElement="BlotterReject"><dc:Bounds x="2070" y="500" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterRejectEnd_di" bpmnElement="BlotterRejectEnd"><dc:Bounds x="2270" y="520" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="CreateCase_di" bpmnElement="CreateCase"><dc:Bounds x="2070" y="370" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="CaseManage_di" bpmnElement="CaseManage"><dc:Bounds x="2270" y="370" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ArchiveCase_di" bpmnElement="ArchiveCase"><dc:Bounds x="2480" y="370" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterNotify_di" bpmnElement="BlotterNotify"><dc:Bounds x="2680" y="370" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="BlotterEnd_di" bpmnElement="BlotterEnd"><dc:Bounds x="2890" y="390" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueSelect_di" bpmnElement="VenueSelect"><dc:Bounds x="1160" y="700" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueAvailable_di" bpmnElement="VenueAvailable"><dc:Bounds x="1360" y="715" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueRetry_di" bpmnElement="VenueRetry"><dc:Bounds x="1480" y="830" width="140" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueCreate_di" bpmnElement="VenueCreate"><dc:Bounds x="1550" y="700" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueQueue_di" bpmnElement="VenueQueue"><dc:Bounds x="1760" y="700" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueReview_di" bpmnElement="VenueReview"><dc:Bounds x="1970" y="700" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueApproved_di" bpmnElement="VenueApproved"><dc:Bounds x="2160" y="715" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueReject_di" bpmnElement="VenueReject"><dc:Bounds x="2280" y="830" width="150" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueRejectEnd_di" bpmnElement="VenueRejectEnd"><dc:Bounds x="2470" y="850" width="36" height="36" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueComplete_di" bpmnElement="VenueComplete"><dc:Bounds x="2280" y="700" width="160" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueNotify_di" bpmnElement="VenueNotify"><dc:Bounds x="2480" y="700" width="170" height="80" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="VenueEnd_di" bpmnElement="VenueEnd"><dc:Bounds x="2690" y="720" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="f1_di" bpmnElement="f1"><di:waypoint x="116" y="378" /><di:waypoint x="160" y="380" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f2_di" bpmnElement="f2"><di:waypoint x="290" y="380" /><di:waypoint x="350" y="380" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f3_di" bpmnElement="f3"><di:waypoint x="400" y="380" /><di:waypoint x="800" y="380" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f4_di" bpmnElement="f4"><di:waypoint x="400" y="380" /><di:waypoint x="440" y="540" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f5_di" bpmnElement="f5"><di:waypoint x="590" y="540" /><di:waypoint x="650" y="540" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f6_di" bpmnElement="f6"><di:waypoint x="700" y="540" /><di:waypoint x="800" y="380" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f7_di" bpmnElement="f7"><di:waypoint x="700" y="540" /><di:waypoint x="770" y="578" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f8_di" bpmnElement="f8"><di:waypoint x="960" y="380" /><di:waypoint x="1010" y="380" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f9_di" bpmnElement="f9"><di:waypoint x="1060" y="380" /><di:waypoint x="1160" y="120" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f10_di" bpmnElement="f10"><di:waypoint x="1060" y="380" /><di:waypoint x="1160" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f11_di" bpmnElement="f11"><di:waypoint x="1060" y="380" /><di:waypoint x="1160" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f12_di" bpmnElement="f12"><di:waypoint x="1300" y="120" /><di:waypoint x="1340" y="120" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f13_di" bpmnElement="f13"><di:waypoint x="1500" y="120" /><di:waypoint x="1540" y="120" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f14_di" bpmnElement="f14"><di:waypoint x="1710" y="120" /><di:waypoint x="1750" y="120" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f15_di" bpmnElement="f15"><di:waypoint x="1900" y="120" /><di:waypoint x="1940" y="120" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f16_di" bpmnElement="f16"><di:waypoint x="1990" y="120" /><di:waypoint x="2050" y="45" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f17_di" bpmnElement="f17"><di:waypoint x="2210" y="45" /><di:waypoint x="1750" y="120" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f18_di" bpmnElement="f18"><di:waypoint x="1990" y="120" /><di:waypoint x="2110" y="170" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f19_di" bpmnElement="f19"><di:waypoint x="2270" y="170" /><di:waypoint x="2310" y="170" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f20_di" bpmnElement="f20"><di:waypoint x="2360" y="170" /><di:waypoint x="2420" y="45" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f21_di" bpmnElement="f21"><di:waypoint x="2570" y="45" /><di:waypoint x="2610" y="43" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f22_di" bpmnElement="f22"><di:waypoint x="2360" y="170" /><di:waypoint x="2420" y="230" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f23_di" bpmnElement="f23"><di:waypoint x="2580" y="230" /><di:waypoint x="2620" y="230" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f24_di" bpmnElement="f24"><di:waypoint x="2670" y="230" /><di:waypoint x="2730" y="150" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f25_di" bpmnElement="f25"><di:waypoint x="2890" y="150" /><di:waypoint x="2730" y="330" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f26_di" bpmnElement="f26"><di:waypoint x="2670" y="230" /><di:waypoint x="2730" y="330" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f27_di" bpmnElement="f27"><di:waypoint x="2900" y="330" /><di:waypoint x="2940" y="330" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f28_di" bpmnElement="f28"><di:waypoint x="3110" y="330" /><di:waypoint x="3150" y="328" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f29_di" bpmnElement="f29"><di:waypoint x="1310" y="410" /><di:waypoint x="1350" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f30_di" bpmnElement="f30"><di:waypoint x="1510" y="410" /><di:waypoint x="1550" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f31_di" bpmnElement="f31"><di:waypoint x="1720" y="410" /><di:waypoint x="1760" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f32_di" bpmnElement="f32"><di:waypoint x="1910" y="410" /><di:waypoint x="1950" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f33_di" bpmnElement="f33"><di:waypoint x="2000" y="410" /><di:waypoint x="2070" y="540" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f34_di" bpmnElement="f34"><di:waypoint x="2230" y="540" /><di:waypoint x="2270" y="538" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f35_di" bpmnElement="f35"><di:waypoint x="2000" y="410" /><di:waypoint x="2070" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f36_di" bpmnElement="f36"><di:waypoint x="2230" y="410" /><di:waypoint x="2270" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f37_di" bpmnElement="f37"><di:waypoint x="2440" y="410" /><di:waypoint x="2480" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f38_di" bpmnElement="f38"><di:waypoint x="2640" y="410" /><di:waypoint x="2680" y="410" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f39_di" bpmnElement="f39"><di:waypoint x="2850" y="410" /><di:waypoint x="2890" y="408" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f40_di" bpmnElement="f40"><di:waypoint x="1320" y="740" /><di:waypoint x="1360" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f41_di" bpmnElement="f41"><di:waypoint x="1410" y="740" /><di:waypoint x="1480" y="870" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f42_di" bpmnElement="f42"><di:waypoint x="1620" y="870" /><di:waypoint x="1160" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f43_di" bpmnElement="f43"><di:waypoint x="1410" y="740" /><di:waypoint x="1550" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f44_di" bpmnElement="f44"><di:waypoint x="1720" y="740" /><di:waypoint x="1760" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f45_di" bpmnElement="f45"><di:waypoint x="1930" y="740" /><di:waypoint x="1970" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f46_di" bpmnElement="f46"><di:waypoint x="2120" y="740" /><di:waypoint x="2160" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f47_di" bpmnElement="f47"><di:waypoint x="2210" y="740" /><di:waypoint x="2280" y="870" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f48_di" bpmnElement="f48"><di:waypoint x="2430" y="870" /><di:waypoint x="2470" y="868" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f49_di" bpmnElement="f49"><di:waypoint x="2210" y="740" /><di:waypoint x="2280" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f50_di" bpmnElement="f50"><di:waypoint x="2440" y="740" /><di:waypoint x="2480" y="740" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f51_di" bpmnElement="f51"><di:waypoint x="2650" y="740" /><di:waypoint x="2690" y="738" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
