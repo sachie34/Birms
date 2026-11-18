@@ -11,6 +11,8 @@ function run_b22(array $S, string $base): void
     $email = 'b22-queue-choice@example.test';
     $phone = '09179992222';
     $residentId = null;
+    $secondResidentId = null;
+    $secondResidentNo = $residentNo . '-NEXT';
     $venueId = null;
     $queueStartId = (int) (db_val('SELECT COALESCE(MAX(queue_id), 0) FROM queue_entries') ?? 0);
 
@@ -242,6 +244,36 @@ function run_b22(array $S, string $base): void
             . '; expected elapsed average=' . $expectedElapsed
             . '; actual=' . var_export($snapshot['average_wait_seconds'], true)
         );
+
+        // Reuse the same kiosk browser session for another resident, as happens at a public counter.
+        db_exec(
+            "INSERT INTO residents
+             (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
+              last_name, first_name, birthdate, sex, civil_status, residency_status, voter_status,
+              contact_number, email_address, notification_preference, household_id, is_household_head, archived_at)
+             VALUES (?, 'B22 Next Resident Street', ?, ?, 'Single', ?, 'NextVisitor', 'Taylor', '1992-06-11',
+                     'Female', 'Single', 'Active', 'unverified', NULL, 'b22-next@example.test', 'email', NULL, 0, NULL)",
+            [$secondResidentNo, $purokId, $statusId ?: null, $typeId ?: null]
+        );
+        $secondResidentId = (int) db()->lastInsertId();
+        $endSession = $kiosk->post('/kiosk/end.php', ['_csrf' => $kiosk->token('/kiosk/index.php')]);
+        $secondIdentity = $kiosk->post('/kiosk/identify.php', [
+            '_csrf' => $kiosk->token('/kiosk/index.php'),
+            'resident_no' => $secondResidentNo,
+            'birthdate' => '1992-06-11',
+        ]);
+        $oldTicket = $kiosk->get('/kiosk/ticket.php');
+        record(
+            'B22-07',
+            'Ending one resident kiosk session and verifying the next resident clears the previous visitor ticket',
+            $endSession['status'] === 302
+            && $secondIdentity['status'] === 302
+            && $oldTicket['status'] === 302
+            && str_contains(loc($oldTicket), 'kiosk/queue.php')
+            && !str_contains($oldTicket['body'], 'Your queue number'),
+            'end=' . $endSession['status'] . '; next identity=' . $secondIdentity['status']
+            . '; old ticket=' . $oldTicket['status'] . '; redirect=' . (string) loc($oldTicket)
+        );
     } finally {
         $ids = db_all('SELECT queue_id FROM queue_entries WHERE resident_id = ? AND queue_id > ?', [$residentId, $queueStartId]);
         if ($ids) {
@@ -249,8 +281,10 @@ function run_b22(array $S, string $base): void
             $marks = implode(',', array_fill(0, count($queueIds), '?'));
             db_exec('DELETE FROM queue_entries WHERE queue_id IN (' . $marks . ')', $queueIds);
         }
-        if ($residentId !== null) {
-            db_exec('DELETE FROM notification_outbox WHERE resident_id = ?', [$residentId]);
+        if ($residentId !== null || $secondResidentId !== null) {
+            $cleanupResidentIds = array_values(array_filter([$residentId, $secondResidentId], static fn($id) => $id !== null));
+            $marks = implode(',', array_fill(0, count($cleanupResidentIds), '?'));
+            db_exec('DELETE FROM notification_outbox WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
         }
         db_exec(
             "DELETE FROM sms_outbox WHERE recipient_number = ? AND trigger_event IN ('queue_issued','queue_called','queue_near')",
@@ -260,9 +294,11 @@ function run_b22(array $S, string $base): void
             db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$venueId]);
             db_exec('DELETE FROM venues WHERE venue_id = ?', [$venueId]);
         }
-        if ($residentId !== null) {
-            db_exec('DELETE FROM resident_verification_challenges WHERE resident_id = ?', [$residentId]);
-            db_exec('DELETE FROM residents WHERE resident_id = ?', [$residentId]);
+        foreach ([$residentId, $secondResidentId] as $cleanupResidentId) {
+            if ($cleanupResidentId !== null) {
+                db_exec('DELETE FROM resident_verification_challenges WHERE resident_id = ?', [$cleanupResidentId]);
+                db_exec('DELETE FROM residents WHERE resident_id = ?', [$cleanupResidentId]);
+            }
         }
         db_exec("DELETE FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
     }
