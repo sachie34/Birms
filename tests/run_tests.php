@@ -154,6 +154,22 @@ record('U11', 'Setup/admin password input uses the shared hidden-input helper in
     && !str_contains($setupPromptSource, 'input is visible')
     && !str_contains($adminPromptSource, 'it is visible on Windows'));
 
+$resultsBeforeReporterProbe = $results;
+$results = [];
+ob_start();
+record('U12-PROBE', 'Synthetic failure-reporting probe', false, 'intentional diagnostic probe');
+$reportProbeOutput = (string) ob_get_clean();
+$reportProbeRows = $results;
+$results = $resultsBeforeReporterProbe;
+$reportProbeRow = $reportProbeRows[0] ?? null;
+record('U12', 'A failed assertion remains recorded as FAIL with its diagnostic text and does not disappear from the result collection',
+    is_array($reportProbeRow)
+    && ($reportProbeRow[0] ?? '') === 'U12-PROBE'
+    && ($reportProbeRow[2] ?? '') === 'FAIL'
+    && ($reportProbeRow[3] ?? '') === 'intentional diagnostic probe'
+    && str_contains($reportProbeOutput, 'FAIL')
+    && str_contains($reportProbeOutput, 'intentional diagnostic probe'));
+
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
@@ -360,6 +376,24 @@ db_exec("DELETE FROM users WHERE username LIKE 'zz\\_test\\_%'");
 db_exec("DELETE FROM login_failures WHERE username LIKE 'zz\\_test\\_%' OR username LIKE 'x%'");
 db_exec("DELETE FROM audit_log WHERE module = 'Test'");
 
-$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS')); $fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL')); $skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
+$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS'));
+$fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL'));
+$skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
 echo str_repeat('-', 78) . "\nPASS {$pass}   FAIL {$fail}   NOT TESTED {$skip}   (total " . count($results) . ")\n";
-exit($fail > 0 ? 1 : 0);
+if ($fail > 0) {
+    echo "FAILED CHECKS (retained; fix the cause rather than removing the test):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'FAIL') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+if ($skip > 0) {
+    echo "NOT TESTED CHECKS (investigate before release):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'NOT TESTED') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+exit($fail > 0 || $skip > 0 ? 1 : 0);
