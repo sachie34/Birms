@@ -106,6 +106,49 @@ if ($guardScript !== false) {
 }
 $guardText = implode("\n", $guardOutput);
 record('U8', 'Module test runner refuses before tests when a real SMS provider is enabled', $guardExit === 2 && str_contains($guardText, 'REFUSED: the selected SMS provider is enabled.') && !str_contains($guardText, 'BIRMS module tests  base='));
+
+record('U9', 'Database-backed rate limiter enforces a fixed window, separates identities and resets at the next window', (function (): bool {
+    $action = 'unit-test-' . bin2hex(random_bytes(4));
+    $now = time(); $window = 60; $nextWindow = (intdiv($now, $window) + 1) * $window;
+    $a = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $now);
+    $b = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $now);
+    $c = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $now);
+    $other = rate_limit_bucket_hit($action, 'user', 'synthetic-user-b', 2, $window, $now);
+    $reset = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $nextWindow);
+    foreach (array_unique(array_column([$a, $b, $c, $other, $reset], 'bucket_hash')) as $hash) {
+        db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash = ?', [$hash]);
+    }
+    return $a['allowed'] && $b['allowed'] && !$c['allowed'] && $other['allowed'] && $reset['allowed']
+        && $c['retry_after'] >= 1 && $c['retry_after'] <= $window;
+})());
+
+record('U10', 'PHP runtime guard rejects known-unpatched and unsupported versions while accepting patched supported branches', (function (): bool {
+    $cases = [
+        80100 => false,
+        80234 => false, 80235 => true,
+        80335 => false, 80336 => true,
+        80426 => false, 80427 => true,
+        80511 => false, 80512 => true,
+        80600 => false,
+        90000 => false,
+    ];
+    foreach ($cases as $version => $expectedSafe) {
+        if ((php_runtime_security_issue($version) === null) !== $expectedSafe) { return false; }
+    }
+    return php_runtime_upgrade_notice(80235) !== null && php_runtime_upgrade_notice(80336) === null;
+})());
+
+$promptSource = (string) file_get_contents(APP_ROOT . '/tools/cli_prompt.php');
+$setupPromptSource = (string) file_get_contents(APP_ROOT . '/tools/setup_xampp.php');
+$adminPromptSource = (string) file_get_contents(APP_ROOT . '/tools/create_admin.php');
+record('U11', 'Setup/admin password input uses the shared hidden-input helper instead of echoing typed secrets',
+    str_contains($promptSource, 'Read-Host -Prompt $prompt -AsSecureString')
+    && str_contains($promptSource, 'stty -echo')
+    && str_contains($setupPromptSource, 'cli_prompt_secret(')
+    && str_contains($adminPromptSource, 'cli_prompt_secret(')
+    && !str_contains($setupPromptSource, 'input is visible')
+    && !str_contains($adminPromptSource, 'it is visible on Windows'));
+
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
