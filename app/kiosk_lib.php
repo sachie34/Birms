@@ -36,7 +36,8 @@ function kiosk_clear_session(): void
         $_SESSION['kiosk_last_activity'],
         $_SESSION['kiosk_expires_at'],
         $_SESSION['kiosk_challenge_token'],
-        $_SESSION['kiosk_after_verify']
+        $_SESSION['kiosk_after_verify'],
+        $_SESSION['kiosk_flash']
     );
     kiosk_clear_session_artifacts();
 }
@@ -53,6 +54,9 @@ function kiosk_set_resident(int $residentId): void
     // A physical kiosk browser is reused by different residents. Never carry the
     // previous visitor's ticket or receipt payload into the next verified session.
     kiosk_clear_session_artifacts();
+    // A new visitor must not inherit a flash message containing the previous visitor's
+    // masked email/phone destination or request information.
+    unset($_SESSION['kiosk_flash']);
     session_regenerate_id(true);
     $_SESSION['kiosk_resident_id'] = $residentId;
     $_SESSION['kiosk_last_activity'] = time();
