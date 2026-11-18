@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_BRMS_Blotter" targetNamespace="https://sachie34.github.io/Birms/bpmn">
+  <bpmn:collaboration id="Collaboration_Blotter">
+    <bpmn:participant id="Participant_Blotter" name="BRMS — Blotter Case and Hearing Workflow" processRef="Process_Blotter"/>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Blotter" name="Implemented Blotter Case and Hearing Workflow" isExecutable="false">
+    <bpmn:startEvent id="B_Start" name="Incident reported"/>
+    <bpmn:task id="B_File" name="Staff records incident date, place, Purok, type and narrative"/>
+    <bpmn:task id="B_Parties" name="Record complainant and optional respondent"/>
+    <bpmn:task id="B_Pending" name="Save case with BLT number and Pending status"/>
+    <bpmn:task id="B_Activate" name="Authorized staff moves case to Active"/>
+    <bpmn:exclusiveGateway id="B_ScheduleDecision" name="Schedule a hearing?"/>
+    <bpmn:task id="B_Schedule" name="Enter future date/time, venue and notes; case becomes Scheduled"/>
+    <bpmn:task id="B_Summons" name="Prepare summons if wording, respondent and scheduled status pass checks"/>
+    <bpmn:task id="B_Outcome" name="Record hearing outcome: Held, Postponed or Cancelled"/>
+    <bpmn:exclusiveGateway id="B_MoreHearings" name="Another Scheduled hearing remains?"/>
+    <bpmn:task id="B_ReturnActive" name="Return case to Active when no Scheduled hearing remains"/>
+    <bpmn:exclusiveGateway id="B_ResolveDecision" name="Resolve the case?"/>
+    <bpmn:task id="B_Resolve" name="Enter resolution note; set case to Resolved"/>
+    <bpmn:task id="B_Archive" name="Authorized staff archives resolved case"/>
+    <bpmn:endEvent id="B_End" name="Archived case retained"/>
+    <bpmn:sequenceFlow id="BF01" sourceRef="B_Start" targetRef="B_File"/>
+    <bpmn:sequenceFlow id="BF02" sourceRef="B_File" targetRef="B_Parties"/>
+    <bpmn:sequenceFlow id="BF03" sourceRef="B_Parties" targetRef="B_Pending"/>
+    <bpmn:sequenceFlow id="BF04" sourceRef="B_Pending" targetRef="B_Activate"/>
+    <bpmn:sequenceFlow id="BF05" sourceRef="B_Activate" targetRef="B_ScheduleDecision"/>
+    <bpmn:sequenceFlow id="BF06_Yes" name="Yes" sourceRef="B_ScheduleDecision" targetRef="B_Schedule"/>
+    <bpmn:sequenceFlow id="BF07_No" name="No" sourceRef="B_ScheduleDecision" targetRef="B_ResolveDecision"/>
+    <bpmn:sequenceFlow id="BF08" sourceRef="B_Schedule" targetRef="B_Summons"/>
+    <bpmn:sequenceFlow id="BF09" sourceRef="B_Summons" targetRef="B_Outcome"/>
+    <bpmn:sequenceFlow id="BF10" sourceRef="B_Outcome" targetRef="B_MoreHearings"/>
+    <bpmn:sequenceFlow id="BF11_Yes" name="Yes" sourceRef="B_MoreHearings" targetRef="B_Schedule"/>
+    <bpmn:sequenceFlow id="BF12_No" name="No" sourceRef="B_MoreHearings" targetRef="B_ReturnActive"/>
+    <bpmn:sequenceFlow id="BF13" sourceRef="B_ReturnActive" targetRef="B_ResolveDecision"/>
+    <bpmn:sequenceFlow id="BF14_No" name="No" sourceRef="B_ResolveDecision" targetRef="B_ScheduleDecision"/>
+    <bpmn:sequenceFlow id="BF15_Yes" name="Yes" sourceRef="B_ResolveDecision" targetRef="B_Resolve"/>
+    <bpmn:sequenceFlow id="BF16" sourceRef="B_Resolve" targetRef="B_Archive"/>
+    <bpmn:sequenceFlow id="BF17" sourceRef="B_Archive" targetRef="B_End"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_Blotter">
+    <bpmndi:BPMNPlane id="Plane_Blotter" bpmnElement="Collaboration_Blotter">
+      <bpmndi:BPMNShape id="BS_Participant" bpmnElement="Participant_Blotter" isHorizontal="true"><dc:Bounds x="70" y="70" width="2450" height="430"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Start" bpmnElement="B_Start"><dc:Bounds x="100" y="220" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_File" bpmnElement="B_File"><dc:Bounds x="170" y="195" width="165" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Parties" bpmnElement="B_Parties"><dc:Bounds x="365" y="195" width="165" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Pending" bpmnElement="B_Pending"><dc:Bounds x="560" y="195" width="165" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Activate" bpmnElement="B_Activate"><dc:Bounds x="755" y="195" width="165" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_ScheduleDecision" bpmnElement="B_ScheduleDecision" isMarkerVisible="true"><dc:Bounds x="955" y="213" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Schedule" bpmnElement="B_Schedule"><dc:Bounds x="1050" y="195" width="175" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Summons" bpmnElement="B_Summons"><dc:Bounds x="1255" y="195" width="175" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Outcome" bpmnElement="B_Outcome"><dc:Bounds x="1460" y="195" width="175" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_MoreHearings" bpmnElement="B_MoreHearings" isMarkerVisible="true"><dc:Bounds x="1665" y="213" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_ReturnActive" bpmnElement="B_ReturnActive"><dc:Bounds x="1760" y="195" width="175" height="86"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_ResolveDecision" bpmnElement="B_ResolveDecision" isMarkerVisible="true"><dc:Bounds x="1965" y="213" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Resolve" bpmnElement="B_Resolve"><dc:Bounds x="2050" y="335" width="165" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_Archive" bpmnElement="B_Archive"><dc:Bounds x="2240" y="335" width="165" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BS_End" bpmnElement="B_End"><dc:Bounds x="2440" y="357" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BE_BF01" bpmnElement="BF01"><di:waypoint x="136" y="238"/><di:waypoint x="170" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF02" bpmnElement="BF02"><di:waypoint x="335" y="238"/><di:waypoint x="365" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF03" bpmnElement="BF03"><di:waypoint x="530" y="238"/><di:waypoint x="560" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF04" bpmnElement="BF04"><di:waypoint x="725" y="238"/><di:waypoint x="755" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF05" bpmnElement="BF05"><di:waypoint x="920" y="238"/><di:waypoint x="955" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF06" bpmnElement="BF06_Yes"><di:waypoint x="1005" y="238"/><di:waypoint x="1050" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF08" bpmnElement="BF08"><di:waypoint x="1225" y="238"/><di:waypoint x="1255" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF09" bpmnElement="BF09"><di:waypoint x="1430" y="238"/><di:waypoint x="1460" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF10" bpmnElement="BF10"><di:waypoint x="1635" y="238"/><di:waypoint x="1665" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF11" bpmnElement="BF11_Yes"><di:waypoint x="1690" y="213"/><di:waypoint x="1690" y="150"/><di:waypoint x="1137" y="150"/><di:waypoint x="1137" y="195"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF12" bpmnElement="BF12_No"><di:waypoint x="1715" y="238"/><di:waypoint x="1760" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF13" bpmnElement="BF13"><di:waypoint x="1935" y="238"/><di:waypoint x="1965" y="238"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF14" bpmnElement="BF14_No"><di:waypoint x="1990" y="213"/><di:waypoint x="1990" y="120"/><di:waypoint x="980" y="120"/><di:waypoint x="980" y="213"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF15" bpmnElement="BF15_Yes"><di:waypoint x="1990" y="263"/><di:waypoint x="1990" y="375"/><di:waypoint x="2050" y="375"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF16" bpmnElement="BF16"><di:waypoint x="2215" y="375"/><di:waypoint x="2240" y="375"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF17" bpmnElement="BF17"><di:waypoint x="2405" y="375"/><di:waypoint x="2440" y="375"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF07" bpmnElement="BF07_No"><di:waypoint x="980" y="263"/><di:waypoint x="980" y="450"/><di:waypoint x="1990" y="450"/><di:waypoint x="1990" y="263"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
