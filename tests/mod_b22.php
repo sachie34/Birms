@@ -330,6 +330,69 @@ function run_b22(array $S, string $base): void
             !$otpChannelFailures,
             implode('; ', $otpChannelFailures)
         );
+
+        $challengeFixtures = [];
+        $makeChallenge = static function (string $state, int $attempts = 0) use ($residentId, &$challengeFixtures): array {
+            $token = bin2hex(random_bytes(24));
+            $code = (string) random_int(100000, 999999);
+            $hash = hash('sha256', $token);
+            $codeHash = hash('sha256', $token . ':' . $code);
+            $expirySql = $state === 'expired' ? 'DATE_SUB(NOW(), INTERVAL 1 MINUTE)' : 'DATE_ADD(NOW(), INTERVAL 5 MINUTE)';
+            db_exec(
+                'INSERT INTO resident_verification_challenges
+                 (challenge_token_hash, code_hash, resident_id, channel, destination_snapshot, expires_at, attempt_count)
+                 VALUES (?, ?, ?, \'email\', ?, ' . $expirySql . ', ?)',
+                [$hash, $codeHash, $residentId, $email, $attempts]
+            );
+            $id = (int) db()->lastInsertId();
+            $challengeFixtures[] = $id;
+            return ['id' => $id, 'token' => $token, 'code' => $code];
+        };
+        $validChallenge = $makeChallenge('valid');
+        $verifiedResident = kiosk_consume_verification_code($validChallenge['token'], $validChallenge['code']);
+        $verifiedRow = db_one('SELECT attempt_count, verified_at, consumed_at FROM resident_verification_challenges WHERE challenge_id = ?', [$validChallenge['id']]);
+        $replayResident = kiosk_consume_verification_code($validChallenge['token'], $validChallenge['code']);
+        $replayRow = db_one('SELECT attempt_count FROM resident_verification_challenges WHERE challenge_id = ?', [$validChallenge['id']]);
+
+        $wrongChallenge = $makeChallenge('valid');
+        $wrongResident = kiosk_consume_verification_code($wrongChallenge['token'], '000000' === $wrongChallenge['code'] ? '000001' : '000000');
+        $wrongRow = db_one('SELECT attempt_count, verified_at, consumed_at FROM resident_verification_challenges WHERE challenge_id = ?', [$wrongChallenge['id']]);
+
+        $expiredChallenge = $makeChallenge('expired');
+        $expiredResident = kiosk_consume_verification_code($expiredChallenge['token'], $expiredChallenge['code']);
+        $expiredRow = db_one('SELECT attempt_count, verified_at, consumed_at FROM resident_verification_challenges WHERE challenge_id = ?', [$expiredChallenge['id']]);
+
+        $lockedChallenge = $makeChallenge('valid', 5);
+        $lockedResident = kiosk_consume_verification_code($lockedChallenge['token'], $lockedChallenge['code']);
+        $lockedRow = db_one('SELECT attempt_count, verified_at, consumed_at FROM resident_verification_challenges WHERE challenge_id = ?', [$lockedChallenge['id']]);
+        $malformedResident = kiosk_consume_verification_code('not-a-token', 'not-a-code');
+
+        record(
+            'B22-12',
+            'OTP verification is single-use, commits the valid resident result, counts wrong attempts, and rejects expired/max-attempt/malformed challenges',
+            $verifiedResident === $residentId
+            && (int) $verifiedRow['attempt_count'] === 1
+            && $verifiedRow['verified_at'] !== null
+            && $verifiedRow['consumed_at'] !== null
+            && $replayResident === null
+            && (int) $replayRow['attempt_count'] === 1
+            && $wrongResident === null
+            && (int) $wrongRow['attempt_count'] === 1
+            && $wrongRow['verified_at'] === null
+            && $wrongRow['consumed_at'] === null
+            && $expiredResident === null
+            && (int) $expiredRow['attempt_count'] === 0
+            && $expiredRow['verified_at'] === null
+            && $lockedResident === null
+            && (int) $lockedRow['attempt_count'] === 5
+            && $malformedResident === null,
+            'valid resident=' . var_export($verifiedResident, true)
+            . '; replay=' . var_export($replayResident, true)
+            . '; wrong attempts=' . (int) $wrongRow['attempt_count']
+            . '; expired=' . var_export($expiredResident, true)
+            . '; locked=' . var_export($lockedResident, true)
+            . '; malformed=' . var_export($malformedResident, true)
+        );
         $getLogout = $kiosk->get('/kiosk/end.php');
         $stillFirstResident = $kiosk->get('/kiosk/index.php');
         record(
@@ -370,6 +433,7 @@ function run_b22(array $S, string $base): void
             $cleanupResidentIds = array_values(array_filter([$residentId, $secondResidentId], static fn($id) => $id !== null));
             $marks = implode(',', array_fill(0, count($cleanupResidentIds), '?'));
             db_exec('DELETE FROM notification_outbox WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
+            db_exec('DELETE FROM resident_verification_challenges WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
         }
         db_exec(
             "DELETE FROM sms_outbox WHERE recipient_number = ? AND trigger_event IN ('queue_issued','queue_called','queue_near')",
