@@ -3,12 +3,13 @@
  * tools/create_admin.php  Create the FIRST administrator, or reset a forgotten password.
  *   php tools/create_admin.php --username=admin --name="Full Name"
  *   php tools/create_admin.php --reset=username
- * The password is typed at the prompt (it is visible on Windows) or supplied through the
+ * The password is read with terminal echo disabled, or supplied through the
  * BIRMS_ADMIN_PASSWORD environment variable. There is no default password.
  */
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { exit("Command line only.\n"); }
 require __DIR__ . '/../app/core.php';
+require_once __DIR__ . '/cli_prompt.php';
 
 function die_msg(string $s): never { fwrite(STDERR, $s . PHP_EOL); exit(2); }
 $opt = [];
@@ -22,8 +23,11 @@ try { db(); } catch (PDOException $e) { die_msg('Cannot connect: ' . $e->getMess
 
 $pw = getenv('BIRMS_ADMIN_PASSWORD');
 if ($pw === false || $pw === '') {
-    fwrite(STDOUT, 'New password (min ' . config('security.password_min_length') . ' characters, letters and numbers): ');
-    $pw = rtrim((string) fgets(STDIN), "\r\n");
+    try {
+        $pw = cli_prompt_secret('New password (min ' . config('security.password_min_length') . ' characters, letters and numbers)');
+    } catch (Throwable $e) {
+        die_msg($e->getMessage());
+    }
 }
 $username = isset($opt['reset']) ? strtolower((string) $opt['reset']) : strtolower((string) ($opt['username'] ?? ''));
 if (!v_username($username)) { die_msg('Give a valid --username (3-30 characters: a-z, 0-9, dot, dash, underscore).'); }
