@@ -76,6 +76,36 @@ function run_b22(array $S, string $base): void
             $formsOfferChoice ? 'all four resident forms checked' : 'identity or one or more kiosk forms did not expose all three choices'
         );
 
+        $emailRowsBeforeDispatchGuard = (int) db_val('SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ?', [$residentId]);
+        $smsRowsBeforeDispatchGuard = (int) db_val('SELECT COUNT(*) FROM sms_outbox WHERE recipient_number = ?', [$phone]);
+        $dispatchGuardBlocked = false;
+        db_transaction(function () use (&$dispatchGuardBlocked, $residentId): void {
+            try {
+                queue_enqueue_notifications(
+                    $residentId,
+                    'Venue',
+                    999,
+                    'queue_guard_probe',
+                    'This notification must not be enqueued while a service transaction is open.',
+                    'email'
+                );
+            } catch (LogicException $e) {
+                $dispatchGuardBlocked = str_contains($e->getMessage(), 'after the service transaction commits');
+            }
+        });
+        $emailRowsAfterDispatchGuard = (int) db_val('SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ?', [$residentId]);
+        $smsRowsAfterDispatchGuard = (int) db_val('SELECT COUNT(*) FROM sms_outbox WHERE recipient_number = ?', [$phone]);
+        record(
+            'B22-05',
+            'Queue notification dispatch refuses to run inside an open database transaction and creates no outbox rows',
+            $dispatchGuardBlocked
+            && $emailRowsAfterDispatchGuard === $emailRowsBeforeDispatchGuard
+            && $smsRowsAfterDispatchGuard === $smsRowsBeforeDispatchGuard,
+            'blocked=' . ($dispatchGuardBlocked ? 'yes' : 'no')
+            . '; email rows changed=' . ($emailRowsAfterDispatchGuard - $emailRowsBeforeDispatchGuard)
+            . '; SMS rows changed=' . ($smsRowsAfterDispatchGuard - $smsRowsBeforeDispatchGuard)
+        );
+
         $firstPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
             'purpose' => 'Test SMS preference for queue ticket',
