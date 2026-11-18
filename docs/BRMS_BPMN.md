@@ -2,7 +2,7 @@
 
 **Process model:** Current implemented BRMS workflows  
 **Repository baseline:** `sachie34/Birms`, branch `main`  
-**Editable diagram:** `BRMS_BPMN.bpmn` (BPMN 2.0 XML)  
+**Editable diagrams:** `BRMS_BPMN.bpmn` (document request and certificate issuance, BPMN 2.0 XML) and `BRMS_Blotter_Process.bpmn` (blotter and hearing process, BPMN 2.0 XML)  
 **Scope:** Visitor intake, resident/document request processing, certificate issuance and cash recording, plus the separate blotter/hearing workflow.
 
 > This diagram describes the routes and PHP business rules currently present in the repository. It does not depict the revised-SRS queue/kiosk, venue reservation, or email features because those are not implemented in the current code.
