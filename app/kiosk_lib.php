@@ -100,6 +100,16 @@ function kiosk_require_resident(): array
     return $resident;
 }
 
+/** Select an available OTP delivery channel while honoring Email/SMS/Both with a safe fallback. */
+function kiosk_verification_channel(string $preference, bool $smsEnabled, bool $emailEnabled): ?string
+{
+    if (!in_array($preference, ['email', 'sms', 'both'], true)) { $preference = 'email'; }
+    if (in_array($preference, ['sms', 'both'], true) && $smsEnabled) { return 'sms'; }
+    if ($emailEnabled) { return 'email'; }
+    if ($smsEnabled) { return 'sms'; }
+    return null;
+}
+
 function kiosk_mask_destination(string $channel, string $destination): string
 {
     $destination = trim($destination);
@@ -116,7 +126,7 @@ function kiosk_mask_destination(string $channel, string $destination): string
 
 /**
  * Send a one-time identity code through an enabled resident contact channel.
- * The raw code is returned only in CLI test mode; web callers never receive it.
+ * The raw code and challenge token are never returned to web callers.
  */
 function kiosk_send_verification_code(array $resident): array
 {
@@ -133,11 +143,7 @@ function kiosk_send_verification_code(array $resident): array
     $smsEnabled = $mobile !== '' && sms_provider_is_enabled();
     $emailEnabled = $email !== '' && email_provider_is_enabled();
 
-    $channel = null;
-    if ($preference === 'sms' && $smsEnabled) { $channel = 'sms'; }
-    elseif ($preference === 'both' && $smsEnabled) { $channel = 'sms'; }
-    elseif ($preference !== 'sms' && $emailEnabled) { $channel = 'email'; }
-    elseif ($smsEnabled) { $channel = 'sms'; }
+    $channel = kiosk_verification_channel($preference, $smsEnabled, $emailEnabled);
     elseif ($emailEnabled) { $channel = 'email'; }
     if ($channel === null) {
         return ['ok' => false, 'message' => 'A one-time code cannot be delivered because no verified email or SMS service is configured. Please ask Staff to verify your record at the counter.'];
@@ -168,7 +174,7 @@ function kiosk_send_verification_code(array $resident): array
         $status = (string) ($result['status'] ?? 'unknown');
         if (in_array($status, ['queued','pending','sent'], true)) {
             $_SESSION['kiosk_challenge_token'] = $token;
-            return ['ok' => true, 'channel' => 'sms', 'destination' => kiosk_mask_destination('sms', $destination), 'token' => $token];
+            return ['ok' => true, 'channel' => 'sms', 'destination' => kiosk_mask_destination('sms', $destination)];
         }
         // A confirmed failure may fall back to email. Unknown is not retried because the
         // provider may already have accepted the SMS.
@@ -178,7 +184,7 @@ function kiosk_send_verification_code(array $resident): array
             $emailResult = email_send_notification($notificationId);
             if (!empty($emailResult['ok'])) {
                 $_SESSION['kiosk_challenge_token'] = $token;
-                return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination('email', $email), 'token' => $token];
+                return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination('email', $email)];
             }
         }
         db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
@@ -189,7 +195,7 @@ function kiosk_send_verification_code(array $resident): array
     $result = email_send_notification($notificationId);
     if (!empty($result['ok'])) {
         $_SESSION['kiosk_challenge_token'] = $token;
-        return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination('email', $destination), 'token' => $token];
+        return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination('email', $destination)];
     }
     db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
     return ['ok' => false, 'message' => 'The verification email could not be sent. Please ask Staff to verify your record at the counter.'];
