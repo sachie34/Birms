@@ -212,6 +212,15 @@ function run_b22(array $S, string $base): void
             $invalidPost['status'] === 302 && $afterInvalidCount === 2 && $profileAfterInvalid === 'email'
         );
 
+        $baselineWait = db_one(
+            "SELECT COUNT(*) AS total,
+                    COALESCE(SUM(TIMESTAMPDIFF(SECOND, issued_at, called_at)), 0) AS wait_seconds,
+                    COALESCE(SUM(TIMESTAMPDIFF(SECOND, issued_at, served_at)), 0) AS elapsed_seconds
+             FROM queue_entries
+             WHERE service = 'Venue' AND queue_date = ? AND status = 'Served'
+               AND called_at IS NOT NULL AND served_at IS NOT NULL",
+            [date('Y-m-d')]
+        );
         $issuedAt = date('Y-m-d H:i:s', time() - 300);
         $calledAt = date('Y-m-d H:i:s', time() - 120);
         $servedAt = date('Y-m-d H:i:s');
@@ -222,11 +231,16 @@ function run_b22(array $S, string $base): void
             [$issuedAt, $calledAt, $servedAt, (int) $rows[0]['queue_id']]
         );
         $snapshot = queue_service_snapshot('Venue');
+        $baselineCount = (int) ($baselineWait['total'] ?? 0);
+        $expectedWait = (int) round(((float) ($baselineWait['wait_seconds'] ?? 0) + 180) / ($baselineCount + 1));
+        $expectedElapsed = (int) round(((float) ($baselineWait['elapsed_seconds'] ?? 0) + 300) / ($baselineCount + 1));
         record(
             'B22-06',
             'Average completed queue wait ends at the call time and excludes the time spent being served',
-            $snapshot['average_wait_seconds'] === 180,
-            'expected wait=180 seconds; actual=' . var_export($snapshot['average_wait_seconds'], true)
+            $expectedWait !== $expectedElapsed && $snapshot['average_wait_seconds'] === $expectedWait,
+            'baseline served=' . $baselineCount . '; expected wait average=' . $expectedWait
+            . '; expected elapsed average=' . $expectedElapsed
+            . '; actual=' . var_export($snapshot['average_wait_seconds'], true)
         );
     } finally {
         $ids = db_all('SELECT queue_id FROM queue_entries WHERE resident_id = ? AND queue_id > ?', [$residentId, $queueStartId]);
