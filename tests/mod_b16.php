@@ -88,6 +88,27 @@ function run_b16(array $S, string $base): void
             && str_contains($statusBefore['body'], 'Ongoing'),
             'identity=' . ($identityOk ? 'yes' : 'no') . '; submit=' . $firstSubmit['status'] . '; ref=' . $firstReference);
 
+        $privateValues = [
+            'Jordan Baker',
+            $residentNo,
+            'b16-jordan@example.test',
+            'B16 Resident Address',
+            'B16 test report describing a resident incident with enough detail.',
+        ];
+        $privateLeaks = array_values(array_filter(
+            $privateValues,
+            static fn(string $value): bool => $value !== '' && str_contains((string) ($statusBefore['body'] ?? ''), $value)
+        ));
+        record(
+            'B16-09',
+            'Public request status lookup shows the reference and service status but never discloses resident identity, contact, address or incident narrative',
+            ($statusBefore['status'] ?? 0) === 200
+            && str_contains((string) $statusBefore['body'], $firstReference)
+            && str_contains((string) $statusBefore['body'], 'Ongoing')
+            && !$privateLeaks,
+            $privateLeaks ? 'private values exposed: ' . implode(', ', $privateLeaks) : 'reference/status visible; resident PII and narrative absent'
+        );
+
         $requestId = (int) ($firstRow['request_id'] ?? 0);
         $rejectAttemptCap = $requestId > 0 ? post_as($cap, '/blotter_requests/index.php', '/blotter_requests/action.php', [
             'do' => 'accept', 'request_id' => (string) $requestId, 'note' => '',
