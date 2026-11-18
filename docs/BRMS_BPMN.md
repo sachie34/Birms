@@ -219,3 +219,13 @@ The public lookup is rate-limited and displays only the service, reference, curr
 The editable file `BRMS_BPMN.bpmn` contains seven BPMN 2.0 process diagrams: resident record maintenance, kiosk identity verification, document requests/certificate issuance, resident blotter intake and case/hearing handling, venue reservations, queue management, and status lookup.
 
 The diagrams document the repository branch, not the state of an individual XAMPP installation. Before submitting or presenting, confirm that the local database migration check reports no pending migrations, that the app is running from this same branch, and that external email/SMS providers are configured before claiming live message delivery. The legacy Visitor Logbook table/route may remain for compatibility; it is not shown as a revised-SRS kiosk service.
+
+## 10. Repository files used to verify the BPMN steps
+
+- Resident profiles: `public/residents/form.php`, `public/residents/action.php`, `app/permissions.php`.
+- Kiosk identity and resident session: `public/kiosk/index.php`, `public/kiosk/identify.php`, `public/kiosk/verify.php`, `app/kiosk_lib.php`.
+- Documents and certificates: `public/kiosk/request.php`, `public/requests/action.php`, `public/requests/form.php`, `public/certificates/issue.php`, `app/requests_lib.php`, `app/certificates_lib.php`, `app/signature_lib.php`.
+- Resident blotter intake and official case/hearing handling: `public/kiosk/blotter.php`, `public/blotter_requests/index.php`, `public/blotter_requests/action.php`, `public/blotters/action.php`, `public/blotters/hearing_action.php`, `app/blotter_requests_lib.php`, `app/blotters_lib.php`.
+- Venues and queues: `public/kiosk/venue.php`, `public/venues/index.php`, `public/venues/action.php`, `public/kiosk/queue.php`, `public/queue/index.php`, `public/queue/action.php`, `public/queue/display.php`, `app/venues_lib.php`, `app/queue_lib.php`.
+- Tracker and public status: `public/requests/all.php`, `public/kiosk/status.php`.
+- Notifications and role definitions: `app/notifications_lib.php`, `app/email_provider.php`, `app/permissions.php`, `app/menu.php`.
