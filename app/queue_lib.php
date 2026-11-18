@@ -383,9 +383,10 @@ function queue_service_snapshot(string $service): array
         'SELECT COUNT(*) FROM queue_entries WHERE service = ? AND queue_date = ? AND status = \'Waiting\'',
         [$service, $today]
     );
+    // Waiting time ends when the ticket is called; served_at also includes service time.
     $averageWait = db_val(
-        'SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, served_at)) FROM queue_entries
-         WHERE service = ? AND queue_date = ? AND status = \'Served\' AND served_at IS NOT NULL',
+        'SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) FROM queue_entries
+         WHERE service = ? AND queue_date = ? AND status = \'Served\' AND called_at IS NOT NULL',
         [$service, $today]
     );
     return [
