@@ -171,7 +171,7 @@ Do not merge this branch to `main` or label the system MSIT-compliant until the 
 
 Pull request [#25 — Phase-based security hardening](https://github.com/sachie34/Birms/pull/25) is still open and is not part of `main`. Its head branch is `john/fix-clerk-global-search-privacy` at `067d3383c51776374b8cb20ef609d9635657c63a`. The branch contains six commits and compares as six commits ahead / one behind current `main`; it is diverged and GitHub currently reports it is not mergeable. Its latest observed workflow run completed successfully. The PR description records 43/43 security/authentication/audit checks and 189/189 module checks for its phase-4 validation, but these are the PR's recorded results, not a fresh run on this MSIT branch.
 
-The MSIT branch was started from the current `main` so it includes the latest merged baseline. It does **not** yet include the unmerged PR #25 commits. Before changing security-sensitive code or claiming those improvements are present, inspect the divergence and port or reconcile the privacy, rate-limit, runtime, concurrency and certificate-print safeguards with the later `main` changes. Do not merge the old PR blindly, do not weaken either side's fixes, and rerun the full CI suite after reconciliation.
+At branch creation, this MSIT branch did not include the unmerged PR #25 commits. The relevant privacy, rate-limit, runtime, concurrency and certificate-print safeguards have since been reconciled manually with the later MSIT code and validated on this branch; see Section 11. PR #25 remains open/diverged. Do not merge it wholesale, because that would reintroduce incompatible older application code.
 
 
 ## 9. Historical implementation snapshot (2026-11-15; superseded by Sections 10–11)
@@ -218,14 +218,16 @@ The MSIT branch was started from the current `main` so it includes the latest me
 
 ### Latest automated validation
 
-GitHub Actions run **#885** on commit `b0bca45ce154f7044f204c60cc8e9ee07afb30d4` completed successfully:
+GitHub Actions run **#895** on commit `6b675f56c25602cb3e0d7168d7bcc2a6c1478747` completed successfully:
 
 | Environment | Security/authentication/audit | Module integration |
 |---|---:|---:|
-| MariaDB 10.4 | 39/39 passed | 235/235 passed |
-| MariaDB 10.11 | 39/39 passed | 235/235 passed |
+| MariaDB 10.4 | 43/43 passed | 235/235 passed |
+| MariaDB 10.11 | 43/43 passed | 235/235 passed |
 
-The B20 report tests verify the venue-usage query, Chairman/Secretary view and Excel export permissions, Staff denial, and retained CSV output. The B21 tests verify that the All Services Tracker lists all three request types, enforces the Staff/Admin permission, filters service/status/date, searches by Resident ID, and links to the corresponding blotter request. The new B22 tests verify the resident's notification selector on all four kiosk forms, saving Email/SMS/Both choices, SMS-to-email fallback, per-ticket call/near preferences, and rejection of invalid choices.
+The B20 report tests verify the venue-usage query, Chairman/Secretary view and Excel export permissions, Staff denial, and retained CSV output. The B21 tests verify that the All Services Tracker lists all three request types, enforces the Staff/Admin permission, filters service/status/date, searches by Resident ID, and links to the corresponding blotter request. B22 verifies Email/SMS/Both selection on all four kiosk forms, profile/ticket persistence, SMS fallback and per-ticket alerts. U9–U11 cover database-backed rate limiting, PHP runtime patch-level decisions (including the PHP 8.2 end-of-support boundary), and hidden CLI password input. S3 checks the pinned Bootstrap/Bootstrap Icons versions and both referenced icon-font files.
+
+Run link: https://github.com/sachie34/Birms/actions/runs/44349771228.
 
 These are automated integration results against disposable CI databases. They are not evidence of a completed barangay deployment or a successful local XAMPP/LAN acceptance test.
 
@@ -239,7 +241,31 @@ These are automated integration results against disposable CI databases. They ar
 6. Verify the Chairman signature image and generated certificate/PDF with the actual approved signature asset and official certificate wording/layout. The current draft certificate layout remains subject to barangay approval.
 7. Test backup and restore on a separate scratch database and separately verify restoration of private attachments and the Chairman signature file. Do not test restore against the source database.
 8. Measure common-page response times using representative barangay data to verify the 3-second target, and verify LAN operation when internet access is disconnected.
-9. Reconcile the remaining open security-hardening PR #25 changes, especially any runtime hardening not already present on this branch, against the current code and CI before merge. Do not blindly merge the diverged PR.
+9. On the target XAMPP machine, confirm both CLI PHP and Apache's loaded PHP meet the runtime security guard; exercise the secure Windows PowerShell prompts. CI cannot verify the exact PHP binary or terminal behavior on the deployment PC.
 10. Obtain adviser/office user acceptance and update the requirement traceability matrix with the signed/manual evidence before changing the draft PR to ready or merging.
 
 **Release status:** implementation and automated integration coverage have advanced substantially, but the branch remains a draft and is **not yet declared fully MSIT-compliant or production-ready** until the manual acceptance steps above are complete.
+
+## 11. Security hardening reconciliation (2026-11-19)
+
+### Applicable PR #25 safeguards now reconciled on the MSIT branch
+
+- **Request privacy:** global search applies the same row-level visibility rule as the request tracker, so Staff/Clerk search does not expose requests they neither filed nor were assigned.
+- **Concurrency and audit:** hearing slots have a database uniqueness guard and transactional rechecks; administrator role/status changes preserve the active-administrator invariant; certificate preview GETs do not increment print counts, while the CSRF-protected print POST records the action.
+- **Abuse throttling:** migration 014, the database-backed rate-limit helper and route-level enforcement are present. The U9 regression test checks fixed-window limits, separate identities and reset at the next window.
+- **PHP runtime:** the web bootstrap, XAMPP setup preflight and standalone admin bootstrap reject known-unpatched/unsupported PHP branches before application work proceeds. Accepted minimum patch versions reflect the PHP security releases available on 19 November 2026: PHP 8.3.36, 8.4.27, and 8.5.12. PHP 8.2.35 is accepted only until 31 December 2026; after that, PHP 8.2 is rejected because its security support ends. The setup wizard warns on PHP 8.2 before that date.
+- **CLI secrets:** the setup wizard and admin bootstrap use a shared hidden-input helper. Windows uses PowerShell `Read-Host -AsSecureString`; Unix-like terminals disable echo with `stty -echo` and restore it in a `finally` block. If a secure prompt cannot be established, the helper fails closed rather than reading the password visibly.
+- **Local vendor assets:** vendored Bootstrap was updated from 5.3.3 to 5.3.8 and Bootstrap Icons from 1.11.3 to 1.13.1. CSS, JavaScript, licenses and both icon font files were refreshed together; S3 verifies the versions and font presence.
+
+### Latest security reconciliation test result
+
+Run #895 passed against disposable MariaDB 10.4 and 10.11 databases: 43/43 security/authentication/audit checks and 235/235 module integration checks on each environment, with zero failures and zero untested checks. The run includes U9, U10, U11 and S3 as well as the existing B22 resident-notification regression cases.
+
+### Still requires target-machine or office acceptance
+
+- Verify Apache's actual PHP runtime separately from CLI PHP on the target XAMPP PC. Updating the application cannot patch PHP binaries; install a current supported XAMPP/PHP package before deployment.
+- Exercise the Windows PowerShell hidden-password prompt from the actual XAMPP machine. CI verifies the helper's contract and code path, not interactive console behavior on that specific PC.
+- Complete the migration-on-copy, role-by-role browser tests, phone QR/LAN test, physical kiosk timeout, real email/SMS delivery, approved signature/certificate/PDF, backup/restore including private attachments, 3-second performance and offline-LAN checks listed above.
+- Obtain adviser/office approval for the final role policy, certificate wording, fees and signatures; attach the manual evidence to the traceability matrix.
+
+**Security reconciliation status:** the relevant PR #25 application safeguards are now present and automated tests pass on this MSIT branch. PR #25 itself remains unmerged and should not be merged wholesale. This does not replace the remaining target-machine and office acceptance gates.
