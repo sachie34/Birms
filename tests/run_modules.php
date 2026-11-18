@@ -39,14 +39,47 @@ $S = fx_sessions($base, TP);
 $only = array_values(array_filter(array_slice($argv, 1), fn($a) => str_starts_with($a, '--only=')));
 $want = $only ? explode(',', substr($only[0], 7)) : null;
 foreach (glob(__DIR__ . '/mod_b*.php') ?: [] as $f) {
-    $id = strtoupper(preg_replace('/^mod_(b\d+)\.php$/', '$1', basename($f)));
+    $id = strtoupper(preg_replace('/^mod_(b\\d+)\\.php$/', '$1', basename($f)));
     if ($want !== null && !in_array($id, $want, true)) { continue; }
-    require $f;
     echo "== {$id} ==\n";
-    ($GLOBALS['run_' . strtolower($id)] ?? 'run_' . strtolower($id))($S, $base);
+    try {
+        require $f;
+        $runnerName = 'run_' . strtolower($id);
+        $runner = $GLOBALS[$runnerName] ?? $runnerName;
+        if (!is_callable($runner)) {
+            throw new RuntimeException("Module runner {$runnerName} is missing or not callable.");
+        }
+        $runner($S, $base);
+    } catch (Throwable $e) {
+        $message = preg_replace('/[\r\n]+/', ' ', $e->getMessage()) ?? 'No exception message.';
+        error_log("BIRMS module test {$id} aborted: " . (string) $e);
+        record($id . '-EXCEPTION', "Module {$id} aborted unexpectedly; this is a test failure", false,
+            get_class($e) . ': ' . substr($message, 0, 500));
+        record($id . '-REMAINDER', "Remaining assertions in module {$id} did not execute", null,
+            'Module aborted after an exception; inspect the failure above.');
+        // Continue with the next module so one exception does not hide unrelated failures.
+    }
 }
 db_exec("DELETE FROM users WHERE username LIKE 'zz\\_test\\_%'");
 db_exec("DELETE FROM login_failures WHERE username LIKE 'zz\\_test\\_%'");
-$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS')); $fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL')); $skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
+$pass = count(array_filter($results, fn($r) => $r[2] === 'PASS'));
+$fail = count(array_filter($results, fn($r) => $r[2] === 'FAIL'));
+$skip = count(array_filter($results, fn($r) => $r[2] === 'NOT TESTED'));
 echo str_repeat('-', 78) . "\nPASS {$pass}   FAIL {$fail}   NOT TESTED {$skip}   (total " . count($results) . ")\n";
-exit($fail > 0 ? 1 : 0);
+if ($fail > 0) {
+    echo "FAILED CHECKS (retained; fix the cause rather than removing the test):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'FAIL') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+if ($skip > 0) {
+    echo "NOT TESTED CHECKS (investigate before release):\n";
+    foreach ($results as [$testId, $testName, $testStatus, $testNote]) {
+        if ($testStatus === 'NOT TESTED') {
+            echo " - {$testId}: {$testName}" . ($testNote !== '' ? " [{$testNote}]" : '') . "\n";
+        }
+    }
+}
+exit($fail > 0 || $skip > 0 ? 1 : 0);
