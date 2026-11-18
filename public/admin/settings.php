@@ -38,6 +38,33 @@ if (is_post()) {
                     audit('lookup_added', 'Settings', 'Success', LOOKUP_LISTS[$key] . ': ' . $label, 'lookup', (int) db()->lastInsertId());
                     flash_add('success', 'Added.');
                     break;
+                case 'lookup_rename':
+                    $id = post_int('id');
+                    $label = post_str('label');
+                    $row = $id === null ? null : db_one('SELECT lookup_id, list_key, label FROM lookups WHERE lookup_id = ?', [$id]);
+                    if ($row === null || !isset(LOOKUP_LISTS[(string) ($row['list_key'] ?? '')])) {
+                        $errors[] = 'That list entry does not exist.';
+                    } elseif (!v_len($label, 1, 100)) {
+                        $errors[] = 'The list name must be 1-100 characters.';
+                    } elseif (db_val(
+                        'SELECT COUNT(*) FROM lookups WHERE list_key = ? AND label = ? AND lookup_id <> ?',
+                        [$row['list_key'], $label, $id]
+                    )) {
+                        $errors[] = 'Another entry already uses that name.';
+                    }
+                    if ($errors) { throw new RuntimeException('invalid'); }
+                    $changed = db_exec(
+                        'UPDATE lookups SET label = ? WHERE lookup_id = ? AND list_key = ?',
+                        [$label, $id, $row['list_key']]
+                    );
+                    if ($changed !== 1 && (string) $row['label'] !== $label) {
+                        throw new RuntimeException('The list entry changed before it could be renamed. Refresh and try again.');
+                    }
+                    audit('lookup_renamed', 'Settings', 'Success',
+                        LOOKUP_LISTS[(string) $row['list_key']] . ': ' . $row['label'] . ' -> ' . $label,
+                        'lookup', (int) $id);
+                    flash_add('success', 'List name updated. Existing resident records keep their linked value.');
+                    break;
                 case 'lookup_toggle':
                     $id = post_int('id'); $row = $id === null ? null : db_one('SELECT lookup_id, list_key, label, is_active FROM lookups WHERE lookup_id = ?', [$id]);
                     if ($row === null) { $errors[] = 'That entry does not exist.'; throw new RuntimeException('invalid'); }
@@ -199,7 +226,9 @@ if ($tab === 'general') {
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
     card_end();
 } elseif ($tab === 'puroks' || $tab === 'lists') {
-    $keys = $tab === 'puroks' ? ['purok'] : ['resident_category', 'visit_class', 'id_type', 'employment_status', 'incident_type'];
+    // Revised MSIT lists replace the old household/category/visit classifications.
+    // Hiding a value prevents new selection but preserves existing resident references.
+    $keys = $tab === 'puroks' ? ['purok'] : ['resident_status', 'resident_type', 'incident_type'];
     foreach ($keys as $key) {
         $items = db_all('SELECT lookup_id, label, is_active FROM lookups WHERE list_key = ? ORDER BY sort_order, label', [$key]);
         card_start(LOOKUP_LISTS[$key], $key === 'purok' ? 'The official Purok names have not been provided. Enter them here.' : 'Enter the categories approved for your barangay. Reporting will group records using these values.', 'mb-3');
@@ -207,7 +236,15 @@ if ($tab === 'general') {
         else {
             echo '<table class="table table-b mb-3"><tbody>';
             foreach ($items as $it) {
-                echo '<tr><td>' . e((string) $it['label']) . '</td><td>' . ($it['is_active'] ? pill('Shown', 'green') : pill('Hidden', 'grey')) . '</td><td class="text-end">'
+                echo '<tr><td class="align-middle">'
+                   . ($canEdit
+                       ? '<form method="post" action="' . e(base_url('admin/settings.php')) . '" class="d-flex gap-2 align-items-center">' . $hidden('lookup_rename')
+                           . '<input type="hidden" name="id" value="' . (int) $it['lookup_id'] . '">'
+                           . '<label class="visually-hidden" for="lookup_label_' . (int) $it['lookup_id'] . '">Rename ' . e((string) $it['label']) . '</label>'
+                           . '<input class="form-control form-control-sm" id="lookup_label_' . (int) $it['lookup_id'] . '" name="label" value="' . e((string) $it['label']) . '" maxlength="100" required>'
+                           . '<button class="btn btn-sm btn-light border" type="submit">Rename</button></form>'
+                       : e((string) $it['label']))
+                   . '</td><td class="align-middle">' . ($it['is_active'] ? pill('Shown', 'green') : pill('Hidden', 'grey')) . '</td><td class="text-end align-middle">'
                    . ($canEdit ? btn_post('admin/settings.php', ['do' => 'lookup_toggle', 'tab' => $tab, 'id' => $it['lookup_id']], $it['is_active'] ? 'Hide' : 'Show', 'btn-sm btn-light border') : '') . '</td></tr>';
             }
             echo '</tbody></table>';
