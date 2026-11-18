@@ -218,16 +218,16 @@ At branch creation, this MSIT branch did not include the unmerged PR #25 commits
 
 ### Latest automated validation
 
-GitHub Actions run **#946** on current branch head `1e74caa091b5869d5945b9885534a10c090b20d0` completed successfully:
+GitHub Actions run **#950** on current branch head `269d15a0f63d33e637d9e98a62ed1cf7957dc76e` completed successfully:
 
 | Environment | Security/authentication/audit | Module integration |
 |---|---:|---:|
-| MariaDB 10.4 | 45/45 passed | 261/261 passed |
-| MariaDB 10.11 | 45/45 passed | 261/261 passed |
+| MariaDB 10.4 | 45/45 passed | 263/263 passed |
+| MariaDB 10.11 | 45/45 passed | 263/263 passed |
 
-The run includes the full revised resident, document, certificate/PDF, blotter, venue, queue, reporting and tracker test suites. B16-09 verifies that the public reference tracker never exposes a resident's name, Resident ID, email, address or incident narrative. B22-05 through B22-16 cover notification transaction boundaries, average wait time, shared QR privacy, kiosk touch-target sizes, complete session cleanup, OTP preference fallback and one-time code lifecycle, and failed resident-switch isolation. B8 attachment downloads and signed certificate PDF generation also ran successfully; no temporary PDF fixture failure or NOT TESTED result was reported. U9–U13 and S3 continue to cover rate limiting, PHP runtime patch-level decisions, secure CLI prompts, failure reporting, email test-safety and local asset integrity.
+The run includes the full revised resident, document, certificate/PDF, blotter, venue, queue, reporting and tracker test suites. B16-09 verifies that the public reference tracker never exposes resident identity, contact, address or incident narrative. B22-05 through B22-18 cover queue/outbox transaction boundaries, accurate wait time, QR privacy, kiosk accessibility, session/OTP isolation, SMS fallback rules and durable email fallback after failed or unknown SMS outcomes. B8 attachment authorization and signed certificate PDF generation passed; no temporary PDF fixture failure or NOT TESTED result was reported. U9–U13 and S3 continue to cover rate limiting, PHP runtime patch-level decisions, secure CLI prompts, failure reporting, email test-safety and local asset integrity.
 
-Both databases reported **zero failures and zero untested checks**. The CI test logs show no PHP parse errors, unhandled exceptions, or failed assertions. Run link: https://github.com/sachie34/Birms/actions/runs/44369217757. Separate MariaDB 10.4 and 10.11 test-report artifacts are retained for 30 days.
+Both databases reported **zero failures and zero untested checks**. The CI test logs show no PHP parse errors, unhandled exceptions or failed assertions. Run link: https://github.com/sachie34/Birms/actions/runs/44370572274. Separate MariaDB 10.4 and 10.11 test-report artifacts are retained for 30 days.
 
 These are automated integration results against disposable CI databases. They are not evidence of a completed barangay deployment or a successful local XAMPP/LAN acceptance test.
 
@@ -259,9 +259,9 @@ These are automated integration results against disposable CI databases. They ar
 
 ### Latest security reconciliation test result
 
-Run #946 on current branch head passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 261/261 module integration checks on each environment, with zero failures and zero untested checks. In addition to U9–U13 and S3, it includes B22-01 through B22-16 (queue/outbox commit safety, kiosk session and OTP isolation, QR privacy and touch sizing) and B16-09 (public reference-tracker privacy). Attachment ownership, Chairman signature snapshot and PDF generation checks B8-4/B8-4a/B8-5 also passed on both database versions.
+Run #950 on current branch head passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 263/263 module integration checks on each environment, with zero failures and zero untested checks. In addition to U9–U13 and S3, it includes B22-01 through B22-18 (queue/outbox commit safety, kiosk session and OTP isolation, QR privacy, touch sizing, SMS failure/unknown outcome handling and durable email fallback) and B16-09 (public reference-tracker privacy). Attachment ownership, Chairman signature snapshot and PDF generation checks B8-4/B8-4a/B8-5 also passed on both database versions.
 
-The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. Run #946 retained separate security/module log artifacts for MariaDB 10.4 and 10.11. The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development failures remain visible in Actions history and were fixed and retested rather than hidden or deleted.
+The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. Run #950 retained separate security/module log artifacts for MariaDB 10.4 and 10.11. The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development failures remain visible in Actions history and were fixed and retested rather than hidden or deleted.
 
 ### Still requires target-machine or office acceptance
 
@@ -275,7 +275,7 @@ The CI workflow saves the security and module test logs as separate GitHub Actio
 - No test files were removed from the PR change set to make CI green. The historical B10 household-based CSV-import assertions were replaced because the revised SRS no longer uses household grouping and the former household importer/template/error-report routes are intentionally retired; the replacement B10/B3 checks assert those legacy routes and POST actions are unavailable.
 - In the resident suite, revised-SRS checks replace household-centric behavior. CSV/formula and malformed-input coverage remain as B3-10 and B3-12. Stored-XSS coverage is explicitly retained as B3-13; B3-14 covers age derived from the saved birthdate; B3-15 checks audit rows for resident creation, edits, status changes, archive and restore.
 - The XSS test is not a test deletion or a downgrade: it injects a script payload directly into a synthetic resident's Address field and verifies the profile and edit pages render it as escaped text.
-s=>s.replace("the current #905 result is green.","the current #946 result is green.")
+s=>s.replace("the current #905 result is green.","the current #950 result is green.")
 
 **Security reconciliation status:** the relevant PR #25 application safeguards are present and automated tests pass on this MSIT branch. PR #25 itself remains unmerged and should not be merged wholesale. The PR remains a draft. This does not replace the remaining target-machine and office acceptance gates.
 
@@ -283,12 +283,12 @@ s=>s.replace("the current #905 result is green.","the current #946 result is gre
 
 | Phase | Scope | Automated result |
 |---|---|---|
-| 1 | Resident kiosk identity, OTP lifecycle, session timeout, reset and cross-resident isolation | Passed in #946 |
-| 2 | Queue numbering, after-commit outbox dispatch, Email/SMS fallback, queue alerts and wait-time reporting | Passed in #946 |
-| 3 | Resident/document/blotter/venue workflows, permissions, overlap controls, public status privacy and attachments/PDF | Passed in #946 |
+| 1 | Resident kiosk identity, OTP lifecycle, session timeout, reset and cross-resident isolation | Passed in #950 |
+| 2 | Queue numbering, after-commit outbox dispatch, Email/SMS fallback, queue alerts and wait-time reporting | Passed in #950 |
+| 3 | Resident/document/blotter/venue workflows, permissions, overlap controls, public status privacy and attachments/PDF | Passed in #950 |
 | 4 | Target XAMPP migration, Apache PHP runtime, physical kiosk/LAN, real delivery, backup restore, performance and office UAT | **Not run here** |
 
-Run #946 validates commit `1e74caa091b5869d5945b9885534a10c090b20d0` on the current branch head. Both disposable MariaDB environments reported 45/45 security checks and 261/261 module checks, zero failures and zero untested checks. Separate retained artifacts: MariaDB 10.4 `14457058756`; MariaDB 10.11 `14459131924`.
+Run #950 validates commit `269d15a0f63d33e637d9e98a62ed1cf7957dc76e` on the current branch head. Both disposable MariaDB environments reported 45/45 security checks and 263/263 module checks, zero failures and zero untested checks. The run also verifies B22-17/B22-18: SMS failure/unknown statuses trigger an email fallback when an email address is available, while accepted/in-progress SMS states do not trigger duplicate fallback.
 
 The PR change set contains **no removed test files**. Some test cases were rewritten to reflect the revised SRS: household-based import/grouping is retired, so B10 now verifies the old importer routes cannot be used. This does not mean every historical assertion has an identical replacement; test scope changes are documented above. Earlier failed GitHub Actions runs remain in history and were not deleted.
 
