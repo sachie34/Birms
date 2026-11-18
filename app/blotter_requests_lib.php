@@ -30,6 +30,10 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
     $respondentAge = input_str($input, 'respondent_age');
     $respondentAddress = input_str($input, 'respondent_address');
     $respondentContact = input_str($input, 'respondent_contact');
+    $notificationPreference = input_str($input, 'notification_preference');
+    if ($notificationPreference !== '' && !queue_valid_notification_preference($notificationPreference)) {
+        $errors[] = 'Choose Email, SMS or Both for queue notifications.';
+    }
 
     $oldest = date('Y-m-d', strtotime('-10 years'));
     if (!v_date($incidentDate)) { $errors[] = 'Enter a valid incident date.'; }
@@ -64,7 +68,7 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
     }
     if ($errors) { return null; }
 
-    return db_transaction(function () use ($resident, $residentId, $incidentDate, $incidentTime, $place, $purokId, $incidentTypeId, $narrative, $respondent): array {
+    return db_transaction(function () use ($resident, $residentId, $incidentDate, $incidentTime, $place, $purokId, $incidentTypeId, $narrative, $respondent, $notificationPreference): array {
         // Reserve a case reference at submission. A rejected request may leave a gap, but references remain unique and auditable.
         $reference = new_case_no();
         db_exec(
@@ -89,7 +93,8 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
             $reference . ' submitted by verified resident #' . $residentId,
             'resident_blotter_request', $requestId, 'resident-kiosk', null);
 
-        $ticket = queue_issue_number('Blotter', $residentId, $reference, 'kiosk', 'Resident blotter report');
+        $ticket = queue_issue_number('Blotter', $residentId, $reference, 'kiosk', 'Resident blotter report',
+            $notificationPreference !== '' ? $notificationPreference : null);
         return [
             'request_id' => $requestId,
             'reference_no' => $reference,
