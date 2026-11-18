@@ -92,6 +92,7 @@ jobs:
         run: php tools/schema_check.php
 
       - name: Start local PHP server
+        id: start-php
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
@@ -109,20 +110,39 @@ jobs:
           cat /tmp/birms-php-server.log
           exit 1
 
+      - name: Prepare test report directory
+        if: always() && steps.start-php.outcome == 'success'
+        run: mkdir -p test-reports
+
       - name: Run authentication, security and audit tests
+        if: always() && steps.start-php.outcome == 'success'
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
-        run: php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080
+        run: |
+          set -o pipefail
+          php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080 2>&1 | tee test-reports/security-tests.log
 
       - name: Run module integration tests, including reporting and backup access
+        if: always() && steps.start-php.outcome == 'success'
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
-        run: php tests/run_modules.php http://127.0.0.1:8080
+        run: |
+          set -o pipefail
+          php tests/run_modules.php http://127.0.0.1:8080 2>&1 | tee test-reports/module-tests.log
+
+      - name: Upload test reports, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: birms-test-reports-mariadb-${{ matrix.mariadb-version }}
+          path: test-reports/*.log
+          if-no-files-found: warn
+          retention-days: 30
