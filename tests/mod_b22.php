@@ -263,7 +263,7 @@ function run_b22(array $S, string $base): void
         $expectedReportWait = (int) round(((float) ($reportBaseline['wait_seconds'] ?? 0) + 180) / ($reportBaselineCount + 1));
         $expectedReportElapsed = (int) round(((float) ($reportBaseline['elapsed_seconds'] ?? 0) + 300) / ($reportBaselineCount + 1));
         record(
-            'B22-11',
+            'B22-13',
             'Period queue reports calculate waiting time until call, matching the service snapshot and excluding counter service time',
             $expectedReportWait !== $expectedReportElapsed
             && (int) round((float) ($queueReport['summary']['average_wait_seconds'] ?? -1)) === $expectedReportWait,
