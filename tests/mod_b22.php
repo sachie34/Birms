@@ -256,6 +256,17 @@ function run_b22(array $S, string $base): void
             [$secondResidentNo, $purokId, $statusId ?: null, $typeId ?: null]
         );
         $secondResidentId = (int) db()->lastInsertId();
+        $getLogout = $kiosk->get('/kiosk/end.php');
+        $stillFirstResident = $kiosk->get('/kiosk/index.php');
+        record(
+            'B22-08',
+            'Kiosk session termination rejects cross-site GET requests and leaves the current resident session unchanged',
+            $getLogout['status'] === 405
+            && $stillFirstResident['status'] === 200
+            && str_contains($stillFirstResident['body'], 'IDENTITY VERIFIED'),
+            'GET logout status=' . $getLogout['status']
+            . '; resident session retained=' . (str_contains($stillFirstResident['body'], 'IDENTITY VERIFIED') ? 'yes' : 'no')
+        );
         $endSession = $kiosk->post('/kiosk/end.php', ['_csrf' => $kiosk->token('/kiosk/index.php')]);
         $secondIdentity = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
