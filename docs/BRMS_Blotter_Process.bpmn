@@ -33,7 +33,7 @@
     <bpmn:sequenceFlow id="BF08" sourceRef="B_Schedule" targetRef="B_Summons"/>
     <bpmn:sequenceFlow id="BF09" sourceRef="B_Summons" targetRef="B_Outcome"/>
     <bpmn:sequenceFlow id="BF10" sourceRef="B_Outcome" targetRef="B_MoreHearings"/>
-    <bpmn:sequenceFlow id="BF11_Yes" name="Yes" sourceRef="B_MoreHearings" targetRef="B_Schedule"/>
+    <bpmn:sequenceFlow id="BF11_Yes" name="Yes" sourceRef="B_MoreHearings" targetRef="B_Summons"/>
     <bpmn:sequenceFlow id="BF12_No" name="No" sourceRef="B_MoreHearings" targetRef="B_ReturnActive"/>
     <bpmn:sequenceFlow id="BF13" sourceRef="B_ReturnActive" targetRef="B_ResolveDecision"/>
     <bpmn:sequenceFlow id="BF14_No" name="No" sourceRef="B_ResolveDecision" targetRef="B_ScheduleDecision"/>
@@ -68,7 +68,7 @@
       <bpmndi:BPMNEdge id="BE_BF08" bpmnElement="BF08"><di:waypoint x="1225" y="238"/><di:waypoint x="1255" y="238"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BE_BF09" bpmnElement="BF09"><di:waypoint x="1430" y="238"/><di:waypoint x="1460" y="238"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BE_BF10" bpmnElement="BF10"><di:waypoint x="1635" y="238"/><di:waypoint x="1665" y="238"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BE_BF11" bpmnElement="BF11_Yes"><di:waypoint x="1690" y="213"/><di:waypoint x="1690" y="150"/><di:waypoint x="1137" y="150"/><di:waypoint x="1137" y="195"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BE_BF11" bpmnElement="BF11_Yes"><di:waypoint x="1690" y="213"/><di:waypoint x="1690" y="150"/><di:waypoint x="1342" y="150"/><di:waypoint x="1342" y="195"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BE_BF12" bpmnElement="BF12_No"><di:waypoint x="1715" y="238"/><di:waypoint x="1760" y="238"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BE_BF13" bpmnElement="BF13"><di:waypoint x="1935" y="238"/><di:waypoint x="1965" y="238"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BE_BF14" bpmnElement="BF14_No"><di:waypoint x="1990" y="213"/><di:waypoint x="1990" y="120"/><di:waypoint x="980" y="120"/><di:waypoint x="980" y="213"/></bpmndi:BPMNEdge>
