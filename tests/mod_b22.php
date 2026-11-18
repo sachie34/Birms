@@ -99,7 +99,8 @@ function run_b22(array $S, string $base): void
             [$phone]
         );
         $emailIssuedCount = (int) db_val(
-            "SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ? AND event_type = 'queue_issued'
+            "SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ?
+             AND event_type IN ('queue_issued','queue_issued_email_fallback')
              AND channel = 'email' AND delivery_status = 'queued'",
             [$residentId]
         );
