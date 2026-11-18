@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_BRMS_Resident_Service"
+  targetNamespace="https://sachie34.github.io/Birms/bpmn">
+  <bpmn:collaboration id="Collaboration_BRMS">
+    <bpmn:participant id="Participant_BRMS" name="BRMS — Resident Service Process" processRef="Process_BRMS"/>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_BRMS" name="Resident Service Intake, Queueing and Processing" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_BRMS">
+      <bpmn:lane id="Lane_Resident" name="Resident">
+        <bpmn:flowNodeRef>StartEvent_Resident</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OpenKioskQR</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_IdentifySelect</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReceiveQueueNo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ProvideDetails</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReceiveOutcome</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Completed</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="BRMS System / Kiosk">
+        <bpmn:flowNodeRef>Task_ValidateIdentity</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_IdentityValid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ShowIdentityError</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateReference</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateQueue</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyQueue</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ServiceType</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckVenueAvailability</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_VenueAvailable</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SaveVenueReservation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SaveBlotterRecord</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SaveDocumentRequest</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GenerateDocument</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_SignatureRequired</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ApplyChairmanSignature</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UpdateTrackerAudit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyResult</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_MergeService</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RecordRejection</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Rejected</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Staff" name="Staff">
+        <bpmn:flowNodeRef>Task_CallQueue</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReviewRequest</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_RequestDecision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ApproveRequest</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RejectRequest</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReleaseOrServe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UpdateCaseStatus</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Secretary" name="Secretary">
+        <bpmn:flowNodeRef>Task_SecretaryReviewBlotter</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Chairman" name="Chairman">
+        <bpmn:flowNodeRef>Task_ChairmanSignatoryProvision</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Admin" name="Administrator">
+        <bpmn:flowNodeRef>Task_AdminMaintainSetup</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_Resident" name="Resident needs a barangay service"/>
+    <bpmn:task id="Task_OpenKioskQR" name="Open kiosk or scan request QR"/>
+    <bpmn:task id="Task_IdentifySelect" name="Identify resident and select service"/>
+    <bpmn:task id="Task_ValidateIdentity" name="Validate Resident ID and birthdate"/>
+    <bpmn:exclusiveGateway id="Gateway_IdentityValid" name="Identity valid?"/>
+    <bpmn:task id="Task_ShowIdentityError" name="Show verification instructions / counter assistance"/>
+    <bpmn:task id="Task_CreateReference" name="Create service reference"/>
+    <bpmn:task id="Task_CreateQueue" name="Create entry in selected service queue"/>
+    <bpmn:task id="Task_NotifyQueue" name="Display queue number and send configured notification"/>
+    <bpmn:task id="Task_ReceiveQueueNo" name="Receive queue number and wait"/>
+    <bpmn:task id="Task_CallQueue" name="Call next number; record call time"/>
+    <bpmn:task id="Task_ProvideDetails" name="Provide details and supporting information"/>
+    <bpmn:task id="Task_ReviewRequest" name="Review request and required information"/>
+    <bpmn:exclusiveGateway id="Gateway_ServiceType" name="Selected service?"/>
+    <bpmn:task id="Task_SaveDocumentRequest" name="Save document request and requirements"/>
+    <bpmn:exclusiveGateway id="Gateway_RequestDecision" name="Approve request?"/>
+    <bpmn:task id="Task_ApproveRequest" name="Approve document request"/>
+    <bpmn:task id="Task_RejectRequest" name="Reject with reason"/>
+    <bpmn:task id="Task_GenerateDocument" name="Generate certificate / document from approved resident data"/>
+    <bpmn:exclusiveGateway id="Gateway_SignatureRequired" name="Chairman signature required?"/>
+    <bpmn:task id="Task_ApplyChairmanSignature" name="Apply stored Chairman signature"/>
+    <bpmn:task id="Task_ChairmanSignatoryProvision" name="Maintain / provide authorized signature asset"/>
+    <bpmn:task id="Task_ReleaseOrServe" name="Release document or mark service served"/>
+    <bpmn:task id="Task_SaveBlotterRecord" name="Save blotter report and parties"/>
+    <bpmn:task id="Task_SecretaryReviewBlotter" name="Review blotter record and case information"/>
+    <bpmn:task id="Task_UpdateCaseStatus" name="Update blotter status and case history"/>
+    <bpmn:task id="Task_CheckVenueAvailability" name="Check venue and requested time range"/>
+    <bpmn:exclusiveGateway id="Gateway_VenueAvailable" name="Venue available?"/>
+    <bpmn:task id="Task_SaveVenueReservation" name="Save approved reservation"/>
+    <bpmn:task id="Task_RecordRejection" name="Record rejection / unavailable outcome"/>
+    <bpmn:task id="Task_UpdateTrackerAudit" name="Update reference tracker, timestamps and audit history"/>
+    <bpmn:task id="Task_NotifyResult" name="Notify resident of status / result"/>
+    <bpmn:task id="Task_ReceiveOutcome" name="Receive result or check status using reference"/>
+    <bpmn:exclusiveGateway id="Gateway_MergeService" name="Service outcome"/>
+    <bpmn:endEvent id="EndEvent_Completed" name="Service completed"/>
+    <bpmn:endEvent id="EndEvent_Rejected" name="Rejected or unavailable"/>
+    <bpmn:task id="Task_AdminMaintainSetup" name="Maintain accounts, reference data, settings and signature asset"/>
+
+    <bpmn:sequenceFlow id="Flow_01" sourceRef="StartEvent_Resident" targetRef="Task_OpenKioskQR"/>
+    <bpmn:sequenceFlow id="Flow_02" sourceRef="Task_OpenKioskQR" targetRef="Task_IdentifySelect"/>
+    <bpmn:sequenceFlow id="Flow_03" sourceRef="Task_IdentifySelect" targetRef="Task_ValidateIdentity"/>
+    <bpmn:sequenceFlow id="Flow_04" sourceRef="Task_ValidateIdentity" targetRef="Gateway_IdentityValid"/>
+    <bpmn:sequenceFlow id="Flow_05_Yes" name="Yes" sourceRef="Gateway_IdentityValid" targetRef="Task_CreateReference"/>
+    <bpmn:sequenceFlow id="Flow_05_No" name="No" sourceRef="Gateway_IdentityValid" targetRef="Task_ShowIdentityError"/>
+    <bpmn:sequenceFlow id="Flow_06" sourceRef="Task_ShowIdentityError" targetRef="Task_IdentifySelect"/>
+    <bpmn:sequenceFlow id="Flow_07" sourceRef="Task_CreateReference" targetRef="Task_CreateQueue"/>
+    <bpmn:sequenceFlow id="Flow_08" sourceRef="Task_CreateQueue" targetRef="Task_NotifyQueue"/>
+    <bpmn:sequenceFlow id="Flow_09" sourceRef="Task_NotifyQueue" targetRef="Task_ReceiveQueueNo"/>
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_ReceiveQueueNo" targetRef="Task_CallQueue"/>
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_CallQueue" targetRef="Task_ProvideDetails"/>
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_ProvideDetails" targetRef="Task_ReviewRequest"/>
+    <bpmn:sequenceFlow id="Flow_13" sourceRef="Task_ReviewRequest" targetRef="Gateway_ServiceType"/>
+
+    <bpmn:sequenceFlow id="Flow_Doc" name="Documents" sourceRef="Gateway_ServiceType" targetRef="Task_SaveDocumentRequest"/>
+    <bpmn:sequenceFlow id="Flow_Doc_2" sourceRef="Task_SaveDocumentRequest" targetRef="Gateway_RequestDecision"/>
+    <bpmn:sequenceFlow id="Flow_Decision_Yes" name="Approved" sourceRef="Gateway_RequestDecision" targetRef="Task_ApproveRequest"/>
+    <bpmn:sequenceFlow id="Flow_Decision_No" name="Rejected" sourceRef="Gateway_RequestDecision" targetRef="Task_RejectRequest"/>
+    <bpmn:sequenceFlow id="Flow_Approve_Generate" sourceRef="Task_ApproveRequest" targetRef="Task_GenerateDocument"/>
+    <bpmn:sequenceFlow id="Flow_Generate_Signature" sourceRef="Task_GenerateDocument" targetRef="Gateway_SignatureRequired"/>
+    <bpmn:sequenceFlow id="Flow_Sign_Yes" name="Yes" sourceRef="Gateway_SignatureRequired" targetRef="Task_ApplyChairmanSignature"/>
+    <bpmn:sequenceFlow id="Flow_Sign_No" name="No" sourceRef="Gateway_SignatureRequired" targetRef="Task_ReleaseOrServe"/>
+    <bpmn:sequenceFlow id="Flow_Sign_Apply_Release" sourceRef="Task_ApplyChairmanSignature" targetRef="Task_ReleaseOrServe"/>
+    <bpmn:sequenceFlow id="Flow_Release_Update" sourceRef="Task_ReleaseOrServe" targetRef="Task_UpdateTrackerAudit"/>
+    <bpmn:sequenceFlow id="Flow_Reject_Update" sourceRef="Task_RejectRequest" targetRef="Task_RecordRejection"/>
+    <bpmn:sequenceFlow id="Flow_RecordReject_Update" sourceRef="Task_RecordRejection" targetRef="Task_UpdateTrackerAudit"/>
+
+    <bpmn:sequenceFlow id="Flow_Blotter" name="Blotter" sourceRef="Gateway_ServiceType" targetRef="Task_SaveBlotterRecord"/>
+    <bpmn:sequenceFlow id="Flow_Blotter_Review" sourceRef="Task_SaveBlotterRecord" targetRef="Task_SecretaryReviewBlotter"/>
+    <bpmn:sequenceFlow id="Flow_Blotter_Status" sourceRef="Task_SecretaryReviewBlotter" targetRef="Task_UpdateCaseStatus"/>
+    <bpmn:sequenceFlow id="Flow_Blotter_Tracker" sourceRef="Task_UpdateCaseStatus" targetRef="Task_UpdateTrackerAudit"/>
+
+    <bpmn:sequenceFlow id="Flow_Venue" name="Venue" sourceRef="Gateway_ServiceType" targetRef="Task_CheckVenueAvailability"/>
+    <bpmn:sequenceFlow id="Flow_Venue_Gateway" sourceRef="Task_CheckVenueAvailability" targetRef="Gateway_VenueAvailable"/>
+    <bpmn:sequenceFlow id="Flow_Venue_Yes" name="Available" sourceRef="Gateway_VenueAvailable" targetRef="Task_SaveVenueReservation"/>
+    <bpmn:sequenceFlow id="Flow_Venue_No" name="Unavailable" sourceRef="Gateway_VenueAvailable" targetRef="Task_RecordRejection"/>
+    <bpmn:sequenceFlow id="Flow_Venue_Save_Release" sourceRef="Task_SaveVenueReservation" targetRef="Task_ReleaseOrServe"/>
+
+    <bpmn:sequenceFlow id="Flow_Tracker_Notify" sourceRef="Task_UpdateTrackerAudit" targetRef="Task_NotifyResult"/>
+    <bpmn:sequenceFlow id="Flow_Notify_Resident" sourceRef="Task_NotifyResult" targetRef="Task_ReceiveOutcome"/>
+    <bpmn:sequenceFlow id="Flow_Outcome_Completed" name="Completed / released" sourceRef="Task_ReceiveOutcome" targetRef="EndEvent_Completed"/>
+    <bpmn:sequenceFlow id="Flow_Outcome_Rejected" name="Rejected / unavailable" sourceRef="Task_ReceiveOutcome" targetRef="EndEvent_Rejected"/>
+
+    <bpmn:association id="Association_Admin" sourceRef="Task_AdminMaintainSetup" targetRef="Task_CreateQueue"/>
+    <bpmn:association id="Association_Signature" sourceRef="Task_ChairmanSignatoryProvision" targetRef="Task_ApplyChairmanSignature"/>
+  </bpmn:process>
+</bpmn:definitions>
