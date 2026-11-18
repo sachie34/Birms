@@ -170,6 +170,40 @@ record('U12', 'A failed assertion remains recorded as FAIL with its diagnostic t
     && str_contains($reportProbeOutput, 'FAIL')
     && str_contains($reportProbeOutput, 'intentional diagnostic probe'));
 
+$emailSettingBefore = db_val("SELECT setting_value FROM settings WHERE setting_key = 'email_enabled'");
+$emailGuardOutput = [];
+$emailGuardExit = 99;
+$emailGuardScript = tempnam(sys_get_temp_dir(), 'birms-email-guard-');
+if ($emailGuardScript !== false) {
+    try {
+        db_exec(
+            "INSERT INTO settings (setting_key, setting_value) VALUES ('email_enabled', '1')
+             ON DUPLICATE KEY UPDATE setting_value = '1'"
+        );
+        $emailGuardProbe = "<?php\n"
+            . "putenv('BIRMS_EMAIL_ENABLED=false');\n"
+            . "putenv('BIRMS_DB_NAME=barangay_db_work');\n"
+            . "require " . var_export(APP_ROOT . '/tests/run_modules.php', true) . ";\n";
+        if (file_put_contents($emailGuardScript, $emailGuardProbe) !== false) {
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($emailGuardScript) . ' 2>&1', $emailGuardOutput, $emailGuardExit);
+        } else {
+            $emailGuardOutput[] = 'Unable to write the email-preflight probe.';
+        }
+    } finally {
+        @unlink($emailGuardScript);
+        if ($emailSettingBefore === null) {
+            db_exec("DELETE FROM settings WHERE setting_key = 'email_enabled'");
+        } else {
+            db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'email_enabled'", [(string) $emailSettingBefore]);
+        }
+    }
+}
+$emailGuardText = implode("\\n", $emailGuardOutput);
+record('U13', 'Module tests refuse to run when the saved email setting is enabled, preventing delivery to real residents',
+    $emailGuardExit === 2
+    && str_contains($emailGuardText, 'REFUSED: real email notifications are enabled.')
+    && !str_contains($emailGuardText, 'BIRMS module tests  base='));
+
 $phpFiles = []; foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/public', FilesystemIterator::SKIP_DOTS)) as $f) { if (str_ends_with((string) $f, '.php')) { $phpFiles[] = (string) $f; } }
 $pdoInPublic = array_filter($phpFiles, fn($f) => preg_match('/new PDO|mysql:host=/', (string) file_get_contents($f)));
 record('S1', 'Database connection exists in ONE place, not in any public page (finding L4)', !$pdoInPublic);
