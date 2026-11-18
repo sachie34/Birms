@@ -9,6 +9,7 @@ if (PHP_SAPI !== 'cli') { exit("Command line only.\n"); }
 require __DIR__ . '/../app/core.php';
 date_default_timezone_set((string) config('timezone', 'Asia/Manila'));   // same clock as the app, or date checks fail for 8 hours a day
 require __DIR__ . '/../app/lookups.php';
+require __DIR__ . '/../app/email_provider.php';
 require __DIR__ . '/../app/permissions.php';
 require __DIR__ . '/lib.php';
 if (!function_exists('curl_init')) { fwrite(STDERR, "The PHP curl extension is required.\n"); exit(2); }
@@ -28,6 +29,12 @@ $smsEnabled = is_bool($smsEnabledFlag)
     : filter_var($smsEnabledFlag, FILTER_VALIDATE_BOOLEAN);
 if ($smsEnabled) {
     fwrite(STDERR, "REFUSED: the selected SMS provider is enabled. Disable it in app/config.local.php/environment before running module tests; test requests can transition to Ready. Use tools/test_smsapiph_sms.php only for an intentional, authorized live-send test.\n");
+    exit(2);
+}
+$defaultEmailEnabled = filter_var(config('email.enabled', false), FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+$emailEnabled = filter_var(setting('email_enabled', $defaultEmailEnabled), FILTER_VALIDATE_BOOLEAN);
+if ($emailEnabled) {
+    fwrite(STDERR, "REFUSED: real email notifications are enabled. Disable email in the database Settings and app/config.local.php/environment before running module tests; test requests may create outbound notifications.\n");
     exit(2);
 }
 $base = rtrim('http://127.0.0.1:8080', '/');
