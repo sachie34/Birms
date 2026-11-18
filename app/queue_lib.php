@@ -43,10 +43,19 @@ function queue_notification_preference_options(?string $selected = 'email'): str
  * Issue the next number for a service/day. The counter row is locked inside the transaction,
  * so simultaneous counter/kiosk requests cannot receive the same number.
  *
+ * Notification delivery is deliberately deferred until the enclosing transaction commits.
+ *
  * @return array{queue_id:int,service:string,queue_date:string,queue_number:int}
  */
-function queue_issue_number(string $service, ?int $residentId = null, ?string $referenceNo = null, string $issuedVia = 'staff', ?string $purpose = null, ?string $notificationPreference = null): array
-{
+function queue_issue_number(
+    string $service,
+    ?int $residentId = null,
+    ?string $referenceNo = null,
+    string $issuedVia = 'staff',
+    ?string $purpose = null,
+    ?string $notificationPreference = null,
+    bool $deferNotifications = false
+): array {
     if (!queue_valid_service($service)) {
         throw new InvalidArgumentException('Choose Blotter, Documents or Venue.');
     }
@@ -76,7 +85,7 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
     $preference = queue_resolve_notification_preference($notificationPreference, $savedPreference);
     $persistPreference = $residentId !== null && $notificationPreference !== null && trim($notificationPreference) !== '';
 
-    return db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference, $persistPreference, $resident): array {
+    $entry = db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference, $persistPreference, $resident): array {
         $today = date('Y-m-d');
         db_exec('INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)', [$service, $today]);
         $counter = db_one('SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE', [$service, $today]);
@@ -89,7 +98,6 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
              VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', ?, ?)',
             [$service, $today, $number, $residentId, ($referenceNo !== '' ? $referenceNo : null), $purpose, $issuedVia, $preference]
         );
-        // A resident's kiosk choice is saved for later request-status notifications too.
         if ($persistPreference && (string) ($resident['notification_preference'] ?? 'email') !== $preference) {
             db_exec(
                 'UPDATE residents SET notification_preference = ? WHERE resident_id = ? AND archived_at IS NULL',
@@ -104,17 +112,80 @@ function queue_issue_number(string $service, ?int $residentId = null, ?string $r
         }
         $id = (int) db()->lastInsertId();
         audit('queue_number_issued', 'Queue', 'Success', $service . ' queue #' . $number . ' issued for ' . $today, 'queue_entry', $id);
-        $entry = ['queue_id' => $id, 'service' => $service, 'queue_date' => $today, 'queue_number' => $number];
-        if ($residentId !== null) {
-            queue_enqueue_notifications($residentId, $service, $number, 'queue_issued', 'Your queue number is ' . $number . ' for ' . $service . '. Please watch the queue display.', $preference);
-        }
-        return $entry;
+        return ['queue_id' => $id, 'service' => $service, 'queue_date' => $today, 'queue_number' => $number];
     });
+
+    // A direct counter/kiosk issuance is now committed. Callers already inside a larger
+    // request/reservation/blotter transaction must explicitly dispatch after that commit.
+    if ($residentId !== null && !$deferNotifications) {
+        queue_dispatch_resident_notification(
+            $residentId,
+            $service,
+            (int) $entry['queue_number'],
+            'queue_issued',
+            'Your queue number is ' . (int) $entry['queue_number'] . ' for ' . $service . '. Please watch the queue display.',
+            $preference
+        );
+    }
+    return $entry;
 }
 
-/** Put a queue notice in the outbox. Dispatch/delivery is a separate adapter and is not implied by enqueueing. */
-function queue_enqueue_notifications(int $residentId, string $service, int $number, string $event, string $message, ?string $preferenceOverride = null): void
+/** Dispatch one ticket's issue notification only after the owning workflow transaction commits. */
+function queue_notify_ticket_issued(int $queueId): void
 {
+    if (db()->inTransaction()) {
+        throw new LogicException('Queue issue notifications must be dispatched after the owning transaction commits.');
+    }
+    $entry = db_one(
+        'SELECT service, queue_number, resident_id, notification_preference
+         FROM queue_entries WHERE queue_id = ?',
+        [$queueId]
+    );
+    if ($entry === null || empty($entry['resident_id'])) { return; }
+    queue_dispatch_resident_notification(
+        (int) $entry['resident_id'],
+        (string) $entry['service'],
+        (int) $entry['queue_number'],
+        'queue_issued',
+        'Your queue number is ' . (int) $entry['queue_number'] . ' for ' . (string) $entry['service'] . '. Please watch the queue display.',
+        (string) ($entry['notification_preference'] ?? 'email')
+    );
+}
+
+/** Keep notification/provider errors from reversing an already-committed queue action. */
+function queue_dispatch_resident_notification(
+    int $residentId,
+    string $service,
+    int $number,
+    string $event,
+    string $message,
+    ?string $preferenceOverride = null
+): void {
+    if (db()->inTransaction()) {
+        throw new LogicException('Queue notifications cannot be dispatched inside a database transaction.');
+    }
+    try {
+        queue_enqueue_notifications($residentId, $service, $number, $event, $message, $preferenceOverride);
+    } catch (Throwable $notificationError) {
+        error_log('BIRMS queue notification failed for resident #' . $residentId . ', ' . $service . ' #' . $number
+            . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
+        audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+            $service . ' queue #' . $number . ' was committed but its notification could not be queued.');
+    }
+}
+
+/** Put channel notices in the outbox atomically, then contact providers only after that transaction commits. */
+function queue_enqueue_notifications(
+    int $residentId,
+    string $service,
+    int $number,
+    string $event,
+    string $message,
+    ?string $preferenceOverride = null
+): void {
+    if (db()->inTransaction()) {
+        throw new LogicException('Queue notification outbox rows and provider calls must be created after the service transaction commits.');
+    }
     $resident = db_one('SELECT email_address, contact_number, notification_preference FROM residents WHERE resident_id = ?', [$residentId]);
     if ($resident === null) { return; }
     $preference = queue_resolve_notification_preference($preferenceOverride, (string) ($resident['notification_preference'] ?? 'email'));
@@ -125,37 +196,69 @@ function queue_enqueue_notifications(int $residentId, string $service, int $numb
     $wantsSms = in_array($preference, ['sms', 'both'], true);
     $smsEnabled = $wantsSms && $mobile !== '' && sms_provider_is_enabled();
 
-    // Email is the default. If SMS is disabled, unconfigured, or lacks a number,
-    // an SMS-only preference falls back to the resident's saved email address.
+    // SMS-only choices fall back to email when SMS is unavailable.
     $emailFallback = $wantsSms && !$smsEnabled && !$wantsEmail;
     if ($wantsSms && !$smsEnabled) { $wantsEmail = true; }
+
+    $emailId = null;
+    $smsId = null;
     $emailQueued = false;
-    if ($wantsEmail && $email !== '') {
-        $emailEvent = $emailFallback ? $event . '_email_fallback' : $event;
-        $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $emailEvent, $reference);
-        $emailQueued = true;
-        if (email_provider_is_enabled()) { email_send_notification($notificationId); }
+    db_transaction(function () use (
+        $residentId, $email, $mobile, $message, $event, $reference,
+        $wantsEmail, $wantsSms, $smsEnabled, $emailFallback, &$emailId, &$smsId, &$emailQueued
+    ): void {
+        if ($wantsEmail && $email !== '') {
+            $emailEvent = $emailFallback ? $event . '_email_fallback' : $event;
+            $emailId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $emailEvent, $reference);
+            $emailQueued = true;
+        }
+        if ($wantsSms && $mobile !== '') {
+            db_exec(
+                'INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status)
+                 VALUES (?, ?, ?, NULL, ?, ?, ?)',
+                [
+                    $mobile,
+                    mb_substr_safe($message, 480),
+                    $event,
+                    $smsEnabled ? 'Waiting to send' : 'Logged only',
+                    $smsEnabled ? sms_provider_selected_name() : null,
+                    $smsEnabled ? 'not_attempted' : 'not_configured',
+                ]
+            );
+            $smsId = (int) db()->lastInsertId();
+        }
+    });
+
+    // All outbox rows are committed before any external provider call.
+    if ($emailId !== null && email_provider_is_enabled()) {
+        try {
+            email_send_notification((int) $emailId);
+        } catch (Throwable $emailError) {
+            error_log('BIRMS queue email send failed for outbox #' . (int) $emailId . ': ' . get_class($emailError));
+        }
     }
 
-    if ($wantsSms && $mobile !== '') {
-        $enabled = sms_provider_is_enabled();
-        $providerStatus = $enabled ? 'not_attempted' : 'not_configured';
-        $providerName = $enabled ? sms_provider_selected_name() : null;
-        db_exec(
-            'INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status)
-             VALUES (?, ?, ?, NULL, ?, ?, ?)',
-            [$mobile, mb_substr_safe($message, 480), $event, $enabled ? 'Waiting to send' : 'Logged only', $providerName, $providerStatus]
-        );
-        $smsId = (int) db()->lastInsertId();
-        if ($enabled) {
-            $result = sms_send_outbox($smsId, false);
-            if (in_array((string) ($result['status'] ?? ''), ['failed', 'refunded'], true) && !$emailQueued && $email !== '') {
-                $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $event . '_email_fallback', $reference);
-                if (email_provider_is_enabled()) { email_send_notification($notificationId); }
+    if ($smsId !== null && $smsEnabled) {
+        try {
+            $result = sms_send_outbox((int) $smsId, false);
+            $status = (string) ($result['status'] ?? 'unknown');
+            if (in_array($status, ['failed', 'refunded'], true) && !$emailQueued && $email !== '') {
+                $fallbackId = db_transaction(function () use ($residentId, $email, $message, $event, $reference): int {
+                    return email_queue_notification(
+                        $residentId, $email, 'Barangay queue update', $message,
+                        $event . '_email_fallback', $reference
+                    );
+                });
+                if (email_provider_is_enabled()) {
+                    try {
+                        email_send_notification($fallbackId);
+                    } catch (Throwable $emailError) {
+                        error_log('BIRMS queue fallback email failed for outbox #' . $fallbackId . ': ' . get_class($emailError));
+                    }
+                }
             }
-        } elseif (!$emailQueued && $email !== '') {
-            $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $event . '_email_fallback', $reference);
-            if (email_provider_is_enabled()) { email_send_notification($notificationId); }
+        } catch (Throwable $smsError) {
+            error_log('BIRMS queue SMS send failed for outbox #' . (int) $smsId . ': ' . get_class($smsError));
         }
     }
 }
@@ -167,7 +270,7 @@ function queue_enqueue_notifications(int $residentId, string $service, int $numb
 function queue_call_next(string $service): ?array
 {
     if (!queue_valid_service($service)) { throw new InvalidArgumentException('Unknown queue service.'); }
-    return db_transaction(function () use ($service): ?array {
+    $result = db_transaction(function () use ($service): array {
         $today = date('Y-m-d');
         db_exec('INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)', [$service, $today]);
         db_one('SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE', [$service, $today]);
@@ -176,14 +279,16 @@ function queue_call_next(string $service): ?array
              WHERE service = ? AND queue_date = ? AND status = \'Called\' LIMIT 1 FOR UPDATE',
             [$service, $today]
         );
-        if ($current !== null) { throw new RuntimeException('Serve, skip or cancel the current called number before calling the next one.'); }
+        if ($current !== null) {
+            throw new RuntimeException('Serve, skip or cancel the current called number before calling the next one.');
+        }
         $next = db_one(
             'SELECT queue_id, queue_number, resident_id, reference_no, notification_preference FROM queue_entries
              WHERE service = ? AND queue_date = ? AND status = \'Waiting\'
              ORDER BY queue_number LIMIT 1 FOR UPDATE',
             [$service, $today]
         );
-        if ($next === null) { return null; }
+        if ($next === null) { return ['called' => null, 'near' => null]; }
         $changed = db_exec(
             'UPDATE queue_entries SET status = \'Called\', called_at = NOW(), called_by = ?
              WHERE queue_id = ? AND status = \'Waiting\'',
@@ -191,24 +296,35 @@ function queue_call_next(string $service): ?array
         );
         if ($changed !== 1) { throw new RuntimeException('The queue entry changed before it could be called. Refresh and try again.'); }
         audit('queue_number_called', 'Queue', 'Success', $service . ' queue #' . (int) $next['queue_number'] . ' called', 'queue_entry', (int) $next['queue_id']);
-        if (!empty($next['resident_id'])) {
-            queue_enqueue_notifications((int) $next['resident_id'], $service, (int) $next['queue_number'], 'queue_called',
-                'Your queue number ' . (int) $next['queue_number'] . ' for ' . $service . ' is now being called. Please proceed to the counter.',
-                (string) ($next['notification_preference'] ?? 'email'));
-        }
         $near = db_one(
             'SELECT queue_number, resident_id, notification_preference FROM queue_entries
              WHERE service = ? AND queue_date = ? AND status = \'Waiting\'
              ORDER BY queue_number LIMIT 1',
             [$service, $today]
         );
-        if ($near !== null && !empty($near['resident_id'])) {
-            queue_enqueue_notifications((int) $near['resident_id'], $service, (int) $near['queue_number'], 'queue_near',
-                'Your queue number ' . (int) $near['queue_number'] . ' for ' . $service . ' is next after the number now being served. Please get ready.',
-                (string) ($near['notification_preference'] ?? 'email'));
-        }
-        return $next;
+        return ['called' => $next, 'near' => $near];
     });
+
+    // Notifications are sent only after the call status is committed.
+    $called = $result['called'];
+    $near = $result['near'];
+    if ($called !== null && !empty($called['resident_id'])) {
+        queue_dispatch_resident_notification(
+            (int) $called['resident_id'], $service, (int) $called['queue_number'],
+            'queue_called',
+            'Your queue number ' . (int) $called['queue_number'] . ' for ' . $service . ' is now being called. Please proceed to the counter.',
+            (string) ($called['notification_preference'] ?? 'email')
+        );
+    }
+    if ($near !== null && !empty($near['resident_id'])) {
+        queue_dispatch_resident_notification(
+            (int) $near['resident_id'], $service, (int) $near['queue_number'],
+            'queue_near',
+            'Your queue number ' . (int) $near['queue_number'] . ' for ' . $service . ' is next after the number now being served. Please get ready.',
+            (string) ($near['notification_preference'] ?? 'email')
+        );
+    }
+    return $called;
 }
 
 /** Complete a called entry as Served, Skipped or Cancelled. */
