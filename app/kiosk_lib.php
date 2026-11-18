@@ -144,7 +144,6 @@ function kiosk_send_verification_code(array $resident): array
     $emailEnabled = $email !== '' && email_provider_is_enabled();
 
     $channel = kiosk_verification_channel($preference, $smsEnabled, $emailEnabled);
-    elseif ($emailEnabled) { $channel = 'email'; }
     if ($channel === null) {
         return ['ok' => false, 'message' => 'A one-time code cannot be delivered because no verified email or SMS service is configured. Please ask Staff to verify your record at the counter.'];
     }
