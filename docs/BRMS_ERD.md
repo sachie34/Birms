@@ -503,6 +503,10 @@ These are **multi-column** uniqueness constraints. They do not make each listed 
 7. **Notifications:** `notification_outbox` stores resident notification jobs and delivery states; `sms_outbox` separately stores SMS provider attempts and provider metadata.
 8. **Chairman signature:** `document_types.requires_chairman_signature` controls the signature requirement; `issuances.chairman_signature_path` snapshots the signature file path used for that issuance.
 9. **Audit/history:** `audit_log.entity_type/entity_id` is polymorphic and is not a foreign key to every business table. `request_status_history` uses nullable foreign keys for document, blotter and venue records. `sms_outbox.hearing_id` is stored without a declared FK in the schema.
+10. **Legacy household compatibility:** `households` and `residents.household_id` remain in the schema so older records are preserved. The revised resident form uses an individual address and Purok; it does not ask users to create or assign a household.
+11. **Visitor Logbook compatibility:** `visitor_log` and its attachment relationship remain in the schema. The revised kiosk service flow is based on queue entries and service requests; the retained visitor table should not be mistaken for the kiosk queue.
+12. **Resident CSV import:** the current `public/residents/import.php` route is disabled/retired and redirects with a warning. The presence of an import helper library does not mean the user-facing CSV import workflow is currently available.
+13. **Role boundaries:** the current permission map limits resident profile create/edit/archive/restore to Admin; Staff and Secretary have resident view access. Staff handles queues, venue decisions and resident blotter intake review; Secretary maintains official blotter cases/hearings and performs document requirement review; Chairman is read-only.
 
 ## Entities included (29 tables)
 
