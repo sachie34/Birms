@@ -136,20 +136,26 @@ function queue_notify_ticket_issued(int $queueId): void
     if (db()->inTransaction()) {
         throw new LogicException('Queue issue notifications must be dispatched after the owning transaction commits.');
     }
-    $entry = db_one(
-        'SELECT service, queue_number, resident_id, notification_preference
-         FROM queue_entries WHERE queue_id = ?',
-        [$queueId]
-    );
-    if ($entry === null || empty($entry['resident_id'])) { return; }
-    queue_dispatch_resident_notification(
-        (int) $entry['resident_id'],
-        (string) $entry['service'],
-        (int) $entry['queue_number'],
-        'queue_issued',
-        'Your queue number is ' . (int) $entry['queue_number'] . ' for ' . (string) $entry['service'] . '. Please watch the queue display.',
-        (string) ($entry['notification_preference'] ?? 'email')
-    );
+    try {
+        $entry = db_one(
+            'SELECT service, queue_number, resident_id, notification_preference
+             FROM queue_entries WHERE queue_id = ?',
+            [$queueId]
+        );
+        if ($entry === null || empty($entry['resident_id'])) { return; }
+        queue_dispatch_resident_notification(
+            (int) $entry['resident_id'],
+            (string) $entry['service'],
+            (int) $entry['queue_number'],
+            'queue_issued',
+            'Your queue number is ' . (int) $entry['queue_number'] . ' for ' . (string) $entry['service'] . '. Please watch the queue display.',
+            (string) ($entry['notification_preference'] ?? 'email')
+        );
+    } catch (Throwable $notificationError) {
+        error_log('BIRMS queue issue notification lookup failed for queue #' . $queueId . ': ' . get_class($notificationError));
+        audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+            'Queue #' . $queueId . ' was committed but its issue notification could not be dispatched.');
+    }
 }
 
 /** Keep notification/provider errors from reversing an already-committed queue action. */
