@@ -218,16 +218,16 @@ At branch creation, this MSIT branch did not include the unmerged PR #25 commits
 
 ### Latest automated validation
 
-GitHub Actions run **#907** on the current branch head `78047b584f38c24a77db1da9f92d0370f89b16f3` completed successfully:
+GitHub Actions run **#928** on current branch head `8ed4c9ed0607fbdd53f9e59181cbc0aaa6982a9d` completed successfully:
 
 | Environment | Security/authentication/audit | Module integration |
 |---|---:|---:|
-| MariaDB 10.4 | 45/45 passed | 238/238 passed |
-| MariaDB 10.11 | 45/45 passed | 238/238 passed |
+| MariaDB 10.4 | 45/45 passed | 244/244 passed |
+| MariaDB 10.11 | 45/45 passed | 244/244 passed |
 
-The B20 report tests verify venue-usage reporting, Chairman/Secretary view and Excel export permissions, Staff denial and retained CSV output. B21 verifies the Admin/Staff All Services Tracker across Documents, resident Blotter and Venue requests, including filters, Resident ID search and blotter navigation. B22 verifies Email/SMS/Both selection on all four kiosk forms, resident/ticket persistence, SMS fallback and per-ticket called/near alerts. U9–U11 cover database-backed rate limiting, PHP runtime patch-level decisions (including the PHP 8.2 end-of-support boundary) and hidden CLI password input. U12 verifies failed assertions remain in the result collection with their diagnostics; U13 verifies the module runner refuses to start when email delivery is enabled. S3 checks pinned Bootstrap/Bootstrap Icons versions and both referenced icon-font files. B3-13 restores the resident Address stored-XSS regression; B3-14 checks age calculation; B3-15 checks resident creation/edit/status/archive/restore audit entries.
+The B20 report tests verify venue-usage reporting, Chairman/Secretary view and Excel export permissions, Staff denial and retained CSV output. B21 verifies the Admin/Staff All Services Tracker across Documents, resident Blotter and Venue requests, including filters, Resident ID search and blotter navigation. B22 verifies Email/SMS/Both selection on all four kiosk forms, profile/ticket persistence, SMS fallback and per-ticket alerts; outbox dispatch after commit; accurate wait-time calculation; CSRF-protected inactivity logout; full cleanup of resident identity, OTP, flash and receipt state; and isolation between successive kiosk visitors. U9–U11 cover database-backed rate limiting, PHP runtime patch-level decisions and hidden CLI password input. U12/U13 cover failure reporting and protection against running tests with real email enabled. S3 checks the pinned Bootstrap/Bootstrap Icons bundle. B3-13 through B3-15 cover resident stored-XSS, age calculation and audit history.
 
-Both databases reported **zero failures and zero untested checks**. Run link: https://github.com/sachie34/Birms/actions/runs/44354927008. The run retained separate MariaDB 10.4 and 10.11 security/module log artifacts for 30 days.
+Both databases reported **zero failures and zero untested checks**. PHP logs contained no warnings, notices, parse errors or unhandled exceptions. Run link: https://github.com/sachie34/Birms/actions/runs/44363277413. Separate MariaDB 10.4 and 10.11 security/module log artifacts are retained for 30 days.
 
 These are automated integration results against disposable CI databases. They are not evidence of a completed barangay deployment or a successful local XAMPP/LAN acceptance test.
 
@@ -259,9 +259,9 @@ These are automated integration results against disposable CI databases. They ar
 
 ### Latest security reconciliation test result
 
-Run #907 on the current branch head passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 238/238 module integration checks on each environment, with zero failures and zero untested checks. The run includes U9–U13, S3, B22, and B3-13 stored-XSS, B3-14 age and B3-15 resident-audit regression tests.
+Run #928 on current branch head passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 244/244 module integration checks on each environment, with zero failures and zero untested checks. The run includes U9–U13, S3, B22-01 through B22-10, and B3-13 stored-XSS, B3-14 age and B3-15 resident-audit regression tests. No PHP warnings, notices, parse errors or unhandled exceptions appeared in either PHP test log.
 
-The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. Run #907 artifacts: MariaDB 10.4 security/module logs (artifact ID `14451790169`) and MariaDB 10.11 security/module logs (artifact ID `14452510103`). The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development runs that failed during the B22 notification work and test-harness reconciliation remain visible in GitHub Actions history; they were fixed and retested rather than hidden or deleted.
+The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. Run #928 retained separate security/module log artifacts for MariaDB 10.4 and 10.11. The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development failures remain visible in Actions history and were fixed and retested rather than hidden or deleted.
 
 ### Still requires target-machine or office acceptance
 
@@ -275,6 +275,6 @@ The CI workflow saves the security and module test logs as separate GitHub Actio
 - No test files were removed from the PR change set to make CI green. The historical B10 household-based CSV-import assertions were replaced because the revised SRS no longer uses household grouping and the former household importer/template/error-report routes are intentionally retired; the replacement B10/B3 checks assert those legacy routes and POST actions are unavailable.
 - In the resident suite, revised-SRS checks replace household-centric behavior. CSV/formula and malformed-input coverage remain as B3-10 and B3-12. Stored-XSS coverage is explicitly retained as B3-13; B3-14 covers age derived from the saved birthdate; B3-15 checks audit rows for resident creation, edits, status changes, archive and restore.
 - The XSS test is not a test deletion or a downgrade: it injects a script payload directly into a synthetic resident's Address field and verifies the profile and edit pages render it as escaped text.
-- Intermediate failed workflow runs are still visible in the repository's Actions history. They show the B22 fixture/fallback problems and the test-runner reconciliation failures encountered during development. The later fixes retain the corresponding assertions and the current #905 result is green.
+s=>s.replace("the current #905 result is green.","the current #928 result is green.")
 
 **Security reconciliation status:** the relevant PR #25 application safeguards are present and automated tests pass on this MSIT branch. PR #25 itself remains unmerged and should not be merged wholesale. The PR remains a draft. This does not replace the remaining target-machine and office acceptance gates.
