@@ -174,15 +174,15 @@ Pull request [#25 — Phase-based security hardening](https://github.com/sachie3
 The MSIT branch was started from the current `main` so it includes the latest merged baseline. It does **not** yet include the unmerged PR #25 commits. Before changing security-sensitive code or claiming those improvements are present, inspect the divergence and port or reconcile the privacy, rate-limit, runtime, concurrency and certificate-print safeguards with the later `main` changes. Do not merge the old PR blindly, do not weaken either side's fixes, and rerun the full CI suite after reconciliation.
 
 
-## 9. Implementation progress (2026-11-15)
+## 9. Historical implementation snapshot (2026-11-15; superseded by Sections 10–11)
 
 ### Phase 0 — baseline and traceability
 - **Completed for the initial review:** created this dedicated working branch from current `main`; documented the controlling SRS, inspected the resident, request, blotter, role, certificate and migration baselines, and recorded known conflicts.
 - **Not completed:** exhaustive route-by-route review and an adviser-approved role policy.
 
 ### Security migration preservation
-- Ported the two database migrations from open PR #25 into this branch as migrations `013_hearing_concurrency` and `014_rate_limits`, including down scripts. The expected schema snapshot now includes the unique hearing slot guard and rate-limit bucket table.
-- **Not yet ported:** the rate-limiting runtime helpers/endpoint hooks and PHP runtime-patch guard from PR #25. Do not claim those protections are active on this branch merely because the schema table exists. They still require careful reconciliation with the later `main` fixes and their tests.
+- Ported the two database migrations from open PR #25 into this branch as migrations `013_hearing_concurrency` and `014_rate_limits`, including down scripts. The expected schema snapshot includes the unique hearing slot guard and rate-limit bucket table.
+- The 2026-11-15 status below was a historical snapshot. Subsequent reconciliation added the runtime helpers/endpoint hooks, PHP runtime guard, hidden CLI password input and current vendor assets; see Section 11 for the verified result.
 
 ### Phase 1 — additive MSIT data foundation
 - Added migration `015_msit_srs_foundation` and a working-copy-only down script.
@@ -190,14 +190,13 @@ The MSIT branch was started from the current `main` so it includes the latest me
 - It adds the revised document/blotter status columns without removing legacy columns; archives legacy Resolved blotters in the new status field while retaining the old status; and creates queue, venue/reservation, request-history, one-time verification challenge, and notification outbox tables.
 - Added `tests/mod_b13.php` for revised resident fields/defaults, unique Resident IDs, three independent queue number sequences, venue default mode, and allowed blotter statuses.
 - Updated `database/expected_schema.json` and added a CI step to compare the fully migrated database with that snapshot.
-- **Not complete:** no resident pages/import/export/certificates/reports have been switched to these fields yet; no staff queue UI, kiosk, QR flow, reservation conflict logic, email dispatcher, signature image upload/rendering, or revised role enforcement has been implemented. The new schema is groundwork only until those workflows are connected and tested.
+- **Historical note:** the incomplete-work list above described the position on 2026-11-15. The later implementation and integration status is recorded in Section 10.
 
 ### Validation status
-- No successful CI result is claimed yet for this branch. The new schema-check step and B13 module tests must run on a pull-request CI job.
-- Existing working databases require a pre-migration duplicate-hearing check for migration 013. Inspect:
+- **Historical note:** the statement that no successful CI result was available applies only to the 2026-11-15 snapshot. Current automated validation is recorded in Sections 10–11.
+- Existing working databases still require a pre-migration duplicate-hearing check for migration 013. Inspect:
   `SELECT blotter_id, scheduled_at, status, COUNT(*) AS total FROM hearings GROUP BY blotter_id, scheduled_at, status HAVING COUNT(*) > 1;`
   Resolve any duplicates by human review before applying the migration; never delete historical hearings to force the migration through.
-- The application still uses old resident pages and old role names, so do not deploy this branch as an MSIT-compliant build yet.
 
 - Compatibility correction from CI: the new Resident ID/status/type columns remain nullable during the staged transition because existing application routes and legacy integration fixtures still create residents using the old columns. Existing records are backfilled where possible; the revised resident form will be required to validate and populate these fields before the migration can be tightened to NOT NULL. This is intentional transitional compatibility, not the final resident-registration rule.
 
