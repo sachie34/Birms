@@ -218,7 +218,7 @@ At branch creation, this MSIT branch did not include the unmerged PR #25 commits
 
 ### Latest automated validation
 
-GitHub Actions run **#905** on commit `fb4fa01d8b6d24e328e0c9a3f2b971a1cc433861` completed successfully:
+GitHub Actions run **#907** on the current branch head `78047b584f38c24a77db1da9f92d0370f89b16f3` completed successfully:
 
 | Environment | Security/authentication/audit | Module integration |
 |---|---:|---:|
@@ -227,7 +227,7 @@ GitHub Actions run **#905** on commit `fb4fa01d8b6d24e328e0c9a3f2b971a1cc433861`
 
 The B20 report tests verify venue-usage reporting, Chairman/Secretary view and Excel export permissions, Staff denial and retained CSV output. B21 verifies the Admin/Staff All Services Tracker across Documents, resident Blotter and Venue requests, including filters, Resident ID search and blotter navigation. B22 verifies Email/SMS/Both selection on all four kiosk forms, resident/ticket persistence, SMS fallback and per-ticket called/near alerts. U9–U11 cover database-backed rate limiting, PHP runtime patch-level decisions (including the PHP 8.2 end-of-support boundary) and hidden CLI password input. U12 verifies failed assertions remain in the result collection with their diagnostics; U13 verifies the module runner refuses to start when email delivery is enabled. S3 checks pinned Bootstrap/Bootstrap Icons versions and both referenced icon-font files. B3-13 restores the resident Address stored-XSS regression; B3-14 checks age calculation; B3-15 checks resident creation/edit/status/archive/restore audit entries.
 
-Both databases reported **zero failures and zero untested checks**. Run link: https://github.com/sachie34/Birms/actions/runs/44354497332.
+Both databases reported **zero failures and zero untested checks**. Run link: https://github.com/sachie34/Birms/actions/runs/44354927008. The run retained separate MariaDB 10.4 and 10.11 security/module log artifacts for 30 days.
 
 These are automated integration results against disposable CI databases. They are not evidence of a completed barangay deployment or a successful local XAMPP/LAN acceptance test.
 
@@ -259,9 +259,9 @@ These are automated integration results against disposable CI databases. They ar
 
 ### Latest security reconciliation test result
 
-Run #905 passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 238/238 module integration checks on each environment, with zero failures and zero untested checks. The run includes U9–U13, S3, B22, and the retained B3-13 stored-XSS, B3-14 age and B3-15 resident-audit regression tests.
+Run #907 on the current branch head passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 238/238 module integration checks on each environment, with zero failures and zero untested checks. The run includes U9–U13, S3, B22, and B3-13 stored-XSS, B3-14 age and B3-15 resident-audit regression tests.
 
-The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development runs that failed during the B22 notification work and test-harness reconciliation remain visible in GitHub Actions history; they were fixed and retested rather than hidden or deleted.
+The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. Run #907 artifacts: MariaDB 10.4 security/module logs (artifact ID `14451790169`) and MariaDB 10.11 security/module logs (artifact ID `14452510103`). The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development runs that failed during the B22 notification work and test-harness reconciliation remain visible in GitHub Actions history; they were fixed and retested rather than hidden or deleted.
 
 ### Still requires target-machine or office acceptance
 
