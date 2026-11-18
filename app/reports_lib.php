@@ -203,8 +203,8 @@ function report_queueing(array $range): array
                 COALESCE(SUM(status = 'Served'), 0) AS served_count,
                 COALESCE(SUM(status = 'Skipped'), 0) AS skipped_count,
                 COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count,
-                AVG(CASE WHEN status = 'Served' AND served_at IS NOT NULL
-                    THEN TIMESTAMPDIFF(SECOND, issued_at, served_at) ELSE NULL END) AS average_wait_seconds
+                AVG(CASE WHEN status = 'Served' AND called_at IS NOT NULL
+                    THEN TIMESTAMPDIFF(SECOND, issued_at, called_at) ELSE NULL END) AS average_wait_seconds
          FROM queue_entries
          WHERE issued_at >= ? AND issued_at < ?",
         [$range['start'], $range['end']]
@@ -219,8 +219,8 @@ function report_queueing(array $range): array
                 COALESCE(SUM(status = 'Served'), 0) AS served_count,
                 COALESCE(SUM(status = 'Skipped'), 0) AS skipped_count,
                 COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count,
-                AVG(CASE WHEN status = 'Served' AND served_at IS NOT NULL
-                    THEN TIMESTAMPDIFF(SECOND, issued_at, served_at) ELSE NULL END) AS average_wait_seconds
+                AVG(CASE WHEN status = 'Served' AND called_at IS NOT NULL
+                    THEN TIMESTAMPDIFF(SECOND, issued_at, called_at) ELSE NULL END) AS average_wait_seconds
          FROM queue_entries
          WHERE issued_at >= ? AND issued_at < ?
          GROUP BY service
