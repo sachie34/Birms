@@ -11,161 +11,161 @@
  </bpmn:collaboration>
  <bpmn:process id="Process_Resident" name="Resident Record Registration and Maintenance" isExecutable="false">
   <bpmn:startEvent id="R0" name="Admin opens Residents">
-   <bpmn:outgoing>R01</bpmn:outgoing>
+   <bpmn:outgoing>RF01</bpmn:outgoing>
   </bpmn:startEvent>
   <bpmn:task id="R1" name="Register a new resident or open an existing record">
-   <bpmn:incoming>R01</bpmn:incoming>
-   <bpmn:outgoing>R02</bpmn:outgoing>
+   <bpmn:incoming>RF01</bpmn:incoming>
+   <bpmn:outgoing>RF02</bpmn:outgoing>
   </bpmn:task>
   <bpmn:task id="R2" name="Enter personal details, individual address, Purok, status, type, contacts, photo and notification preference">
-   <bpmn:incoming>R02</bpmn:incoming>
-   <bpmn:outgoing>R03</bpmn:outgoing>
+   <bpmn:incoming>RF02</bpmn:incoming>
+   <bpmn:outgoing>RF03</bpmn:outgoing>
   </bpmn:task>
   <bpmn:task id="R3" name="Validate required fields, lookup values and identity details">
-   <bpmn:incoming>R03</bpmn:incoming>
-   <bpmn:outgoing>R04</bpmn:outgoing>
+   <bpmn:incoming>RF03</bpmn:incoming>
+   <bpmn:outgoing>RF04</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="R4" name="Possible duplicate name and birthdate?" gatewayDirection="Diverging">
-   <bpmn:incoming>R04</bpmn:incoming>
-   <bpmn:outgoing>R05</bpmn:outgoing>
-   <bpmn:outgoing>R08</bpmn:outgoing>
+   <bpmn:incoming>RF04</bpmn:incoming>
+   <bpmn:outgoing>RF05</bpmn:outgoing>
+   <bpmn:outgoing>RF08</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="R5" name="Display the possible matching resident record">
-   <bpmn:incoming>R05</bpmn:incoming>
-   <bpmn:outgoing>R06</bpmn:outgoing>
+   <bpmn:incoming>RF05</bpmn:incoming>
+   <bpmn:outgoing>RF06</bpmn:outgoing>
   </bpmn:task>
   <bpmn:task id="R6" name="Admin confirms the record is a different person">
-   <bpmn:incoming>R06</bpmn:incoming>
-   <bpmn:outgoing>R07</bpmn:outgoing>
+   <bpmn:incoming>RF06</bpmn:incoming>
+   <bpmn:outgoing>RF07</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="R7" name="Continue to save" gatewayDirection="Converging">
-   <bpmn:incoming>R07</bpmn:incoming>
-   <bpmn:incoming>R08</bpmn:incoming>
-   <bpmn:outgoing>R09</bpmn:outgoing>
+   <bpmn:incoming>RF07</bpmn:incoming>
+   <bpmn:incoming>RF08</bpmn:incoming>
+   <bpmn:outgoing>RF09</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="R8" name="Save resident and assign unique Resident ID">
-   <bpmn:incoming>R09</bpmn:incoming>
-   <bpmn:outgoing>R10</bpmn:outgoing>
+   <bpmn:incoming>RF09</bpmn:incoming>
+   <bpmn:outgoing>RF10</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="R9" name="Archive or restore this record?" gatewayDirection="Diverging">
-   <bpmn:incoming>R10</bpmn:incoming>
-   <bpmn:outgoing>R11</bpmn:outgoing>
-   <bpmn:outgoing>R13</bpmn:outgoing>
+   <bpmn:incoming>RF10</bpmn:incoming>
+   <bpmn:outgoing>RF11</bpmn:outgoing>
+   <bpmn:outgoing>RF13</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="R10" name="Admin archives or restores record; no hard delete">
-   <bpmn:incoming>R11</bpmn:incoming>
-   <bpmn:outgoing>R12</bpmn:outgoing>
+   <bpmn:incoming>RF11</bpmn:incoming>
+   <bpmn:outgoing>RF12</bpmn:outgoing>
   </bpmn:task>
   <bpmn:endEvent id="R11" name="Resident record retained">
-   <bpmn:incoming>R12</bpmn:incoming>
-   <bpmn:incoming>R13</bpmn:incoming>
+   <bpmn:incoming>RF12</bpmn:incoming>
+   <bpmn:incoming>RF13</bpmn:incoming>
   </bpmn:endEvent>
-  <bpmn:sequenceFlow id="R01" sourceRef="R0" targetRef="R1"/>
-  <bpmn:sequenceFlow id="R02" sourceRef="R1" targetRef="R2"/>
-  <bpmn:sequenceFlow id="R03" sourceRef="R2" targetRef="R3"/>
-  <bpmn:sequenceFlow id="R04" sourceRef="R3" targetRef="R4"/>
-  <bpmn:sequenceFlow id="R05" sourceRef="R4" targetRef="R5" name="Yes"/>
-  <bpmn:sequenceFlow id="R06" sourceRef="R5" targetRef="R6"/>
-  <bpmn:sequenceFlow id="R07" sourceRef="R6" targetRef="R7"/>
-  <bpmn:sequenceFlow id="R08" sourceRef="R4" targetRef="R7" name="No"/>
-  <bpmn:sequenceFlow id="R09" sourceRef="R7" targetRef="R8"/>
-  <bpmn:sequenceFlow id="R10" sourceRef="R8" targetRef="R9"/>
-  <bpmn:sequenceFlow id="R11" sourceRef="R9" targetRef="R10" name="Yes"/>
-  <bpmn:sequenceFlow id="R12" sourceRef="R10" targetRef="R11"/>
-  <bpmn:sequenceFlow id="R13" sourceRef="R9" targetRef="R11" name="No"/>
+  <bpmn:sequenceFlow id="RF01" sourceRef="R0" targetRef="R1"/>
+  <bpmn:sequenceFlow id="RF02" sourceRef="R1" targetRef="R2"/>
+  <bpmn:sequenceFlow id="RF03" sourceRef="R2" targetRef="R3"/>
+  <bpmn:sequenceFlow id="RF04" sourceRef="R3" targetRef="R4"/>
+  <bpmn:sequenceFlow id="RF05" sourceRef="R4" targetRef="R5" name="Yes"/>
+  <bpmn:sequenceFlow id="RF06" sourceRef="R5" targetRef="R6"/>
+  <bpmn:sequenceFlow id="RF07" sourceRef="R6" targetRef="R7"/>
+  <bpmn:sequenceFlow id="RF08" sourceRef="R4" targetRef="R7" name="No"/>
+  <bpmn:sequenceFlow id="RF09" sourceRef="R7" targetRef="R8"/>
+  <bpmn:sequenceFlow id="RF10" sourceRef="R8" targetRef="R9"/>
+  <bpmn:sequenceFlow id="RF11" sourceRef="R9" targetRef="R10" name="Yes"/>
+  <bpmn:sequenceFlow id="RF12" sourceRef="R10" targetRef="R11"/>
+  <bpmn:sequenceFlow id="RF13" sourceRef="R9" targetRef="R11" name="No"/>
  </bpmn:process>
  <bpmn:process id="Process_Kiosk" name="Resident Kiosk Identity Verification" isExecutable="false">
   <bpmn:startEvent id="K0" name="Resident opens kiosk or QR request link">
-   <bpmn:outgoing>K01</bpmn:outgoing>
+   <bpmn:outgoing>KF01</bpmn:outgoing>
   </bpmn:startEvent>
   <bpmn:task id="K1" name="Enter Resident ID and birthdate, or name and birthdate">
-   <bpmn:incoming>K01</bpmn:incoming>
-   <bpmn:outgoing>K02</bpmn:outgoing>
+   <bpmn:incoming>KF01</bpmn:incoming>
+   <bpmn:outgoing>KF02</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="K2" name="Which identity method?" gatewayDirection="Diverging">
-   <bpmn:incoming>K02</bpmn:incoming>
-   <bpmn:outgoing>K03</bpmn:outgoing>
-   <bpmn:outgoing>K07</bpmn:outgoing>
+   <bpmn:incoming>KF02</bpmn:incoming>
+   <bpmn:outgoing>KF03</bpmn:outgoing>
+   <bpmn:outgoing>KF07</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="K3" name="Match Resident ID and birthdate to one active resident">
-   <bpmn:incoming>K03</bpmn:incoming>
-   <bpmn:outgoing>K04</bpmn:outgoing>
+   <bpmn:incoming>KF03</bpmn:incoming>
+   <bpmn:outgoing>KF04</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="K4" name="Exactly one active match?" gatewayDirection="Diverging">
-   <bpmn:incoming>K04</bpmn:incoming>
-   <bpmn:outgoing>K05</bpmn:outgoing>
-   <bpmn:outgoing>K06</bpmn:outgoing>
+   <bpmn:incoming>KF04</bpmn:incoming>
+   <bpmn:outgoing>KF05</bpmn:outgoing>
+   <bpmn:outgoing>KF06</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="K5" name="Match first name, last name and birthdate">
-   <bpmn:incoming>K07</bpmn:incoming>
-   <bpmn:outgoing>K08</bpmn:outgoing>
+   <bpmn:incoming>KF07</bpmn:incoming>
+   <bpmn:outgoing>KF08</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="K6" name="Exactly one active match?" gatewayDirection="Diverging">
-   <bpmn:incoming>K08</bpmn:incoming>
-   <bpmn:outgoing>K09</bpmn:outgoing>
-   <bpmn:outgoing>K10</bpmn:outgoing>
+   <bpmn:incoming>KF08</bpmn:incoming>
+   <bpmn:outgoing>KF09</bpmn:outgoing>
+   <bpmn:outgoing>KF10</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="K7" name="Send one-time code to registered email or SMS when provider is configured">
-   <bpmn:incoming>K09</bpmn:incoming>
-   <bpmn:outgoing>K11</bpmn:outgoing>
+   <bpmn:incoming>KF09</bpmn:incoming>
+   <bpmn:outgoing>KF11</bpmn:outgoing>
   </bpmn:task>
   <bpmn:task id="K8" name="Resident enters six-digit verification code">
-   <bpmn:incoming>K11</bpmn:incoming>
-   <bpmn:outgoing>K12</bpmn:outgoing>
+   <bpmn:incoming>KF11</bpmn:incoming>
+   <bpmn:outgoing>KF12</bpmn:outgoing>
   </bpmn:task>
   <bpmn:exclusiveGateway id="K9" name="Code valid, unused, unexpired and within attempt limit?" gatewayDirection="Diverging">
-   <bpmn:incoming>K12</bpmn:incoming>
-   <bpmn:outgoing>K13</bpmn:outgoing>
-   <bpmn:outgoing>K14</bpmn:outgoing>
+   <bpmn:incoming>KF12</bpmn:incoming>
+   <bpmn:outgoing>KF13</bpmn:outgoing>
+   <bpmn:outgoing>KF14</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:exclusiveGateway id="K10" name="Identity verified" gatewayDirection="Converging">
-   <bpmn:incoming>K05</bpmn:incoming>
-   <bpmn:incoming>K13</bpmn:incoming>
-   <bpmn:outgoing>K15</bpmn:outgoing>
+   <bpmn:incoming>KF05</bpmn:incoming>
+   <bpmn:incoming>KF13</bpmn:incoming>
+   <bpmn:outgoing>KF15</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="K11" name="Create resident-only kiosk session with 90-second idle timeout">
-   <bpmn:incoming>K15</bpmn:incoming>
-   <bpmn:outgoing>K16</bpmn:outgoing>
+   <bpmn:incoming>KF15</bpmn:incoming>
+   <bpmn:outgoing>KF16</bpmn:outgoing>
   </bpmn:task>
   <bpmn:task id="K12" name="Display resident service menu">
-   <bpmn:incoming>K16</bpmn:incoming>
-   <bpmn:outgoing>K17</bpmn:outgoing>
+   <bpmn:incoming>KF16</bpmn:incoming>
+   <bpmn:outgoing>KF17</bpmn:outgoing>
   </bpmn:task>
   <bpmn:endEvent id="K13" name="Resident can select a service">
-   <bpmn:incoming>K17</bpmn:incoming>
+   <bpmn:incoming>KF17</bpmn:incoming>
   </bpmn:endEvent>
   <bpmn:exclusiveGateway id="K14" name="Verification failed" gatewayDirection="Converging">
-   <bpmn:incoming>K06</bpmn:incoming>
-   <bpmn:incoming>K10</bpmn:incoming>
-   <bpmn:incoming>K14</bpmn:incoming>
-   <bpmn:outgoing>K18</bpmn:outgoing>
+   <bpmn:incoming>KF06</bpmn:incoming>
+   <bpmn:incoming>KF10</bpmn:incoming>
+   <bpmn:incoming>KF14</bpmn:incoming>
+   <bpmn:outgoing>KF18</bpmn:outgoing>
   </bpmn:exclusiveGateway>
   <bpmn:task id="K15" name="Show verification error and direct resident to Staff">
-   <bpmn:incoming>K18</bpmn:incoming>
-   <bpmn:outgoing>K19</bpmn:outgoing>
+   <bpmn:incoming>KF18</bpmn:incoming>
+   <bpmn:outgoing>KF19</bpmn:outgoing>
   </bpmn:task>
   <bpmn:endEvent id="K16" name="Counter assistance required">
-   <bpmn:incoming>K19</bpmn:incoming>
+   <bpmn:incoming>KF19</bpmn:incoming>
   </bpmn:endEvent>
-  <bpmn:sequenceFlow id="K01" sourceRef="K0" targetRef="K1"/>
-  <bpmn:sequenceFlow id="K02" sourceRef="K1" targetRef="K2"/>
-  <bpmn:sequenceFlow id="K03" sourceRef="K2" targetRef="K3" name="Resident ID"/>
-  <bpmn:sequenceFlow id="K04" sourceRef="K3" targetRef="K4"/>
-  <bpmn:sequenceFlow id="K05" sourceRef="K4" targetRef="K10" name="Yes"/>
-  <bpmn:sequenceFlow id="K06" sourceRef="K4" targetRef="K14" name="No"/>
-  <bpmn:sequenceFlow id="K07" sourceRef="K2" targetRef="K5" name="Name fallback"/>
-  <bpmn:sequenceFlow id="K08" sourceRef="K5" targetRef="K6"/>
-  <bpmn:sequenceFlow id="K09" sourceRef="K6" targetRef="K7" name="Yes"/>
-  <bpmn:sequenceFlow id="K10" sourceRef="K6" targetRef="K14" name="No / multiple"/>
-  <bpmn:sequenceFlow id="K11" sourceRef="K7" targetRef="K8"/>
-  <bpmn:sequenceFlow id="K12" sourceRef="K8" targetRef="K9"/>
-  <bpmn:sequenceFlow id="K13" sourceRef="K9" targetRef="K10" name="Yes"/>
-  <bpmn:sequenceFlow id="K14" sourceRef="K9" targetRef="K14" name="No"/>
-  <bpmn:sequenceFlow id="K15" sourceRef="K10" targetRef="K11"/>
-  <bpmn:sequenceFlow id="K16" sourceRef="K11" targetRef="K12"/>
-  <bpmn:sequenceFlow id="K17" sourceRef="K12" targetRef="K13"/>
-  <bpmn:sequenceFlow id="K18" sourceRef="K14" targetRef="K15"/>
-  <bpmn:sequenceFlow id="K19" sourceRef="K15" targetRef="K16"/>
+  <bpmn:sequenceFlow id="KF01" sourceRef="K0" targetRef="K1"/>
+  <bpmn:sequenceFlow id="KF02" sourceRef="K1" targetRef="K2"/>
+  <bpmn:sequenceFlow id="KF03" sourceRef="K2" targetRef="K3" name="Resident ID"/>
+  <bpmn:sequenceFlow id="KF04" sourceRef="K3" targetRef="K4"/>
+  <bpmn:sequenceFlow id="KF05" sourceRef="K4" targetRef="K10" name="Yes"/>
+  <bpmn:sequenceFlow id="KF06" sourceRef="K4" targetRef="K14" name="No"/>
+  <bpmn:sequenceFlow id="KF07" sourceRef="K2" targetRef="K5" name="Name fallback"/>
+  <bpmn:sequenceFlow id="KF08" sourceRef="K5" targetRef="K6"/>
+  <bpmn:sequenceFlow id="KF09" sourceRef="K6" targetRef="K7" name="Yes"/>
+  <bpmn:sequenceFlow id="KF10" sourceRef="K6" targetRef="K14" name="No / multiple"/>
+  <bpmn:sequenceFlow id="KF11" sourceRef="K7" targetRef="K8"/>
+  <bpmn:sequenceFlow id="KF12" sourceRef="K8" targetRef="K9"/>
+  <bpmn:sequenceFlow id="KF13" sourceRef="K9" targetRef="K10" name="Yes"/>
+  <bpmn:sequenceFlow id="KF14" sourceRef="K9" targetRef="K14" name="No"/>
+  <bpmn:sequenceFlow id="KF15" sourceRef="K10" targetRef="K11"/>
+  <bpmn:sequenceFlow id="KF16" sourceRef="K11" targetRef="K12"/>
+  <bpmn:sequenceFlow id="KF17" sourceRef="K12" targetRef="K13"/>
+  <bpmn:sequenceFlow id="KF18" sourceRef="K14" targetRef="K15"/>
+  <bpmn:sequenceFlow id="KF19" sourceRef="K15" targetRef="K16"/>
  </bpmn:process>
  <bpmn:process id="Process_Documents" name="Document Request and Certificate Issuance" isExecutable="false">
   <bpmn:startEvent id="D0" name="Resident needs a barangay document">
@@ -710,19 +710,19 @@
   <bpmndi:BPMNShape id="Shape_R9" bpmnElement="R9" isMarkerVisible="true"><dc:Bounds x="1530" y="183" width="55" height="55"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_R10" bpmnElement="R10"><dc:Bounds x="1620" y="340" width="175" height="90"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_R11" bpmnElement="R11"><dc:Bounds x="1850" y="190" width="36" height="36"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNEdge id="Edge_R01" bpmnElement="R01"><di:waypoint x="136" y="208"/><di:waypoint x="180" y="210"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R02" bpmnElement="R02"><di:waypoint x="355" y="210"/><di:waypoint x="390" y="210"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R03" bpmnElement="R03"><di:waypoint x="565" y="210"/><di:waypoint x="630" y="210"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R04" bpmnElement="R04"><di:waypoint x="805" y="210"/><di:waypoint x="850" y="210.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R05" bpmnElement="R05"><di:waypoint x="905" y="210.5"/><di:waypoint x="935" y="210.5"/><di:waypoint x="935" y="138"/><di:waypoint x="775" y="138"/><di:waypoint x="775" y="385"/><di:waypoint x="800" y="385"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R06" bpmnElement="R06"><di:waypoint x="975" y="385"/><di:waypoint x="1010" y="385"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R07" bpmnElement="R07"><di:waypoint x="1185" y="385"/><di:waypoint x="1210" y="385"/><di:waypoint x="1210" y="210.5"/><di:waypoint x="1230" y="210.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R08" bpmnElement="R08"><di:waypoint x="905" y="210.5"/><di:waypoint x="1230" y="210.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R09" bpmnElement="R09"><di:waypoint x="1285" y="210.5"/><di:waypoint x="1320" y="210"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R10" bpmnElement="R10"><di:waypoint x="1495" y="210"/><di:waypoint x="1530" y="210.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R11" bpmnElement="R11"><di:waypoint x="1585" y="210.5"/><di:waypoint x="1600" y="210.5"/><di:waypoint x="1600" y="385"/><di:waypoint x="1620" y="385"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R12" bpmnElement="R12"><di:waypoint x="1795" y="385"/><di:waypoint x="1820" y="385"/><di:waypoint x="1820" y="208"/><di:waypoint x="1850" y="208"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_R13" bpmnElement="R13"><di:waypoint x="1585" y="210.5"/><di:waypoint x="1850" y="208"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF01" bpmnElement="RF01"><di:waypoint x="136" y="208"/><di:waypoint x="180" y="210"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF02" bpmnElement="RF02"><di:waypoint x="355" y="210"/><di:waypoint x="390" y="210"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF03" bpmnElement="RF03"><di:waypoint x="565" y="210"/><di:waypoint x="630" y="210"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF04" bpmnElement="RF04"><di:waypoint x="805" y="210"/><di:waypoint x="850" y="210.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF05" bpmnElement="RF05"><di:waypoint x="905" y="210.5"/><di:waypoint x="935" y="210.5"/><di:waypoint x="935" y="138"/><di:waypoint x="775" y="138"/><di:waypoint x="775" y="385"/><di:waypoint x="800" y="385"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF06" bpmnElement="RF06"><di:waypoint x="975" y="385"/><di:waypoint x="1010" y="385"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF07" bpmnElement="RF07"><di:waypoint x="1185" y="385"/><di:waypoint x="1210" y="385"/><di:waypoint x="1210" y="210.5"/><di:waypoint x="1230" y="210.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF08" bpmnElement="RF08"><di:waypoint x="905" y="210.5"/><di:waypoint x="1230" y="210.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF09" bpmnElement="RF09"><di:waypoint x="1285" y="210.5"/><di:waypoint x="1320" y="210"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF10" bpmnElement="RF10"><di:waypoint x="1495" y="210"/><di:waypoint x="1530" y="210.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF11" bpmnElement="RF11"><di:waypoint x="1585" y="210.5"/><di:waypoint x="1600" y="210.5"/><di:waypoint x="1600" y="385"/><di:waypoint x="1620" y="385"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF12" bpmnElement="RF12"><di:waypoint x="1795" y="385"/><di:waypoint x="1820" y="385"/><di:waypoint x="1820" y="208"/><di:waypoint x="1850" y="208"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_RF13" bpmnElement="RF13"><di:waypoint x="1585" y="210.5"/><di:waypoint x="1850" y="208"/></bpmndi:BPMNEdge>
  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
  <bpmndi:BPMNDiagram id="Diagram_Kiosk"><bpmndi:BPMNPlane id="Plane_Kiosk" bpmnElement="Collaboration_BRMS">
   <bpmndi:BPMNShape id="Shape_Participant_Kiosk" bpmnElement="Participant_Kiosk" isHorizontal="true"><dc:Bounds x="60" y="50" width="2106" height="610"/></bpmndi:BPMNShape>
@@ -743,25 +743,25 @@
   <bpmndi:BPMNShape id="Shape_K14" bpmnElement="K14" isMarkerVisible="true"><dc:Bounds x="1530" y="500" width="55" height="55"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_K15" bpmnElement="K15"><dc:Bounds x="1620" y="480" width="175" height="90"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_K16" bpmnElement="K16"><dc:Bounds x="1840" y="502" width="36" height="36"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNEdge id="Edge_K01" bpmnElement="K01"><di:waypoint x="136" y="238"/><di:waypoint x="190" y="240"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K02" bpmnElement="K02"><di:waypoint x="365" y="240"/><di:waypoint x="400" y="240.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K03" bpmnElement="K03"><di:waypoint x="455" y="240.5"/><di:waypoint x="480" y="240.5"/><di:waypoint x="480" y="125"/><di:waypoint x="500" y="125"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K04" bpmnElement="K04"><di:waypoint x="675" y="125"/><di:waypoint x="710" y="125.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K05" bpmnElement="K05"><di:waypoint x="765" y="125.5"/><di:waypoint x="790" y="125.5"/><di:waypoint x="790" y="240.5"/><di:waypoint x="1530" y="240.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K06" bpmnElement="K06"><di:waypoint x="765" y="125.5"/><di:waypoint x="790" y="125.5"/><di:waypoint x="790" y="527.5"/><di:waypoint x="1530" y="527.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K07" bpmnElement="K07"><di:waypoint x="455" y="240.5"/><di:waypoint x="480" y="240.5"/><di:waypoint x="480" y="405"/><di:waypoint x="500" y="405"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K08" bpmnElement="K08"><di:waypoint x="675" y="405"/><di:waypoint x="710" y="405.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K09" bpmnElement="K09"><di:waypoint x="765" y="405.5"/><di:waypoint x="900" y="405"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K10" bpmnElement="K10"><di:waypoint x="765" y="405.5"/><di:waypoint x="790" y="405.5"/><di:waypoint x="790" y="527.5"/><di:waypoint x="1530" y="527.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K11" bpmnElement="K11"><di:waypoint x="1075" y="405"/><di:waypoint x="1120" y="405"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K12" bpmnElement="K12"><di:waypoint x="1295" y="405"/><di:waypoint x="1340" y="405.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K13" bpmnElement="K13"><di:waypoint x="1395" y="405.5"/><di:waypoint x="1420" y="405.5"/><di:waypoint x="1420" y="240.5"/><di:waypoint x="1530" y="240.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K14" bpmnElement="K14"><di:waypoint x="1395" y="405.5"/><di:waypoint x="1420" y="405.5"/><di:waypoint x="1420" y="527.5"/><di:waypoint x="1530" y="527.5"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K15" bpmnElement="K15"><di:waypoint x="1585" y="240.5"/><di:waypoint x="1620" y="240"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K16" bpmnElement="K16"><di:waypoint x="1795" y="240"/><di:waypoint x="1840" y="240"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K17" bpmnElement="K17"><di:waypoint x="2015" y="240"/><di:waypoint x="2050" y="238"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K18" bpmnElement="K18"><di:waypoint x="1585" y="527.5"/><di:waypoint x="1620" y="525"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_K19" bpmnElement="K19"><di:waypoint x="1795" y="525"/><di:waypoint x="1840" y="520"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF01" bpmnElement="KF01"><di:waypoint x="136" y="238"/><di:waypoint x="190" y="240"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF02" bpmnElement="KF02"><di:waypoint x="365" y="240"/><di:waypoint x="400" y="240.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF03" bpmnElement="KF03"><di:waypoint x="455" y="240.5"/><di:waypoint x="480" y="240.5"/><di:waypoint x="480" y="125"/><di:waypoint x="500" y="125"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF04" bpmnElement="KF04"><di:waypoint x="675" y="125"/><di:waypoint x="710" y="125.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF05" bpmnElement="KF05"><di:waypoint x="765" y="125.5"/><di:waypoint x="790" y="125.5"/><di:waypoint x="790" y="240.5"/><di:waypoint x="1530" y="240.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF06" bpmnElement="KF06"><di:waypoint x="765" y="125.5"/><di:waypoint x="790" y="125.5"/><di:waypoint x="790" y="527.5"/><di:waypoint x="1530" y="527.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF07" bpmnElement="KF07"><di:waypoint x="455" y="240.5"/><di:waypoint x="480" y="240.5"/><di:waypoint x="480" y="405"/><di:waypoint x="500" y="405"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF08" bpmnElement="KF08"><di:waypoint x="675" y="405"/><di:waypoint x="710" y="405.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF09" bpmnElement="KF09"><di:waypoint x="765" y="405.5"/><di:waypoint x="900" y="405"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF10" bpmnElement="KF10"><di:waypoint x="765" y="405.5"/><di:waypoint x="790" y="405.5"/><di:waypoint x="790" y="527.5"/><di:waypoint x="1530" y="527.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF11" bpmnElement="KF11"><di:waypoint x="1075" y="405"/><di:waypoint x="1120" y="405"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF12" bpmnElement="KF12"><di:waypoint x="1295" y="405"/><di:waypoint x="1340" y="405.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF13" bpmnElement="KF13"><di:waypoint x="1395" y="405.5"/><di:waypoint x="1420" y="405.5"/><di:waypoint x="1420" y="240.5"/><di:waypoint x="1530" y="240.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF14" bpmnElement="KF14"><di:waypoint x="1395" y="405.5"/><di:waypoint x="1420" y="405.5"/><di:waypoint x="1420" y="527.5"/><di:waypoint x="1530" y="527.5"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF15" bpmnElement="KF15"><di:waypoint x="1585" y="240.5"/><di:waypoint x="1620" y="240"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF16" bpmnElement="KF16"><di:waypoint x="1795" y="240"/><di:waypoint x="1840" y="240"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF17" bpmnElement="KF17"><di:waypoint x="2015" y="240"/><di:waypoint x="2050" y="238"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF18" bpmnElement="KF18"><di:waypoint x="1585" y="527.5"/><di:waypoint x="1620" y="525"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_KF19" bpmnElement="KF19"><di:waypoint x="1795" y="525"/><di:waypoint x="1840" y="520"/></bpmndi:BPMNEdge>
  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
  <bpmndi:BPMNDiagram id="Diagram_Documents"><bpmndi:BPMNPlane id="Plane_Documents" bpmnElement="Collaboration_BRMS">
  <bpmndi:BPMNShape id="Shape_Participant_Documents" bpmnElement="Participant_Documents" isHorizontal="true"><dc:Bounds x="60" y="50" width="3796" height="470"/></bpmndi:BPMNShape>
