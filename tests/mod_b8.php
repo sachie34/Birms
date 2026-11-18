@@ -7,7 +7,7 @@ function run_b8(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $tmp = tempnam(sys_get_temp_dir(), 'birms-b8-pdf');
-    if ($tmp === false) { record('B8-1', 'Test fixture for PDF upload created', false); return; }
+    if ($tmp === false) { record('B8-00', 'Temporary PDF fixture could not be created; dependent attachment/PDF checks cannot run', false, 'tempnam() returned false'); return; }
     file_put_contents($tmp, "%PDF-1.4\n1 0 obj <<>> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
     $paidIssuanceId = null;
     $signatureFixture = null;
