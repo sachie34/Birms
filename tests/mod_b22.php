@@ -488,6 +488,27 @@ function run_b22(array $S, string $base): void
             'end=' . $endSession['status'] . '; next identity=' . $secondIdentity['status']
             . '; old ticket=' . $oldTicket['status'] . '; redirect=' . (string) loc($oldTicket)
         );
+
+        $failedResidentSwitch = $kiosk->post('/kiosk/identify.php', [
+            '_csrf' => $kiosk->token('/kiosk/index.php'),
+            'resident_no' => 'RES-B22-NOT-FOUND',
+            'birthdate' => '1992-06-11',
+        ]);
+        $indexAfterFailedSwitch = $kiosk->get('/kiosk/index.php');
+        $ticketAfterFailedSwitch = $kiosk->get('/kiosk/ticket.php');
+        record(
+            'B22-16',
+            'A failed new resident identity attempt clears the previous kiosk identity and ticket instead of revealing the prior visitor',
+            $failedResidentSwitch['status'] === 302
+            && $indexAfterFailedSwitch['status'] === 200
+            && !str_contains($indexAfterFailedSwitch['body'], 'IDENTITY VERIFIED')
+            && !str_contains($indexAfterFailedSwitch['body'], 'NextVisitor Taylor')
+            && $ticketAfterFailedSwitch['status'] === 302
+            && !str_contains($ticketAfterFailedSwitch['body'], 'Your queue number'),
+            'failed switch=' . $failedResidentSwitch['status']
+            . '; verified marker after switch=' . (str_contains($indexAfterFailedSwitch['body'], 'IDENTITY VERIFIED') ? 'yes' : 'no')
+            . '; old ticket status=' . $ticketAfterFailedSwitch['status']
+        );
     } finally {
         $ids = db_all('SELECT queue_id FROM queue_entries WHERE resident_id = ? AND queue_id > ?', [$residentId, $queueStartId]);
         if ($ids) {
