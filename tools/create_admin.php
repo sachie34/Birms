@@ -12,6 +12,8 @@ require __DIR__ . '/../app/core.php';
 require_once __DIR__ . '/cli_prompt.php';
 
 function die_msg(string $s): never { fwrite(STDERR, $s . PHP_EOL); exit(2); }
+$runtimeIssue = php_runtime_security_issue(PHP_VERSION_ID);
+if ($runtimeIssue !== null) { die_msg($runtimeIssue); }
 $opt = [];
 foreach (array_slice($argv, 1) as $a) { if (preg_match('/^--([a-z-]+)(?:=(.*))?$/', $a, $m)) { $opt[$m[1]] = $m[2] ?? '1'; } }
 
