@@ -123,32 +123,54 @@ function run_b23(array $S, string $base): void
             'HTTP=' . $hideStatus['status']
         );
 
-        $activeStatusId = (int) db_val(
-            "SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active' AND is_active = 1 LIMIT 1"
+        $requiredStatuses = ['Active', 'Transferred', 'Deceased', 'Non-resident'];
+        $requiredRows = db_all(
+            "SELECT lookup_id, label, is_active FROM lookups
+             WHERE list_key = 'resident_status' AND label IN ('Active','Transferred','Deceased','Non-resident')
+             ORDER BY FIELD(label,'Active','Transferred','Deceased','Non-resident')"
         );
-        $renameBuiltIn = post_as($admin, '/admin/settings.php?tab=lists', '/admin/settings.php', [
-            'do' => 'lookup_rename', 'tab' => 'lists', 'id' => $activeStatusId, 'label' => 'Active Test Rename',
-        ]);
+        $renameFailures = [];
+        $hideFailures = [];
+        foreach ($requiredStatuses as $requiredLabel) {
+            $requiredRow = null;
+            foreach ($requiredRows as $row) {
+                if ((string) $row['label'] === $requiredLabel) { $requiredRow = $row; break; }
+            }
+            if ($requiredRow === null || (int) $requiredRow['is_active'] !== 1) {
+                $renameFailures[] = $requiredLabel . ': missing or inactive before rename attempt';
+                $hideFailures[] = $requiredLabel . ': missing or inactive before hide attempt';
+                continue;
+            }
+            $requiredId = (int) $requiredRow['lookup_id'];
+            $renameAttempt = post_as($admin, '/admin/settings.php?tab=lists', '/admin/settings.php', [
+                'do' => 'lookup_rename', 'tab' => 'lists', 'id' => $requiredId, 'label' => $requiredLabel . ' Test Rename',
+            ]);
+            $savedLabel = db_val('SELECT label FROM lookups WHERE lookup_id = ?', [$requiredId]);
+            if ($renameAttempt['status'] !== 200 || $savedLabel !== $requiredLabel) {
+                $renameFailures[] = $requiredLabel . ': HTTP=' . $renameAttempt['status'] . '; saved=' . (string) $savedLabel;
+            }
+
+            $hideAttempt = post_as($admin, '/admin/settings.php?tab=lists', '/admin/settings.php', [
+                'do' => 'lookup_toggle', 'tab' => 'lists', 'id' => $requiredId,
+            ]);
+            $stillActive = (int) db_val('SELECT is_active FROM lookups WHERE lookup_id = ?', [$requiredId]) === 1;
+            if ($hideAttempt['status'] !== 200 || !$stillActive) {
+                $hideFailures[] = $requiredLabel . ': HTTP=' . $hideAttempt['status'] . '; active=' . ($stillActive ? 'yes' : 'no');
+            }
+        }
         record(
             'B23-09',
-            'Admin cannot rename the required Active resident status used by system logic',
-            $activeStatusId > 0 && $renameBuiltIn['status'] === 200
-            && db_val('SELECT label FROM lookups WHERE lookup_id = ?', [$activeStatusId]) === 'Active',
-            'HTTP=' . $renameBuiltIn['status'] . '; saved label='
-            . (string) db_val('SELECT label FROM lookups WHERE lookup_id = ?', [$activeStatusId])
+            'Admin cannot rename any of the four required resident statuses',
+            !$renameFailures && count($requiredRows) === 4,
+            implode('; ', $renameFailures)
         );
-
-        $hideBuiltIn = post_as($admin, '/admin/settings.php?tab=lists', '/admin/settings.php', [
-            'do' => 'lookup_toggle', 'tab' => 'lists', 'id' => $activeStatusId,
-        ]);
         record(
             'B23-10',
-            'Admin cannot hide the required Active resident status',
-            $activeStatusId > 0 && $hideBuiltIn['status'] === 200
-            && (int) db_val('SELECT is_active FROM lookups WHERE lookup_id = ?', [$activeStatusId]) === 1,
-            'HTTP=' . $hideBuiltIn['status'] . '; still active='
-            . ((int) db_val('SELECT is_active FROM lookups WHERE lookup_id = ?', [$activeStatusId]) === 1 ? 'yes' : 'no')
+            'Admin cannot hide any of the four required resident statuses',
+            !$hideFailures && count($requiredRows) === 4,
+            implode('; ', $hideFailures)
         );
+
     } finally {
         if ($typeId !== null) { db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$typeId]); }
         if ($statusId !== null) { db_exec('DELETE FROM lookups WHERE lookup_id = ?', [$statusId]); }
