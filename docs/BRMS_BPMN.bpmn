@@ -240,7 +240,7 @@
   <bpmndi:BPMNShape id="Shape_B_Schedule" bpmnElement="B_Schedule"><dc:Bounds x="1570" y="320" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_B_Outcome" bpmnElement="B_Outcome"><dc:Bounds x="1780" y="320" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_B_CloseGate" bpmnElement="B_CloseGate" isMarkerVisible="true"><dc:Bounds x="1850" y="173" width="50" height="50"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_B_CheckHearings" bpmnElement="B_CheckHearings"><dc:Bounds x="2050" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_CheckHearings" bpmnElement="B_CheckHearings"><dc:Bounds x="2150" y="155" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_B_ArchiveGate" bpmnElement="B_ArchiveGate" isMarkerVisible="true"><dc:Bounds x="2290" y="173" width="50" height="50"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_B_Archive" bpmnElement="B_Archive"><dc:Bounds x="2240" y="320" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_B_Notify" bpmnElement="B_Notify"><dc:Bounds x="2480" y="155" width="170" height="86"/></bpmndi:BPMNShape>
@@ -315,33 +315,33 @@
   <bpmndi:BPMNShape id="Shape_Q_Service" bpmnElement="Q_Service"><dc:Bounds x="210" y="155" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_Q_Issue" bpmnElement="Q_Issue"><dc:Bounds x="430" y="155" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_Q_Waiting" bpmnElement="Q_Waiting"><dc:Bounds x="660" y="155" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Call" bpmnElement="Q_Call"><dc:Bounds x="900" y="155" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Gate" bpmnElement="Q_Gate" isMarkerVisible="true"><dc:Bounds x="1110" y="173" width="50" height="50"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_FinishCurrent" bpmnElement="Q_FinishCurrent"><dc:Bounds x="1060" y="320" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Called" bpmnElement="Q_Called"><dc:Bounds x="1280" y="155" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Outcome" bpmnElement="Q_Outcome" isMarkerVisible="true"><dc:Bounds x="1500" y="173" width="50" height="50"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Served" bpmnElement="Q_Served"><dc:Bounds x="1450" y="320" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Skipped" bpmnElement="Q_Skipped"><dc:Bounds x="1650" y="320" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Cancelled" bpmnElement="Q_Cancelled"><dc:Bounds x="1830" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Call" bpmnElement="Q_Call"><dc:Bounds x="1040" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Gate" bpmnElement="Q_Gate" isMarkerVisible="true"><dc:Bounds x="1250" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_FinishCurrent" bpmnElement="Q_FinishCurrent"><dc:Bounds x="1200" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Called" bpmnElement="Q_Called"><dc:Bounds x="1420" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Outcome" bpmnElement="Q_Outcome" isMarkerVisible="true"><dc:Bounds x="1640" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Served" bpmnElement="Q_Served"><dc:Bounds x="1590" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Skipped" bpmnElement="Q_Skipped"><dc:Bounds x="1790" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Cancelled" bpmnElement="Q_Cancelled"><dc:Bounds x="1970" y="320" width="170" height="86"/></bpmndi:BPMNShape>
   <bpmndi:BPMNShape id="Shape_Q_Refresh" bpmnElement="Q_Refresh"><dc:Bounds x="2050" y="155" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_Notify" bpmnElement="Q_Notify"><dc:Bounds x="810" y="155" width="170" height="86"/></bpmndi:BPMNShape>
-  <bpmndi:BPMNShape id="Shape_Q_End" bpmnElement="Q_End"><dc:Bounds x="2480" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Notify" bpmnElement="Q_Notify"><dc:Bounds x="840" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_End" bpmnElement="Q_End"><dc:Bounds x="2390" y="180" width="36" height="36"/></bpmndi:BPMNShape>
   <bpmndi:BPMNEdge id="Edge_QF01" bpmnElement="QF01"><di:waypoint x="136" y="198"/><di:waypoint x="210" y="198"/></bpmndi:BPMNEdge>
   <bpmndi:BPMNEdge id="Edge_QF02" bpmnElement="QF02"><di:waypoint x="380" y="198"/><di:waypoint x="430" y="198"/></bpmndi:BPMNEdge>
   <bpmndi:BPMNEdge id="Edge_QF03" bpmnElement="QF03"><di:waypoint x="600" y="198"/><di:waypoint x="660" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF04" bpmnElement="QF04"><di:waypoint x="830" y="198"/><di:waypoint x="810" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF04b" bpmnElement="QF04b"><di:waypoint x="980" y="198"/><di:waypoint x="900" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF05" bpmnElement="QF05"><di:waypoint x="1070" y="198"/><di:waypoint x="1110" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF06" bpmnElement="QF06"><di:waypoint x="1160" y="198"/><di:waypoint x="1185" y="198"/><di:waypoint x="1185" y="363"/><di:waypoint x="1060" y="363"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF07" bpmnElement="QF07"><di:waypoint x="1230" y="363"/><di:waypoint x="1255" y="363"/><di:waypoint x="1255" y="198"/><di:waypoint x="900" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF08" bpmnElement="QF08"><di:waypoint x="1160" y="198"/><di:waypoint x="1280" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF09" bpmnElement="QF09"><di:waypoint x="1450" y="198"/><di:waypoint x="1500" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF10" bpmnElement="QF10"><di:waypoint x="1550" y="198"/><di:waypoint x="1575" y="198"/><di:waypoint x="1575" y="363"/><di:waypoint x="1450" y="363"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF11" bpmnElement="QF11"><di:waypoint x="1550" y="198"/><di:waypoint x="1575" y="198"/><di:waypoint x="1575" y="363"/><di:waypoint x="1650" y="363"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF12" bpmnElement="QF12"><di:waypoint x="1550" y="198"/><di:waypoint x="1575" y="198"/><di:waypoint x="1575" y="363"/><di:waypoint x="1830" y="363"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF13" bpmnElement="QF13"><di:waypoint x="1620" y="363"/><di:waypoint x="1645" y="363"/><di:waypoint x="1645" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF14" bpmnElement="QF14"><di:waypoint x="1820" y="363"/><di:waypoint x="1845" y="363"/><di:waypoint x="1845" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF15" bpmnElement="QF15"><di:waypoint x="2000" y="363"/><di:waypoint x="2025" y="363"/><di:waypoint x="2025" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
-  <bpmndi:BPMNEdge id="Edge_QF16" bpmnElement="QF16"><di:waypoint x="2220" y="198"/><di:waypoint x="2480" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF04" bpmnElement="QF04"><di:waypoint x="830" y="198"/><di:waypoint x="840" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF04b" bpmnElement="QF04b"><di:waypoint x="1010" y="198"/><di:waypoint x="1040" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF05" bpmnElement="QF05"><di:waypoint x="1210" y="198"/><di:waypoint x="1250" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF06" bpmnElement="QF06"><di:waypoint x="1300" y="198"/><di:waypoint x="1325" y="198"/><di:waypoint x="1325" y="363"/><di:waypoint x="1200" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF07" bpmnElement="QF07"><di:waypoint x="1370" y="363"/><di:waypoint x="1395" y="363"/><di:waypoint x="1395" y="198"/><di:waypoint x="1040" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF08" bpmnElement="QF08"><di:waypoint x="1300" y="198"/><di:waypoint x="1420" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF09" bpmnElement="QF09"><di:waypoint x="1590" y="198"/><di:waypoint x="1640" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF10" bpmnElement="QF10"><di:waypoint x="1690" y="198"/><di:waypoint x="1715" y="198"/><di:waypoint x="1715" y="363"/><di:waypoint x="1590" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF11" bpmnElement="QF11"><di:waypoint x="1690" y="198"/><di:waypoint x="1715" y="198"/><di:waypoint x="1715" y="363"/><di:waypoint x="1790" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF12" bpmnElement="QF12"><di:waypoint x="1690" y="198"/><di:waypoint x="1715" y="198"/><di:waypoint x="1715" y="363"/><di:waypoint x="1970" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF13" bpmnElement="QF13"><di:waypoint x="1760" y="363"/><di:waypoint x="1785" y="363"/><di:waypoint x="1785" y="198"/><di:waypoint x="2150" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF14" bpmnElement="QF14"><di:waypoint x="1960" y="363"/><di:waypoint x="1985" y="363"/><di:waypoint x="1985" y="198"/><di:waypoint x="2150" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF15" bpmnElement="QF15"><di:waypoint x="2140" y="363"/><di:waypoint x="2165" y="363"/><di:waypoint x="2165" y="198"/><di:waypoint x="2150" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF16" bpmnElement="QF16"><di:waypoint x="2320" y="198"/><di:waypoint x="2390" y="198"/></bpmndi:BPMNEdge>
  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 </bpmn:definitions>
