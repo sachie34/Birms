@@ -7,6 +7,12 @@ if (!is_post()) { redirect('kiosk/index.php'); }
 require_csrf();
 rate_limit_require('kiosk_identity_ip', client_ip(), 5, 600,
     'Too many identity attempts from this device. Please wait 10 minutes or visit Staff.');
+
+// This browser may have been used by another resident. Clear the previous identity,
+// challenge, flash and receipt data before evaluating the next visitor's credentials.
+kiosk_clear_session();
+session_regenerate_id(true);
+
 $residentNo = post_str('resident_no');
 $lastName = post_str('last_name');
 $firstName = post_str('first_name');
