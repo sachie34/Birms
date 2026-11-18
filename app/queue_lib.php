@@ -127,10 +127,12 @@ function queue_enqueue_notifications(int $residentId, string $service, int $numb
 
     // Email is the default. If SMS is disabled, unconfigured, or lacks a number,
     // an SMS-only preference falls back to the resident's saved email address.
+    $emailFallback = $wantsSms && !$smsEnabled && !$wantsEmail;
     if ($wantsSms && !$smsEnabled) { $wantsEmail = true; }
     $emailQueued = false;
     if ($wantsEmail && $email !== '') {
-        $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $event, $reference);
+        $emailEvent = $emailFallback ? $event . '_email_fallback' : $event;
+        $notificationId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $emailEvent, $reference);
         $emailQueued = true;
         if (email_provider_is_enabled()) { email_send_notification($notificationId); }
     }
