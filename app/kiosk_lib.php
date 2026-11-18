@@ -198,10 +198,13 @@ function kiosk_send_verification_code(array $resident): array
 /** Verify a one-time code, enforce expiry/attempt limits, and establish a short resident-only kiosk session. */
 function kiosk_verify_code(string $token, string $code): bool
 {
-    if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1 || preg_match('/^\d{6}$/', $code) !== 1) { return false; }
+    if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1 || preg_match('/^\\d{6}$/', $code) !== 1) { return false; }
     rate_limit_require('kiosk_verify_ip', client_ip(), 15, 600, 'Too many verification attempts from this device. Please wait 10 minutes.');
     $tokenHash = hash('sha256', $token);
-    return db_transaction(function () use ($tokenHash, $token, $code): bool {
+
+    // Consume and verify the OTP atomically first. Do not establish a PHP session
+    // until the database has confirmed the one-time challenge was committed.
+    $residentId = db_transaction(function () use ($tokenHash, $token, $code): ?int {
         $challenge = db_one(
             'SELECT challenge_id, resident_id, code_hash, expires_at, attempt_count, verified_at, consumed_at
              FROM resident_verification_challenges WHERE challenge_token_hash = ? FOR UPDATE',
@@ -210,23 +213,35 @@ function kiosk_verify_code(string $token, string $code): bool
         if ($challenge === null || $challenge['consumed_at'] !== null || $challenge['verified_at'] !== null
             || strtotime((string) $challenge['expires_at']) < time()
             || (int) $challenge['attempt_count'] >= KIOSK_CODE_MAX_ATTEMPTS) {
-            return false;
+            return null;
         }
         db_exec('UPDATE resident_verification_challenges SET attempt_count = attempt_count + 1 WHERE challenge_id = ?', [(int) $challenge['challenge_id']]);
         $candidate = hash('sha256', $token . ':' . $code);
         if (!hash_equals((string) $challenge['code_hash'], $candidate)) {
             audit_best_effort('kiosk_verification_failed', 'Security', 'Failed', 'A one-time kiosk verification code was incorrect.');
-            return false;
+            return null;
         }
-        db_exec(
+        $changed = db_exec(
             'UPDATE resident_verification_challenges SET verified_at = NOW(), consumed_at = NOW()
              WHERE challenge_id = ? AND verified_at IS NULL AND consumed_at IS NULL',
             [(int) $challenge['challenge_id']]
         );
-        kiosk_set_resident((int) $challenge['resident_id']);
-        audit_best_effort('kiosk_identity_verified', 'Kiosk', 'Success', 'Resident #' . (int) $challenge['resident_id'] . ' completed one-time identity verification.');
-        return true;
+        if ($changed !== 1) { return null; }
+        return (int) $challenge['resident_id'];
     });
+
+    if ($residentId === null) { return false; }
+
+    try {
+        kiosk_set_resident($residentId);
+    } catch (Throwable $sessionError) {
+        error_log('BIRMS kiosk identity was verified but the resident session could not be established: ' . get_class($sessionError));
+        audit_best_effort('kiosk_session_establishment_failed', 'Security', 'Failed',
+            'A verified kiosk challenge was consumed but a resident session could not be established.');
+        return false;
+    }
+    audit_best_effort('kiosk_identity_verified', 'Kiosk', 'Success', 'Resident #' . $residentId . ' completed one-time identity verification.');
+    return true;
 }
 
 function kiosk_page_start(string $title, string $subtitle = ''): void
