@@ -14,9 +14,12 @@ define('PUBLIC_ROOT', APP_ROOT . '/public');
  * security patch level required for BIRMS. PHP 8.2 is accepted only at its
  * latest critical patch while that branch remains supported.
  */
-function php_runtime_security_issue(int $versionId): ?string
+function php_runtime_security_issue(int $versionId, ?string $date = null): ?string
 {
-    if (($versionId >= 80235 && $versionId < 80300)
+    $date ??= gmdate('Y-m-d');
+    $php82StillSupported = $date < '2027-01-01';
+
+    if ((($versionId >= 80235 && $versionId < 80300) && $php82StillSupported)
         || ($versionId >= 80336 && $versionId < 80400)
         || ($versionId >= 80427 && $versionId < 80500)
         || ($versionId >= 80512 && $versionId < 80600)) {
@@ -33,14 +36,17 @@ function php_runtime_security_issue(int $versionId): ?string
         return 'PHP 8.3 must be updated to 8.3.36 or later within the 8.3 branch.';
     }
     if ($versionId >= 80200 && $versionId < 80300) {
-        return 'PHP 8.2 must be updated to 8.2.35 or later. PHP 8.2 support ends on 31 December 2026; upgrading to PHP 8.3 or newer is recommended.';
+        return $php82StillSupported
+            ? 'PHP 8.2 must be updated to 8.2.35 or later. PHP 8.2 security support ends on 31 December 2026; upgrading to PHP 8.3 or newer is recommended.'
+            : 'PHP 8.2 reached end of security support on 31 December 2026. Upgrade to a supported PHP branch before running BIRMS.';
     }
     return 'Use a supported stable PHP 8.2, 8.3, 8.4, or 8.5 release at its required security patch level. See https://www.php.net/supported-versions.php.';
 }
 
-function php_runtime_upgrade_notice(int $versionId): ?string
+function php_runtime_upgrade_notice(int $versionId, ?string $date = null): ?string
 {
-    return ($versionId >= 80200 && $versionId < 80300)
+    $date ??= gmdate('Y-m-d');
+    return ($versionId >= 80200 && $versionId < 80300 && $date < '2027-01-01')
         ? 'WARNING: PHP 8.2 security support ends on 31 December 2026. Upgrade to PHP 8.3 or newer.'
         : null;
 }
