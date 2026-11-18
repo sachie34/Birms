@@ -18,6 +18,7 @@
         <bpmn:flowNodeRef>Task_ReceiveQueueNo</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_ProvideDetails</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_ReceiveOutcome</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_MergeService</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_Completed</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_System" name="BRMS System / Kiosk">
@@ -141,8 +142,9 @@
 
     <bpmn:sequenceFlow id="Flow_Tracker_Notify" sourceRef="Task_UpdateTrackerAudit" targetRef="Task_NotifyResult"/>
     <bpmn:sequenceFlow id="Flow_Notify_Resident" sourceRef="Task_NotifyResult" targetRef="Task_ReceiveOutcome"/>
-    <bpmn:sequenceFlow id="Flow_Outcome_Completed" name="Completed / released" sourceRef="Task_ReceiveOutcome" targetRef="EndEvent_Completed"/>
-    <bpmn:sequenceFlow id="Flow_Outcome_Rejected" name="Rejected / unavailable" sourceRef="Task_ReceiveOutcome" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_Outcome_ToGateway" sourceRef="Task_ReceiveOutcome" targetRef="Gateway_MergeService"/>
+    <bpmn:sequenceFlow id="Flow_Outcome_Completed" name="Completed / released" sourceRef="Gateway_MergeService" targetRef="EndEvent_Completed"/>
+    <bpmn:sequenceFlow id="Flow_Outcome_Rejected" name="Rejected / unavailable" sourceRef="Gateway_MergeService" targetRef="EndEvent_Rejected"/>
 
     <bpmn:association id="Association_Admin" sourceRef="Task_AdminMaintainSetup" targetRef="Task_CreateQueue"/>
     <bpmn:association id="Association_Signature" sourceRef="Task_ChairmanSignatoryProvision" targetRef="Task_ApplyChairmanSignature"/>
