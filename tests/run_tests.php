@@ -108,18 +108,20 @@ $guardText = implode("\n", $guardOutput);
 record('U8', 'Module test runner refuses before tests when a real SMS provider is enabled', $guardExit === 2 && str_contains($guardText, 'REFUSED: the selected SMS provider is enabled.') && !str_contains($guardText, 'BIRMS module tests  base='));
 
 record('U9', 'Database-backed rate limiter enforces a fixed window, separates identities and resets at the next window', (function (): bool {
-    $action = 'unit-test-' . bin2hex(random_bytes(4));
+    $scope = 'unit-test-' . bin2hex(random_bytes(4));
     $now = time(); $window = 60; $nextWindow = (intdiv($now, $window) + 1) * $window;
-    $a = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $now);
-    $b = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $now);
-    $c = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $now);
-    $other = rate_limit_bucket_hit($action, 'user', 'synthetic-user-b', 2, $window, $now);
-    $reset = rate_limit_bucket_hit($action, 'user', 'synthetic-user-a', 2, $window, $nextWindow);
-    foreach (array_unique(array_column([$a, $b, $c, $other, $reset], 'bucket_hash')) as $hash) {
-        db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash = ?', [$hash]);
+    $hashA = hash('sha256', $scope . "\0" . 'synthetic-user-a');
+    $hashB = hash('sha256', $scope . "\0" . 'synthetic-user-b');
+    try {
+        $a = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $now);
+        $b = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $now);
+        $c = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $now);
+        $other = rate_limit_allow($scope, 'synthetic-user-b', 2, $window, $now);
+        $reset = rate_limit_allow($scope, 'synthetic-user-a', 2, $window, $nextWindow);
+        return $a && $b && !$c && $other && $reset;
+    } finally {
+        db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash IN (?, ?)', [$hashA, $hashB]);
     }
-    return $a['allowed'] && $b['allowed'] && !$c['allowed'] && $other['allowed'] && $reset['allowed']
-        && $c['retry_after'] >= 1 && $c['retry_after'] <= $window;
 })());
 
 record('U10', 'PHP runtime guard rejects known-unpatched and unsupported versions while accepting patched supported branches', (function (): bool {
