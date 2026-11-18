@@ -66,7 +66,7 @@
   <bpmn:task id="B_Save" name="Save resident blotter request and issue Blotter queue ticket"/>
   <bpmn:task id="B_Review" name="Staff/Admin reviews resident report"/>
   <bpmn:exclusiveGateway id="B_AcceptGate" name="Accept report?" gatewayDirection="Diverging"/>
-  <bpmn:task id="B_Reject" name="Reject report with reason; set Dismissed"/>
+  <bpmn:task id="B_Reject" name="Reject report with reason, set Dismissed, write history and notify resident"/>
   <bpmn:endEvent id="B_EndReject" name="Dismissed intake retained"/>
   <bpmn:task id="B_Create" name="Create official blotter case and party records"/>
   <bpmn:task id="B_Status" name="Maintain Ongoing / Unresolved case status"/>
@@ -113,10 +113,10 @@
   <bpmn:exclusiveGateway id="V_ApproveGate" name="Approve reservation?" gatewayDirection="Diverging"/>
   <bpmn:task id="V_Reject" name="Set Rejected and save reason"/>
   <bpmn:task id="V_RejectNotice" name="Write status history and queue resident notice"/>
-  <bpmn:endEvent id="V_EndReject" name="Reservation rejected"/>
+  <bpmn:endEvent id="V_EndReject" name="Rejected, or still Pending after conflict check"/>
   <bpmn:task id="V_Lock" name="Lock venue and recheck overlapping slots"/>
   <bpmn:exclusiveGateway id="V_FreeGate" name="Slot still available?" gatewayDirection="Diverging"/>
-  <bpmn:task id="V_Conflict" name="Do not approve; return conflict message"/>
+  <bpmn:task id="V_Conflict" name="Keep reservation Pending and show approval-time overlap conflict to Staff"/>
   <bpmn:task id="V_Approve" name="Set Approved and notify resident"/>
   <bpmn:task id="V_Complete" name="After booking, set Completed"/>
   <bpmn:task id="V_Notify" name="Record final status history and notification"/>
