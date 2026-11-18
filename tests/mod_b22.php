@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../app/queue_lib.php';
 require_once __DIR__ . '/../app/kiosk_lib.php';
+require_once __DIR__ . '/../app/reports_lib.php';
 
 function run_b22(array $S, string $base): void
 {
@@ -244,6 +245,32 @@ function run_b22(array $S, string $base): void
             'baseline served=' . $baselineCount . '; expected wait average=' . $expectedWait
             . '; expected elapsed average=' . $expectedElapsed
             . '; actual=' . var_export($snapshot['average_wait_seconds'], true)
+        );
+
+        $reportRangeStart = date('Y-m-d 00:00:00', strtotime($issuedAt));
+        $reportRangeEnd = date('Y-m-d 00:00:00', strtotime($reportRangeStart . ' +1 day'));
+        $reportBaseline = db_one(
+            "SELECT COUNT(*) AS total,
+                    COALESCE(SUM(TIMESTAMPDIFF(SECOND, issued_at, called_at)), 0) AS wait_seconds,
+                    COALESCE(SUM(TIMESTAMPDIFF(SECOND, issued_at, served_at)), 0) AS elapsed_seconds
+             FROM queue_entries
+             WHERE issued_at >= ? AND issued_at < ? AND status = 'Served'
+               AND called_at IS NOT NULL AND served_at IS NOT NULL",
+            [$reportRangeStart, $reportRangeEnd]
+        );
+        $queueReport = report_queueing(['start' => $reportRangeStart, 'end' => $reportRangeEnd, 'label' => 'B22 test day']);
+        $reportBaselineCount = (int) ($reportBaseline['total'] ?? 0);
+        $expectedReportWait = (int) round(((float) ($reportBaseline['wait_seconds'] ?? 0) + 180) / ($reportBaselineCount + 1));
+        $expectedReportElapsed = (int) round(((float) ($reportBaseline['elapsed_seconds'] ?? 0) + 300) / ($reportBaselineCount + 1));
+        record(
+            'B22-11',
+            'Period queue reports calculate waiting time until call, matching the service snapshot and excluding counter service time',
+            $expectedReportWait !== $expectedReportElapsed
+            && (int) round((float) ($queueReport['summary']['average_wait_seconds'] ?? -1)) === $expectedReportWait,
+            'baseline served=' . $reportBaselineCount
+            . '; expected wait=' . $expectedReportWait
+            . '; expected elapsed=' . $expectedReportElapsed
+            . '; report average=' . var_export($queueReport['summary']['average_wait_seconds'] ?? null, true)
         );
 
         // Reuse the same kiosk browser session for another resident, as happens at a public counter.
