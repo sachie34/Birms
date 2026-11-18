@@ -133,9 +133,12 @@ record('U10', 'PHP runtime guard rejects known-unpatched and unsupported version
         90000 => false,
     ];
     foreach ($cases as $version => $expectedSafe) {
-        if ((php_runtime_security_issue($version) === null) !== $expectedSafe) { return false; }
+        if ((php_runtime_security_issue($version, '2026-11-19') === null) !== $expectedSafe) { return false; }
     }
-    return php_runtime_upgrade_notice(80235) !== null && php_runtime_upgrade_notice(80336) === null;
+    return php_runtime_upgrade_notice(80235, '2026-11-19') !== null
+        && php_runtime_upgrade_notice(80336, '2026-11-19') === null
+        && php_runtime_security_issue(80235, '2027-01-01') !== null
+        && php_runtime_upgrade_notice(80235, '2027-01-01') === null;
 })());
 
 $promptSource = (string) file_get_contents(APP_ROOT . '/tools/cli_prompt.php');
