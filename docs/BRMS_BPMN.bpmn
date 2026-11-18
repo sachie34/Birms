@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+ xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+ xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+ xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+ id="Definitions_BRMS_MSIT" targetNamespace="https://sachie34.github.io/Birms/bpmn">
+ <bpmn:collaboration id="Collaboration_BRMS">
+  <bpmn:participant id="Participant_Documents" name="BRMS — Document Request and Certificate Issuance" processRef="Process_Documents"/>
+  <bpmn:participant id="Participant_Blotter" name="BRMS — Resident Blotter Intake and Case Workflow" processRef="Process_Blotter"/>
+  <bpmn:participant id="Participant_Venue" name="BRMS — Venue Reservation Request and Approval" processRef="Process_Venue"/>
+  <bpmn:participant id="Participant_Queue" name="BRMS — Daily Service Queue Management" processRef="Process_Queue"/>
+ </bpmn:collaboration>
+ <bpmn:process id="Process_Documents" name="Document Request and Certificate Issuance" isExecutable="false">
+  <bpmn:startEvent id="D_Start" name="Verified resident requests a document"/>
+  <bpmn:task id="D_Identity" name="Resident identity verified at kiosk / QR"/>
+  <bpmn:task id="D_Select" name="Select document type and enter purpose"/>
+  <bpmn:task id="D_Save" name="Create Pending request and reference number"/>
+  <bpmn:task id="D_Queue" name="Issue Documents queue ticket"/>
+  <bpmn:task id="D_Review" name="Secretary reviews requirements"/>
+  <bpmn:exclusiveGateway id="D_ReqGate" name="Requirements complete?" gatewayDirection="Diverging"/>
+  <bpmn:task id="D_Incomplete" name="Record missing requirements and review note"/>
+  <bpmn:task id="D_Decide" name="Staff makes final approval decision"/>
+  <bpmn:exclusiveGateway id="D_ApproveGate" name="Approved?" gatewayDirection="Diverging"/>
+  <bpmn:task id="D_Reject" name="Set Rejected and record reason"/>
+  <bpmn:endEvent id="D_EndReject" name="Request rejected"/>
+  <bpmn:task id="D_Ready" name="Set Approved / Ready and queue resident notice"/>
+  <bpmn:task id="D_Check" name="Check fee, wording, resident data and signature requirement"/>
+  <bpmn:exclusiveGateway id="D_IssueGate" name="All issue checks pass?" gatewayDirection="Diverging"/>
+  <bpmn:task id="D_Fix" name="Correct missing setup or request data"/>
+  <bpmn:task id="D_Issue" name="Create issuance snapshot and set Released"/>
+  <bpmn:exclusiveGateway id="D_FeeGate" name="Fee greater than zero?" gatewayDirection="Diverging"/>
+  <bpmn:task id="D_Ledger" name="Require O.R. and create pending cash-ledger row"/>
+  <bpmn:task id="D_NoLedger" name="Skip cash ledger for zero fee"/>
+  <bpmn:task id="D_Print" name="Print or download certificate PDF"/>
+  <bpmn:endEvent id="D_End" name="Certificate issued and recorded"/>
+  <bpmn:sequenceFlow id="DF01" sourceRef="D_Start" targetRef="D_Identity"/>
+  <bpmn:sequenceFlow id="DF02" sourceRef="D_Identity" targetRef="D_Select"/>
+  <bpmn:sequenceFlow id="DF03" sourceRef="D_Select" targetRef="D_Save"/>
+  <bpmn:sequenceFlow id="DF04" sourceRef="D_Save" targetRef="D_Queue"/>
+  <bpmn:sequenceFlow id="DF05" sourceRef="D_Queue" targetRef="D_Review"/>
+  <bpmn:sequenceFlow id="DF06" sourceRef="D_Review" targetRef="D_ReqGate"/>
+  <bpmn:sequenceFlow id="DF07" sourceRef="D_ReqGate" targetRef="D_Incomplete" name="No"/>
+  <bpmn:sequenceFlow id="DF08" sourceRef="D_Incomplete" targetRef="D_Review"/>
+  <bpmn:sequenceFlow id="DF09" sourceRef="D_ReqGate" targetRef="D_Decide" name="Yes"/>
+  <bpmn:sequenceFlow id="DF10" sourceRef="D_Decide" targetRef="D_ApproveGate"/>
+  <bpmn:sequenceFlow id="DF11" sourceRef="D_ApproveGate" targetRef="D_Reject" name="No"/>
+  <bpmn:sequenceFlow id="DF12" sourceRef="D_Reject" targetRef="D_EndReject"/>
+  <bpmn:sequenceFlow id="DF13" sourceRef="D_ApproveGate" targetRef="D_Ready" name="Yes"/>
+  <bpmn:sequenceFlow id="DF14" sourceRef="D_Ready" targetRef="D_Check"/>
+  <bpmn:sequenceFlow id="DF15" sourceRef="D_Check" targetRef="D_IssueGate"/>
+  <bpmn:sequenceFlow id="DF16" sourceRef="D_IssueGate" targetRef="D_Fix" name="No"/>
+  <bpmn:sequenceFlow id="DF17" sourceRef="D_Fix" targetRef="D_Check"/>
+  <bpmn:sequenceFlow id="DF18" sourceRef="D_IssueGate" targetRef="D_Issue" name="Yes"/>
+  <bpmn:sequenceFlow id="DF19" sourceRef="D_Issue" targetRef="D_FeeGate"/>
+  <bpmn:sequenceFlow id="DF20" sourceRef="D_FeeGate" targetRef="D_Ledger" name="Yes"/>
+  <bpmn:sequenceFlow id="DF21" sourceRef="D_FeeGate" targetRef="D_NoLedger" name="No"/>
+  <bpmn:sequenceFlow id="DF22" sourceRef="D_Ledger" targetRef="D_Print"/>
+  <bpmn:sequenceFlow id="DF23" sourceRef="D_NoLedger" targetRef="D_Print"/>
+  <bpmn:sequenceFlow id="DF24" sourceRef="D_Print" targetRef="D_End"/>
+ </bpmn:process>
+ <bpmn:process id="Process_Blotter" name="Resident Blotter Intake and Case Workflow" isExecutable="false">
+  <bpmn:startEvent id="B_Start" name="Resident submits incident report"/>
+  <bpmn:task id="B_Verify" name="Verify active resident kiosk session"/>
+  <bpmn:task id="B_Submit" name="Enter incident details and optional respondent"/>
+  <bpmn:task id="B_Save" name="Save resident blotter request and issue Blotter queue ticket"/>
+  <bpmn:task id="B_Review" name="Staff/Admin reviews resident report"/>
+  <bpmn:exclusiveGateway id="B_AcceptGate" name="Accept report?" gatewayDirection="Diverging"/>
+  <bpmn:task id="B_Reject" name="Reject report with reason; set Dismissed"/>
+  <bpmn:endEvent id="B_EndReject" name="Dismissed intake retained"/>
+  <bpmn:task id="B_Create" name="Create official blotter case and party records"/>
+  <bpmn:task id="B_Status" name="Maintain Ongoing / Unresolved case status"/>
+  <bpmn:exclusiveGateway id="B_HearingGate" name="Schedule or record a hearing?" gatewayDirection="Diverging"/>
+  <bpmn:task id="B_Schedule" name="Schedule hearing for Ongoing / Unresolved case"/>
+  <bpmn:task id="B_Outcome" name="Record Held / Postponed / Cancelled outcome"/>
+  <bpmn:exclusiveGateway id="B_CloseGate" name="Resolve or dismiss case?" gatewayDirection="Diverging"/>
+  <bpmn:task id="B_CheckHearings" name="Confirm no Scheduled hearings; enter resolution/dismissal reason"/>
+  <bpmn:exclusiveGateway id="B_ArchiveGate" name="Archive closed case now?" gatewayDirection="Diverging"/>
+  <bpmn:task id="B_Archive" name="Archive Resolved / Dismissed case"/>
+  <bpmn:task id="B_Notify" name="Update shared status history and notify resident"/>
+  <bpmn:endEvent id="B_End" name="Case workflow saved"/>
+  <bpmn:sequenceFlow id="BF01" sourceRef="B_Start" targetRef="B_Verify"/>
+  <bpmn:sequenceFlow id="BF02" sourceRef="B_Verify" targetRef="B_Submit"/>
+  <bpmn:sequenceFlow id="BF03" sourceRef="B_Submit" targetRef="B_Save"/>
+  <bpmn:sequenceFlow id="BF04" sourceRef="B_Save" targetRef="B_Review"/>
+  <bpmn:sequenceFlow id="BF05" sourceRef="B_Review" targetRef="B_AcceptGate"/>
+  <bpmn:sequenceFlow id="BF06" sourceRef="B_AcceptGate" targetRef="B_Reject" name="No"/>
+  <bpmn:sequenceFlow id="BF07" sourceRef="B_Reject" targetRef="B_EndReject"/>
+  <bpmn:sequenceFlow id="BF08" sourceRef="B_AcceptGate" targetRef="B_Create" name="Yes"/>
+  <bpmn:sequenceFlow id="BF09" sourceRef="B_Create" targetRef="B_Status"/>
+  <bpmn:sequenceFlow id="BF10" sourceRef="B_Status" targetRef="B_HearingGate"/>
+  <bpmn:sequenceFlow id="BF11" sourceRef="B_HearingGate" targetRef="B_Schedule" name="Yes"/>
+  <bpmn:sequenceFlow id="BF12" sourceRef="B_Schedule" targetRef="B_Outcome"/>
+  <bpmn:sequenceFlow id="BF13" sourceRef="B_Outcome" targetRef="B_Status"/>
+  <bpmn:sequenceFlow id="BF14" sourceRef="B_HearingGate" targetRef="B_CloseGate" name="No"/>
+  <bpmn:sequenceFlow id="BF15" sourceRef="B_CloseGate" targetRef="B_Status" name="No"/>
+  <bpmn:sequenceFlow id="BF16" sourceRef="B_CloseGate" targetRef="B_CheckHearings" name="Yes"/>
+  <bpmn:sequenceFlow id="BF17" sourceRef="B_CheckHearings" targetRef="B_ArchiveGate"/>
+  <bpmn:sequenceFlow id="BF18" sourceRef="B_ArchiveGate" targetRef="B_Archive" name="Yes"/>
+  <bpmn:sequenceFlow id="BF19" sourceRef="B_ArchiveGate" targetRef="B_Notify" name="No"/>
+  <bpmn:sequenceFlow id="BF20" sourceRef="B_Archive" targetRef="B_Notify"/>
+  <bpmn:sequenceFlow id="BF21" sourceRef="B_Notify" targetRef="B_End"/>
+ </bpmn:process>
+ <bpmn:process id="Process_Venue" name="Venue Reservation Request and Approval" isExecutable="false">
+  <bpmn:startEvent id="V_Start" name="Verified resident requests a venue"/>
+  <bpmn:task id="V_Select" name="Choose venue, purpose, date and time range"/>
+  <bpmn:task id="V_Validate" name="Validate resident, venue and time range"/>
+  <bpmn:exclusiveGateway id="V_OverlapGate" name="Pending / Approved slot overlap?" gatewayDirection="Diverging"/>
+  <bpmn:task id="V_Change" name="Ask resident to choose another time"/>
+  <bpmn:task id="V_Create" name="Create Pending reservation and reference"/>
+  <bpmn:task id="V_Queue" name="Issue Venue queue ticket"/>
+  <bpmn:task id="V_Review" name="Staff reviews reservation"/>
+  <bpmn:exclusiveGateway id="V_ApproveGate" name="Approve reservation?" gatewayDirection="Diverging"/>
+  <bpmn:task id="V_Reject" name="Set Rejected and save reason"/>
+  <bpmn:task id="V_RejectNotice" name="Write status history and queue resident notice"/>
+  <bpmn:endEvent id="V_EndReject" name="Reservation rejected"/>
+  <bpmn:task id="V_Lock" name="Lock venue and recheck overlapping slots"/>
+  <bpmn:exclusiveGateway id="V_FreeGate" name="Slot still available?" gatewayDirection="Diverging"/>
+  <bpmn:task id="V_Conflict" name="Do not approve; return conflict message"/>
+  <bpmn:task id="V_Approve" name="Set Approved and notify resident"/>
+  <bpmn:task id="V_Complete" name="After booking, set Completed"/>
+  <bpmn:task id="V_Notify" name="Record final status history and notification"/>
+  <bpmn:endEvent id="V_End" name="Reservation workflow complete"/>
+  <bpmn:sequenceFlow id="VF01" sourceRef="V_Start" targetRef="V_Select"/>
+  <bpmn:sequenceFlow id="VF02" sourceRef="V_Select" targetRef="V_Validate"/>
+  <bpmn:sequenceFlow id="VF03" sourceRef="V_Validate" targetRef="V_OverlapGate"/>
+  <bpmn:sequenceFlow id="VF04" sourceRef="V_OverlapGate" targetRef="V_Change" name="Yes"/>
+  <bpmn:sequenceFlow id="VF05" sourceRef="V_Change" targetRef="V_Select"/>
+  <bpmn:sequenceFlow id="VF06" sourceRef="V_OverlapGate" targetRef="V_Create" name="No"/>
+  <bpmn:sequenceFlow id="VF07" sourceRef="V_Create" targetRef="V_Queue"/>
+  <bpmn:sequenceFlow id="VF08" sourceRef="V_Queue" targetRef="V_Review"/>
+  <bpmn:sequenceFlow id="VF09" sourceRef="V_Review" targetRef="V_ApproveGate"/>
+  <bpmn:sequenceFlow id="VF10" sourceRef="V_ApproveGate" targetRef="V_Reject" name="No"/>
+  <bpmn:sequenceFlow id="VF11" sourceRef="V_Reject" targetRef="V_RejectNotice"/>
+  <bpmn:sequenceFlow id="VF12" sourceRef="V_RejectNotice" targetRef="V_EndReject"/>
+  <bpmn:sequenceFlow id="VF13" sourceRef="V_ApproveGate" targetRef="V_Lock" name="Yes"/>
+  <bpmn:sequenceFlow id="VF14" sourceRef="V_Lock" targetRef="V_FreeGate"/>
+  <bpmn:sequenceFlow id="VF15" sourceRef="V_FreeGate" targetRef="V_Conflict" name="No"/>
+  <bpmn:sequenceFlow id="VF16" sourceRef="V_Conflict" targetRef="V_RejectNotice"/>
+  <bpmn:sequenceFlow id="VF17" sourceRef="V_FreeGate" targetRef="V_Approve" name="Yes"/>
+  <bpmn:sequenceFlow id="VF18" sourceRef="V_Approve" targetRef="V_Complete"/>
+  <bpmn:sequenceFlow id="VF19" sourceRef="V_Complete" targetRef="V_Notify"/>
+  <bpmn:sequenceFlow id="VF20" sourceRef="V_Notify" targetRef="V_End"/>
+ </bpmn:process>
+ <bpmn:process id="Process_Queue" name="Daily Service Queue Management" isExecutable="false">
+  <bpmn:startEvent id="Q_Start" name="Resident or Staff requests queue ticket"/>
+  <bpmn:task id="Q_Service" name="Choose Blotter, Documents or Venue"/>
+  <bpmn:task id="Q_Issue" name="Lock daily counter and assign next service number"/>
+  <bpmn:task id="Q_Waiting" name="Save queue entry as Waiting and show ticket"/>
+  <bpmn:task id="Q_Call" name="Staff calls next Waiting number"/>
+  <bpmn:exclusiveGateway id="Q_Gate" name="A number is already Called?" gatewayDirection="Diverging"/>
+  <bpmn:task id="Q_FinishCurrent" name="Serve, skip or cancel current Called entry first"/>
+  <bpmn:task id="Q_Called" name="Set next entry Called and update public display"/>
+  <bpmn:exclusiveGateway id="Q_Outcome" name="Queue outcome?" gatewayDirection="Diverging"/>
+  <bpmn:task id="Q_Served" name="Mark Served and record time / staff"/>
+  <bpmn:task id="Q_Skipped" name="Mark Skipped"/>
+  <bpmn:task id="Q_Cancelled" name="Mark Cancelled"/>
+  <bpmn:task id="Q_Refresh" name="Refresh current number and waiting count"/>
+  <bpmn:task id="Q_Notify" name="Queue email/SMS notice according to preference"/>
+  <bpmn:endEvent id="Q_End" name="Queue cycle updated"/>
+  <bpmn:sequenceFlow id="QF01" sourceRef="Q_Start" targetRef="Q_Service"/>
+  <bpmn:sequenceFlow id="QF02" sourceRef="Q_Service" targetRef="Q_Issue"/>
+  <bpmn:sequenceFlow id="QF03" sourceRef="Q_Issue" targetRef="Q_Waiting"/>
+  <bpmn:sequenceFlow id="QF04" sourceRef="Q_Waiting" targetRef="Q_Call"/>
+  <bpmn:sequenceFlow id="QF05" sourceRef="Q_Call" targetRef="Q_Gate"/>
+  <bpmn:sequenceFlow id="QF06" sourceRef="Q_Gate" targetRef="Q_FinishCurrent" name="Yes"/>
+  <bpmn:sequenceFlow id="QF07" sourceRef="Q_FinishCurrent" targetRef="Q_Call"/>
+  <bpmn:sequenceFlow id="QF08" sourceRef="Q_Gate" targetRef="Q_Called" name="No"/>
+  <bpmn:sequenceFlow id="QF09" sourceRef="Q_Called" targetRef="Q_Outcome"/>
+  <bpmn:sequenceFlow id="QF10" sourceRef="Q_Outcome" targetRef="Q_Served" name="Served"/>
+  <bpmn:sequenceFlow id="QF11" sourceRef="Q_Outcome" targetRef="Q_Skipped" name="Skip"/>
+  <bpmn:sequenceFlow id="QF12" sourceRef="Q_Outcome" targetRef="Q_Cancelled" name="Cancel"/>
+  <bpmn:sequenceFlow id="QF13" sourceRef="Q_Served" targetRef="Q_Refresh"/>
+  <bpmn:sequenceFlow id="QF14" sourceRef="Q_Skipped" targetRef="Q_Refresh"/>
+  <bpmn:sequenceFlow id="QF15" sourceRef="Q_Cancelled" targetRef="Q_Refresh"/>
+  <bpmn:sequenceFlow id="QF16" sourceRef="Q_Refresh" targetRef="Q_Notify"/>
+  <bpmn:sequenceFlow id="QF17" sourceRef="Q_Notify" targetRef="Q_End"/>
+ </bpmn:process>
+ <bpmndi:BPMNDiagram id="Diagram_Documents"><bpmndi:BPMNPlane id="Plane_Documents" bpmnElement="Collaboration_BRMS">
+  <bpmndi:BPMNShape id="Shape_Participant_Documents" bpmnElement="Participant_Documents" isHorizontal="true"><dc:Bounds x="70" y="70" width="2946" height="430"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Start" bpmnElement="D_Start"><dc:Bounds x="100" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Identity" bpmnElement="D_Identity"><dc:Bounds x="190" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Select" bpmnElement="D_Select"><dc:Bounds x="390" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Save" bpmnElement="D_Save"><dc:Bounds x="590" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Queue" bpmnElement="D_Queue"><dc:Bounds x="790" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Review" bpmnElement="D_Review"><dc:Bounds x="990" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_ReqGate" bpmnElement="D_ReqGate" isMarkerVisible="true"><dc:Bounds x="1200" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Incomplete" bpmnElement="D_Incomplete"><dc:Bounds x="1120" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Decide" bpmnElement="D_Decide"><dc:Bounds x="1330" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_ApproveGate" bpmnElement="D_ApproveGate" isMarkerVisible="true"><dc:Bounds x="1540" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Reject" bpmnElement="D_Reject"><dc:Bounds x="1490" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_EndReject" bpmnElement="D_EndReject"><dc:Bounds x="1700" y="342" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Ready" bpmnElement="D_Ready"><dc:Bounds x="1650" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Check" bpmnElement="D_Check"><dc:Bounds x="1870" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_IssueGate" bpmnElement="D_IssueGate" isMarkerVisible="true"><dc:Bounds x="2090" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Fix" bpmnElement="D_Fix"><dc:Bounds x="2030" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Issue" bpmnElement="D_Issue"><dc:Bounds x="2290" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_FeeGate" bpmnElement="D_FeeGate" isMarkerVisible="true"><dc:Bounds x="2500" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Ledger" bpmnElement="D_Ledger"><dc:Bounds x="2450" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_NoLedger" bpmnElement="D_NoLedger"><dc:Bounds x="2650" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_Print" bpmnElement="D_Print"><dc:Bounds x="2700" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_D_End" bpmnElement="D_End"><dc:Bounds x="2910" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNEdge id="Edge_DF01" bpmnElement="DF01"><di:waypoint x="136" y="198"/><di:waypoint x="190" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF02" bpmnElement="DF02"><di:waypoint x="360" y="198"/><di:waypoint x="390" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF03" bpmnElement="DF03"><di:waypoint x="560" y="198"/><di:waypoint x="590" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF04" bpmnElement="DF04"><di:waypoint x="760" y="198"/><di:waypoint x="790" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF05" bpmnElement="DF05"><di:waypoint x="960" y="198"/><di:waypoint x="990" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF06" bpmnElement="DF06"><di:waypoint x="1160" y="198"/><di:waypoint x="1200" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF07" bpmnElement="DF07"><di:waypoint x="1250" y="198"/><di:waypoint x="1275" y="198"/><di:waypoint x="1275" y="363"/><di:waypoint x="1120" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF08" bpmnElement="DF08"><di:waypoint x="1290" y="363"/><di:waypoint x="1315" y="363"/><di:waypoint x="1315" y="198"/><di:waypoint x="990" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF09" bpmnElement="DF09"><di:waypoint x="1250" y="198"/><di:waypoint x="1330" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF10" bpmnElement="DF10"><di:waypoint x="1500" y="198"/><di:waypoint x="1540" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF11" bpmnElement="DF11"><di:waypoint x="1590" y="198"/><di:waypoint x="1615" y="198"/><di:waypoint x="1615" y="363"/><di:waypoint x="1490" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF12" bpmnElement="DF12"><di:waypoint x="1660" y="363"/><di:waypoint x="1700" y="360"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF13" bpmnElement="DF13"><di:waypoint x="1590" y="198"/><di:waypoint x="1650" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF14" bpmnElement="DF14"><di:waypoint x="1820" y="198"/><di:waypoint x="1870" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF15" bpmnElement="DF15"><di:waypoint x="2040" y="198"/><di:waypoint x="2090" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF16" bpmnElement="DF16"><di:waypoint x="2140" y="198"/><di:waypoint x="2165" y="198"/><di:waypoint x="2165" y="363"/><di:waypoint x="2030" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF17" bpmnElement="DF17"><di:waypoint x="2200" y="363"/><di:waypoint x="2225" y="363"/><di:waypoint x="2225" y="198"/><di:waypoint x="1870" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF18" bpmnElement="DF18"><di:waypoint x="2140" y="198"/><di:waypoint x="2290" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF19" bpmnElement="DF19"><di:waypoint x="2460" y="198"/><di:waypoint x="2500" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF20" bpmnElement="DF20"><di:waypoint x="2550" y="198"/><di:waypoint x="2575" y="198"/><di:waypoint x="2575" y="363"/><di:waypoint x="2450" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF21" bpmnElement="DF21"><di:waypoint x="2550" y="198"/><di:waypoint x="2575" y="198"/><di:waypoint x="2575" y="363"/><di:waypoint x="2650" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF22" bpmnElement="DF22"><di:waypoint x="2620" y="363"/><di:waypoint x="2645" y="363"/><di:waypoint x="2645" y="198"/><di:waypoint x="2700" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF23" bpmnElement="DF23"><di:waypoint x="2820" y="363"/><di:waypoint x="2845" y="363"/><di:waypoint x="2845" y="198"/><di:waypoint x="2700" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_DF24" bpmnElement="DF24"><di:waypoint x="2870" y="198"/><di:waypoint x="2910" y="198"/></bpmndi:BPMNEdge>
+ </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+ <bpmndi:BPMNDiagram id="Diagram_Blotter"><bpmndi:BPMNPlane id="Plane_Blotter" bpmnElement="Collaboration_BRMS">
+  <bpmndi:BPMNShape id="Shape_Participant_Blotter" bpmnElement="Participant_Blotter" isHorizontal="true"><dc:Bounds x="70" y="70" width="2736" height="430"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Start" bpmnElement="B_Start"><dc:Bounds x="100" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Verify" bpmnElement="B_Verify"><dc:Bounds x="190" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Submit" bpmnElement="B_Submit"><dc:Bounds x="390" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Save" bpmnElement="B_Save"><dc:Bounds x="600" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Review" bpmnElement="B_Review"><dc:Bounds x="830" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_AcceptGate" bpmnElement="B_AcceptGate" isMarkerVisible="true"><dc:Bounds x="1050" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Reject" bpmnElement="B_Reject"><dc:Bounds x="1000" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_EndReject" bpmnElement="B_EndReject"><dc:Bounds x="1210" y="342" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Create" bpmnElement="B_Create"><dc:Bounds x="1170" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Status" bpmnElement="B_Status"><dc:Bounds x="1400" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_HearingGate" bpmnElement="B_HearingGate" isMarkerVisible="true"><dc:Bounds x="1620" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Schedule" bpmnElement="B_Schedule"><dc:Bounds x="1570" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Outcome" bpmnElement="B_Outcome"><dc:Bounds x="1780" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_CloseGate" bpmnElement="B_CloseGate" isMarkerVisible="true"><dc:Bounds x="1850" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_CheckHearings" bpmnElement="B_CheckHearings"><dc:Bounds x="2050" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_ArchiveGate" bpmnElement="B_ArchiveGate" isMarkerVisible="true"><dc:Bounds x="2290" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Archive" bpmnElement="B_Archive"><dc:Bounds x="2240" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_Notify" bpmnElement="B_Notify"><dc:Bounds x="2480" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_B_End" bpmnElement="B_End"><dc:Bounds x="2700" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNEdge id="Edge_BF01" bpmnElement="BF01"><di:waypoint x="136" y="198"/><di:waypoint x="190" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF02" bpmnElement="BF02"><di:waypoint x="360" y="198"/><di:waypoint x="390" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF03" bpmnElement="BF03"><di:waypoint x="560" y="198"/><di:waypoint x="600" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF04" bpmnElement="BF04"><di:waypoint x="770" y="198"/><di:waypoint x="830" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF05" bpmnElement="BF05"><di:waypoint x="1000" y="198"/><di:waypoint x="1050" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF06" bpmnElement="BF06"><di:waypoint x="1100" y="198"/><di:waypoint x="1125" y="198"/><di:waypoint x="1125" y="363"/><di:waypoint x="1000" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF07" bpmnElement="BF07"><di:waypoint x="1170" y="363"/><di:waypoint x="1210" y="360"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF08" bpmnElement="BF08"><di:waypoint x="1100" y="198"/><di:waypoint x="1170" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF09" bpmnElement="BF09"><di:waypoint x="1340" y="198"/><di:waypoint x="1400" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF10" bpmnElement="BF10"><di:waypoint x="1570" y="198"/><di:waypoint x="1620" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF11" bpmnElement="BF11"><di:waypoint x="1670" y="198"/><di:waypoint x="1695" y="198"/><di:waypoint x="1695" y="363"/><di:waypoint x="1570" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF12" bpmnElement="BF12"><di:waypoint x="1740" y="363"/><di:waypoint x="1780" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF13" bpmnElement="BF13"><di:waypoint x="1950" y="363"/><di:waypoint x="1975" y="363"/><di:waypoint x="1975" y="198"/><di:waypoint x="1400" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF14" bpmnElement="BF14"><di:waypoint x="1670" y="198"/><di:waypoint x="1850" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF15" bpmnElement="BF15"><di:waypoint x="1900" y="198"/><di:waypoint x="1400" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF16" bpmnElement="BF16"><di:waypoint x="1900" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF17" bpmnElement="BF17"><di:waypoint x="2220" y="198"/><di:waypoint x="2290" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF18" bpmnElement="BF18"><di:waypoint x="2340" y="198"/><di:waypoint x="2365" y="198"/><di:waypoint x="2365" y="363"/><di:waypoint x="2240" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF19" bpmnElement="BF19"><di:waypoint x="2340" y="198"/><di:waypoint x="2480" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF20" bpmnElement="BF20"><di:waypoint x="2410" y="363"/><di:waypoint x="2435" y="363"/><di:waypoint x="2435" y="198"/><di:waypoint x="2480" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_BF21" bpmnElement="BF21"><di:waypoint x="2650" y="198"/><di:waypoint x="2700" y="198"/></bpmndi:BPMNEdge>
+ </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+ <bpmndi:BPMNDiagram id="Diagram_Venue"><bpmndi:BPMNPlane id="Plane_Venue" bpmnElement="Collaboration_BRMS">
+  <bpmndi:BPMNShape id="Shape_Participant_Venue" bpmnElement="Participant_Venue" isHorizontal="true"><dc:Bounds x="70" y="70" width="2756" height="430"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Start" bpmnElement="V_Start"><dc:Bounds x="100" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Select" bpmnElement="V_Select"><dc:Bounds x="200" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Validate" bpmnElement="V_Validate"><dc:Bounds x="420" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_OverlapGate" bpmnElement="V_OverlapGate" isMarkerVisible="true"><dc:Bounds x="650" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Change" bpmnElement="V_Change"><dc:Bounds x="600" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Create" bpmnElement="V_Create"><dc:Bounds x="820" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Queue" bpmnElement="V_Queue"><dc:Bounds x="1040" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Review" bpmnElement="V_Review"><dc:Bounds x="1240" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_ApproveGate" bpmnElement="V_ApproveGate" isMarkerVisible="true"><dc:Bounds x="1450" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Reject" bpmnElement="V_Reject"><dc:Bounds x="1400" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_RejectNotice" bpmnElement="V_RejectNotice"><dc:Bounds x="1610" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_EndReject" bpmnElement="V_EndReject"><dc:Bounds x="1830" y="342" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Lock" bpmnElement="V_Lock"><dc:Bounds x="1640" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_FreeGate" bpmnElement="V_FreeGate" isMarkerVisible="true"><dc:Bounds x="1860" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Conflict" bpmnElement="V_Conflict"><dc:Bounds x="1810" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Approve" bpmnElement="V_Approve"><dc:Bounds x="2070" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Complete" bpmnElement="V_Complete"><dc:Bounds x="2290" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_Notify" bpmnElement="V_Notify"><dc:Bounds x="2500" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_V_End" bpmnElement="V_End"><dc:Bounds x="2720" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNEdge id="Edge_VF01" bpmnElement="VF01"><di:waypoint x="136" y="198"/><di:waypoint x="200" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF02" bpmnElement="VF02"><di:waypoint x="370" y="198"/><di:waypoint x="420" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF03" bpmnElement="VF03"><di:waypoint x="590" y="198"/><di:waypoint x="650" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF04" bpmnElement="VF04"><di:waypoint x="700" y="198"/><di:waypoint x="725" y="198"/><di:waypoint x="725" y="363"/><di:waypoint x="600" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF05" bpmnElement="VF05"><di:waypoint x="770" y="363"/><di:waypoint x="795" y="363"/><di:waypoint x="795" y="198"/><di:waypoint x="200" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF06" bpmnElement="VF06"><di:waypoint x="700" y="198"/><di:waypoint x="820" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF07" bpmnElement="VF07"><di:waypoint x="990" y="198"/><di:waypoint x="1040" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF08" bpmnElement="VF08"><di:waypoint x="1210" y="198"/><di:waypoint x="1240" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF09" bpmnElement="VF09"><di:waypoint x="1410" y="198"/><di:waypoint x="1450" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF10" bpmnElement="VF10"><di:waypoint x="1500" y="198"/><di:waypoint x="1525" y="198"/><di:waypoint x="1525" y="363"/><di:waypoint x="1400" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF11" bpmnElement="VF11"><di:waypoint x="1570" y="363"/><di:waypoint x="1610" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF12" bpmnElement="VF12"><di:waypoint x="1780" y="363"/><di:waypoint x="1830" y="360"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF13" bpmnElement="VF13"><di:waypoint x="1500" y="198"/><di:waypoint x="1640" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF14" bpmnElement="VF14"><di:waypoint x="1810" y="198"/><di:waypoint x="1860" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF15" bpmnElement="VF15"><di:waypoint x="1910" y="198"/><di:waypoint x="1935" y="198"/><di:waypoint x="1935" y="363"/><di:waypoint x="1810" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF16" bpmnElement="VF16"><di:waypoint x="1980" y="363"/><di:waypoint x="1610" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF17" bpmnElement="VF17"><di:waypoint x="1910" y="198"/><di:waypoint x="2070" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF18" bpmnElement="VF18"><di:waypoint x="2240" y="198"/><di:waypoint x="2290" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF19" bpmnElement="VF19"><di:waypoint x="2460" y="198"/><di:waypoint x="2500" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_VF20" bpmnElement="VF20"><di:waypoint x="2670" y="198"/><di:waypoint x="2720" y="198"/></bpmndi:BPMNEdge>
+ </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+ <bpmndi:BPMNDiagram id="Diagram_Queue"><bpmndi:BPMNPlane id="Plane_Queue" bpmnElement="Collaboration_BRMS">
+  <bpmndi:BPMNShape id="Shape_Participant_Queue" bpmnElement="Participant_Queue" isHorizontal="true"><dc:Bounds x="70" y="70" width="2516" height="430"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Start" bpmnElement="Q_Start"><dc:Bounds x="100" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Service" bpmnElement="Q_Service"><dc:Bounds x="210" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Issue" bpmnElement="Q_Issue"><dc:Bounds x="430" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Waiting" bpmnElement="Q_Waiting"><dc:Bounds x="660" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Call" bpmnElement="Q_Call"><dc:Bounds x="900" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Gate" bpmnElement="Q_Gate" isMarkerVisible="true"><dc:Bounds x="1110" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_FinishCurrent" bpmnElement="Q_FinishCurrent"><dc:Bounds x="1060" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Called" bpmnElement="Q_Called"><dc:Bounds x="1280" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Outcome" bpmnElement="Q_Outcome" isMarkerVisible="true"><dc:Bounds x="1500" y="173" width="50" height="50"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Served" bpmnElement="Q_Served"><dc:Bounds x="1450" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Skipped" bpmnElement="Q_Skipped"><dc:Bounds x="1650" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Cancelled" bpmnElement="Q_Cancelled"><dc:Bounds x="1830" y="320" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Refresh" bpmnElement="Q_Refresh"><dc:Bounds x="2050" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_Notify" bpmnElement="Q_Notify"><dc:Bounds x="2260" y="155" width="170" height="86"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNShape id="Shape_Q_End" bpmnElement="Q_End"><dc:Bounds x="2480" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+  <bpmndi:BPMNEdge id="Edge_QF01" bpmnElement="QF01"><di:waypoint x="136" y="198"/><di:waypoint x="210" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF02" bpmnElement="QF02"><di:waypoint x="380" y="198"/><di:waypoint x="430" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF03" bpmnElement="QF03"><di:waypoint x="600" y="198"/><di:waypoint x="660" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF04" bpmnElement="QF04"><di:waypoint x="830" y="198"/><di:waypoint x="900" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF05" bpmnElement="QF05"><di:waypoint x="1070" y="198"/><di:waypoint x="1110" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF06" bpmnElement="QF06"><di:waypoint x="1160" y="198"/><di:waypoint x="1185" y="198"/><di:waypoint x="1185" y="363"/><di:waypoint x="1060" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF07" bpmnElement="QF07"><di:waypoint x="1230" y="363"/><di:waypoint x="1255" y="363"/><di:waypoint x="1255" y="198"/><di:waypoint x="900" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF08" bpmnElement="QF08"><di:waypoint x="1160" y="198"/><di:waypoint x="1280" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF09" bpmnElement="QF09"><di:waypoint x="1450" y="198"/><di:waypoint x="1500" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF10" bpmnElement="QF10"><di:waypoint x="1550" y="198"/><di:waypoint x="1575" y="198"/><di:waypoint x="1575" y="363"/><di:waypoint x="1450" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF11" bpmnElement="QF11"><di:waypoint x="1550" y="198"/><di:waypoint x="1575" y="198"/><di:waypoint x="1575" y="363"/><di:waypoint x="1650" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF12" bpmnElement="QF12"><di:waypoint x="1550" y="198"/><di:waypoint x="1575" y="198"/><di:waypoint x="1575" y="363"/><di:waypoint x="1830" y="363"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF13" bpmnElement="QF13"><di:waypoint x="1620" y="363"/><di:waypoint x="1645" y="363"/><di:waypoint x="1645" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF14" bpmnElement="QF14"><di:waypoint x="1820" y="363"/><di:waypoint x="1845" y="363"/><di:waypoint x="1845" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF15" bpmnElement="QF15"><di:waypoint x="2000" y="363"/><di:waypoint x="2025" y="363"/><di:waypoint x="2025" y="198"/><di:waypoint x="2050" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF16" bpmnElement="QF16"><di:waypoint x="2220" y="198"/><di:waypoint x="2260" y="198"/></bpmndi:BPMNEdge>
+  <bpmndi:BPMNEdge id="Edge_QF17" bpmnElement="QF17"><di:waypoint x="2430" y="198"/><di:waypoint x="2480" y="198"/></bpmndi:BPMNEdge>
+ </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>
