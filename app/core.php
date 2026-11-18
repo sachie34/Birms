@@ -397,8 +397,9 @@ function mb_substr_safe(string $s, int $len): string
  * Fixed-window, database-backed limiter. Raw identifiers (such as IP or resident ID)
  * are never stored; only a SHA-256 bucket digest is persisted.
  */
-function rate_limit_allow(string $scope, string $identifier, int $limit, int $windowSeconds): bool
+function rate_limit_allow(string $scope, string $identifier, int $limit, int $windowSeconds, ?int $now = null): bool
 {
+    $now ??= time();
     $scope = trim($scope);
     $identifier = trim($identifier);
     $limit = max(1, min(10000, $limit));
@@ -407,7 +408,7 @@ function rate_limit_allow(string $scope, string $identifier, int $limit, int $wi
         throw new InvalidArgumentException('Rate-limit scope and identifier are required.');
     }
     $bucketHash = hash('sha256', $scope . "\0" . $identifier);
-    $windowStart = date('Y-m-d H:i:s', intdiv(time(), $windowSeconds) * $windowSeconds);
+    $windowStart = date('Y-m-d H:i:s', intdiv($now, $windowSeconds) * $windowSeconds);
     db_exec(
         'INSERT INTO rate_limit_buckets (bucket_hash, window_started_at, hit_count)
          VALUES (?, ?, 1)
