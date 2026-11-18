@@ -44,6 +44,9 @@ if (is_post()) {
                     $row = $id === null ? null : db_one('SELECT lookup_id, list_key, label FROM lookups WHERE lookup_id = ?', [$id]);
                     if ($row === null || !isset(LOOKUP_LISTS[(string) ($row['list_key'] ?? '')])) {
                         $errors[] = 'That list entry does not exist.';
+                    } elseif ($row['list_key'] === 'resident_status'
+                        && in_array((string) $row['label'], ['Active', 'Transferred', 'Deceased', 'Non-resident'], true)) {
+                        $errors[] = 'The four required resident statuses are protected because system logic and reports depend on their names. Add a new status instead.';
                     } elseif (!v_len($label, 1, 100)) {
                         $errors[] = 'The list name must be 1-100 characters.';
                     } elseif (db_val(
@@ -68,6 +71,11 @@ if (is_post()) {
                 case 'lookup_toggle':
                     $id = post_int('id'); $row = $id === null ? null : db_one('SELECT lookup_id, list_key, label, is_active FROM lookups WHERE lookup_id = ?', [$id]);
                     if ($row === null) { $errors[] = 'That entry does not exist.'; throw new RuntimeException('invalid'); }
+                    if ($row['list_key'] === 'resident_status'
+                        && in_array((string) $row['label'], ['Active', 'Transferred', 'Deceased', 'Non-resident'], true)) {
+                        $errors[] = 'The four required resident statuses cannot be hidden because system logic and reports depend on them.';
+                        throw new RuntimeException('invalid');
+                    }
                     db_exec('UPDATE lookups SET is_active = 1 - is_active WHERE lookup_id = ?', [$id]);
                     audit('lookup_toggled', 'Settings', 'Success', $row['label'] . ($row['is_active'] ? ' hidden' : ' shown'), 'lookup', (int) $id);
                     flash_add('success', 'Updated. Hidden entries stay on old records but cannot be chosen for new ones.');
