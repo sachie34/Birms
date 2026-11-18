@@ -39,9 +39,10 @@ if (is_post()) {
                 );
                 audit('request_created', 'Requests', 'Success', $reference . ' submitted through the resident kiosk.', 'request', $requestId, 'resident-kiosk', null);
                 $ticket = queue_issue_number('Documents', (int) $resident['resident_id'], $reference, 'kiosk', $purpose,
-                    $requestedPreference !== '' ? $requestedPreference : null);
+                    $requestedPreference !== '' ? $requestedPreference : null, true);
                 return ['request_id' => $requestId, 'reference_no' => $reference, 'ticket' => $ticket];
             });
+            queue_notify_ticket_issued((int) $result['ticket']['queue_id']);
             $_SESSION['kiosk_last_request'] = $result;
             $_SESSION['kiosk_last_queue_ticket'] = $result['ticket'];
             kiosk_flash('Your request has been recorded as Pending. Keep the reference number below.', 'success');
