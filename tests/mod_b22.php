@@ -273,6 +273,45 @@ function run_b22(array $S, string $base): void
             . '; report average=' . var_export($queueReport['summary']['average_wait_seconds'] ?? null, true)
         );
 
+        $adminQrPage = $S['admin']->get('/admin/request_qr.php');
+        $chairmanQrPage = $S['captain']->get('/admin/request_qr.php');
+        $sharedQrUrl = '';
+        if (preg_match('/id="resident-request-link" href="([^"]+)"/', $adminQrPage['body'], $qrMatch) === 1) {
+            $sharedQrUrl = html_entity_decode($qrMatch[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        $qrParts = $sharedQrUrl !== '' ? parse_url($sharedQrUrl) : false;
+        $qrQuery = [];
+        if (is_array($qrParts) && isset($qrParts['query'])) { parse_str($qrParts['query'], $qrQuery); }
+        $qrPrivacyOk = $adminQrPage['status'] === 200
+            && $chairmanQrPage['status'] === 403
+            && is_array($qrParts)
+            && str_contains((string) ($qrParts['path'] ?? ''), '/kiosk/index.php')
+            && $qrQuery === ['next' => 'request']
+            && !preg_match('/resident_id|resident_no|birthdate|first_name|last_name|email|mobile|phone/i', $sharedQrUrl);
+        record(
+            'B22-14',
+            'Shared document request QR contains only the public kiosk entry and exposes no resident identity data',
+            $qrPrivacyOk,
+            'Admin=' . $adminQrPage['status'] . '; Chairman=' . $chairmanQrPage['status']
+            . '; URL=' . ($sharedQrUrl !== '' ? $sharedQrUrl : '[missing]')
+            . '; query=' . json_encode($qrQuery)
+        );
+
+        $webCss = (string) file_get_contents(APP_ROOT . '/public/assets/css/birms.css');
+        $kioskCss = (string) file_get_contents(APP_ROOT . '/public/assets/css/kiosk.css');
+        $accessibilityOk = str_contains($webCss, 'html { font-size: 18px; }')
+            && str_contains($webCss, 'body { font-size: 18px; }')
+            && str_contains($webCss, 'min-height: 48px;')
+            && str_contains($kioskCss, 'html { font-size: 24px; }')
+            && str_contains($kioskCss, 'min-height: 60px;')
+            && str_contains($kioskCss, '.kiosk-icon { min-width: 48px; min-height: 48px; }');
+        record(
+            'B22-15',
+            'Office and kiosk styles preserve revised SRS readable text and minimum touch-target sizes',
+            $accessibilityOk,
+            'web: 18px text/48px controls; kiosk: 24px base/60px controls/48px icons'
+        );
+
         // Reuse the same kiosk browser session for another resident, as happens at a public counter.
         db_exec(
             "INSERT INTO residents
