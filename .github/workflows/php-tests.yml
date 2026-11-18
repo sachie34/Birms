@@ -138,6 +138,17 @@ jobs:
           set -o pipefail
           php tests/run_modules.php http://127.0.0.1:8080 2>&1 | tee test-reports/module-tests.log
 
+      - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
+        if: always() && steps.start-php.outcome == 'success'
+        run: |
+          if [ -f /tmp/birms-php-server.log ]; then
+            cp /tmp/birms-php-server.log test-reports/php-server.log
+            echo "---- PHP development-server log (last 200 lines) ----"
+            tail -n 200 /tmp/birms-php-server.log
+          else
+            echo "PHP server log was not created."
+          fi
+
       - name: Upload test reports, including failures
         if: always()
         uses: actions/upload-artifact@v4
