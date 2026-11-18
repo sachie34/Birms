@@ -148,20 +148,21 @@ flowchart TD
     A([Resident or Staff requests a queue ticket]) --> B[Select Blotter, Documents or Venue]
     B --> C[Lock daily service counter and assign next number]
     C --> D[Save queue entry as Waiting]
-    D --> E[Display ticket and queue number]
-    E --> F[Staff calls next Waiting number]
-    F --> G{A number is already Called?}
-    G -- Yes --> H[Finish current Called number first]
-    H --> F
-    G -- No --> I[Set next entry Called and show number on public display]
-    I --> J{Service result}
-    J -- Served --> K[Set Served and record time/user]
-    J -- Skip --> L[Set Skipped]
-    J -- Cancel --> M[Set Cancelled]
-    K --> N[Refresh current number and waiting count]
-    L --> N
-    M --> N
-    N --> O([End / next queue cycle])
+    D --> E[Queue email/SMS notice according to resident preference]
+    E --> F[Display ticket and queue number]
+    F --> G[Staff calls next Waiting number]
+    G --> H{A number is already Called?}
+    H -- Yes --> I[Finish current Called entry first]
+    I --> G
+    H -- No --> J[Set next entry Called and show number on public display]
+    J --> K{Service result}
+    K -- Served --> L[Set Served and record time/user]
+    K -- Skip --> M[Set Skipped]
+    K -- Cancel --> N[Set Cancelled]
+    L --> O[Refresh current number and waiting count]
+    M --> O
+    N --> O
+    O --> P([End / next queue cycle])
 ```
 
 - Each of the three services has a separate daily counter and queue sequence.
