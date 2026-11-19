@@ -17,9 +17,15 @@ function run_b22(array $S, string $base): void
     $secondResidentNo = $residentNo . '-NEXT';
     $venueId = null;
     $queueStartId = (int) (db_val('SELECT COALESCE(MAX(queue_id), 0) FROM queue_entries') ?? 0);
+    $resetKioskIdentityRateLimit = static function (): void {
+        $bucketHash = hash('sha256', 'kiosk_identity_ip' . "\\0" . client_ip());
+        db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash = ?', [$bucketHash]);
+    };
 
     db_exec("DELETE FROM residents WHERE resident_no = ?", [$residentNo]);
     db_exec("DELETE FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
+    db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id IN (SELECT venue_id FROM venues WHERE name = ?))', [$venueName]);
+    db_exec('DELETE FROM venue_reservations WHERE venue_id IN (SELECT venue_id FROM venues WHERE name = ?)', [$venueName]);
     db_exec("DELETE FROM venues WHERE name = ?", [$venueName]);
 
     try {
@@ -97,6 +103,7 @@ function run_b22(array $S, string $base): void
 
         // Verify through the same public Resident ID + birthdate flow used at the kiosk.
         $kiosk = new Http($base);
+        $resetKioskIdentityRateLimit();
         $identify = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
             'resident_no' => $residentNo,
@@ -116,6 +123,7 @@ function run_b22(array $S, string $base): void
         $selectedRoutes = [];
         foreach ($serviceDestinations as $serviceKey => $expectedPath) {
             $routeKiosk = new Http($base);
+            $resetKioskIdentityRateLimit();
             $selectedRoutes[$serviceKey] = $routeKiosk->post('/kiosk/identify.php', [
                 '_csrf' => $routeKiosk->token('/kiosk/index.php'),
                 'resident_no' => $residentNo,
@@ -609,6 +617,7 @@ function run_b22(array $S, string $base): void
             . '; resident session retained=' . (str_contains($stillFirstResident['body'], 'IDENTITY VERIFIED') ? 'yes' : 'no')
         );
         $endSession = $kiosk->post('/kiosk/end.php', ['_csrf' => $kiosk->token('/kiosk/index.php')]);
+        $resetKioskIdentityRateLimit();
         $secondIdentity = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
             'resident_no' => $secondResidentNo,
@@ -627,6 +636,7 @@ function run_b22(array $S, string $base): void
             . '; old ticket=' . $oldTicket['status'] . '; redirect=' . (string) loc($oldTicket)
         );
 
+        $resetKioskIdentityRateLimit();
         $failedResidentSwitch = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
             'resident_no' => 'RES-B22-NOT-FOUND',
@@ -665,6 +675,7 @@ function run_b22(array $S, string $base): void
             [$phone]
         );
         if ($venueId !== null) {
+            db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id = ?)', [$venueId]);
             db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$venueId]);
             db_exec('DELETE FROM venues WHERE venue_id = ?', [$venueId]);
         }
