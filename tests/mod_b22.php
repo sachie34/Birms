@@ -98,6 +98,7 @@ function run_b22(array $S, string $base): void
             && str_contains($publicHome['body'], 'Blotter / Complaint')
             && str_contains($publicHome['body'], 'Venue Reservation')
             && str_contains($publicHome['body'], 'Get a Queue Number')
+            && str_contains($publicHome['body'], 'walk-in visit without submitting a request online')
             && str_contains($publicHome['body'], 'Track My Request')
             && str_contains($selectedBlotter['body'], 'name="next" value="blotter"');
 
