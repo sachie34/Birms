@@ -291,4 +291,28 @@ Run #952 validates commit `0d197f425af7d360c52c2202ba0df9679b72f800` on the curr
 
 The PR change set contains **no removed test files**. Some test cases were rewritten to reflect the revised SRS: household-based import/grouping is retired, so B10 now verifies the old importer routes cannot be used. This does not mean every historical assertion has an identical replacement; test scope changes are documented above. Earlier failed GitHub Actions runs remain in history and were not deleted.
 
-**Release decision:** Phases 1–3 have green automated integration evidence. Phase 4 is a mandatory manual acceptance gate. Keep PR #34 in draft and do not merge or describe the system as production-ready until Phase 4 is recorded as completed.
+**Release decision at the time of this historical entry:** Phases 1–3 had green automated integration evidence. Phase 4 remains a mandatory manual acceptance gate. The later unified QR work is tracked in PR #35; do not merge or describe the system as production-ready until the current manual acceptance gates are recorded as completed.
+
+## 13. Unified QR-to-office workflow and role handoff (2026-11-19)
+
+- The shared resident QR opens the service menu before identity verification. The selected Document, Blotter, Venue, or Queue destination is preserved through Resident ID + birthdate verification. The public QR contains no resident identifier or other personal data. The kiosk also provides request tracking by reference number.
+- Staff (legacy internal role ID `clerk`) can see new document submissions in the Admin/Staff All Services Tracker. Before Secretary review is complete, Staff receives a limited preview containing the reference, document type, submission time and public status only. Resident name, Resident ID, purpose and private files remain hidden. The existing request detail, edit, attachment and status-change authorization checks remain in place. The tracker is refreshed by the user; this is not a real-time push notification.
+- The Secretary has the narrowly scoped `venues.override` permission requested for the office workflow. The Secretary can change a venue's manual availability state but cannot add venues, record counter reservations, approve/reject reservations, or manage the queue. Staff/Admin retain their existing venue-processing permissions. Chairman remains read-only and cannot change venue availability.
+- `docs/QUICK_USER_WORKFLOW.md` now reflects the implemented role handoffs: Secretary requirements review and official blotter/document records; Staff final document decision, certificate issuance, venue/reservation processing and queue operations; Chairman view-only; Admin configuration and administration.
+- Added regression coverage: B4-8h verifies the Staff incoming-request preview does not disclose protected resident details; B22-19 verifies all four selected kiosk destinations survive identity verification; B22-20 verifies the Secretary can toggle venue availability while approval/setup boundaries and Chairman read-only access remain enforced.
+- The test-only rate-limit reset isolates repeated route checks from the production limiter. The test cleanup removes reservation-history rows before their parent reservation; production rate limits and foreign-key protections were not weakened.
+
+### Latest automated result for this workflow branch
+
+GitHub Actions runs #991 (push) and #992 (pull request) passed on commit `2bfb0087187664d52248c3ecff0745c7bab45743` against disposable MariaDB 10.4 and 10.11 databases. Each environment reported **45/45 security/authentication/audit checks and 266/266 module integration checks**, with zero failures and zero untested checks. PHP syntax, include-path, migration and schema checks also passed as part of the jobs.
+
+### Remaining release gates
+
+- Test the branch on the actual Windows XAMPP installation using a copy of the working database; verify the migration status and the installed Apache PHP version.
+- Scan the printed QR with a real phone over the barangay LAN. A QR generated from a `localhost` address will not work from another phone; use the LAN-reachable server address.
+- Configure and verify the actual active document types, official certificate templates, fees and approved Chairman signature. Indigency is available only when the barangay has configured it as an active document type.
+- Test real email delivery and optional SMS gateway behavior; CI uses controlled test providers and does not prove live delivery.
+- Test backup and restore in a separate scratch database and separately restore private uploaded files. Do not test destructive restore against the working/original database.
+- Complete physical kiosk timeout, printer/PDF, performance, offline-LAN and Secretary/Staff/Chairman/Admin acceptance checks with the adviser or barangay users.
+
+**Current release decision:** PR #35 remains open, draft and unmerged. The automated evidence is green, but the system is **not yet certified production-ready** until the target-machine and office acceptance gates above are completed.
