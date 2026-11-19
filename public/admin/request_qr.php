@@ -14,7 +14,7 @@ page_head('Resident Self-Service QR', 'Print this shared QR code and post it at 
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card-b">
-      <div class="card-h"><h2>One QR code for all resident services</h2><p>The QR opens the public BIRMS self-service menu. Residents can choose Document Request (including Indigency), Blotter / Complaint, Venue Reservation, Get a Queue Number or Track My Request after identity verification. The QR contains no Resident ID, birthdate, name or other personal information.</p></div>
+      <div class="card-h"><h2>One QR code for all resident services</h2><p>The QR opens the public BIRMS self-service menu. Residents choose a service first, then verify their identity before submitting a personal request. Document Request shows the active document types configured by the barangay, including Indigency when enabled. The QR contains no Resident ID, birthdate, name or other personal information.</p></div>
       <div class="card-body-b text-center">
         <div id="resident-request-qr" class="resident-request-qr" role="img" aria-label="QR code for the BIRMS resident self-service menu"></div>
         <p class="mt-3 mb-1"><strong>Scan for barangay services</strong></p>
