@@ -137,7 +137,7 @@ function run_b4(array $S, string $base): void
         && $status($foreignId) === 'Pending');
     $clerkServices = $clk->get('/requests/all.php?q=' . urlencode($foreignRef));
     $clerkPreview = $clk->get('/requests/preview.php?id=' . $foreignId);
-    $foreignResidentName = (string) db_val('SELECT CONCAT(last_name, ', ', first_name) FROM residents WHERE resident_id = ?', [$rita]);
+    $foreignResidentName = (string) db_val("SELECT CONCAT(last_name, ', ', first_name) FROM residents WHERE resident_id = ?", [$rita]);
     $foreignResidentNo = (string) db_val('SELECT resident_no FROM residents WHERE resident_id = ?', [$rita]);
     $typeName = (string) db_val('SELECT name FROM document_types WHERE type_id = ?', [$typeId]);
     record('B4-8h', 'Staff can see a new incoming document request in the unified tracker without exposing protected resident details or bypassing Secretary review',
