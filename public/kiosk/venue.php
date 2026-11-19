@@ -41,7 +41,7 @@ if (is_post()) {
         }
     }
 }
-kiosk_page_start('Reserve a venue', 'Choose a venue, date and time. Your reservation will be Pending until Staff approves it.');
+kiosk_page_start('Reserve a venue', 'Choose a venue, date and time. Your reservation will be Pending until Staff approves it, and BIRMS will issue a Venue queue ticket automatically.');
 if ($errors) { echo '<div class="kiosk-alert kiosk-alert-error">' . e(implode(' ', $errors)) . '</div>'; }
 echo '<section class="kiosk-card">';
 if (!$venues) { echo '<p>No venues are configured yet. Please ask Staff for assistance.</p>'; }
