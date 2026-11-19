@@ -15,6 +15,8 @@ This guide follows the current repository code. Dashboard shortcuts are filtered
 
 All roles use the request pages allowed by their permissions: Staff — **Needs Final Decision** and **All Services Tracker**; Secretary — **Needs Review**; Chairman — **View Only**; Administrator — full access. Staff can see a limited, privacy-safe preview of a new document request while it is waiting for Secretary review; resident identity, purpose and private files remain protected until the request enters the Staff action queue. Each full request detail page shows a four-step progress tracker. Status is shown with text and icons, not color alone.
 
+The kiosk issues the matching service queue ticket automatically when a resident submits a document request, blotter report, or venue reservation. **Get a Queue Number** is for a walk-in visit when the resident is not submitting one of those requests online; residents should not use both paths for the same visit.
+
 ## Other common tasks
 
 ### Residents
