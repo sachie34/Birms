@@ -46,6 +46,19 @@ function run_b22(array $S, string $base): void
         );
         $venueId = (int) db()->lastInsertId();
 
+        // The shared QR must show the service menu before identity verification.
+        $publicKiosk = new Http($base);
+        $publicHome = $publicKiosk->get('/kiosk/index.php');
+        $selectedBlotter = $publicKiosk->get('/kiosk/index.php?next=blotter');
+        $publicMenuReady = $publicHome['status'] === 200
+            && str_contains($publicHome['body'], 'Document Request')
+            && str_contains($publicHome['body'], 'Indigency')
+            && str_contains($publicHome['body'], 'Blotter / Complaint')
+            && str_contains($publicHome['body'], 'Venue Reservation')
+            && str_contains($publicHome['body'], 'Get a Queue Number')
+            && str_contains($publicHome['body'], 'Track My Request')
+            && str_contains($selectedBlotter['body'], 'name="next" value="blotter"');
+
         // Verify through the same public Resident ID + birthdate flow used at the kiosk.
         $kiosk = new Http($base);
         $identify = $kiosk->post('/kiosk/identify.php', [
@@ -57,6 +70,20 @@ function run_b22(array $S, string $base): void
         $verified = $identify['status'] === 302
             && $home['status'] === 200
             && str_contains($home['body'], 'IDENTITY VERIFIED');
+
+        $routeKiosk = new Http($base);
+        $selectedRoute = $routeKiosk->post('/kiosk/identify.php', [
+            '_csrf' => $routeKiosk->token('/kiosk/index.php'),
+            'resident_no' => $residentNo,
+            'birthdate' => '1991-04-18',
+            'next' => 'blotter',
+        ]);
+        record(
+            'B22-19',
+            'Selecting a service before identity verification preserves the selected service after Resident ID verification',
+            $selectedRoute['status'] === 302 && str_contains((string) loc($selectedRoute), '/kiosk/blotter.php'),
+            'selected blotter redirect=' . (string) loc($selectedRoute)
+        );
 
         $forms = [
             '/kiosk/queue.php' => $kiosk->get('/kiosk/queue.php'),
@@ -282,12 +309,13 @@ function run_b22(array $S, string $base): void
         $qrParts = $sharedQrUrl !== '' ? parse_url($sharedQrUrl) : false;
         $qrQuery = [];
         if (is_array($qrParts) && isset($qrParts['query'])) { parse_str($qrParts['query'], $qrQuery); }
-        $kioskMenuReady = $verified
-            && str_contains($home['body'], 'Request a document')
-            && str_contains($home['body'], 'File a blotter report')
-            && str_contains($home['body'], 'Reserve a venue')
-            && str_contains($home['body'], 'Get a queue number')
-            && str_contains($home['body'], 'Check request status');
+        $kioskMenuReady = $publicMenuReady
+            && $verified
+            && str_contains($home['body'], 'Document Request')
+            && str_contains($home['body'], 'Blotter / Complaint')
+            && str_contains($home['body'], 'Venue Reservation')
+            && str_contains($home['body'], 'Get a Queue Number')
+            && str_contains($home['body'], 'Track My Request');
         $qrPrivacyOk = $adminQrPage['status'] === 200
             && $chairmanQrPage['status'] === 403
             && is_array($qrParts)
