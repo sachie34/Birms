@@ -54,7 +54,7 @@ if ($resident !== null) {
         'venue' => 'Venue Reservation',
         'queue' => 'Queue Number',
     ];
-    echo '<div class="kiosk-alert kiosk-alert-info"><strong>Selected:</strong> ' . e($serviceLabels[$requestedNext]) . '</div>'
+    echo '<p class="kiosk-helper"><strong>Selected service:</strong> ' . e($serviceLabels[$requestedNext]) . '</p>'
         . '<h2 class="kiosk-form-section-title">Verify your identity to continue</h2>'
         . '<p>Use your Resident ID and birthdate. If you do not know your ID, enter your name and birthdate to receive a one-time code at your registered email or mobile number.</p>'
         . '<form method="post" action="' . e(base_url('kiosk/identify.php')) . '" class="kiosk-form">'
