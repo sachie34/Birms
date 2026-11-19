@@ -21,14 +21,14 @@ function permission_map(): array
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
             'blotter_requests.view', 'blotter_requests.review',
             'hearings.view', 'hearings.add', 'hearings.edit',
-            'venues.view', 'venues.manage', 'venues.approve',
+            'venues.view', 'venues.manage', 'venues.override', 'venues.approve',
             'queue.view', 'queue.manage',
             'reports.view', 'reports.export',
         ],
         // Chairman / Punong Barangay is strictly read-only. The stored signature is applied by staff.
         'captain' => [
             'dashboard.view', 'residents.view', 'requests.view',
-            'certificates.history', 'blotters.view', 'blotter_requests.view', 'hearings.view', 'venues.view', 'queue.view',
+            'certificates.history', 'blotters.view', 'blotter_requests.view', 'hearings.view', 'venues.view', 'venues.override', 'queue.view',
             'reports.view', 'reports.export', 'cash_ledger.view',
         ],
         // Secretary maintains resident, document and blotter records and reviews document requests.
