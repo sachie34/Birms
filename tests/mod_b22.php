@@ -46,6 +46,36 @@ function run_b22(array $S, string $base): void
         );
         $venueId = (int) db()->lastInsertId();
 
+        // Secretary may manually override availability, but cannot approve reservations or manage venue setup.
+        $secretaryReservation = venue_create_reservation(
+            $venueId, $residentId, 'B22 Secretary override permission test',
+            date('Y-m-d', strtotime('+1 day')), '10:00', '11:00', null
+        );
+        $secretaryVenuePage = $S['secretary']->get('/venues/index.php');
+        $secretaryOverride = post_as($S['secretary'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'in_use',
+        ]);
+        $secretaryApprove = post_as($S['secretary'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'approve', 'reservation_id' => (string) $secretaryReservation['reservation_id'],
+        ]);
+        $secretaryOverrideOk = $secretaryVenuePage['status'] === 200
+            && str_contains($secretaryVenuePage['body'], 'name="do" value="override"')
+            && !str_contains($secretaryVenuePage['body'], 'Add a venue')
+            && !str_contains($secretaryVenuePage['body'], 'name="do" value="approve"')
+            && $secretaryOverride['status'] === 302
+            && db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]) === 'in_use'
+            && $secretaryApprove['status'] === 403
+            && db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']]) === 'Pending';
+        record(
+            'B22-20',
+            'Secretary can toggle venue availability without receiving venue setup or reservation-approval permissions',
+            $secretaryOverrideOk,
+            'page=' . $secretaryVenuePage['status'] . '; override=' . $secretaryOverride['status']
+            . '; approval=' . $secretaryApprove['status']
+            . '; override-state=' . (string) db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId])
+            . '; reservation=' . (string) db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']])
+        );
+
         // The shared QR must show the service menu before identity verification.
         $publicKiosk = new Http($base);
         $publicHome = $publicKiosk->get('/kiosk/index.php');
