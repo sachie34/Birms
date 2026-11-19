@@ -40,7 +40,7 @@ echo '<div class="kiosk-grid">'
     . '<a class="kiosk-action" href="' . e(base_url('kiosk/index.php?next=request')) . '"><span class="kiosk-icon">▤</span><strong>Document Request</strong><small>Available certificates, including Indigency when configured</small></a>'
     . '<a class="kiosk-action" href="' . e(base_url('kiosk/index.php?next=blotter')) . '"><span class="kiosk-icon">!</span><strong>Blotter / Complaint</strong><small>Submit an incident report for Staff review</small></a>'
     . '<a class="kiosk-action" href="' . e(base_url('kiosk/index.php?next=venue')) . '"><span class="kiosk-icon">⌂</span><strong>Venue Reservation</strong><small>Request a barangay facility reservation</small></a>'
-    . '<a class="kiosk-action" href="' . e(base_url('kiosk/index.php?next=queue')) . '"><span class="kiosk-icon">#</span><strong>Get a Queue Number</strong><small>Blotter · Documents · Venue</small></a>'
+    . '<a class="kiosk-action" href="' . e(base_url('kiosk/index.php?next=queue')) . '"><span class="kiosk-icon">#</span><strong>Get a Queue Number</strong><small>For a walk-in visit without submitting a request online</small></a>'
     . '<a class="kiosk-action" href="' . e(base_url('kiosk/status.php')) . '"><span class="kiosk-icon">✓</span><strong>Track My Request</strong><small>Check progress using your reference number</small></a>'
     . '</div>';
 
