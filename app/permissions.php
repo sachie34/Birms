@@ -28,7 +28,7 @@ function permission_map(): array
         // Chairman / Punong Barangay is strictly read-only. The stored signature is applied by staff.
         'captain' => [
             'dashboard.view', 'residents.view', 'requests.view',
-            'certificates.history', 'blotters.view', 'blotter_requests.view', 'hearings.view', 'venues.view', 'venues.override', 'queue.view',
+            'certificates.history', 'blotters.view', 'blotter_requests.view', 'hearings.view', 'venues.view', 'queue.view',
             'reports.view', 'reports.export', 'cash_ledger.view',
         ],
         // Secretary maintains resident, document and blotter records and reviews document requests.
@@ -40,7 +40,7 @@ function permission_map(): array
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
             'blotter_requests.view',
             'hearings.view', 'hearings.add', 'hearings.edit',
-            'venues.view', 'queue.view',
+            'venues.view', 'venues.override', 'queue.view',
             'reports.view', 'reports.export',
         ],
         // Staff handles resident-facing services, final request decisions, certificate generation, venues and queues.
@@ -49,7 +49,7 @@ function permission_map(): array
             'requests.view', 'requests.add', 'requests.edit', 'requests.approve', 'requests.tracker',
             'certificates.history', 'certificates.issue', 'certificates.print',
             'blotters.view', 'blotter_requests.view', 'blotter_requests.review', 'hearings.view',
-            'venues.view', 'venues.manage', 'venues.approve',
+            'venues.view', 'venues.manage', 'venues.override', 'venues.approve',
             'queue.view', 'queue.manage',
         ],
     ];
