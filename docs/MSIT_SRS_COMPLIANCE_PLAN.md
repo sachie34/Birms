@@ -301,10 +301,11 @@ The PR change set contains **no removed test files**. Some test cases were rewri
 - `docs/QUICK_USER_WORKFLOW.md` now reflects the implemented role handoffs: Secretary requirements review and official blotter/document records; Staff final document decision, certificate issuance, venue/reservation processing and queue operations; Chairman view-only; Admin configuration and administration.
 - Added regression coverage: B4-8h verifies the Staff incoming-request preview does not disclose protected resident details; B22-19 verifies all four selected kiosk destinations survive identity verification; B22-20 verifies the Secretary can toggle venue availability while approval/setup boundaries and Chairman read-only access remain enforced.
 - The test-only rate-limit reset isolates repeated route checks from the production limiter. The test cleanup removes reservation-history rows before their parent reservation; production rate limits and foreign-key protections were not weakened.
+- To prevent duplicate queue tickets, the kiosk now explains that submitting a document, blotter or venue request automatically issues its matching ticket; the separate **Get a Queue Number** option is for walk-in visits without an online request.
 
 ### Latest automated result for this workflow branch
 
-GitHub Actions runs #991 (push) and #992 (pull request) passed on commit `2bfb0087187664d52248c3ecff0745c7bab45743` against disposable MariaDB 10.4 and 10.11 databases. Each environment reported **45/45 security/authentication/audit checks and 266/266 module integration checks**, with zero failures and zero untested checks. PHP syntax, include-path, migration and schema checks also passed as part of the jobs.
+GitHub Actions runs #999 (push) and #1000 (pull request) passed on commit `dc023b4ae02a1083930af8bc15f683a8edbb14fe` against disposable MariaDB 10.4 and 10.11 databases. Each environment reported **45/45 security/authentication/audit checks and 266/266 module integration checks**, with zero failures and zero untested checks. PHP syntax, include-path, migration and schema checks also passed as part of the jobs.
 
 ### Remaining release gates
 
