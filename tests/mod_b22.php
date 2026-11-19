@@ -18,7 +18,7 @@ function run_b22(array $S, string $base): void
     $venueId = null;
     $queueStartId = (int) (db_val('SELECT COALESCE(MAX(queue_id), 0) FROM queue_entries') ?? 0);
     $resetKioskIdentityRateLimit = static function (): void {
-        $bucketHash = hash('sha256', 'kiosk_identity_ip' . chr(0) . client_ip());
+        $bucketHash = hash('sha256', 'kiosk_identity_ip' . chr(0) . '127.0.0.1');
         db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash = ?', [$bucketHash]);
     };
 
