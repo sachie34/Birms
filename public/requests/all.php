@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 require_permission('requests.tracker');
+$role = (string) auth_user()['role'];
 
 $services = ['Documents', 'Blotter', 'Venue'];
 $statuses = ['Pending', 'Approved', 'Rejected', 'Released', 'Ongoing', 'Unresolved', 'Resolved', 'Dismissed', 'Archived', 'Completed'];
@@ -30,6 +31,10 @@ $union = "
         'Documents' AS service,
         dr.reference_no,
         dr.msit_status AS status,
+        dr.status AS internal_status,
+        dr.created_by,
+        dr.assigned_to,
+        dr.requirements_status,
         dr.requested_at AS submitted_at,
         TRIM(CONCAT(r.last_name, ', ', r.first_name, ' ', COALESCE(r.middle_name, ''), ' ', COALESCE(r.suffix, ''))) AS resident_name,
         r.resident_no AS resident_no,
@@ -56,6 +61,10 @@ $union = "
         r.resident_no AS resident_no,
         COALESCE(it.label, 'Blotter report') AS item,
         br.incident_place AS purpose,
+        NULL AS internal_status,
+        NULL AS created_by,
+        NULL AS assigned_to,
+        NULL AS requirements_status,
         NULL AS document_request_id,
         br.request_id AS blotter_request_id,
         br.blotter_id,
@@ -77,6 +86,10 @@ $union = "
         r.resident_no AS resident_no,
         v.name AS item,
         vr.purpose,
+        NULL AS internal_status,
+        NULL AS created_by,
+        NULL AS assigned_to,
+        NULL AS requirements_status,
         NULL AS document_request_id,
         NULL AS blotter_request_id,
         NULL AS blotter_id,
@@ -96,8 +109,15 @@ if ($from !== '') { $where[] = 'all_requests.submitted_at >= ?'; $params[] = $fr
 if ($to !== '') { $where[] = 'all_requests.submitted_at < DATE_ADD(?, INTERVAL 1 DAY)'; $params[] = $to; }
 if ($q !== '') {
     $like = '%' . addcslashes($q, '%_\\') . '%';
-    $where[] = '(all_requests.reference_no LIKE ? OR all_requests.resident_no LIKE ? OR all_requests.resident_name LIKE ? OR all_requests.item LIKE ? OR all_requests.purpose LIKE ?)';
-    array_push($params, $like, $like, $like, $like, $like);
+    if ($role === 'clerk') {
+        // The Staff tracker can identify incoming work by reference/type without exposing
+        // resident names, Resident IDs or free-text purpose before the Secretary review gate.
+        $where[] = '(all_requests.reference_no LIKE ? OR all_requests.item LIKE ?)';
+        array_push($params, $like, $like);
+    } else {
+        $where[] = '(all_requests.reference_no LIKE ? OR all_requests.resident_no LIKE ? OR all_requests.resident_name LIKE ? OR all_requests.item LIKE ? OR all_requests.purpose LIKE ?)';
+        array_push($params, $like, $like, $like, $like, $like);
+    }
 }
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $source = '(' . $union . ') all_requests';
@@ -144,10 +164,21 @@ page_head('All Services Tracker', 'Staff and Admin can monitor document, blotter
       <thead><tr><th>Reference</th><th>Service</th><th>Resident</th><th>Request / purpose</th><th>Submitted</th><th>Status</th><th>Review</th></tr></thead>
       <tbody>
       <?php foreach ($rows as $row):
+          $restrictedDocument = $row['service'] === 'Documents' && $role === 'clerk'
+              && !request_visible_to_current_user([
+                  'created_by' => $row['created_by'],
+                  'assigned_to' => $row['assigned_to'],
+                  'status' => $row['internal_status'],
+                  'requirements_status' => $row['requirements_status'],
+              ]);
           if ($row['service'] === 'Documents') {
-              $target = base_url('requests/view.php?id=' . (int) $row['document_request_id']);
-              $description = (string) $row['item'] . ' · ' . (string) $row['purpose'];
-              $reviewLabel = '—';
+              $target = $restrictedDocument
+                  ? base_url('requests/preview.php?id=' . (int) $row['document_request_id'])
+                  : base_url('requests/view.php?id=' . (int) $row['document_request_id']);
+              $description = (string) $row['item'] . ($restrictedDocument ? '' : ' · ' . (string) $row['purpose']);
+              $reviewLabel = $restrictedDocument
+                  ? ((string) $row['internal_status'] === 'Pending' ? 'Awaiting Secretary review' : 'Secretary review in progress')
+                  : '—';
           } elseif ($row['service'] === 'Blotter') {
               $target = base_url('blotter_requests/index.php?q=' . rawurlencode((string) $row['reference_no']));
               if ($row['blotter_id'] !== null) {
@@ -164,7 +195,7 @@ page_head('All Services Tracker', 'Staff and Admin can monitor document, blotter
         <tr>
           <td><a class="fw-semibold text-decoration-none" href="<?= e($target) ?>"><?= e((string) $row['reference_no']) ?></a></td>
           <td><?= pill((string) $row['service'], 'blue') ?></td>
-          <td><?= e((string) $row['resident_name']) ?></td>
+          <td><?= $restrictedDocument ? '<span class="text-muted">Resident details protected until review is complete</span>' : e((string) $row['resident_name']) ?></td>
           <td><?= e($description) ?></td>
           <td class="text-nowrap"><?= e(fmt_dt((string) $row['submitted_at'])) ?></td>
           <td><?= status_pill((string) $row['status']) ?></td>
