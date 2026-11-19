@@ -135,6 +135,28 @@ function run_b4(array $S, string $base): void
         && $clerkForeignEdit['status'] === 404
         && $clerkForeignCancel['status'] === 404
         && $status($foreignId) === 'Pending');
+    $clerkServices = $clk->get('/requests/all.php?q=' . urlencode($foreignRef));
+    $clerkPreview = $clk->get('/requests/preview.php?id=' . $foreignId);
+    $foreignResidentName = (string) db_val('SELECT CONCAT(last_name, ', ', first_name) FROM residents WHERE resident_id = ?', [$rita]);
+    $foreignResidentNo = (string) db_val('SELECT resident_no FROM residents WHERE resident_id = ?', [$rita]);
+    $typeName = (string) db_val('SELECT name FROM document_types WHERE type_id = ?', [$typeId]);
+    record('B4-8h', 'Staff can see a new incoming document request in the unified tracker without exposing protected resident details or bypassing Secretary review',
+        $clerkServices['status'] === 200
+        && str_contains($clerkServices['body'], $foreignRef)
+        && str_contains($clerkServices['body'], 'Awaiting Secretary review')
+        && str_contains($clerkServices['body'], 'Resident details protected until review is complete')
+        && !str_contains($clerkServices['body'], $foreignResidentName)
+        && !str_contains($clerkServices['body'], $foreignResidentNo)
+        && !str_contains($clerkServices['body'], $foreignPurpose)
+        && str_contains($clerkServices['body'], 'requests/preview.php?id=' . $foreignId)
+        && $clerkPreview['status'] === 200
+        && str_contains($clerkPreview['body'], $foreignRef)
+        && str_contains($clerkPreview['body'], $typeName)
+        && !str_contains($clerkPreview['body'], $foreignResidentName)
+        && !str_contains($clerkPreview['body'], $foreignResidentNo)
+        && !str_contains($clerkPreview['body'], $foreignPurpose),
+        'tracker=' . $clerkServices['status'] . '; preview=' . $clerkPreview['status']
+        . '; hidden-name=' . (!str_contains($clerkPreview['body'], $foreignResidentName) ? 'yes' : 'no'));
     $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
