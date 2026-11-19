@@ -39,15 +39,17 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 40, 'captain' => 12, 'secretary' => 19, 'clerk' => 19];
+$expect = ['admin' => 41, 'captain' => 12, 'secretary' => 20, 'clerk' => 20];
 $counts = array_map('count', permission_map());
-record('U1', 'Admin has full module access; Chairman is view-only; Secretary manages records; Staff handles final decisions, certificates, queues and the unified request tracker (40/12/19/19 permissions)', $counts === $expect, json_encode($counts));
+record('U1', 'Admin has full module access; Chairman is view-only; Secretary manages records; Staff handles final decisions, certificates, queues and the unified request tracker (41/12/20/20 permissions)', $counts === $expect, json_encode($counts));
 record('U2', 'Chairman is read-only; Secretary reviews and manages records; Staff approves requests, issues certificates and manages queues; Admin manages accounts and settings',
     !role_can('ghost', 'dashboard.view')
     && role_can('secretary', 'requests.review') && !role_can('secretary', 'requests.approve')
     && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
     && !role_can('clerk', 'settings.edit') && !role_can('clerk', 'users.manage')
     && role_can('clerk', 'queue.manage') && role_can('clerk', 'venues.approve')
+     && role_can('secretary', 'venues.override') && role_can('clerk', 'venues.override')
+     && !role_can('secretary', 'venues.approve') && !role_can('captain', 'venues.override')
      && role_can('admin', 'requests.tracker') && role_can('clerk', 'requests.tracker')
      && !role_can('secretary', 'requests.tracker') && !role_can('captain', 'requests.tracker')
     && !role_can('secretary', 'residents.add') && !role_can('secretary', 'residents.edit')

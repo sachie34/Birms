@@ -10,8 +10,8 @@ $do = post_str('do');
 
 try {
     if ($do === 'create_venue' || $do === 'override') {
-        require_permission('venues.manage');
         if ($do === 'create_venue') {
+            require_permission('venues.manage');
             $name = post_str('name');
             $description = post_str('description');
             if (!v_len($name, 2, 120)) { throw new InvalidArgumentException('Venue name must be 2-120 characters.'); }
@@ -25,6 +25,7 @@ try {
             });
             flash_add('success', 'Venue added.');
         } else {
+            require_permission('venues.override');
             $id = post_int('venue_id');
             if ($id === null) { throw new InvalidArgumentException('Choose a valid venue.'); }
             venue_set_override($id, post_str('override'));
