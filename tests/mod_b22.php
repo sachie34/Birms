@@ -58,6 +58,9 @@ function run_b22(array $S, string $base): void
         $secretaryApprove = post_as($S['secretary'], '/venues/index.php', '/venues/action.php', [
             'do' => 'approve', 'reservation_id' => (string) $secretaryReservation['reservation_id'],
         ]);
+        $chairmanOverride = post_as($S['captain'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'available',
+        ]);
         $secretaryOverrideOk = $secretaryVenuePage['status'] === 200
             && str_contains($secretaryVenuePage['body'], 'name="do" value="override"')
             && !str_contains($secretaryVenuePage['body'], 'Add a venue')
@@ -65,6 +68,8 @@ function run_b22(array $S, string $base): void
             && $secretaryOverride['status'] === 302
             && db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]) === 'in_use'
             && $secretaryApprove['status'] === 403
+            && $chairmanOverride['status'] === 403
+            && db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]) === 'in_use'
             && db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']]) === 'Pending';
         record(
             'B22-20',
@@ -72,6 +77,7 @@ function run_b22(array $S, string $base): void
             $secretaryOverrideOk,
             'page=' . $secretaryVenuePage['status'] . '; override=' . $secretaryOverride['status']
             . '; approval=' . $secretaryApprove['status']
+            . '; chairman-override=' . $chairmanOverride['status']
             . '; override-state=' . (string) db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId])
             . '; reservation=' . (string) db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']])
         );
@@ -101,18 +107,35 @@ function run_b22(array $S, string $base): void
             && $home['status'] === 200
             && str_contains($home['body'], 'IDENTITY VERIFIED');
 
-        $routeKiosk = new Http($base);
-        $selectedRoute = $routeKiosk->post('/kiosk/identify.php', [
-            '_csrf' => $routeKiosk->token('/kiosk/index.php'),
-            'resident_no' => $residentNo,
-            'birthdate' => '1991-04-18',
-            'next' => 'blotter',
-        ]);
+        $serviceDestinations = [
+            'request' => '/kiosk/request.php',
+            'blotter' => '/kiosk/blotter.php',
+            'venue' => '/kiosk/venue.php',
+            'queue' => '/kiosk/queue.php',
+        ];
+        $selectedRoutes = [];
+        foreach ($serviceDestinations as $serviceKey => $expectedPath) {
+            $routeKiosk = new Http($base);
+            $selectedRoutes[$serviceKey] = $routeKiosk->post('/kiosk/identify.php', [
+                '_csrf' => $routeKiosk->token('/kiosk/index.php'),
+                'resident_no' => $residentNo,
+                'birthdate' => '1991-04-18',
+                'next' => $serviceKey,
+            ]);
+        }
+        $allServiceRoutesOk = true;
+        $serviceRouteDetails = [];
+        foreach ($serviceDestinations as $serviceKey => $expectedPath) {
+            $response = $selectedRoutes[$serviceKey];
+            $matched = $response['status'] === 302 && str_contains((string) loc($response), $expectedPath);
+            $allServiceRoutesOk = $allServiceRoutesOk && $matched;
+            $serviceRouteDetails[] = $serviceKey . '=' . (string) loc($response);
+        }
         record(
             'B22-19',
-            'Selecting a service before identity verification preserves the selected service after Resident ID verification',
-            $selectedRoute['status'] === 302 && str_contains((string) loc($selectedRoute), '/kiosk/blotter.php'),
-            'selected blotter redirect=' . (string) loc($selectedRoute)
+            'Selecting any service before identity verification preserves the selection after Resident ID verification',
+            $allServiceRoutesOk,
+            implode('; ', $serviceRouteDetails)
         );
 
         $forms = [
