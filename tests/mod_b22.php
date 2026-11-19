@@ -282,19 +282,28 @@ function run_b22(array $S, string $base): void
         $qrParts = $sharedQrUrl !== '' ? parse_url($sharedQrUrl) : false;
         $qrQuery = [];
         if (is_array($qrParts) && isset($qrParts['query'])) { parse_str($qrParts['query'], $qrQuery); }
+        $kioskMenuReady = $verified
+            && str_contains($home['body'], 'Request a document')
+            && str_contains($home['body'], 'File a blotter report')
+            && str_contains($home['body'], 'Reserve a venue')
+            && str_contains($home['body'], 'Get a queue number')
+            && str_contains($home['body'], 'Check request status');
         $qrPrivacyOk = $adminQrPage['status'] === 200
             && $chairmanQrPage['status'] === 403
             && is_array($qrParts)
             && str_contains((string) ($qrParts['path'] ?? ''), '/kiosk/index.php')
-            && $qrQuery === ['next' => 'request']
-            && !preg_match('/resident_id|resident_no|birthdate|first_name|last_name|email|mobile|phone/i', $sharedQrUrl);
+            && $qrQuery === []
+            && !preg_match('/resident_id|resident_no|birthdate|first_name|last_name|email|mobile|phone/i', $sharedQrUrl)
+            && str_contains($adminQrPage['body'], 'One QR code for all resident services')
+            && $kioskMenuReady;
         record(
             'B22-14',
-            'Shared document request QR contains only the public kiosk entry and exposes no resident identity data',
+            'Shared QR opens the universal self-service kiosk menu for verified residents and exposes no resident identity data',
             $qrPrivacyOk,
             'Admin=' . $adminQrPage['status'] . '; Chairman=' . $chairmanQrPage['status']
             . '; URL=' . ($sharedQrUrl !== '' ? $sharedQrUrl : '[missing]')
             . '; query=' . json_encode($qrQuery)
+            . '; verified menu=' . ($kioskMenuReady ? 'all five service options present' : 'missing service option')
         );
 
         $webCss = (string) file_get_contents(APP_ROOT . '/public/assets/css/birms.css');
