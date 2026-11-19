@@ -130,7 +130,7 @@ $rows = db_all(
 );
 
 render_header('All Services Tracker', [['Workspace', null], ['All Services Tracker', null]], 'all_requests');
-page_head('All Services Tracker', 'Staff and Admin can monitor document, blotter and venue requests in one list. Filter by service, current status and submission date.');
+page_head('All Services Tracker', 'Staff and Admin can monitor document, blotter and venue requests in one list. Filter by service, current status and submission date.' . ($role === 'clerk' ? ' New document requests appear in a limited preview until Secretary review is complete.' : ''));
 ?>
 <div class="card-b mb-3">
   <div class="card-h"><h2>Filter requests</h2><p>Dates filter the date the request was submitted. A venue’s reservation date is shown in its details.</p></div>
@@ -148,7 +148,7 @@ page_head('All Services Tracker', 'Staff and Admin can monitor document, blotter
       </div>
       <div class="col-md-2"><label class="form-label" for="from">Submitted from</label><input class="form-control" id="from" name="from" type="date" value="<?= e($from) ?>"></div>
       <div class="col-md-2"><label class="form-label" for="to">Submitted to</label><input class="form-control" id="to" name="to" type="date" value="<?= e($to) ?>"></div>
-      <div class="col-md-2"><label class="form-label" for="q">Search</label><input class="form-control" id="q" name="q" value="<?= e($q) ?>" maxlength="80" placeholder="Reference or resident"></div>
+      <div class="col-md-2"><label class="form-label" for="q">Search</label><input class="form-control" id="q" name="q" value="<?= e($q) ?>" maxlength="80" placeholder="<?= $role === 'clerk' ? 'Reference or document type' : 'Reference or resident' ?>"></div>
       <div class="col-12 d-flex flex-wrap gap-2"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Apply filters</button><a class="btn btn-light border" href="<?= e(base_url('requests/all.php')) ?>">Clear filters</a></div>
     </form>
   </div>
