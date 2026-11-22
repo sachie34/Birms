@@ -387,6 +387,82 @@ function backup_restore_parse(string $sql, array $allowedTables): array
     return ['tables' => $expected, 'inserts' => $inserts, 'blotter_cases' => $blotterCases];
 }
 
+/**
+ * Validate restored rows against every foreign key before the restore transaction commits.
+ *
+ * MySQL/MariaDB do not retroactively validate rows inserted while FOREIGN_KEY_CHECKS=0
+ * when the setting is turned back on. This explicit pass prevents a damaged or
+ * tampered SQL backup from leaving orphaned child records behind.
+ */
+function backup_restore_assert_foreign_keys_valid(): void
+{
+    $rows = db_all(
+        'SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, ORDINAL_POSITION, '
+        . 'REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME '
+        . 'FROM information_schema.KEY_COLUMN_USAGE '
+        . 'WHERE CONSTRAINT_SCHEMA = DATABASE() '
+        . 'AND REFERENCED_TABLE_SCHEMA = DATABASE() '
+        . 'AND REFERENCED_TABLE_NAME IS NOT NULL '
+        . 'ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION'
+    );
+
+    $groups = [];
+    foreach ($rows as $row) {
+        $childTable = (string) ($row['TABLE_NAME'] ?? '');
+        $constraint = (string) ($row['CONSTRAINT_NAME'] ?? '');
+        $childColumn = (string) ($row['COLUMN_NAME'] ?? '');
+        $parentTable = (string) ($row['REFERENCED_TABLE_NAME'] ?? '');
+        $parentColumn = (string) ($row['REFERENCED_COLUMN_NAME'] ?? '');
+        foreach ([$childTable, $constraint, $childColumn, $parentTable, $parentColumn] as $identifier) {
+            if ($identifier === '' || preg_match('/^[A-Za-z0-9_$]+$/', $identifier) !== 1) {
+                throw new LogicException('A foreign-key identifier failed validation during backup restore.');
+            }
+        }
+
+        $key = $childTable . ':' . $constraint;
+        if (!isset($groups[$key])) {
+            $groups[$key] = [
+                'child_table' => $childTable,
+                'parent_table' => $parentTable,
+                'child_columns' => [],
+                'parent_columns' => [],
+            ];
+        } elseif ($groups[$key]['parent_table'] !== $parentTable) {
+            throw new LogicException('A foreign-key constraint references inconsistent parent tables.');
+        }
+        $groups[$key]['child_columns'][] = $childColumn;
+        $groups[$key]['parent_columns'][] = $parentColumn;
+    }
+
+    $quote = chr(96);
+    foreach ($groups as $constraint) {
+        $child = $quote . $constraint['child_table'] . $quote;
+        $parent = $quote . $constraint['parent_table'] . $quote;
+        $joins = [];
+        $nonNull = [];
+        foreach ($constraint['child_columns'] as $index => $childColumn) {
+            $parentColumn = $constraint['parent_columns'][$index];
+            $joins[] = 'p.' . $quote . $parentColumn . $quote . ' = c.' . $quote . $childColumn . $quote;
+            $nonNull[] = 'c.' . $quote . $childColumn . $quote . ' IS NOT NULL';
+        }
+        if (!$joins) { continue; }
+
+        $probeColumn = $quote . $constraint['parent_columns'][0] . $quote;
+        $sql = 'SELECT COUNT(*) FROM ' . $child . ' AS c LEFT JOIN ' . $parent . ' AS p ON '
+            . implode(' AND ', $joins)
+            . ' WHERE ' . implode(' AND ', $nonNull)
+            . ' AND p.' . $probeColumn . ' IS NULL';
+        $orphanCount = (int) db_val($sql);
+        if ($orphanCount > 0) {
+            throw new RuntimeException(
+                'Restore refused because ' . $constraint['child_table'] . '.'
+                . implode(',', $constraint['child_columns']) . ' contains '
+                . $orphanCount . ' row(s) with missing parent records. No database changes were committed.'
+            );
+        }
+    }
+}
+
 /** Restore all rows atomically while retaining the current table definitions and permanent blotter cases. */
 function backup_restore_apply(string $sql): array
 {
@@ -451,6 +527,11 @@ function backup_restore_apply(string $sql): array
                 }
                 db()->exec($statement);
             }
+
+            // Foreign-key checks were disabled for ordered bulk replacement. Explicitly
+            // validate every relationship before commit because re-enabling the session
+            // flag does not check rows that were inserted while it was disabled.
+            backup_restore_assert_foreign_keys_valid();
         });
     } finally {
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
