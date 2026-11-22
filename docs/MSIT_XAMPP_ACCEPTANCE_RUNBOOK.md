@@ -9,7 +9,7 @@
 
 ## 1. What is and is not verified
 
-GitHub Actions validates PHP syntax, include paths, setup preflight, migrations, the schema snapshot, security/authentication/audit tests, and module integration tests against disposable MariaDB 10.4 and 10.11 databases.
+GitHub Actions validates PHP syntax, include paths, setup preflight, migrations, the schema snapshot, security/authentication/audit tests, and module integration tests across PHP 8.3, 8.4, 8.5 and 8.6 against disposable MariaDB 10.4 and 10.11 databases.
 
 Those hosted tests do **not** prove that Apache's PHP binary on the target XAMPP PC, a physical kiosk/touchscreen, a phone on the barangay LAN, real email/SMS delivery, printer output, or backup restoration works. Record those as **NOT RUN** until actually tested on the target machine. Do not change a NOT RUN result to PASS based only on GitHub Actions.
 
@@ -41,6 +41,8 @@ C:\xampp\php\php.exe tools\check_php_includes.php
 C:\xampp\php\php.exe tools\setup_xampp.php --check
 C:\xampp\php\php.exe -m | findstr /I "zip"
 ```
+
+The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migration 019 is present in the source folder. If this check fails, do not proceed with a mixed or incomplete project copy.
 
 Then verify the ZIP extension needed for complete system backups:
 1. Run the CLI command above and confirm `zip` appears in the module list.
