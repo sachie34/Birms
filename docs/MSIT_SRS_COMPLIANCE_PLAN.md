@@ -292,3 +292,40 @@ Run #952 validates commit `0d197f425af7d360c52c2202ba0df9679b72f800` on the curr
 The PR change set contains **no removed test files**. Some test cases were rewritten to reflect the revised SRS: household-based import/grouping is retired, so B10 now verifies the old importer routes cannot be used. This does not mean every historical assertion has an identical replacement; test scope changes are documented above. Earlier failed GitHub Actions runs remain in history and were not deleted.
 
 **Release decision:** Phases 1–3 have green automated integration evidence. Phase 4 is a mandatory manual acceptance gate. Keep PR #34 in draft and do not merge or describe the system as production-ready until Phase 4 is recorded as completed.
+
+
+## 13. Full resident document lifecycle verification (2026-11-22)
+
+### Workflow corrections on the MSIT branch
+
+- The requirements checklist is read-only during Pending intake and becomes editable for Secretary/Admin only after the request has entered the formal Review state. The UI's editability decision is made after the selected request row is loaded.
+- The resident reference tracker now omits internal no-op status-history rows where the previous and new public status are identical (for example, Pending -> Pending when the Secretary starts internal review). The public timeline retains the meaningful Pending, Approved/Rejected and Released milestones.
+- Certificate issuance blocker wording now refers to the resident's individual Address field, consistent with the revised SRS and Purok-based directory.
+
+### New end-to-end regression coverage
+
+Added `tests/mod_b24.php` with eight end-to-end checks using a synthetic resident, isolated disposable database and test-only Chairman signature asset:
+
+1. Resident ID + birthdate identification and access to the document kiosk form.
+2. Kiosk request submission, Pending state, request reference, Documents queue ticket and receipt.
+3. Secretary starts formal review; Staff cannot see an unassigned request before it is eligible for the final-decision queue; requirements fields unlock only during Review.
+4. Staff cannot access the request before requirements are complete; Secretary completes the requirements and the request becomes visible to Staff for final approval; the Approved notification is queued.
+5. Public reference tracker shows the Approved milestone once and excludes resident identity, email, address and request purpose.
+6. Staff (not Secretary) issues the approved certificate; issuance snapshots the configured Chairman signature and moves the public request status to Released.
+7. Resident tracker shows the Pending -> Approved -> Released timeline and the issued certificate PDF begins with a valid PDF signature.
+8. Request history and issuance/release audit records are retained.
+
+### Latest automated validation
+
+GitHub Actions run **#1010** validates branch head `ccfd6f534e646727eebf6f7a56f39281cdc20b10` against disposable MariaDB 10.4 and 10.11 databases:
+
+| Database | Security/authentication/audit | Module integration |
+|---|---:|---:|
+| MariaDB 10.4 | 45/45 passed | 271/271 passed |
+| MariaDB 10.11 | 45/45 passed | 271/271 passed |
+
+Both environments reported **zero failures and zero untested checks**. The eight B24 end-to-end document lifecycle assertions passed on both versions. Run link: https://github.com/sachie34/Birms/actions/runs/44992989652.
+
+The notification assertions establish that the status messages are recorded/queued through the configured outbox path. They do not establish delivery to an actual resident mailbox or phone. The manual target-machine and office acceptance gates in Section 12 remain mandatory and **Not run here**.
+
+**Release decision:** The complete document path now has passing automated end-to-end evidence on both MariaDB test versions. This does not replace manual XAMPP browser testing, official certificate/signature approval, actual notification delivery tests, target-device/LAN checks or office UAT. Keep PR #34 as a draft until those release gates are completed.
