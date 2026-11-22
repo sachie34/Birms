@@ -13,6 +13,8 @@ function run_b17(array $S, string $base): void
     $probeKey = 'zz_b17_restore_probe';
     $valid = false;
     $restored = false;
+    $staleBackupPath = null;
+    $staleProbeKey = 'zz_b17_stale_restore_probe';
 
     try {
         db_exec('DELETE FROM settings WHERE setting_key = ?', [$probeKey]);
@@ -83,9 +85,55 @@ function run_b17(array $S, string $base): void
             $badUpload['status'] === 302
             && (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$probeKey]) === 0
             && (int) db_val('SELECT COUNT(*) FROM users WHERE username = ?', ['zz_test_admin']) === 1);
+
+        // An older backup must not erase an official blotter case created after that snapshot.
+        $staleBackupPath = tempnam(sys_get_temp_dir(), 'birms-b17-stale-');
+        if ($staleBackupPath === false) { throw new RuntimeException('Could not create B17 stale-backup fixture.'); }
+        $staleOut = fopen($staleBackupPath, 'wb');
+        if ($staleOut === false) { throw new RuntimeException('Could not open B17 stale-backup fixture.'); }
+        try {
+            backup_write_sql_export($staleOut, backup_table_names());
+        } finally {
+            fclose($staleOut);
+        }
+        $staleSql = file_get_contents($staleBackupPath);
+        if (!is_string($staleSql) || $staleSql === '') { throw new RuntimeException('B17 stale-backup fixture is empty.'); }
+
+        db_exec('DELETE FROM settings WHERE setting_key = ?', [$staleProbeKey]);
+        db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$staleProbeKey, 'must survive stale restore']);
+        $newCaseNo = 'B17-' . strtoupper(bin2hex(random_bytes(4)));
+        $rollbackMarker = 'B17_EXPECTED_STALE_RESTORE_ROLLBACK';
+        $staleRestoreBlocked = false;
+        try {
+            db_transaction(function () use ($staleSql, $newCaseNo, $rollbackMarker, &$staleRestoreBlocked): void {
+                db_exec(
+                    "INSERT INTO blotters (case_no, incident_date, narrative, recorded_at) VALUES (?, CURDATE(), ?, NOW())",
+                    [$newCaseNo, 'B17 stale restore guard fixture']
+                );
+                try {
+                    backup_restore_apply($staleSql);
+                } catch (RuntimeException $e) {
+                    if (!str_contains($e->getMessage(), 'does not contain permanent blotter case')) { throw $e; }
+                    $staleRestoreBlocked = true;
+                    // The outer transaction rolls back this synthetic case after the guard is verified.
+                    throw new RuntimeException($rollbackMarker);
+                }
+                throw new RuntimeException('B17 stale restore was unexpectedly accepted.');
+            });
+        } catch (RuntimeException $e) {
+            if ($e->getMessage() !== $rollbackMarker) { throw $e; }
+        }
+        $newCaseCount = (int) db_val('SELECT COUNT(*) FROM blotters WHERE case_no = ?', [$newCaseNo]);
+        $staleProbeCount = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$staleProbeKey]);
+        record('B17-05', 'Restore refuses a stale snapshot that would erase a newer permanent blotter case and leaves other current data unchanged',
+            $staleRestoreBlocked && $newCaseCount === 0 && $staleProbeCount === 1,
+            'guard-blocked=' . ($staleRestoreBlocked ? 'yes' : 'no')
+            . '; rolled-back-test-case=' . $newCaseCount
+            . '; preserved-post-snapshot-setting=' . $staleProbeCount);
     } finally {
         @unlink($backupPath);
         @unlink($badPath);
-        db_exec('DELETE FROM settings WHERE setting_key = ?', [$probeKey]);
+        if (is_string($staleBackupPath)) { @unlink($staleBackupPath); }
+        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?)', [$probeKey, $staleProbeKey]);
     }
 }
