@@ -75,7 +75,7 @@ function run_b25(array $S, string $base): void
             && $anonymousImage['status'] === 403;
         record('B25-01', 'Admin can upload a genuine resident JPG; the photo is stored outside the public folder and served only through the authorized photo route',
             $firstUploadOk,
-            'create=' . $created['status'] . '; upload=' . $firstUpload['status'] . '; admin=' . $adminImage['status']
+            'create=' . $created['status'] . '; create-message=' . substr(trim(strip_tags($created['body'])), 0, 500) . '; upload=' . $firstUpload['status'] . '; admin=' . $adminImage['status']
             . '; staff=' . $staffImage['status'] . '; anonymous=' . $anonymousImage['status']
             . '; path=' . ($path1 !== '' ? 'private storage path saved' : 'missing'));
 
