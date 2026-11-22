@@ -166,6 +166,9 @@ function run_b24(array $S, string $base): void
              ORDER BY notification_id DESC LIMIT 1",
             [$residentId, $reference]
         );
+        $draftPdf = $staff->get('/certificates/draft_pdf.php?request=' . $requestId);
+        $secretaryDraftPdf = $secretary->get('/certificates/draft_pdf.php?request=' . $requestId);
+        $chairmanDraftPdf = $chairman->get('/certificates/draft_pdf.php?request=' . $requestId);
         record(
             'B24-04',
             'Staff cannot access the unassigned request before requirements are complete; after Secretary completes them, Staff approves and the resident is notified',
@@ -185,6 +188,10 @@ function run_b24(array $S, string $base): void
             && !empty($generatedDraft['chairman_signature_path'])
             && $prematureIssuances === 0
             && $prematureLedger === 0
+            && $draftPdf['status'] === 200
+            && str_starts_with((string) $draftPdf['body'], '%PDF-1.4')
+            && $secretaryDraftPdf['status'] === 403
+            && $chairmanDraftPdf['status'] === 403
             && $approvalNotice !== null
             && $approvalNotice['recipient'] === $residentEmail
             && $approvalNotice['channel'] === 'email'
@@ -194,7 +201,9 @@ function run_b24(array $S, string $base): void
             . '; requirements-post=' . $completeRequirements['status'] . '; saved-complete=' . ($requirementsSaved ? 'yes' : 'no')
             . '; staff-approve=' . $staffApproval['status'] . '; approved=' . json_encode($approved)
             . '; draft=' . json_encode($generatedDraft) . '; premature-issuances=' . $prematureIssuances
-            . '; premature-ledger=' . $prematureLedger . '; notice=' . json_encode($approvalNotice)
+            . '; premature-ledger=' . $prematureLedger . '; draft-pdf=' . $draftPdf['status']
+            . '; secretary-pdf=' . $secretaryDraftPdf['status'] . '; chairman-pdf=' . $chairmanDraftPdf['status']
+            . '; notice=' . json_encode($approvalNotice)
         );
 
         // 3. The public reference tracker reveals only the service/status, not resident PII.
