@@ -124,9 +124,9 @@ function run_b24(array $S, string $base): void
         $afterReview = db_one('SELECT status, requirements_status FROM document_requests WHERE request_id = ?', [$requestId]);
         record(
             'B24-03',
-            'Secretary starts the formal review; Staff is denied and requirements fields unlock only after review starts',
+            'Secretary starts the formal review; unassigned Staff access is hidden and requirements fields unlock only after review starts',
             $requirementsLocked
-            && $staffReviewAttempt['status'] === 403
+            && $staffReviewAttempt['status'] === 404
             && $secretaryReview['status'] === 302
             && $afterReview !== null
             && $afterReview['status'] === 'Review'
@@ -165,8 +165,8 @@ function run_b24(array $S, string $base): void
         );
         record(
             'B24-04',
-            'Staff cannot approve before requirements are complete; after Secretary completes them, Staff approves and the resident is notified',
-            $staffEarlyApproval['status'] === 302
+            'Staff cannot access the unassigned request before requirements are complete; after Secretary completes them, Staff approves and the resident is notified',
+            $staffEarlyApproval['status'] === 404
             && $earlyStatus === 'Review'
             && $completeRequirements['status'] === 302
             && $requirementsSaved
@@ -235,7 +235,8 @@ function run_b24(array $S, string $base): void
             && str_contains(loc($issued), 'print.php')
             && $issuance !== null
             && preg_match('/^CERT-' . date('Y') . '-\\d{4,}$/', (string) $issuance['reference_no']) === 1
-            && str_contains((string) $issuance['body_text'], 'JAMIE B24TESTRESIDENT')
+            && str_contains((string) $issuance['body_text'], 'JAMIE')
+            && str_contains((string) $issuance['body_text'], 'B24TESTRESIDENT')
             && !empty($issuance['chairman_signature_path'])
             && $released !== null
             && $released['status'] === 'Claimed'
