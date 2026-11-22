@@ -106,11 +106,17 @@ jobs:
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
         run: |
-          php -r '
-            $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=mysql;charset=utf8mb4", "root", "ci-root-pass", [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $pdo->exec("CREATE USER \'birms_ci_app\'@\'%\' IDENTIFIED BY \'ci-app-pass\'");
-            $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO \'birms_ci_app\'@\'%\'");
-          '
+          php <<'PHP'
+          <?php
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=mysql;charset=utf8mb4',
+              'root',
+              'ci-root-pass',
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $pdo->exec("CREATE USER 'birms_ci_app'@'%' IDENTIFIED BY 'ci-app-pass'");
+          $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO 'birms_ci_app'@'%'");
+          PHP
 
       - name: Start local PHP server
         id: start-php
