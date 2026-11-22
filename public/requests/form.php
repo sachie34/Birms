@@ -5,7 +5,6 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 $canReview = can('requests.review');
-$canEditRequirements = $canReview && $ex !== null && (string) $ex['status'] === 'Review';
 $id = get_int('id'); $ex = null;
 if ($id !== null) {
     require_permission('requests.edit');
@@ -16,6 +15,7 @@ if ($id !== null) {
         abort(403, 'A request under review can only be edited by the Secretary or Administrator.');
     }
 } else { require_permission('requests.add'); require_permission('residents.view'); }
+$canEditRequirements = $canReview && $ex !== null && (string) $ex['status'] === 'Review';
 
 $types = []; foreach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $t) { $types[(int) $t['type_id']] = (string) $t['name']; }
 $feeRules = db_all("SELECT fm.fee_rule_id, fm.type_id, fm.fee_category, fm.fee_tier, fm.unit_rate, fm.min_quantity, fm.max_quantity, fm.effective_from, fm.effective_to, fm.is_active, dt.name AS type_name
