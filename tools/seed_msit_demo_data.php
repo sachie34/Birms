@@ -34,17 +34,17 @@ function msit_demo_require_schema(): void
 {
     $required = [
         'lookups' => ['lookup_id','list_key','label','is_active'],
-        'residents' => ['resident_id','resident_no','first_name','last_name','birthdate','sex','civil_status','address','purok_id','resident_status_id','resident_type_id','email_address','notification_preference','archived_at'],
-        'document_types' => ['type_id','name','fee_amount','template_body','is_active','requires_chairman_signature'],
-        'document_requests' => ['request_id','reference_no','resident_id','type_id','purpose','status','msit_status','requirements_status','requested_at'],
-        'certificate_drafts' => ['draft_id','request_id','certificate_reference_no','body_text','generated_by_name'],
-        'issuances' => ['issuance_id','reference_no','request_id','resident_id','type_id','body_text','fee_amount','issued_by_name'],
-        'blotters' => ['blotter_id','case_no','incident_date','narrative','recorded_at','msit_status','purok_id'],
-        'blotter_parties' => ['party_id','blotter_id','party_role','full_name'],
-        'venues' => ['venue_id','name','availability_override','is_active'],
-        'venue_reservations' => ['reservation_id','reference_no','venue_id','resident_id','purpose','reservation_date','start_time','end_time','status'],
+        'residents' => ['resident_id','resident_no','first_name','last_name','birthdate','sex','civil_status','marital_status','address','purok_id','resident_status_id','resident_type_id','email_address','contact_number','notification_preference','household_id','is_household_head','created_by','archived_at'],
+        'document_types' => ['type_id','name','fee_amount','template_body','is_active','requires_chairman_signature','sort_order'],
+        'document_requests' => ['request_id','reference_no','resident_id','type_id','purpose','status','msit_status','requirements_status','requirements_note','requested_at','created_by'],
+        'certificate_drafts' => ['draft_id','request_id','resident_id','type_id','request_reference_no','certificate_reference_no','resident_name','type_name','purpose','fee_amount','body_text','captain_name','signature_text','chairman_signature_path','generated_by','generated_by_name','generated_at'],
+        'issuances' => ['issuance_id','reference_no','request_id','resident_id','type_id','resident_name','type_name','purpose','fee_amount','or_number','body_text','captain_name','signature_text','chairman_signature_path','issued_by','issued_by_name','issued_at'],
+        'blotters' => ['blotter_id','case_no','incident_date','incident_time','incident_place','incident_type_id','narrative','status','recorded_at','recorded_by','msit_status','purok_id','resolution_note','resolved_at'],
+        'blotter_parties' => ['party_id','blotter_id','party_role','full_name','age','address','contact_number'],
+        'venues' => ['venue_id','name','description','availability_override','is_active','created_by'],
+        'venue_reservations' => ['reservation_id','reference_no','venue_id','resident_id','purpose','reservation_date','start_time','end_time','status','created_by'],
         'queue_entries' => ['queue_id','service','queue_date','queue_number','resident_id','reference_no','purpose','status','issued_via','notification_preference'],
-        'request_status_history' => ['history_id','service','reference_no','new_status','request_id','blotter_id','reservation_id'],
+        'request_status_history' => ['history_id','service','reference_no','previous_status','new_status','changed_by','note','request_id','blotter_id','reservation_id'],
     ];
     foreach ($required as $table => $columns) {
         if (!msit_demo_table_exists($table)) { msit_demo_fail("required table {$table} is missing. Apply the current MSIT migrations first."); }
