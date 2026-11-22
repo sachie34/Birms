@@ -20,6 +20,18 @@ if ($phpRuntimeIssue !== null) {
         . "Check both the CLI PHP version and the PHP version loaded by Apache in XAMPP.\n";
     exit;
 }
+
+// Production/LAN deployments can fail closed when Apache is reached over plain HTTP.
+// Do not redirect using an untrusted Host header; show a fixed operator-safe response.
+$httpsRequired = filter_var(config('security.require_https', false), FILTER_VALIDATE_BOOLEAN);
+if ($httpsRequired && !is_https()) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=UTF-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    echo "BIRMS requires HTTPS for this deployment. Open the approved secure office URL.\n";
+    exit;
+}
 require __DIR__ . '/auth.php';
 require __DIR__ . '/permissions.php';
 require __DIR__ . '/attachments_lib.php';
