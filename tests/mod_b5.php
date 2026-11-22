@@ -7,6 +7,16 @@ function run_b5(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $capOld = db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'");
+    $formatted = certificate_body_html("# Demo heading\nA **bold** and *italic* word with __underline__.\n- First item\n- Second item\n<script>alert(1)</script>");
+    record('B5-25', 'Document editor formatting renders safely and does not execute or preserve submitted HTML',
+        str_contains($formatted, '<h2>Demo heading</h2>')
+        && str_contains($formatted, '<strong>bold</strong>')
+        && str_contains($formatted, '<em>italic</em>')
+        && str_contains($formatted, '<u>underline</u>')
+        && str_contains($formatted, '<ul>')
+        && !str_contains($formatted, '<script>')
+        && !str_contains($formatted, '<script>alert(1)</script>'));
+
     $signatureFixture = fx_upload_chairman_signature($adm);
     record('B5-22', 'Admin uploads a valid Chairman JPG through the protected settings route',
         $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
