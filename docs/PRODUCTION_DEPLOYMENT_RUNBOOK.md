@@ -127,3 +127,8 @@ At the time this runbook was added:
 - Automated tests do not certify the actual Windows/XAMPP host, TLS trust, office LAN, kiosk hardware, physical printer, live notification provider, representative-data performance or full recovery rehearsal.
 - The original `barangay_db` remains protected and is not a deployment target.
 - PR #34 remains a draft until the go-live acceptance evidence and independent review are complete.
+
+
+## Demo data is never production data
+
+Do not run tools/seed_msit_demo_data.php on a production database. It intentionally refuses database names that do not end in _work or _test. Keep the fictitious DEMO ONLY records in a separate presentation database and do not copy them into the barangay's live resident registry. Official certificate wording, letterhead, fees and signatory settings must be approved separately before live use.
