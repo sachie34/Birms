@@ -1,62 +1,156 @@
 # BIRMS Quick User Workflow
 
-This guide follows the current repository code. Dashboard shortcuts are filtered by the signed-in account's permissions. The role matrix is **provisional** and must be approved by the barangay before production use.
+This guide follows the current `john/msit-srs-compliance` branch. The revised MSIT SRS is the controlling requirements baseline. The role mapping and official office procedures still require barangay/adviser approval before production use.
 
-## Everyday document workflow
+## 1. Resident self-service: start here
 
-1. **Find the resident first.** Open **Residents** and search by name or household code. Check the profile before creating another record. If the resident is missing, an authorized user can register the profile and assign its household/Purok.
-2. **Create the request.** Open **Request Tracker → New request**, choose an existing active resident and document type, enter the purpose, and save. A visitor entry is optional; after saving a visitor log, use **Start a document request** to continue.
-3. **Review requirements.** The Secretary (or Administrator) opens **Request Tracker → Needs Review**, checks the barangay-approved checklist, and records missing items. New requests begin with requirements **Not checked**; entering formal review resets the checklist so intake cannot pre-complete it. While a request is under review, only Secretary/Admin may edit it. If its document type, purpose, fee quote/quantity or supporting documents change, the requirements status resets to **Not checked** and the updated request must be reviewed again. Clerks can submit requests and track requests they filed or that are assigned to them; another request is not exposed by changing a URL ID. They cannot change the requirements decision or assignment. Mark requirements **Complete** only after checking the current request details; an incomplete or unchecked request cannot move to Ready for Pickup or be issued.
-4. **Make the final decision.** The **Barangay Captain** or **Administrator** opens **Request Tracker → Pending Final Approval**. Only requests with requirements marked **Complete** appear in that queue. The server blocks both approval and rejection until requirements are marked **Complete**, even when someone tries a direct URL or forged POST. The Captain or Administrator can then approve the request for Ready for Pickup or reject it with a reason. There is no separate saved **Approved** status.
-5. **Issue and print.** The **Secretary** or **Administrator** opens **Certificate Generation**, selects a ready request, checks the resident, approved template/fee/signatory details, and enters the O.R. number when a fee is charged. Issuing saves the certificate, creates issuance history and changes the request's stored status to `Claimed`, displayed to users as **Issued**. The **Clerk can print or download an already-issued certificate but cannot issue it**. PDF output remains draft until official wording/layout and signatory rules are approved.
-6. **Find the result later.** Use **Issuance History** to search by resident name, reference number or O.R. number. Use the audit trail, when permitted, to review recorded actions.
+Residents use the shared **Resident Request QR** or the touchscreen kiosk. The QR is a shared entry point; it must not contain a resident's personal information.
 
-## Role-specific request queues and progress
+1. Open the kiosk and choose **Continue**.
+2. Verify your identity:
+   - Preferred: enter your **Resident ID** and **birthdate**.
+   - If you do not know your Resident ID: enter your first name, last name and birthdate. BIRMS sends a one-time code to the contact channel registered on your resident record.
+   - If you have no registered email/mobile contact, or the details cannot be verified, ask Staff to verify you at the counter. Do not keep guessing.
+3. After verification, choose the service you need:
+   - **Request a document**
+   - **File a blotter report**
+   - **Reserve a venue**
+   - **Get a queue number**
+   - **Check request status**
+4. When asked, choose how to receive updates: **Email**, **SMS**, or **Both**. Email is the default. SMS is optional; if SMS cannot be used and an email address is available, BIRMS records/queues the email fallback. A queued message is not proof that it reached the resident.
+5. Keep the printed or displayed **reference number** and queue ticket. Use the reference number to check progress later.
 
-All roles use the same **Request Tracker**, with a queue shortcut matched to their work: Clerk — **My Requests**; Secretary — **Needs Review**; Captain/Administrator — **Pending Final Approval**. Each request detail page shows a four-step progress tracker. Status is shown with text and icons, not color alone. The queue badge counts are based on role-relevant requests, not just all requests in a status.
+The kiosk is for residents only. It is separate from the staff/admin portal. End the kiosk session when finished; the kiosk also has an inactivity reset.
 
-## Other common tasks
+## 2. Document request: submission to release
 
-### Residents
-Use global **Search records** or the Residents list to find a person first. Filter by Purok/category/residency where needed. Voter/ID verification is a manual record; the system does **not** contact COMELEC or another external database.
+The document workflow has visible handoffs. The resident keeps the reference number while the responsible office role changes the request.
 
-### Blotter and hearings
-1. Select **Blotter → File a case**. Enter the date, narrative and complainant; add the respondent when known.
-2. Open the saved case to review parties, update the permitted status, schedule a hearing and record its outcome.
-3. Use **Case Look-up** for a name or case check. A possible name match is a lead for staff review, not proof of identity.
-4. Current stored case states are **Pending**, **Active**, **Scheduled** and **Resolved**. There is no separate PNP/LGU referral workflow in this version.
+| Step | Responsible role | What happens | Resident-facing status |
+|---|---|---|---|
+| 1. Submit | Resident, or Staff at the counter | Select an active document type, state the purpose and submit. BIRMS creates a reference number, records the request and issues a Documents queue ticket. | Pending |
+| 2. Requirements review | Secretary or Admin | Check the current document requirements and supporting details. Record missing items or mark requirements Complete only after checking them. If request details change, requirements must be reviewed again. | Pending |
+| 3. Final decision | Staff or Admin | After requirements are Complete, approve or reject. A rejection needs a reason. The server blocks a final decision while requirements are incomplete. | Approved or Rejected |
+| 4. Generate and release | Staff or Admin | For an approved request, check the resident and approved document details, generate/issue the certificate, and record the issuance. | Released |
+| 5. Track and retain | Resident and authorized office users | The resident checks the reference tracker. Authorized users can inspect request history and audit records. | Current status and history |
 
-### Reports
-- The demographic report is a current active-resident snapshot, not historical period-end population.
-- Choose the report type and period that fit the question. Check totals before printing/exporting CSV.
-- The monthly/quarterly administrative output is a draft until the intended agency's template and mandatory fields have been approved.
+**Important:** the system has internal processing states for staff (such as Review and Ready), while the resident-facing SRS statuses are Pending, Approved, Rejected and Released. A resident should use the public status, not infer the internal staff step.
 
-### Administrator setup
-Before using official records, the system owner must confirm the barangay details, Puroks, active document types, certificate wording, fees, Captain/signatory details, summons wording and role permissions.
-- **User Accounts:** manage access.
-- **Fees and Puroks:** configure approved settings/rates.
-- **Audit Trail:** inspect recorded actions.
-- **Backup:** download the SQL export to a private location. Live cloud transfer and a successful restore are not verified by automated tests; test restores only in a separate scratch database.
+### Resident steps for a document
 
-## Current role access
+1. Tap **Request a document**.
+2. Choose the document type.
+3. Enter the purpose clearly.
+4. Select Email, SMS or Both for notifications.
+5. Submit once. Wait for the receipt; do not submit repeatedly if the page takes time.
+6. Keep the reference number and Documents queue ticket.
+7. Use **Check request status** to see the latest public status. If the office needs more information, follow the instruction given by Staff.
 
-| Role | Typical functions available in the current code |
+### Staff steps for a document request
+
+1. Open **Document Requests** and find the reference number.
+2. Secretary/Admin: open the request, inspect the document type, purpose and attachments, then record the requirements review.
+3. Staff/Admin: open the request after requirements are Complete. Approve it or reject it with a clear reason.
+4. Staff/Admin: issue the approved certificate using the approved template, fee and Chairman signature settings.
+5. Confirm the issuance record and give the resident the released document.
+
+The app's server-side permission checks control each handoff. Do not use another person's account to perform a step.
+
+## 3. Three service queues
+
+BIRMS has three separate queues: **Blotter**, **Documents** and **Venue**. Each service has its own daily numbering sequence.
+
+- Residents can get a ticket at the kiosk or request a number from Staff at the counter.
+- Staff opens **Service Queue**, selects the service and uses **Call next**.
+- When the resident is served, mark the ticket **Served**. If the resident is not present, use **Skip**. Use **Cancel** only when the ticket should no longer be served.
+- Residents watch the public queue display. It shows the current number and waiting count, not resident names or personal details.
+
+A queue ticket is not the same as approval of a document, blotter report or venue reservation. The request still follows its own review and decision process.
+
+## 4. Blotter report lifecycle
+
+1. Resident verifies identity at the kiosk and chooses **File a blotter report**.
+2. Enter the incident date/time, place and factual description. Add respondent details only when known; do not guess.
+3. Submit once and keep the blotter reference and queue ticket.
+4. Staff/Admin reviews the submitted report. An accepted report becomes an official blotter case; a rejected submission remains in request history.
+5. Authorized case handlers update the official case using the required statuses: **Ongoing**, **Unresolved**, **Resolved**, **Dismissed** or **Archived**. Status changes are recorded in history/audit records. Blotter cases are not deleted as a shortcut; resolved/dismissed records are retained and archived according to the SRS.
+6. The resident can check the reference number for the public status. The public tracker must not reveal the resident's identity, address or incident narrative.
+
+## 5. Venue reservation lifecycle
+
+1. Resident verifies identity and chooses **Reserve a venue**.
+2. Select the venue, date, start/end time and purpose; select a notification preference.
+3. Submit and keep the reservation reference and Venue queue ticket.
+4. Staff/Admin reviews the reservation and approves or rejects it. A pending or approved reservation blocks overlapping requests for the same venue/time. The system rechecks conflicts when approving.
+5. The venue board shows **Green / Available** or **Red / In Use**. Staff override is an authorized operational action and should be used only when the actual venue condition requires it.
+6. An approved reservation can be marked Completed after use. Residents can check the reference status.
+
+## 6. Staff workspace: where to go
+
+| Task | Menu |
 |---|---|
-| Administrator | All defined permissions, including account/role management, operational settings, request review and final decisions, certificate issuance/printing, resident restoration, cash-ledger management, reports, audit and backup. |
-| Barangay Captain | View residents/requests and issuance history, preview issued certificates without print/PDF controls, make final request decisions, view the cash ledger without changing it, review/edit permitted blotter/hearing items, and view reports/audit. Cannot issue certificates, print/download certificate copies, or manage the ledger. |
-| Barangay Secretary | Register/edit residents, soft-archive (but not restore) residents, intake requests, review requirements, issue eligible ready certificates, edit operational settings, work on blotter/hearing records and reports. Cannot make the final request decision or manage user accounts. |
-| Barangay Staff / Clerk | Register/edit residents, submit/edit requests, see My Requests, and print/download already-issued certificates. Cannot change requirements decisions, start formal review, approve/reject requests, issue certificates, restore residents, or manage settings/accounts. |
+| Find a resident by name, Resident ID, address or email; filter by direct Purok, status or type | **Residents** |
+| Review document requests and requirements | **Document Requests** |
+| Monitor Documents, Blotter and Venue requests together (Admin/Staff) | **All Services Tracker** |
+| Call, serve, skip or cancel queue tickets | **Service Queue** |
+| Review resident-submitted blotter reports | **Resident Blotter Requests** |
+| Manage official blotter cases and hearings | **Blotter** / **Hearings** |
+| View venue availability and reservations | **Venue Reservations** |
+| Generate/release approved certificates | **Certificate Generation** |
+| Review completed issuance records | **Issuance History** |
+| View required summaries and export reports | **Reports** |
 
-This table describes the current code, not an approved barangay policy. Confirm the access matrix against the final paper with the system owner.
+Resident records are grouped directly by **Purok** and each resident has their own **Address**. Do not use household codes or household grouping as the resident directory workflow.
 
-## When a step is blocked
+## 7. Current role access in the code
 
-- **Resident not found:** clear filters and check if the record is archived. Add it only if authorized.
-- **No certificate is ready:** check the Request Tracker for pending review and incomplete requirements.
-- **Issuance is blocked:** read the on-screen blockers. Common causes include missing certificate wording, missing fee or Captain/signatory settings, incomplete requirements, or a request that is not Ready.
-- **A menu item is missing/access is denied:** the account likely lacks that permission. Ask the Administrator; do not share accounts to bypass role controls.
-- **SMS says queued/pending:** that is not proof the message reached the phone. Likewise, a backup button alone does not prove a cloud copy can be restored.
+These are the permissions currently enforced by the branch, not a substitute for the final signed role matrix.
 
-## Before presentation or real use
+| SRS role | Current access summary |
+|---|---|
+| **Admin** | Full defined access: accounts, settings, resident management, requests/review/decisions, certificates, blotter, venues, queues, reports, audit and backup. |
+| **Chairman** | Read-only access to permitted resident/request/case/venue/queue/report and history views. Cannot perform operational edits, approvals, queue actions or certificate issuance. The stored Chairman signature is applied by the system to eligible certificates; the Chairman does not need an operational login action to sign each request. |
+| **Secretary** | View resident records; intake/edit document requests and complete requirements review; work on permitted blotter/hearing records; view/export reports. Cannot make the final document decision, issue certificates or manage service queues under the current permission map. |
+| **Staff** | View resident records; intake/edit requests and make final decisions after requirements review; issue/print certificates; review resident blotter submissions; manage venue reservations and service queues; use the Admin/Staff All Services Tracker. Cannot manage accounts or system settings. |
+| **Resident** | Resident-only kiosk and shared QR services: document requests, blotter submissions, venue reservations, queue tickets and reference-status checks. No access to the staff/admin portal. |
 
-Use fictitious demo records on `barangay_db_work` or another isolated test database. Test the actual browser, PDF reader, upload/download behavior, printer and each role on the target XAMPP computer. Automated CI results do not replace local acceptance testing.
+**Role-policy item to confirm before release:** the current permission map grants resident create/edit/archive functions to Admin, while Secretary and Staff have resident-directory view access. Confirm that this exactly matches the approved SRS and barangay operating policy before changing permissions. Do not broaden access simply to make a menu item appear.
+
+## 8. Resident record and report guidance
+
+- Use the resident's individual **Address** and direct **Purok** fields.
+- The resident profile includes Resident ID, contact details, birthdate, sex, marital status, resident status and resident type.
+- Required resident statuses are **Active**, **Transferred**, **Deceased** and **Non-resident**.
+- Default resident types include **PWD**, **Senior Citizen**, **Solo Parent**, **4Ps Beneficiary**, **Indigent** and **None**.
+- Reports include resident/Purok/type, document requests, blotter status, venue use and queue statistics. Check the selected period and totals before exporting.
+- Chairman and Secretary have report-view/export access in the current permission map.
+
+## 9. Admin setup and release checks
+
+Before real use, Admin/system owner must configure and verify:
+- Puroks, resident reference lists and active document types.
+- Venue list, operating rules and authorized staff.
+- Chairman signature image and approved certificate wording/layout.
+- Official fees and receipt/OR procedures, where applicable.
+- Email sender and optional SMS provider. Test delivery with an authorized test account/number.
+- User accounts and the approved role-permission matrix.
+- Backups and a safe restore procedure.
+
+The repository currently documents local SQL backup and optional remote WebDAV upload, but does **not** establish a verified restore or a scheduled backup service. Test any restore only into a separate scratch database, and include private attachments and the Chairman signature file in the recovery test. Never restore over the source database during testing.
+
+## 10. If something is blocked
+
+- **Identity cannot be verified:** check Resident ID/birthdate; if using the name fallback, check first/last name and birthdate. If no registered contact is available or records are ambiguous, ask Staff at the counter.
+- **No document type appears:** ask Admin to check whether the document type is active.
+- **A request cannot be approved/rejected:** Secretary/Admin must complete the requirements review first.
+- **A venue cannot be booked:** choose another time; a Pending or Approved booking may already reserve that slot.
+- **A queue ticket is not called:** watch the public display and ask Staff; do not create repeated tickets.
+- **A menu or action is unavailable:** the current account may not have that permission. Ask Admin; never share credentials or bypass access checks.
+- **Notification says queued/pending:** queued is not the same as delivered. Confirm email/SMS delivery through the configured provider.
+- **Reference number is not found:** recheck the printed number and ask Staff if it still cannot be found.
+
+## 11. Test and deployment boundary
+
+Use only fictitious demo records on a disposable `*_work` or `*_test` database for development and presentation testing. Do not test against the original or production barangay database.
+
+Passing GitHub Actions validates automated checks against disposable CI databases. It does not prove that the target XAMPP PC, Apache PHP runtime, barangay LAN, phone QR scan, physical kiosk/touchscreen, printer, real email/SMS delivery, official signature/template, backup restoration or office user acceptance has passed. Record those manual results before declaring the system production-ready or MSIT-compliant.
