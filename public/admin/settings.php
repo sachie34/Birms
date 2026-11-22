@@ -96,19 +96,31 @@ if (is_post()) {
                     flash_add('success', 'Document added. Set its fee and wording before it can be issued.');
                     break;
                 case 'doctype_save':
-                    $id = post_int('id'); $dt = $id === null ? null : db_one('SELECT type_id, name FROM document_types WHERE type_id = ?', [$id]);
-                    $fee = post_str('fee_amount'); $body = post_text('template_body');
-                    $requiresSignatureInput = post_str('requires_chairman_signature');
-                    $requiresSignature = $requiresSignatureInput === ''
-                        ? (int) db_val('SELECT requires_chairman_signature FROM document_types WHERE type_id = ?', [$id])
-                        : ($requiresSignatureInput === '1' ? 1 : 0);
+                    $id = post_int('id');
+                    $dt = $id === null ? null : db_one('SELECT type_id, name, fee_amount, is_active, requires_chairman_signature FROM document_types WHERE type_id = ?', [$id]);
+                    $canManageDocumentSettings = can('settings.edit');
+                    $fee = $canManageDocumentSettings
+                        ? post_str('fee_amount')
+                        : (string) ($dt['fee_amount'] ?? '');
+                    $body = post_text('template_body');
+                    if ($canManageDocumentSettings) {
+                        $requiresSignatureInput = post_str('requires_chairman_signature');
+                        $requiresSignature = $requiresSignatureInput === ''
+                            ? (int) ($dt['requires_chairman_signature'] ?? 1)
+                            : ($requiresSignatureInput === '1' ? 1 : 0);
+                        $isActive = post_str('is_active') === '1' ? 1 : 0;
+                    } else {
+                        // Secretary may maintain wording, but cannot alter fees, availability or signature policy.
+                        $requiresSignature = (int) ($dt['requires_chairman_signature'] ?? 1);
+                        $isActive = (int) ($dt['is_active'] ?? 0);
+                    }
                     if ($dt === null) { $errors[] = 'That document does not exist.'; }
                     if ($fee !== '' && !v_money($fee)) { $errors[] = 'Fee must be an amount like 50 or 50.00 (0 means free).'; }
                     if (str_len($body) > 4000) { $errors[] = 'Wording is limited to 4,000 characters.'; }
                     if ($unknown = template_unknown_tokens($body, TEMPLATE_TOKENS)) { $errors[] = 'Unknown placeholder(s): {{' . implode('}}, {{', $unknown) . '}}.'; }
                     if ($errors) { throw new RuntimeException('invalid'); }
                     db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ?, requires_chairman_signature = ? WHERE type_id = ?',
-                        [$fee === '' ? null : $fee, $body === '' ? null : $body, post_str('is_active') === '1' ? 1 : 0, $requiresSignature, $id]);
+                        [$fee === '' ? null : $fee, $body === '' ? null : $body, $isActive, $requiresSignature, $id]);
                     audit('doctype_saved', 'Settings', 'Success',
                         $dt['name'] . ': fee ' . ($fee === '' ? 'not set' : $fee) . ', wording ' . ($body === '' ? 'not set' : 'set')
                         . ', Chairman signature ' . ($requiresSignature ? 'required' : 'not required'), 'document_type', (int) $id);
@@ -314,9 +326,9 @@ if ($tab === 'general') {
     foreach ($types as $t) {
         card_start((string) $t['name'], 'Fee: ' . money($t['fee_amount']) . ' · Wording: ' . ($t['template_body'] === null ? 'not set' : 'set'), 'mb-3');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('doctype_save') . '<input type="hidden" name="id" value="' . (int) $t['type_id'] . '">';
-        echo f_text('fee_amount', 'Fee (PHP)', $t['fee_amount'] === null ? '' : (string) $t['fee_amount'], ['maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Blank = not set yet. 0 = free.', 'disabled' => !$canEditDocuments, 'col' => 'col-md-3']);
-        echo f_select('is_active', 'Available', ['1' => 'Yes', '0' => 'No'], $t['is_active'] ? '1' : '0', ['disabled' => !$canEditDocuments, 'col' => 'col-md-3']);
-        echo f_select('requires_chairman_signature', 'Chairman signature required', ['1' => 'Yes — apply stored image', '0' => 'No — no Chairman signature needed'], (int) $t['requires_chairman_signature'] === 1 ? '1' : '0', ['disabled' => !$canEditDocuments, 'col' => 'col-md-6', 'help' => 'When Yes, certificate issuance is blocked until Admin uploads the current Chairman signature image.']);
+        echo f_text('fee_amount', 'Fee (PHP)', $t['fee_amount'] === null ? '' : (string) $t['fee_amount'], ['maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Blank = not set yet. 0 = free.', 'disabled' => !$canEdit, 'col' => 'col-md-3']);
+        echo f_select('is_active', 'Available', ['1' => 'Yes', '0' => 'No'], $t['is_active'] ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-3']);
+        echo f_select('requires_chairman_signature', 'Chairman signature required', ['1' => 'Yes — apply stored image', '0' => 'No — no Chairman signature needed'], (int) $t['requires_chairman_signature'] === 1 ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-6', 'help' => 'When Yes, certificate issuance is blocked until Admin uploads the current Chairman signature image.']);
         echo '<div class="col-12 document-editor-wrap">';
         echo '<label class="form-label" for="template_body_' . (int) $t['type_id'] . '">Document wording and layout</label>';
         echo '<p class="form-text">Use the toolbar to format the document. Supported formatting is saved with the template and appears in print/PDF output. Placeholder fields are filled from the resident/request record.</p>';
