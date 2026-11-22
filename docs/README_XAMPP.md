@@ -3,6 +3,8 @@
 This runbook now points to the **MSIT SRS compliance branch**. For the revised resident, blotter, documents, venue, queue and kiosk workflows, use `john/msit-srs-compliance` and [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), not the older B1–B12 `main` presentation build. Setup and test tools target a separate `barangay_db_work` or `_test` database. Never point them at the original `barangay_db`.
 It never touches your original `barangay_db`.
 
+**Important:** this wizard provisions the isolated `barangay_db_work` working/demo database. It is not the production database procedure. For a real office deployment, follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md), which provisions a separate production database and requires HTTPS, least-privilege access and go-live evidence.
+
 > **MSIT acceptance status:** hosted CI is run on disposable MariaDB 10.4 and 10.11. Latest results are recorded in [the MSIT compliance plan](MSIT_SRS_COMPLIANCE_PLAN.md) and [PR #34](https://github.com/sachie34/Birms/pull/34). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
 
 ## Quick install (recommended)
