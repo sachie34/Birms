@@ -4,11 +4,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
-require_permission('settings.view');
 $canEdit = can('settings.edit');
 $canEditDocuments = $canEdit || can('documents.templates.manage');
 $tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'notifications' => 'Notifications', 'sms' => 'SMS gateway and text'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'general';
+// Notification delivery configuration is an Admin system setting, not part of Secretary template maintenance.
+if ($tab === 'notifications') {
+    require_permission('settings.edit');
+} else {
+    require_permission('settings.view');
+}
 $errors = [];
 
 if (is_post()) {
