@@ -48,7 +48,7 @@ $signatureUrl = !empty($c['chairman_signature_path'])
     <div class="cert-draft">DRAFT — PENDING OFFICIAL LAYOUT APPROVAL</div>
     <div class="cert-head"><div class="l1">Republic of the Philippines</div><div class="l1">Province of <?= e((string) setting('province', '')) ?> · Municipality of <?= e((string) setting('municipality', '')) ?></div><div class="l3"><?= e(barangay_title()) ?></div></div>
     <div class="cert-title"><?= e((string) $c['type_name']) ?></div>
-    <div class="cert-body"><?= e((string) $c['body_text']) ?></div>
+    <div class="cert-body"><?= certificate_body_html((string) $c['body_text']) ?></div>
     <div class="cert-sign">
       <?php if ($signatureUrl !== ''): ?><img class="chairman-signature-image" src="<?= e($signatureUrl) ?>" alt="Stored Chairman / Punong Barangay signature"><?php endif; ?>
       <span class="name"><?= e($signatureDisplay) ?>&nbsp;</span><span class="role">Chairman / Punong Barangay</span>
