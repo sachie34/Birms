@@ -6,14 +6,20 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 require_permission('settings.view');
 $canEdit = can('settings.edit');
+$canEditDocuments = $canEdit || can('documents.templates.manage');
 $tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'notifications' => 'Notifications', 'sms' => 'SMS gateway and text'];
 $tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'general';
 $errors = [];
 
 if (is_post()) {
     require_csrf();
-    require_permission('settings.edit');
-    $do = post_str('do'); $tab = isset($tabs[post_str('tab')]) ? post_str('tab') : 'general';
+    $do = post_str('do');
+    if (in_array($do, ['doctype_save', 'doctype_add'], true)) {
+        if (!$canEdit) { require_permission('documents.templates.manage'); }
+    } else {
+        require_permission('settings.edit');
+    }
+    $tab = isset($tabs[post_str('tab')]) ? post_str('tab') : 'general';
     try {
         db_transaction(function () use ($do, &$errors): void {
             switch ($do) {
@@ -308,9 +314,9 @@ if ($tab === 'general') {
     foreach ($types as $t) {
         card_start((string) $t['name'], 'Fee: ' . money($t['fee_amount']) . ' · Wording: ' . ($t['template_body'] === null ? 'not set' : 'set'), 'mb-3');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('doctype_save') . '<input type="hidden" name="id" value="' . (int) $t['type_id'] . '">';
-        echo f_text('fee_amount', 'Fee (PHP)', $t['fee_amount'] === null ? '' : (string) $t['fee_amount'], ['maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Blank = not set yet. 0 = free.', 'disabled' => !$canEdit, 'col' => 'col-md-3']);
-        echo f_select('is_active', 'Available', ['1' => 'Yes', '0' => 'No'], $t['is_active'] ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-3']);
-        echo f_select('requires_chairman_signature', 'Chairman signature required', ['1' => 'Yes — apply stored image', '0' => 'No — no Chairman signature needed'], (int) $t['requires_chairman_signature'] === 1 ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-6', 'help' => 'When Yes, certificate issuance is blocked until Admin uploads the current Chairman signature image.']);
+        echo f_text('fee_amount', 'Fee (PHP)', $t['fee_amount'] === null ? '' : (string) $t['fee_amount'], ['maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Blank = not set yet. 0 = free.', 'disabled' => !$canEditDocuments, 'col' => 'col-md-3']);
+        echo f_select('is_active', 'Available', ['1' => 'Yes', '0' => 'No'], $t['is_active'] ? '1' : '0', ['disabled' => !$canEditDocuments, 'col' => 'col-md-3']);
+        echo f_select('requires_chairman_signature', 'Chairman signature required', ['1' => 'Yes — apply stored image', '0' => 'No — no Chairman signature needed'], (int) $t['requires_chairman_signature'] === 1 ? '1' : '0', ['disabled' => !$canEditDocuments, 'col' => 'col-md-6', 'help' => 'When Yes, certificate issuance is blocked until Admin uploads the current Chairman signature image.']);
         echo '<div class="col-12 document-editor-wrap">';
         echo '<label class="form-label" for="template_body_' . (int) $t['type_id'] . '">Document wording and layout</label>';
         echo '<p class="form-text">Use the toolbar to format the document. Supported formatting is saved with the template and appears in print/PDF output. Placeholder fields are filled from the resident/request record.</p>';
@@ -320,24 +326,24 @@ if ($tab === 'general') {
             ['Italic', '*', 'Wrap selected text in italics'],
             ['Underline', '__', 'Underline selected text'],
         ] as [$label, $marker, $tip]) {
-            echo '<button type="button" class="btn btn-sm btn-light border" data-editor-wrap="' . e($marker) . '" title="' . e($tip) . '"' . (!$canEdit ? ' disabled' : '') . '>' . e($label) . '</button>';
+            echo '<button type="button" class="btn btn-sm btn-light border" data-editor-wrap="' . e($marker) . '" title="' . e($tip) . '"' . (!$canEditDocuments ? ' disabled' : '') . '>' . e($label) . '</button>';
         }
         foreach ([
             ['Heading', '# '], ['Subheading', '## '], ['Bullets', '- '], ['Numbering', '1. '], ['Divider', '---'],
         ] as [$label, $marker]) {
-            echo '<button type="button" class="btn btn-sm btn-light border" data-editor-prefix="' . e($marker) . '"' . (!$canEdit ? ' disabled' : '') . '>' . e($label) . '</button>';
+            echo '<button type="button" class="btn btn-sm btn-light border" data-editor-prefix="' . e($marker) . '"' . (!$canEditDocuments ? ' disabled' : '') . '>' . e($label) . '</button>';
         }
         foreach (TEMPLATE_TOKENS as $token) {
-            echo '<button type="button" class="btn btn-sm btn-outline-secondary" data-editor-token="{{' . e($token) . '}}" title="Insert resident/request field"' . (!$canEdit ? ' disabled' : '') . '>{{' . e($token) . '}}</button>';
+            echo '<button type="button" class="btn btn-sm btn-outline-secondary" data-editor-token="{{' . e($token) . '}}" title="Insert resident/request field"' . (!$canEditDocuments ? ' disabled' : '') . '>{{' . e($token) . '}}</button>';
         }
         echo '</div>';
-        echo '<textarea class="form-control document-template-editor" id="template_body_' . (int) $t['type_id'] . '" name="template_body" rows="9" maxlength="4000" data-document-editor' . (!$canEdit ? ' readonly' : '') . '>' . e((string) $t['template_body']) . '</textarea>';
+        echo '<textarea class="form-control document-template-editor" id="template_body_' . (int) $t['type_id'] . '" name="template_body" rows="9" maxlength="4000" data-document-editor' . (!$canEditDocuments ? ' readonly' : '') . '>' . e((string) $t['template_body']) . '</textarea>';
         echo '<div class="document-preview-label">Live document preview</div><div class="document-template-preview" data-document-preview aria-live="polite"></div>';
         echo '</div>';
-        if (!$canEdit) { echo '</div></form>'; } else { echo '</div><button class="btn btn-primary" type="submit">Save</button></form>'; }
+        if (!$canEditDocuments) { echo '</div></form>'; } else { echo '</div><button class="btn btn-primary" type="submit">Save</button></form>'; }
         card_end();
     }
-    if ($canEdit) {
+    if ($canEditDocuments) {
         card_start('Add a document type', 'For example Business certificate or First-time jobseeker, once the barangay confirms them.');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '" class="row g-2 align-items-end">' . $hidden('doctype_add')
            . '<div class="col-md-6"><label class="form-label" for="dt_name">Name</label><input class="form-control" id="dt_name" name="name" maxlength="100" required></div><div class="col-auto"><button class="btn btn-primary" type="submit">Add</button></div></form>';
