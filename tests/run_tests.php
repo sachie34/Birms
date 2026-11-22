@@ -167,6 +167,11 @@ record('U14', 'XAMPP preflight requires direct-web deny rules for private source
     && str_contains($setupPromptSource, "public/.htaccess")
     && str_contains($setupPromptSource, "Options -Indexes"));
 
+record('U15', 'Production can fail closed on plain HTTP without redirecting to an untrusted Host header',
+    str_contains((string) file_get_contents(APP_ROOT . '/app/bootstrap.php'), 'BIRMS requires HTTPS for this deployment')
+    && str_contains((string) file_get_contents(APP_ROOT . '/app/core.php'), "'BIRMS_REQUIRE_HTTPS' => ['security', 'require_https']")
+    && str_contains((string) file_get_contents(APP_ROOT . '/app/config.local.php.example'), "'require_https' => false"));
+
 $resultsBeforeReporterProbe = $results;
 $results = [];
 ob_start();
