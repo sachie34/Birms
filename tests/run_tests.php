@@ -160,6 +160,13 @@ record('U13', 'XAMPP setup preflight requires ZIP support for complete system ba
     str_contains($setupPromptSource, "['pdo_mysql', 'fileinfo', 'zip']")
     && str_contains($setupPromptSource, 'zip is required for complete system backup/restore'));
 
+record('U14', 'XAMPP preflight requires direct-web deny rules for private source/storage folders and disables public directory indexes',
+    str_contains($setupPromptSource, "['app', 'database', 'docs', 'storage', 'tests', 'tools']")
+    && str_contains($setupPromptSource, "Require all denied")
+    && str_contains($setupPromptSource, "Deny from all")
+    && str_contains($setupPromptSource, "public/.htaccess")
+    && str_contains($setupPromptSource, "Options -Indexes"));
+
 $resultsBeforeReporterProbe = $results;
 $results = [];
 ob_start();
