@@ -329,3 +329,33 @@ Both environments reported **zero failures and zero untested checks**. The eight
 The notification assertions establish that the status messages are recorded/queued through the configured outbox path. They do not establish delivery to an actual resident mailbox or phone. The manual target-machine and office acceptance gates in Section 12 remain mandatory and **Not run here**.
 
 **Release decision:** The complete document path now has passing automated end-to-end evidence on both MariaDB test versions. This does not replace manual XAMPP browser testing, official certificate/signature approval, actual notification delivery tests, target-device/LAN checks or office UAT. Keep PR #34 as a draft until those release gates are completed.
+
+
+## 14. Resident photo workflow verification (2026-11-22)
+
+### Coverage added
+
+Added `tests/mod_b25.php` with three integration assertions for the revised SRS resident-photo field:
+
+1. Admin uploads a valid JPEG through the resident edit form; the image is stored under private `storage/resident_photos`, not served from a public upload path, and authorized Admin/Staff photo views succeed. An unauthenticated request is redirected to login.
+2. A plain-text file disguised as a JPG is rejected, and the existing saved photo path/file remains intact.
+3. Replacing a photo saves the new private image and removes the superseded photo file.
+
+The tests use synthetic resident records and disposable CI storage and clean up their files and rows. The application photo validation/storage code was not changed for this test; the test fixture was corrected to satisfy the existing resident-name rules, and the anonymous-access expectation was corrected to match the secure login redirect.
+
+### Latest automated validation
+
+GitHub Actions run **#1017** validates commit `46aa0e16a854d0abddfda61f5b41de60991063c8` on disposable MariaDB 10.4 and 10.11 databases:
+
+| Database | Security/authentication/audit | Module integration |
+|---|---:|---:|
+| MariaDB 10.4 | 45/45 passed | 274/274 passed |
+| MariaDB 10.11 | 45/45 passed | 274/274 passed |
+
+Both environments reported **zero failures and zero untested checks**. All three B25 resident-photo assertions passed on both database versions. The CI job logs also contained no PHP warnings/notices/fatal errors, unhandled exceptions, or HTTP 5xx runtime-error matches in the inspected output.
+
+[View GitHub Actions run #1017](https://github.com/sachie34/Birms/actions/runs/45003441341)
+
+These tests establish the application-level photo flow against the disposable CI environment. They do not replace manual confirmation that the target XAMPP PC has writable private storage and correct Apache permissions.
+
+**Release decision:** B25 adds automated resident-photo upload, validation, protected retrieval and replacement coverage. The full local XAMPP, kiosk/LAN, real notification, backup/restore, performance and office acceptance gates remain mandatory and **Not run here**. Keep PR #34 as a draft until those gates have evidence.
