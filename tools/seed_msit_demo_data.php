@@ -169,7 +169,7 @@ function msit_demo_apply(): array
             foreach ($legacyDemoResidents as $i => $row) {
                 db_exec(
                     'UPDATE residents
-                     SET resident_no = ?, address = ?, purok_id = ?, resident_status_id = ?, marital_status = ?,
+                     SET resident_no = ?, address = ?, purok_id = ?, resident_status_id = ?, marital_status = ?, household_id = NULL,
                          resident_type_id = ?, email_address = ?, contact_number = NULL,
                          notification_preference = \'email\', archived_at = NULL
                      WHERE resident_id = ? AND (resident_no IS NULL OR resident_no = \'\')',
