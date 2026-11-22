@@ -178,7 +178,7 @@ function run_b24(array $S, string $base): void
             && $approved['status'] === 'Ready'
             && $approved['msit_status'] === 'Approved'
             && $generatedDraft !== null
-            && str_contains((string) $generatedDraft['resident_name'], 'B24TESTRESIDENT')
+            && stripos((string) $generatedDraft['resident_name'], 'B24TESTRESIDENT') !== false
             && str_contains((string) $generatedDraft['body_text'], 'B24TESTRESIDENT')
             && !empty($generatedDraft['chairman_signature_path'])
             && $prematureIssuances === 0
