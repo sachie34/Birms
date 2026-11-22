@@ -491,3 +491,27 @@ The revised SRS requires the form/certificate to be generated automatically when
 ### Remaining acceptance boundary
 
 FR-D5's automatic saved-draft and PDF-preview workflow is implemented and automated tests pass. This does not approve the official certificate wording/layout or prove the actual XAMPP/office printer output. The PDF retains the visible pending-official-layout-approval warning until the barangay/adviser approves the form. The target Windows/XAMPP acceptance gates in the runbook remain open.
+
+## 18. Deployment-readiness hardening (2026-11-22)
+
+### Repository changes
+
+- Added `docs/PRODUCTION_DEPLOYMENT_RUNBOOK.md` covering production database separation, HTTPS-only LAN access, Apache document-root isolation, least-privilege DB access, secure storage, backup/restore, go-live acceptance and rollback. It explicitly distinguishes the setup wizard's `barangay_db_work` demo/working database from a new production database and preserves the original `barangay_db`.
+- XAMPP setup preflight now requires `pdo_mysql`, `fileinfo` and `zip`; verifies migration 019 and `public/.htaccess` exist; and checks deny rules for `app`, `database`, `docs`, `storage`, `tests` and `tools`, plus directory-index disabling under `public/`.
+- SQL-only restore now uses the shared bounded pre-restore safety-snapshot helper. If snapshot export, validation or reading fails, the helper removes the temporary confidential SQL file. B17-13 injects an export failure and verifies that no temporary snapshot is leaked.
+- CI has been expanded from PHP 8.3 only to PHP 8.3, 8.4, 8.5 and 8.6, each against MariaDB 10.4 and 10.11. The expanded matrix is intended to catch runtime compatibility regressions before release.
+- CI now checks that Apache deny rules for private source/storage directories remain present.
+
+### Verification status
+
+The application/test changes are committed on `john/msit-srs-compliance`. The expanded PHP/MariaDB matrix for the latest deployment-hardening commit must complete green before this section can be classified as automated-test verified. Do not infer a pass from the earlier PHP 8.3 / MariaDB 10.4 and 10.11 results.
+
+### Still required before production
+
+- Upgrade the previously reported local PHP 8.2.12 runtime; the application's runtime guard requires at least PHP 8.2.36 on the 8.2 branch, and PHP 8.2 security support ends 31 December 2026. Prefer a supported branch with a longer support window. Verify both CLI and Apache versions.
+- Provision a new production database and limited application user. Do not point the live application or tests at the original `barangay_db` or reuse `barangay_db_work` as the production database.
+- Configure a trusted HTTPS certificate for the stable LAN hostname on every office/kiosk/phone client. Do not expose the service over plain HTTP or to the public internet.
+- Complete the target XAMPP restore rehearsal, role journeys, physical kiosk/touchscreen, phone QR/LAN, live notification delivery (if enabled), certificate printing, performance/concurrency, outage/recovery and office/adviser UAT.
+- Implement and independently monitor the office-approved backup schedule; the application currently provides operator-triggered backups, not scheduled jobs.
+
+**Release status remains NOT READY for production** until the expanded CI matrix is green and every target-machine/office acceptance gate is evidenced. Keep PR #34 as a draft.
