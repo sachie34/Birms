@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
 $canReview = can('requests.review');
+$canEditRequirements = $canReview && $ex !== null && (string) $ex['status'] === 'Review';
 $id = get_int('id'); $ex = null;
 if ($id !== null) {
     require_permission('requests.edit');
@@ -274,10 +275,20 @@ if ($resident === null) {
            . '. The quote is saved with the request and does not record a payment.</div></div>';
     }
     echo f_select('assigned_to', 'Assigned to', $staff, $v['assigned_to'], ['blank' => 'Nobody yet', 'disabled' => !$canReview]);
+    $requirementsHelp = !$canReview
+        ? 'Only the Secretary or Administrator can update the requirements review.'
+        : ($canEditRequirements
+            ? 'Check the current request and supporting details. Mark Complete only after they have been verified.'
+            : 'Start formal review from the request details first. Requirements cannot be completed during intake.');
+    $requirementsNoteHelp = !$canReview
+        ? 'The Secretary or Administrator will record any missing documents or follow-up notes.'
+        : ($canEditRequirements
+            ? 'Required when marking the requirements as incomplete.'
+            : 'These notes become editable after formal review starts.');
     echo f_select('requirements_status', 'Requirements review', [
         'Not checked' => 'Not checked yet', 'Incomplete' => 'Incomplete — needs follow-up', 'Complete' => 'Complete',
-    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => $canReview ? 'Review supporting information before approving this request as Ready. No specific supporting documents are assumed by the system.' : 'Only the Secretary or Administrator can update the requirements review.', 'disabled' => !$canReview]);
-    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => $canReview ? 'Required when marking the requirements as incomplete.' : 'The Secretary or Administrator will record any missing documents or follow-up notes.', 'disabled' => !$canReview]);
+    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => $requirementsHelp, 'disabled' => !$canEditRequirements]);
+    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => $requirementsNoteHelp, 'disabled' => !$canEditRequirements]);
     echo f_textarea('purpose', 'Purpose / request details', $v['purpose'], ['required' => true, 'rows' => 3, 'maxlength' => 255]);
     echo '<div class="col-12 mb-3"><label class="form-label" for="attachment">Supporting document (optional)</label><input class="form-control" id="attachment" name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div class="form-text">PDF, JPG or PNG; maximum 10 MB. Uploads are private and available to authorized staff.</div></div>';
     echo '</div><button class="btn btn-primary" type="submit">' . ($ex ? 'Save changes' : 'File request') . '</button> <a class="btn btn-light border" href="' . e(base_url('requests/index.php')) . '">Cancel</a></form>';
