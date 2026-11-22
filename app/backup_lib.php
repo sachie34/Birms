@@ -750,6 +750,7 @@ function backup_full_system_create_archive(string $archivePath): array
                 throw new RuntimeException('The database references a private file missing from storage: ' . basename($referenced) . '. Full backup was stopped.');
             }
         }
+        backup_full_verify_database_files();
 
         $manifest = [
             'format' => 'BIRMS_FULL_BACKUP',
@@ -1028,14 +1029,51 @@ function backup_full_verify_database_files(): void
     foreach (backup_full_referenced_private_paths() as $relative) {
         $target = backup_full_target_details($relative, false);
         if (!$target['exists']) {
-            throw new RuntimeException('The restored database references a private file that is not present in the archive or storage: ' . basename($relative) . '.');
+            throw new RuntimeException('The database references a private file that is not present in the archive or storage: ' . basename($relative) . '.');
         }
     }
-    foreach (db_all("SELECT storage_path, sha256 FROM document_attachments WHERE storage_path IS NOT NULL AND storage_path <> '' AND sha256 IS NOT NULL AND sha256 <> ''") as $row) {
-        $target = backup_full_target_details((string) $row['storage_path'], false);
-        $actual = $target['exists'] ? hash_file('sha256', $target['path']) : false;
-        if (!is_string($actual) || !hash_equals((string) $row['sha256'], $actual)) {
-            throw new RuntimeException('A restored document attachment failed its stored SHA-256 check: ' . basename((string) $row['storage_path']) . '.');
+
+    if (!function_exists('finfo_open')) {
+        throw new RuntimeException('The PHP fileinfo extension is required to verify private files during a full backup or restore.');
+    }
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    if ($finfo === false) { throw new RuntimeException('Private file MIME verification could not be initialized.'); }
+    try {
+        foreach (db_all("SELECT storage_path, sha256, mime_type FROM document_attachments WHERE storage_path IS NOT NULL AND storage_path <> ''") as $row) {
+            $relative = (string) $row['storage_path'];
+            $target = backup_full_target_details($relative, false);
+            $actualHash = $target['exists'] ? hash_file('sha256', $target['path']) : false;
+            if (!is_string($actualHash) || !is_string($row['sha256'] ?? null)
+                || !hash_equals((string) $row['sha256'], $actualHash)) {
+                throw new RuntimeException('A document attachment failed its stored SHA-256 check: ' . basename($relative) . '.');
+            }
+            $actualMime = finfo_file($finfo, $target['path']);
+            if (!is_string($actualMime) || !hash_equals((string) $row['mime_type'], $actualMime)) {
+                throw new RuntimeException('A document attachment failed its stored MIME-type check: ' . basename($relative) . '.');
+            }
+        }
+
+        foreach (db_all("SELECT photo_path FROM residents WHERE photo_path IS NOT NULL AND photo_path <> ''") as $row) {
+            $relative = (string) $row['photo_path'];
+            $target = backup_full_target_details($relative, false);
+            $image = $target['exists'] ? @getimagesize($target['path']) : false;
+            if (!is_array($image) || !in_array((string) ($image['mime'] ?? ''), ['image/jpeg', 'image/png'], true)) {
+                throw new RuntimeException('A resident photo is missing or is not a valid JPEG/PNG image: ' . basename($relative) . '.');
+            }
+        }
+    } finally {
+        finfo_close($finfo);
+    }
+
+    $signaturePaths = [];
+    $currentSignature = chairman_signature_current_relative();
+    if (is_string($currentSignature) && $currentSignature !== '') { $signaturePaths[$currentSignature] = true; }
+    foreach (db_all("SELECT chairman_signature_path FROM issuances WHERE chairman_signature_path IS NOT NULL AND chairman_signature_path <> ''") as $row) {
+        $signaturePaths[(string) $row['chairman_signature_path']] = true;
+    }
+    foreach (array_keys($signaturePaths) as $relative) {
+        if (chairman_signature_read($relative) === null) {
+            throw new RuntimeException('A Chairman signature image is missing or invalid: ' . basename($relative) . '.');
         }
     }
 }
