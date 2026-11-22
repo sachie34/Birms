@@ -221,8 +221,8 @@ All generated records and document bodies say **DEMO ONLY**. No official documen
 
 ### Edit and preview certificate templates
 
-1. Sign in as an Admin account.
-2. Open **System Settings → Documents and fees**.
+1. Sign in as an Admin or Secretary account.
+2. Open **System Settings → Documents and fees**. The Secretary can edit document templates and fees only; other system settings remain Admin-only.
 3. Open one of the **DEMO ONLY - ...** document types.
 4. Use the toolbar for bold, italic, underline, headings, bullets, numbering, dividers and resident/request placeholders.
 5. Review the live preview, then save.
@@ -233,6 +233,6 @@ The editor intentionally supports a small, safe formatting set rather than attem
 
 ### Demo accounts and role journey
 
-The seeder deliberately creates **no accounts and no default passwords**. Create separate Admin, Chairman, Secretary and Staff accounts through the User Accounts page and use separate browser profiles when presenting. Follow the role restrictions in section 6; the Chairman remains read-only. Residents use the shared kiosk/request QR flow.
+The seeder deliberately creates **no accounts and no default passwords**. Create separate Admin, Chairman, Secretary and Staff accounts through the User Accounts page and use separate browser profiles when presenting. The Secretary can manage document templates but cannot edit general system settings; the Chairman remains read-only. Follow the role restrictions in section 6; the Chairman remains read-only. Residents use the shared kiosk/request QR flow.
 
 Before the presentation, confirm the demo dashboard, request tracker, certificate preview, print/PDF, blotter, venue availability and service queues on the actual XAMPP browser. Automated CI is not a substitute for this local check.
