@@ -131,7 +131,7 @@ record('U10', 'PHP runtime guard enforces current security patch levels and acce
         80336 => false, 80337 => true,
         80427 => false, 80428 => true,
         80512 => false, 80513 => true,
-        80600 => true, 80699 => true,
+        80600 => true, 80601 => true,
         80700 => false,
         90000 => false,
     ];
