@@ -79,4 +79,70 @@
       f.classList.add('was-validated');
     }, false);
   });
+
+  // Lightweight document editor: toolbar writes a safe Markdown subset into the saved template.
+  function escapePreview(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function inlinePreview(value) {
+    var text = escapePreview(value);
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.+?)__/g, '<u>$1</u>');
+    text = text.replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1<em>$2</em>');
+    return text;
+  }
+  function documentPreview(source) {
+    var html = [], paragraph = [], list = '';
+    function flushParagraph() {
+      if (paragraph.length) { html.push('<p>' + paragraph.map(inlinePreview).join('<br>') + '</p>'); paragraph = []; }
+    }
+    function closeList() { if (list) { html.push('</' + list + '>'); list = ''; } }
+    String(source || '').replace(/\r\n?/g, '\n').split('\n').forEach(function (line) {
+      var value = line.trim(), match;
+      if (!value) { flushParagraph(); closeList(); return; }
+      if (/^---+$/.test(value)) { flushParagraph(); closeList(); html.push('<hr>'); return; }
+      match = value.match(/^(#{1,3})\s+(.+)$/);
+      if (match) { flushParagraph(); closeList(); var level = match[1].length + 1; html.push('<h' + level + '>' + inlinePreview(match[2]) + '</h' + level + '>'); return; }
+      match = value.match(/^[-*]\s+(.+)$/);
+      if (match) { flushParagraph(); if (list !== 'ul') { closeList(); html.push('<ul>'); list = 'ul'; } html.push('<li>' + inlinePreview(match[1]) + '</li>'); return; }
+      match = value.match(/^\d+[.)]\s+(.+)$/);
+      if (match) { flushParagraph(); if (list !== 'ol') { closeList(); html.push('<ol>'); list = 'ol'; } html.push('<li>' + inlinePreview(match[1]) + '</li>'); return; }
+      closeList(); paragraph.push(line);
+    });
+    flushParagraph(); closeList();
+    return html.join('\n') || '<p class="text-muted">Start typing to see the document preview.</p>';
+  }
+  document.querySelectorAll('[data-document-editor]').forEach(function (editor) {
+    var wrap = editor.closest('.document-editor-wrap');
+    var preview = wrap ? wrap.querySelector('[data-document-preview]') : null;
+    if (!wrap || !preview) { return; }
+    function refresh() { preview.innerHTML = documentPreview(editor.value); }
+    function insertText(value, wrapSelection) {
+      if (editor.readOnly || editor.disabled) { return; }
+      var start = editor.selectionStart, end = editor.selectionEnd;
+      var selected = editor.value.slice(start, end);
+      var inserted = wrapSelection ? value + (selected || 'text') + value : value;
+      editor.setRangeText(inserted, start, end, 'select');
+      editor.focus(); refresh();
+    }
+    wrap.querySelectorAll('[data-editor-wrap]').forEach(function (button) {
+      button.addEventListener('click', function () { insertText(button.dataset.editorWrap, true); });
+    });
+    wrap.querySelectorAll('[data-editor-prefix]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        if (editor.readOnly || editor.disabled) { return; }
+        var start = editor.selectionStart, end = editor.selectionEnd;
+        var value = editor.value.slice(start, end) || 'Text';
+        var prefix = button.dataset.editorPrefix;
+        var changed = prefix === '\n---\n' ? prefix + value + '\n' : value.split('\n').map(function (line) { return prefix + line; }).join('\n');
+        editor.setRangeText(changed, start, end, 'select'); editor.focus(); refresh();
+      });
+    });
+    wrap.querySelectorAll('[data-editor-token]').forEach(function (button) {
+      button.addEventListener('click', function () { insertText(button.dataset.editorToken, false); });
+    });
+    editor.addEventListener('input', refresh);
+    refresh();
+  });
 })();
