@@ -103,6 +103,19 @@ function setup_check(): int
             return 1;
         }
     }
+    foreach (['app', 'database', 'docs', 'storage', 'tests', 'tools'] as $privateDirectory) {
+        $denyFile = APP_ROOT . '/' . $privateDirectory . '/.htaccess';
+        $denyRules = is_file($denyFile) ? (string) file_get_contents($denyFile) : '';
+        if (!str_contains($denyRules, 'Require all denied') || !str_contains($denyRules, 'Deny from all')) {
+            setup_out('FAIL: ' . $privateDirectory . '/.htaccess must deny direct web access. Do not expose the repository root as Apache DocumentRoot.');
+            return 1;
+        }
+    }
+    $publicRules = (string) file_get_contents(APP_ROOT . '/public/.htaccess');
+    if (!str_contains($publicRules, 'Options -Indexes')) {
+        setup_out('FAIL: public/.htaccess must disable directory indexes.');
+        return 1;
+    }
     setup_out('PASS: PHP ' . PHP_VERSION . ' and required extensions are available.');
     setup_out('PASS: Database migrations and local configuration template are present.');
     setup_out('NOTE: This preflight does not connect to MySQL or prove the site works in a browser.');
