@@ -209,7 +209,7 @@ function msit_demo_apply(): array
                      VALUES (?, ?, ?, ?, ?, ?, ?, \'email\', ?, ?, ?, ?, ?, NULL, 0, NULL)',
                     [
                         $residentNo, sprintf('DEMO ONLY - Sample Street %02d', $i + 1), $puroks[$i % count($puroks)],
-                        $activeStatus, 'Single', $noneType, sprintf('demo%02d@example.invalid', $i + 1),
+                        $activeStatus, $i % 2 === 0 ? 'Single' : 'Married', $noneType, sprintf('demo%02d@example.invalid', $i + 1),
                         $lastNames[$i], $first, $birthdates[$i], $i % 2 === 0 ? 'male' : 'female',
                         $i % 2 === 0 ? 'single' : 'married',
                     ]
