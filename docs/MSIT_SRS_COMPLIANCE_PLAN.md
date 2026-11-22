@@ -246,7 +246,7 @@ These are automated integration results against disposable CI databases. They ar
 
 **Release status:** implementation and automated integration coverage have advanced substantially, but the branch remains a draft and is **not yet declared fully MSIT-compliant or production-ready** until the manual acceptance steps above are complete.
 
-## 11. Security hardening reconciliation (2026-11-19)
+## 11. Security hardening reconciliation (updated 2026-11-22)
 
 ### Applicable PR #25 safeguards now reconciled on the MSIT branch
 
@@ -257,11 +257,11 @@ These are automated integration results against disposable CI databases. They ar
 - **CLI secrets:** the setup wizard and admin bootstrap use a shared hidden-input helper. Windows uses PowerShell `Read-Host -AsSecureString`; Unix-like terminals disable echo with `stty -echo` and restore it in a `finally` block. If a secure prompt cannot be established, the helper fails closed rather than reading the password visibly.
 - **Local vendor assets:** vendored Bootstrap was updated from 5.3.3 to 5.3.8 and Bootstrap Icons from 1.11.3 to 1.13.1. CSS, JavaScript, licenses and both icon font files were refreshed together; S3 verifies the versions and font presence.
 
-### Latest security reconciliation test result
+### Current security reconciliation evidence (2026-11-22)
 
-Run #952 on current branch head passed against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 263/263 module integration checks on each environment, with zero failures and zero untested checks. In addition to U9–U13 and S3, it includes B22-01 through B22-18 (queue/outbox commit safety, kiosk session and OTP isolation, QR privacy, touch sizing, SMS failure/unknown outcome handling and durable email fallback), B16-09 (public reference-tracker privacy), and B23-09/B23-10 (protection of all four required resident statuses from rename/hide). Attachment ownership and Chairman-signed PDF generation checks B8-4a/B8-5 also passed on both database versions. The temporary PDF fixture was successfully created; no dependent PDF checks were skipped.
+GitHub Actions run **#1046** validates application/test head `35f9b3cbfe9bc8d14565827d4b6b00289ed6c0a9` against disposable MariaDB 10.4 and 10.11 databases: 45/45 security/authentication/audit checks and 282/282 module integration checks on each environment, with zero failures and zero untested checks. This includes the refreshed U10 PHP runtime policy (PHP 8.2.36 only until 31 December 2026, 8.3.37, 8.4.28, 8.5.13 and stable 8.6.0), B17-11/B17-12 backup recovery cleanup and WebDAV MIME-type regressions, and the resident/document/blotter/venue/queue/reporting, role and privacy suites.
 
-The CI workflow saves the security and module test logs as separate GitHub Actions artifacts for 30 days, including failed runs. Run #952 retained separate test-report artifacts for MariaDB 10.4 (ID `14460758230`) and MariaDB 10.11 (ID `14460063509`). The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development failures remain visible in Actions history and were fixed and retested rather than hidden or deleted.
+The CI workflow saves separate security and module test reports for both MariaDB versions. The module runner records an unexpected module exception as FAIL, records assertions skipped after that exception as NOT TESTED, continues with later modules, prints the final failure/untested lists, and exits non-zero. The security runner also prints all recorded failed and untested checks. Earlier development failures remain visible in Actions history and were fixed and retested rather than hidden or deleted. Historical run #952 retained report artifacts for MariaDB 10.4 (ID `14460758230`) and MariaDB 10.11 (ID `14460063509`).
 
 ### Still requires target-machine or office acceptance
 
@@ -434,7 +434,7 @@ Expanded `tests/mod_b17.php` with:
 - **B17-12:** verifies WebDAV selects application/zip for ZIP archives and application/sql for SQL backups, and rejects unsupported names without contacting a server.
 - **U10:** refreshed PHP runtime guard boundaries for the 19 November 2026 security releases and stable PHP 8.6.0.
 
-GitHub Actions run **#1044** validates the current branch head `cc8ebd12a31426094e07186ba35ece38352e758c` on disposable MariaDB 10.4 and 10.11:
+GitHub Actions run **#1046** validates application/test head `35f9b3cbfe9bc8d14565827d4b6b00289ed6c0a9` on disposable MariaDB 10.4 and 10.11:
 
 | Database | Security/authentication/audit | Module integration |
 |---|---:|---:|
@@ -443,9 +443,9 @@ GitHub Actions run **#1044** validates the current branch head `cc8ebd12a3142609
 
 Both environments reported **zero failures and zero untested checks**. B17-01 through B17-12 and U10 passed on both versions. The ZIP extension is installed in CI specifically to execute the full archive tests.
 
-[View GitHub Actions run #1044](https://github.com/sachie34/Birms/actions/runs/45013028325)
+[View GitHub Actions run #1046](https://github.com/sachie34/Birms/actions/runs/45013283688)
 
-Earlier run #1033 passed 45/45 security and 280/280 module checks on both versions before B17-11/B17-12 and the refreshed runtime thresholds were added: [run #1033](https://github.com/sachie34/Birms/actions/runs/45011376303).
+Earlier run #1044 passed 45/45 security and 282/282 module checks on both versions before the additional PHP 8.2 end-of-support assertion was added: [run #1044](https://github.com/sachie34/Birms/actions/runs/45013028325).
 
 The first runs after the backup UI update (#1026–#1030) retained a failed B17-01 assertion because that test still expected the previous SQL-only page heading. The Admin/Chairman access result itself was not changed; B17-01 was updated to assert the new full-system restore heading and ZIP download control. The corrected run #1031 passed 45/45 security and 278/278 module checks on both databases; #1032 passed after adding file-format verification; #1033 then passed the expanded B17-09/B17-10 cases. Earlier failed runs remain visible in Actions history.
 
