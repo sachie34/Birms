@@ -50,6 +50,12 @@ jobs:
           grep -Fq '<FilesMatch "^\."' .htaccess
           grep -Fq 'Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
           grep -Fq 'RewriteRule (^|/)\.git(?:/|$) - [F,L]' .htaccess
+          grep -Fq 'Options -Indexes' public/.htaccess
+          for private_dir in app database docs storage tests tools; do
+            test -f "$private_dir/.htaccess"
+            grep -Fq 'Require all denied' "$private_dir/.htaccess"
+            grep -Fq 'Deny from all' "$private_dir/.htaccess"
+          done
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
