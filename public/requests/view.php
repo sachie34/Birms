@@ -12,15 +12,16 @@ $r = $id === null ? null : db_one('SELECT dr.*, r.last_name, r.first_name, r.mid
 if ($r === null || !request_visible_to_current_user($r)) { abort(404, 'That request was not found.'); }
 $moves = request_allowed_moves((string) $r['status'], (string) ($r['requirements_status'] ?? ''));
 $iss = db_one('SELECT issuance_id, reference_no FROM issuances WHERE request_id = ?', [$id]);
+$draft = certificate_draft_for_request($id);
 $attachments = attachments_for_parent('request', $id);
 $blockers = [];
-if ($r['status'] === 'Ready' && can('certificates.issue')) { $ir = issuable_request($id); $blockers = $ir ? certificate_blockers($ir, certificate_vars($ir)) : []; }
+if ($r['status'] === 'Ready' && can('certificates.issue') && $draft === null) { $ir = issuable_request($id); $blockers = $ir ? certificate_blockers($ir, certificate_vars($ir)) : []; }
 $history = db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'request' AND entity_id = ? ORDER BY audit_id DESC LIMIT 20", [$id]);
 
 render_header((string) $r['reference_no'], [['Request Tracker', 'requests/index.php'], [(string) $r['reference_no'], null]], 'requests');
 $canEditRequest = can('requests.edit') && ($r['status'] === 'Pending' || ($r['status'] === 'Review' && can('requests.review')));
 $actions = $canEditRequest ? btn_link('requests/form.php?id=' . $id, 'Edit', 'btn-light border', 'bi-pencil') : '';
-if ($r['status'] === 'Ready' && can('certificates.issue')) { $actions .= btn_link('certificates/issue.php?request=' . $id, 'Issue certificate', 'btn-primary', 'bi-file-earmark-check'); }
+if ($r['status'] === 'Ready' && can('certificates.issue')) { $actions .= btn_link('certificates/issue.php?request=' . $id, $draft !== null ? 'Review generated draft' : 'Review certificate generation', 'btn-primary', 'bi-file-earmark-check'); }
 if ($iss && can('certificates.history')) {
     $actions .= btn_link(
         'certificates/print.php?id=' . (int) $iss['issuance_id'],
@@ -58,7 +59,10 @@ if (in_array($currentStatus, ['Rejected', 'Cancelled'], true)) {
     }
     echo '</ol></div></section>';
 }
-if ($blockers) { echo '<div class="alert alert-warning"><strong>Cannot be issued yet:</strong><ul class="mb-0">'; foreach ($blockers as $bk) { echo '<li>' . e($bk) . '</li>'; } echo '</ul></div>'; }
+if ($draft !== null && $r['status'] === 'Ready') {
+    echo '<div class="alert alert-success" role="status"><strong>Certificate draft generated automatically.</strong> Staff can review the saved wording and resident details, then release it. No issuance or payment has been recorded yet.</div>';
+}
+if ($blockers) { echo '<div class="alert alert-warning"><strong>Cannot be approved yet:</strong><ul class="mb-0">'; foreach ($blockers as $bk) { echo '<li>' . e($bk) . '</li>'; } echo '</ul></div>'; }
 // Background check for clearances: possible blotter records under this name. A hint only; it never blocks the request.
 if (can('blotters.view') && stripos((string) $r['type_name'], 'clearance') !== false) {
     $hits = blotter_matches_for_resident($r);
