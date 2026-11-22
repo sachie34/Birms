@@ -10,7 +10,7 @@ It never touches your original `barangay_db`.
 1. Download the [MSIT branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
-4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–018), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
+4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–019), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
 5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
@@ -59,7 +59,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   On this branch the migration runner applies the numbered migrations through 018, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, notification outbox and blotter no-delete protections. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
+   On this branch the migration runner applies the numbered migrations through 019, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, notification outbox and blotter no-delete protections. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
