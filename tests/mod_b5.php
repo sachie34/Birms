@@ -147,10 +147,10 @@ function run_b5(array $S, string $base): void
     $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $clk->get('/requests/view.php?id=' . $r2);
     record('B5-16', 'Request view links the certificate; Staff sees Issue for a Ready request; the resident view lists issued documents',
         str_contains($rv['body'], (string) $row['reference_no'])
-        && $rReady2['status'] === 200 && str_contains($rReady2['body'], 'Issue certificate')
+        && $rReady2['status'] === 200 && str_contains($rReady2['body'], 'Review generated draft')
         && str_contains($rr['body'], 'ZZ Test Cert Paid'),
         'issued-link=' . (str_contains($rv['body'], (string) $row['reference_no']) ? 'yes' : 'no')
-        . '; staff-issue=' . (str_contains($rReady2['body'], 'Issue certificate') ? 'yes' : 'no')
+        . '; staff-issue=' . (str_contains($rReady2['body'], 'Review generated draft') ? 'yes' : 'no')
         . '; resident-doc=' . (str_contains($rr['body'], 'ZZ Test Cert Paid') ? 'yes' : 'no')
         . '; resident-page=' . $rr['status']);
 
@@ -183,6 +183,7 @@ function run_b5(array $S, string $base): void
         db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM certificate_drafts WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
     }
     db_exec("DELETE FROM notification_outbox WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTest5%')");
