@@ -23,13 +23,14 @@ Those hosted tests do **not** prove that Apache's PHP binary on the target XAMPP
 
 ## 3. Confirm the PHP version used by both CLI and Apache
 
-As of 19 November 2026, the application guard accepts these patched branches:
-- PHP 8.3.36 or later within 8.3
-- PHP 8.4.27 or later within 8.4
-- PHP 8.5.12 or later within 8.5
-- PHP 8.2.35 or later only through 31 December 2026; PHP 8.2 must be upgraded before that date
+As of 19 November 2026, the application guard requires these stable/security-patched branches:
+- PHP 8.6.0 or later within 8.6
+- PHP 8.5.13 or later within 8.5
+- PHP 8.4.28 or later within 8.4
+- PHP 8.3.37 or later within 8.3
+- PHP 8.2.36 or later only through 31 December 2026; PHP 8.2 must be upgraded before that date
 
-PHP 8.1 and older are rejected. Prefer PHP 8.3 or newer. See the [official PHP supported versions](https://www.php.net/supported-versions.php) and [PHP 2026 security release archive](https://www.php.net/archive/2026.php).
+PHP 8.1 and older are rejected. Prefer a current supported branch; PHP 8.6.0 is stable, but this repository's automated matrix has not yet tested PHP 8.6, so verify it separately before adopting it on the XAMPP target. The PHP team published the listed security updates and the first stable PHP 8.6.0 on 19 November 2026. See the [official PHP supported versions](https://www.php.net/supported-versions.php) and [PHP 2026 security release archive](https://www.php.net/archive/2026.php).
 
 Open Command Prompt and run from the MSIT branch folder:
 
