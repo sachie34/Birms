@@ -560,6 +560,52 @@ function backup_full_require_zip(): void
     }
 }
 
+/**
+ * Create a private pre-restore SQL snapshot and clean it up on every preparation failure.
+ *
+ * @param callable(resource):void $writeSnapshot Writes the current database to the supplied stream.
+ * @return array{path:string,sql:string}
+ */
+function backup_full_create_safety_snapshot(callable $writeSnapshot): array
+{
+    $path = tempnam(sys_get_temp_dir(), 'birms-full-before-restore-');
+    if ($path === false) {
+        throw new RuntimeException('A pre-restore database safety snapshot could not be created.');
+    }
+
+    $out = fopen($path, 'wb');
+    if ($out === false) {
+        @unlink($path);
+        throw new RuntimeException('The pre-restore database safety snapshot could not be opened.');
+    }
+
+    try {
+        try {
+            $writeSnapshot($out);
+        } finally {
+            if (is_resource($out)) { fclose($out); }
+        }
+
+        $size = filesize($path);
+        if ($size === false || $size < 32 || $size > BACKUP_RESTORE_MAX_BYTES) {
+            throw new RuntimeException('The current database is too large for the automatic pre-restore safety snapshot. Restore was not started.');
+        }
+
+        $sql = file_get_contents($path);
+        if (!is_string($sql) || $sql === '') {
+            throw new RuntimeException('The pre-restore database safety snapshot could not be read. Restore was not started.');
+        }
+
+        return ['path' => $path, 'sql' => $sql];
+    } catch (Throwable $e) {
+        if (is_resource($out)) { fclose($out); }
+        if (is_file($path) && !@unlink($path)) {
+            error_log('BIRMS could not remove an incomplete pre-restore safety snapshot at ' . $path);
+        }
+        throw $e;
+    }
+}
+
 /** Accept only application-owned private file paths; archive paths are never trusted as filesystem paths. */
 function backup_full_relative_path_is_allowed(string $relative): bool
 {
@@ -1096,25 +1142,13 @@ function backup_full_system_restore_staged(array $staged): array
     $createdFiles = [];
     $databaseRestoreStarted = false;
     $preserveSafety = false;
-    $safetyPath = tempnam(sys_get_temp_dir(), 'birms-full-before-restore-');
-    if ($safetyPath === false) { throw new RuntimeException('A pre-restore database safety snapshot could not be created.'); }
-    $safetyOut = fopen($safetyPath, 'wb');
-    if ($safetyOut === false) { @unlink($safetyPath); throw new RuntimeException('The pre-restore database safety snapshot could not be opened.'); }
-    try {
-        backup_write_sql_export($safetyOut, backup_table_names());
-    } finally {
-        fclose($safetyOut);
-    }
-    $safetySize = filesize($safetyPath);
-    if ($safetySize === false || $safetySize < 32 || $safetySize > BACKUP_RESTORE_MAX_BYTES) {
-        @unlink($safetyPath);
-        throw new RuntimeException('The current database is too large for the automatic pre-restore safety snapshot. Restore was not started.');
-    }
-    $safetySql = file_get_contents($safetyPath);
-    if (!is_string($safetySql) || $safetySql === '') {
-        @unlink($safetyPath);
-        throw new RuntimeException('The pre-restore database safety snapshot could not be read. Restore was not started.');
-    }
+    $safetySnapshot = backup_full_create_safety_snapshot(
+        static function ($stream): void {
+            backup_write_sql_export($stream, backup_table_names());
+        }
+    );
+    $safetyPath = $safetySnapshot['path'];
+    $safetySql = $safetySnapshot['sql'];
 
     try {
         // Preflight conflicts before changing the database. Existing identical files are safe to reuse.
