@@ -77,7 +77,7 @@ function msit_demo_marker_counts(): array
 {
     return [
         'residents' => (int) db_val("SELECT COUNT(*) FROM residents WHERE resident_no LIKE 'DEMO-RES-%'"),
-        'document_types' => (int) db_val("SELECT COUNT(*) FROM document_types WHERE name LIKE 'DEMO ONLY - %'"),
+        'document_types' => (int) db_val("SELECT COUNT(*) FROM document_types WHERE name IN ('DEMO ONLY - Barangay Clearance', 'DEMO ONLY - Certificate of Residency', 'DEMO ONLY - Certificate of Indigency')"),
         'requests' => (int) db_val("SELECT COUNT(*) FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%'"),
         'drafts' => (int) db_val("SELECT COUNT(*) FROM certificate_drafts d JOIN document_requests r ON r.request_id = d.request_id WHERE r.reference_no LIKE 'DEMO-DOC-%'"),
         'issuances' => (int) db_val("SELECT COUNT(*) FROM issuances WHERE reference_no LIKE 'CERT-%' AND request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%')"),
