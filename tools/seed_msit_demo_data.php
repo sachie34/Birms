@@ -99,6 +99,17 @@ function msit_demo_has_markers(array $c): bool
     }
     return false;
 }
+function msit_demo_unique_certificate_reference(int $start): string
+{
+    $year = (int) date('Y');
+    for ($number = max(9001, $start); $number < 999999; $number++) {
+        $reference = sprintf('CERT-%d-%04d', $year, $number);
+        $exists = (int) db_val('SELECT COUNT(*) FROM certificate_drafts WHERE certificate_reference_no = ?', [$reference])
+            + (int) db_val('SELECT COUNT(*) FROM issuances WHERE reference_no = ?', [$reference]);
+        if ($exists === 0) { return $reference; }
+    }
+    throw new RuntimeException('Could not allocate a unique reserved demo certificate reference.');
+}
 function msit_demo_template(string $type, string $body): string
 {
     return "# DEMO ONLY — NOT AN OFFICIAL DOCUMENT\n"
@@ -232,7 +243,7 @@ function msit_demo_apply(): array
             );
         }
 
-        $draftReference = sprintf('CERT-%d-9001', (int) date('Y'));
+        $draftReference = msit_demo_unique_certificate_reference(9001);
         $draftBody = render_template((string) $typeDefinitions[1][1], [
             'full_name' => $firstNames[1] . ' ' . $lastNames[1], 'age' => '38', 'civil_status' => 'Married',
             'address' => 'DEMO ONLY - Sample Street 02', 'purok' => lookup_label($puroks[1 % count($puroks)]),
@@ -253,7 +264,7 @@ function msit_demo_apply(): array
              '[DEMO ONLY] Software demonstration', $draftBody]
         );
 
-        $issuedReference = sprintf('CERT-%d-9002', (int) date('Y'));
+        $issuedReference = msit_demo_unique_certificate_reference((int) substr($draftReference, strrpos($draftReference, '-') + 1) + 1);
         $issuedBody = render_template((string) $typeDefinitions[0][1], [
             'full_name' => $firstNames[3] . ' ' . $lastNames[3], 'age' => '28', 'civil_status' => 'Married',
             'address' => 'DEMO ONLY - Sample Street 04', 'purok' => lookup_label($puroks[3 % count($puroks)]),
