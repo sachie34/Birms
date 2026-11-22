@@ -156,6 +156,10 @@ record('U11', 'Setup/admin password input uses the shared hidden-input helper in
     && !str_contains($setupPromptSource, 'input is visible')
     && !str_contains($adminPromptSource, 'it is visible on Windows'));
 
+record('U13', 'XAMPP setup preflight requires ZIP support for complete system backup and restore',
+    str_contains($setupPromptSource, "['pdo_mysql', 'fileinfo', 'zip']")
+    && str_contains($setupPromptSource, 'zip is required for complete system backup/restore'));
+
 $resultsBeforeReporterProbe = $results;
 $results = [];
 ob_start();
