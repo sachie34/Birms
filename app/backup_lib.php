@@ -1056,7 +1056,7 @@ function backup_full_system_restore_staged(array $staged): array
     backup_restore_parse($sql, backup_table_names());
 
     $createdFiles = [];
-    $databaseApplied = false;
+    $databaseRestoreStarted = false;
     $preserveSafety = false;
     $safetyPath = tempnam(sys_get_temp_dir(), 'birms-full-before-restore-');
     if ($safetyPath === false) { throw new RuntimeException('A pre-restore database safety snapshot could not be created.'); }
@@ -1090,8 +1090,8 @@ function backup_full_system_restore_staged(array $staged): array
             }
         }
 
+        $databaseRestoreStarted = true;
         backup_restore_apply($sql);
-        $databaseApplied = true;
 
         foreach ($files as $file) {
             $target = backup_full_target_details((string) $file['path'], true);
@@ -1102,6 +1102,7 @@ function backup_full_system_restore_staged(array $staged): array
             if ($input === false) { throw new RuntimeException('A staged private restore file could not be opened.'); }
             $output = @fopen($target['path'], 'xb');
             if ($output === false) { fclose($input); throw new RuntimeException('A private restore destination could not be created safely.'); }
+            $createdFiles[] = $target['path'];
             try {
                 if (stream_copy_to_stream($input, $output) !== (int) $file['size']) {
                     throw new RuntimeException('A private restore file was copied incompletely.');
@@ -1113,10 +1114,8 @@ function backup_full_system_restore_staged(array $staged): array
             @chmod($target['path'], 0640);
             $installedHash = hash_file('sha256', $target['path']);
             if (!is_string($installedHash) || !hash_equals((string) $file['sha256'], $installedHash)) {
-                @unlink($target['path']);
                 throw new RuntimeException('A private restore file failed its post-copy SHA-256 check.');
             }
-            $createdFiles[] = $target['path'];
         }
 
         backup_full_verify_database_files();
@@ -1127,7 +1126,7 @@ function backup_full_system_restore_staged(array $staged): array
         ];
     } catch (Throwable $e) {
         $recoveryFailed = false;
-        if ($databaseApplied) {
+        if ($databaseRestoreStarted) {
             try {
                 backup_restore_apply($safetySql);
             } catch (Throwable $recoveryError) {
