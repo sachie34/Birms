@@ -81,7 +81,7 @@ function msit_demo_marker_counts(): array
         'requests' => (int) db_val("SELECT COUNT(*) FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%'"),
         'drafts' => (int) db_val("SELECT COUNT(*) FROM certificate_drafts d JOIN document_requests r ON r.request_id = d.request_id WHERE r.reference_no LIKE 'DEMO-DOC-%'"),
         'issuances' => (int) db_val("SELECT COUNT(*) FROM issuances WHERE reference_no LIKE 'CERT-%' AND request_id IN (SELECT request_id FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%')"),
-        'blotters' => (int) db_val("SELECT COUNT(*) FROM blotters WHERE case_no LIKE 'DEMO-BLT-%'"),
+        'blotters' => (int) db_val("SELECT COUNT(*) FROM blotters WHERE case_no LIKE 'MSIT-DEMO-BLT-%'"),
         'venues' => (int) db_val("SELECT COUNT(*) FROM venues WHERE name LIKE 'DEMO ONLY - %'"),
         'reservations' => (int) db_val("SELECT COUNT(*) FROM venue_reservations WHERE reference_no LIKE 'DEMO-VEN-%'"),
         'queues' => (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%'"),
@@ -299,7 +299,7 @@ function msit_demo_apply(): array
             );
         }
 
-        $caseRefs = ['DEMO-BLT-0001','DEMO-BLT-0002','DEMO-BLT-0003'];
+        $caseRefs = ['MSIT-DEMO-BLT-0001','MSIT-DEMO-BLT-0002','MSIT-DEMO-BLT-0003'];
         $caseStatuses = ['Ongoing','Unresolved','Resolved'];
         foreach ($caseRefs as $i => $caseRef) {
             db_exec(
