@@ -223,7 +223,7 @@ function msit_demo_apply(): array
             $requestIds[] = (int) db()->lastInsertId();
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, request_id)
-                 VALUES (\\'documents\\', ?, NULL, ?, NULL, \\'[DEMO ONLY] Seeded presentation example.\\', ?)',
+                 VALUES (\'documents\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
                 [$ref, $publicStatus, $requestIds[$i]]
             );
         }
@@ -243,7 +243,7 @@ function msit_demo_apply(): array
              (request_id, resident_id, type_id, request_reference_no, certificate_reference_no, resident_name, type_name,
               purpose, fee_amount, body_text, captain_name, signature_text, chairman_signature_path, generated_by,
               generated_by_name, generated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, NULL, NULL, NULL, NULL, \\'DEMO DATA\\', NOW())',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, NULL, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
             [$requestIds[1], $residents[1], $typeIds[1], 'DEMO-DOC-READY-01', $draftReference,
              $firstNames[1] . ' ' . $lastNames[1], 'DEMO ONLY - Certificate of Residency',
              '[DEMO ONLY] Software demonstration', $draftBody]
@@ -263,7 +263,7 @@ function msit_demo_apply(): array
             'INSERT INTO issuances
              (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number,
               body_text, captain_name, signature_text, chairman_signature_path, issued_by, issued_by_name, issued_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, NULL, ?, NULL, NULL, NULL, NULL, \\'DEMO DATA\\', NOW())',
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, NULL, ?, NULL, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
             [$issuedReference, $requestIds[3], $residents[3], $typeIds[0],
              $firstNames[3] . ' ' . $lastNames[3], 'DEMO ONLY - Barangay Clearance',
              '[DEMO ONLY] Previously issued sample', $issuedBody]
@@ -274,7 +274,7 @@ function msit_demo_apply(): array
             ['DEMO ONLY - Covered Court', 'Fictitious sample venue for availability and reservation demonstrations.'],
             ['DEMO ONLY - Multi-purpose Hall', 'Fictitious sample venue for availability and reservation demonstrations.'],
         ] as [$name, $description]) {
-            db_exec('INSERT INTO venues (name, description, availability_override, is_active, created_by) VALUES (?, ?, \\'automatic\\', 1, NULL)', [$name, $description]);
+            db_exec('INSERT INTO venues (name, description, availability_override, is_active, created_by) VALUES (?, ?, \'automatic\', 1, NULL)', [$name, $description]);
             $venues[] = (int) db()->lastInsertId();
         }
         $tomorrow = (new DateTimeImmutable('tomorrow'))->format('Y-m-d');
@@ -290,7 +290,7 @@ function msit_demo_apply(): array
             );
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, reservation_id)
-                 VALUES (\\'venue\\', ?, NULL, ?, NULL, \\'[DEMO ONLY] Seeded presentation example.\\', ?)',
+                 VALUES (\'venue\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
                 [$ref, $venueStatuses[$i], (int) db()->lastInsertId()]
             );
         }
@@ -313,13 +313,13 @@ function msit_demo_apply(): array
             $caseId = (int) db()->lastInsertId();
             db_exec(
                 'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number)
-                 VALUES (?, \\'Complainant\\', ?, 30, ?, NULL), (?, \\'Respondent\\', ?, 31, ?, NULL)',
+                 VALUES (?, \'Complainant\', ?, 30, ?, NULL), (?, \'Respondent\', ?, 31, ?, NULL)',
                 [$caseId, $firstNames[$i] . ' ' . $lastNames[$i], 'DEMO ONLY - Sample Address ' . ($i + 1),
                  $caseId, 'DemoRespondent' . ($i + 1), 'DEMO ONLY - Sample Address ' . ($i + 2)]
             );
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
-                 VALUES (\\'blotter\\', ?, NULL, ?, NULL, \\'[DEMO ONLY] Seeded presentation example.\\', ?)',
+                 VALUES (\'blotter\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
                 [$caseRef, $caseStatuses[$i], $caseId]
             );
         }
@@ -334,7 +334,7 @@ function msit_demo_apply(): array
             db_exec(
                 'INSERT INTO queue_entries
                  (service, queue_date, queue_number, resident_id, reference_no, purpose, status, issued_via, notification_preference)
-                 VALUES (?, CURDATE(), ?, ?, ?, ?, \\'Waiting\\', \\'staff\\', \\'email\\')',
+                 VALUES (?, CURDATE(), ?, ?, ?, ?, \'Waiting\', \'staff\', \'email\')',
                 [$service, $next, $residentId, $reference, $purpose]
             );
         }
