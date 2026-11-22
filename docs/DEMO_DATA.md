@@ -44,7 +44,7 @@ Every sample document prominently says DEMO ONLY — NOT AN OFFICIAL DOCUMENT. D
 
 ## Edit templates
 
-Open System Settings → Documents and fees. The document editor supports bold, italic, underline, headings, bullet/numbered lists, dividers, resident/request placeholders and a live preview. Saved formatting is used by the certificate print and PDF views. The editor intentionally provides a focused document-template workflow, not a complete replacement for Microsoft Word.
+Open System Settings → Documents and fees as Admin or Secretary. Secretary can edit document templates and fees, while general system settings remain Admin-only. The document editor supports bold, italic, underline, headings, bullet/numbered lists, dividers, resident/request placeholders and a live preview. Saved formatting is used by the certificate print and PDF views. The editor intentionally provides a focused document-template workflow, not a complete replacement for Microsoft Word.
 
 An automatically generated certificate draft is a snapshot. Editing a template later does not rewrite a saved draft or an already issued certificate.
 
