@@ -210,8 +210,8 @@ function msit_demo_apply(): array
                     [
                         $residentNo, sprintf('DEMO ONLY - Sample Street %02d', $i + 1), $puroks[$i % count($puroks)],
                         $activeStatus, 'Single', $noneType, sprintf('demo%02d@example.invalid', $i + 1),
-                        $lastNames[$i], $first, $birthdates[$i], $i % 2 === 0 ? 'Male' : 'Female',
-                        $i % 2 === 0 ? 'Single' : 'Married',
+                        $lastNames[$i], $first, $birthdates[$i], $i % 2 === 0 ? 'male' : 'female',
+                        $i % 2 === 0 ? 'single' : 'married',
                     ]
                 );
                 $residents[] = (int) db()->lastInsertId();
@@ -219,10 +219,10 @@ function msit_demo_apply(): array
         }
 
         $docSpecs = [
-            ['DEMO-DOC-PENDING-01', 0, 'Pending', 'Pending', 'Not checked'],
-            ['DEMO-DOC-READY-01', 1, 'Ready', 'Approved', 'Complete'],
-            ['DEMO-DOC-REJECT-01', 2, 'Rejected', 'Rejected', 'Complete'],
-            ['DEMO-DOC-ISSUED-01', 0, 'Claimed', 'Released', 'Complete'],
+            ['DEMO-DOC-PENDING-01', 0, 'pending', 'pending', 'not checked'],
+            ['DEMO-DOC-READY-01', 1, 'ready', 'approved', 'complete'],
+            ['DEMO-DOC-REJECT-01', 2, 'rejected', 'rejected', 'complete'],
+            ['DEMO-DOC-ISSUED-01', 0, 'claimed', 'released', 'complete'],
         ];
         $requestIds = [];
         foreach ($docSpecs as $i => [$ref, $typeIndex, $legacyStatus, $publicStatus, $requirements]) {
@@ -239,7 +239,7 @@ function msit_demo_apply(): array
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, request_id)
                  VALUES (\'documents\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
-                [$ref, $publicStatus, $requestIds[$i]]
+                [$ref, ucfirst($publicStatus), $requestIds[$i]]
             );
         }
 
@@ -294,7 +294,7 @@ function msit_demo_apply(): array
         }
         $tomorrow = (new DateTimeImmutable('tomorrow'))->format('Y-m-d');
         $venueRefs = ['DEMO-VEN-0001', 'DEMO-VEN-0002'];
-        $venueStatuses = ['Approved', 'Pending'];
+        $venueStatuses = ['approved', 'pending'];
         foreach ($venueRefs as $i => $ref) {
             db_exec(
                 'INSERT INTO venue_reservations
@@ -306,12 +306,12 @@ function msit_demo_apply(): array
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, reservation_id)
                  VALUES (\'venue\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
-                [$ref, $venueStatuses[$i], (int) db()->lastInsertId()]
+                [$ref, ucfirst($venueStatuses[$i]), (int) db()->lastInsertId()]
             );
         }
 
         $caseRefs = ['MSIT-DEMO-BLT-0001','MSIT-DEMO-BLT-0002','MSIT-DEMO-BLT-0003'];
-        $caseStatuses = ['Ongoing','Unresolved','Resolved'];
+        $caseStatuses = ['ongoing','unresolved','resolved'];
         foreach ($caseRefs as $i => $caseRef) {
             db_exec(
                 'INSERT INTO blotters
@@ -321,21 +321,21 @@ function msit_demo_apply(): array
                 [$caseRef, date('Y-m-d', strtotime('-' . ($i + 1) . ' days')), '09:30:00',
                  'DEMO ONLY - Sample location ' . ($i + 1), $puroks[$i % count($puroks)], $incidentType,
                  '[DEMO ONLY] Fictitious incident narrative created only to demonstrate the blotter workflow.',
-                 $i === 2 ? 'Resolved' : 'Active', $caseStatuses[$i],
+                 $i === 2 ? 'resolved' : 'active', $caseStatuses[$i],
                  $i === 2 ? '[DEMO ONLY] Sample resolution note.' : null,
                  $i === 2 ? date('Y-m-d H:i:s') : null]
             );
             $caseId = (int) db()->lastInsertId();
             db_exec(
                 'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number)
-                 VALUES (?, \'Complainant\', ?, 30, ?, NULL), (?, \'Respondent\', ?, 31, ?, NULL)',
+                 VALUES (?, \'complainant\', ?, 30, ?, NULL), (?, \'respondent\', ?, 31, ?, NULL)',
                 [$caseId, $firstNames[$i] . ' ' . $lastNames[$i], 'DEMO ONLY - Sample Address ' . ($i + 1),
                  $caseId, 'DemoRespondent' . ($i + 1), 'DEMO ONLY - Sample Address ' . ($i + 2)]
             );
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
                  VALUES (\'blotter\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
-                [$caseRef, $caseStatuses[$i], $caseId]
+                [$caseRef, ucfirst($caseStatuses[$i]), $caseId]
             );
         }
 
@@ -349,7 +349,7 @@ function msit_demo_apply(): array
             db_exec(
                 'INSERT INTO queue_entries
                  (service, queue_date, queue_number, resident_id, reference_no, purpose, status, issued_via, notification_preference)
-                 VALUES (?, CURDATE(), ?, ?, ?, ?, \'Waiting\', \'staff\', \'email\')',
+                 VALUES (?, CURDATE(), ?, ?, ?, ?, \'waiting\', \'staff\', \'email\')',
                 [$service, $next, $residentId, $reference, $purpose]
             );
         }
