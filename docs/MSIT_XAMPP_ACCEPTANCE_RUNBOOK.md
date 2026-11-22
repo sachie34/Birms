@@ -6,6 +6,8 @@
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
 > This is the acceptance runbook for the MSIT branch, not the older B1–B12 `main` presentation build. Download the [MSIT branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip). Do not use the `main` ZIP for these checks.
+>
+> For a real office installation, also follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md). The XAMPP setup wizard provisions only the isolated working/demo database; it is not the production database procedure.
 
 ## 1. What is and is not verified
 
