@@ -359,3 +359,41 @@ Both environments reported **zero failures and zero untested checks**. All three
 These tests establish the application-level photo flow against the disposable CI environment. They do not replace manual confirmation that the target XAMPP PC has writable private storage and correct Apache permissions.
 
 **Release decision:** B25 adds automated resident-photo upload, validation, protected retrieval and replacement coverage. The full local XAMPP, kiosk/LAN, real notification, backup/restore, performance and office acceptance gates remain mandatory and **Not run here**. Keep PR #34 as a draft until those gates have evidence.
+
+## 15. Backup restore integrity validation (2026-11-22)
+
+### Restore validation strengthened
+
+- Added `backup_restore_assert_foreign_keys_valid()` to `app/backup_lib.php`. The restore path now checks every declared foreign-key relationship against the restored rows before its transaction commits.
+- This explicit check is necessary because the restore temporarily disables `FOREIGN_KEY_CHECKS` for ordered bulk replacement; turning that session setting back on does not retroactively validate rows inserted while it was disabled.
+- The validator reads the active database's foreign-key metadata, validates SQL identifiers before composing relationship checks, and refuses to commit when non-null child references have no matching parent row.
+- Existing safeguards remain covered: restore is Admin-only, requires CSRF and exact database-name confirmation, rejects arbitrary SQL, retains current table definitions, and refuses stale snapshots that would delete permanent blotter cases.
+
+### Regression coverage
+
+Expanded `tests/mod_b17.php`:
+
+- **B17-05:** creates a valid snapshot, adds a synthetic permanent blotter case afterward, and verifies the older snapshot is refused rather than erasing that newer case. The synthetic case is rolled back in the test transaction.
+- **B17-06:** creates a valid resident-verification challenge, tampers with the backup so its `resident_id` points to a nonexistent resident, and verifies restore is refused. The test confirms the post-snapshot setting and original challenge relationship remain intact.
+
+### Automated validation
+
+GitHub Actions run **#1021** validates commit `0b8525e6c05b755450d2d0a53acb1c764ec46f29` on disposable MariaDB 10.4 and 10.11 environments:
+
+| Database | Security/authentication/audit | Module integration |
+|---|---:|---:|
+| MariaDB 10.4 | 45/45 passed | 276/276 passed |
+| MariaDB 10.11 | 45/45 passed | 276/276 passed |
+
+Both environments reported **zero failures and zero untested checks**. B17-01 through B17-06 passed on both database versions, including a normal valid restore, stale-blotter protection, and rollback after the deliberately orphaned resident reference.
+
+[View GitHub Actions run #1021](https://github.com/sachie34/Birms/actions/runs/45005687487)
+
+### Remaining backup and release limitations
+
+- The SQL export does **not** include private uploaded files. The private attachment directory and Chairman signature image must be backed up separately and restored with the matching database snapshot; that combined file-and-database restore has not been demonstrated here.
+- Scheduled backups and backup notifications are not implemented.
+- The new integrity checks are verified in CI against disposable MariaDB databases. A restore rehearsal on the target Windows/XAMPP setup into a separate scratch database, including verification of private files, remains **NOT RUN**.
+- Other target acceptance gates remain **NOT RUN**: Apache's actual PHP runtime, browser-based role journeys, physical kiosk/touchscreen, phone QR/LAN, actual email/SMS delivery, official certificate/print approval, representative-data performance, offline-LAN operation and office UAT.
+
+**Release decision:** The backup restore path now has automated foreign-key integrity and stale-blotter regression coverage on both CI database versions. This does not make the file backup complete or replace the target-machine restore rehearsal. Keep PR #34 as a draft until the remaining manual gates have evidence.
