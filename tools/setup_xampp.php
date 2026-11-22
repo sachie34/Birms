@@ -83,6 +83,7 @@ function setup_check(): int
     }
     $requiredFiles = [
         '/database/migrations/001_core.sql',
+        '/database/migrations/019_certificate_draft_generation.sql',
         '/app/bootstrap.php',
         '/app/core.php',
         '/app/sms_provider.php',
