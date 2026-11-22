@@ -6,7 +6,7 @@ function run_b2(array $S, string $base): void
 {
     $snapKeys = ['barangay_name', 'municipality', 'province', 'captain_name', 'secretary_name', 'age_brackets', 'sms_ready_text'];
     $snap = []; foreach ($snapKeys as $k) { $snap[$k] = db_val('SELECT setting_value FROM settings WHERE setting_key = ?', [$k]); }
-    $types = db_all('SELECT type_id, fee_amount, template_body, is_active FROM document_types');
+    $types = db_all('SELECT type_id, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types');
 
     $bad = ''; foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'sms'] as $tab) { [$ok, $why] = rbac_page($S, '/admin/settings.php?tab=' . $tab, 'settings.view'); if (!$ok) { $bad .= "{$tab}: {$why}"; } }
     record('B2-1', 'Settings pages: Admin and Secretary can view; Chairman and Staff are denied', $bad === '', $bad);
@@ -130,7 +130,7 @@ function run_b2(array $S, string $base): void
 
     // cleanup: put everything back
     foreach ($snap as $k => $v) { db_exec('UPDATE settings SET setting_value = ? WHERE setting_key = ?', [$v, $k]); }
-    foreach ($types as $t) { db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ? WHERE type_id = ?', [$t['fee_amount'], $t['template_body'], $t['is_active'], $t['type_id']]); }
+    foreach ($types as $t) { db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ?, requires_chairman_signature = ? WHERE type_id = ?', [$t['fee_amount'], $t['template_body'], $t['is_active'], $t['requires_chairman_signature'], $t['type_id']]); }
     if (isset($feeRuleId) && $feeRuleId > 0) { db_exec('DELETE FROM fee_matrix WHERE fee_rule_id = ?', [$feeRuleId]); }
     db_exec("DELETE FROM lookups WHERE label LIKE 'ZZ Test%'");
 }
