@@ -92,7 +92,10 @@ function msit_demo_is_complete(array $c): bool
 }
 function msit_demo_has_markers(array $c): bool
 {
-    foreach ($c as $n) { if ($n > 0) { return true; } }
+    // Existing demo-only document types may be safely reused and refreshed.
+    foreach ($c as $key => $n) {
+        if ($key !== 'document_types' && $n > 0) { return true; }
+    }
     return false;
 }
 function msit_demo_template(string $type, string $body): string
@@ -130,33 +133,74 @@ function msit_demo_apply(): array
         ];
         $typeIds = [];
         foreach ($typeDefinitions as $i => [$name, $body]) {
-            db_exec(
-                'INSERT INTO document_types (name, fee_amount, template_body, is_active, requires_chairman_signature, sort_order) VALUES (?, 0.00, ?, 1, 0, ?)',
-                [$name, $body, 9900 + $i]
-            );
-            $typeIds[] = (int) db()->lastInsertId();
+            $existingTypeId = db_val('SELECT type_id FROM document_types WHERE name = ?', [$name]);
+            if ($existingTypeId !== null) {
+                // Only reserved DEMO ONLY types are refreshed; official document types are never touched.
+                db_exec(
+                    'UPDATE document_types SET fee_amount = 0.00, template_body = ?, is_active = 1, requires_chairman_signature = 0 WHERE type_id = ?',
+                    [$body, (int) $existingTypeId]
+                );
+                $typeIds[] = (int) $existingTypeId;
+            } else {
+                db_exec(
+                    'INSERT INTO document_types (name, fee_amount, template_body, is_active, requires_chairman_signature, sort_order) VALUES (?, 0.00, ?, 1, 0, ?)',
+                    [$name, $body, 9900 + $i]
+                );
+                $typeIds[] = (int) db()->lastInsertId();
+            }
         }
 
         $residents = [];
-        $firstNames = ['DemoAlex','DemoJamie','DemoCasey','DemoMorgan','DemoRiley','DemoTaylor'];
-        $lastNames = ['SampleRivera','SampleSantos','SampleCruz','SampleReyes','SampleGarcia','SampleMendoza'];
-        $birthdates = ['1992-04-12','1988-09-30','2001-03-15','1998-10-06','1979-01-22','1995-07-11'];
-        foreach ($firstNames as $i => $first) {
-            $residentNo = sprintf('DEMO-RES-%04d', $i + 1);
-            db_exec(
-                'INSERT INTO residents
-                 (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
-                  email_address, notification_preference, last_name, first_name, birthdate, sex, civil_status,
-                  household_id, is_household_head, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, \\'email\\', ?, ?, ?, ?, ?, NULL, 0, NULL)',
-                [
-                    $residentNo, sprintf('DEMO ONLY - Sample Street %02d', $i + 1), $puroks[$i % count($puroks)],
-                    $activeStatus, 'Single', $noneType, sprintf('demo%02d@example.invalid', $i + 1),
-                    $lastNames[$i], $first, $birthdates[$i], $i % 2 === 0 ? 'Male' : 'Female',
-                    $i % 2 === 0 ? 'Single' : 'Married',
-                ]
-            );
-            $residents[] = (int) db()->lastInsertId();
+        $firstNames = [];
+        $lastNames = [];
+        $birthdates = [];
+        $legacyDemoResidents = db_all(
+            "SELECT resident_id, first_name, last_name, birthdate, sex, civil_status
+             FROM residents
+             WHERE last_name LIKE 'DEMO-%' AND (resident_no IS NULL OR resident_no = '') AND archived_at IS NULL
+             ORDER BY resident_id LIMIT 6"
+        );
+        if (count($legacyDemoResidents) >= 6) {
+            // Reuse six synthetic residents from the older presentation seed rather than duplicating them.
+            foreach ($legacyDemoResidents as $i => $row) {
+                db_exec(
+                    'UPDATE residents
+                     SET resident_no = ?, address = ?, purok_id = ?, resident_status_id = ?, marital_status = ?,
+                         resident_type_id = ?, email_address = ?, contact_number = NULL,
+                         notification_preference = \'email\', archived_at = NULL
+                     WHERE resident_id = ? AND (resident_no IS NULL OR resident_no = \'\')',
+                    [
+                        sprintf('DEMO-RES-%04d', $i + 1), sprintf('DEMO ONLY - Sample Street %02d', $i + 1),
+                        $puroks[$i % count($puroks)], $activeStatus, (string) ($row['civil_status'] ?? 'Single'),
+                        $noneType, sprintf('demo%02d@example.invalid', $i + 1), (int) $row['resident_id'],
+                    ]
+                );
+                $residents[] = (int) $row['resident_id'];
+                $firstNames[] = (string) $row['first_name'];
+                $lastNames[] = (string) $row['last_name'];
+                $birthdates[] = (string) $row['birthdate'];
+            }
+        } else {
+            $firstNames = ['DemoAlex','DemoJamie','DemoCasey','DemoMorgan','DemoRiley','DemoTaylor'];
+            $lastNames = ['SampleRivera','SampleSantos','SampleCruz','SampleReyes','SampleGarcia','SampleMendoza'];
+            $birthdates = ['1992-04-12','1988-09-30','2001-03-15','1998-10-06','1979-01-22','1995-07-11'];
+            foreach ($firstNames as $i => $first) {
+                $residentNo = sprintf('DEMO-RES-%04d', $i + 1);
+                db_exec(
+                    'INSERT INTO residents
+                     (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
+                      email_address, notification_preference, last_name, first_name, birthdate, sex, civil_status,
+                      household_id, is_household_head, created_by)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, \'email\', ?, ?, ?, ?, ?, NULL, 0, NULL)',
+                    [
+                        $residentNo, sprintf('DEMO ONLY - Sample Street %02d', $i + 1), $puroks[$i % count($puroks)],
+                        $activeStatus, 'Single', $noneType, sprintf('demo%02d@example.invalid', $i + 1),
+                        $lastNames[$i], $first, $birthdates[$i], $i % 2 === 0 ? 'Male' : 'Female',
+                        $i % 2 === 0 ? 'Single' : 'Married',
+                    ]
+                );
+                $residents[] = (int) db()->lastInsertId();
+            }
         }
 
         $docSpecs = [
