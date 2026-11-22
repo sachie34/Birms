@@ -101,15 +101,18 @@ function run_b2(array $S, string $base): void
     $out = []; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/migrate.php') . ' status 2>&1', $out, $code);
     record('B2-21', 'No migration is pending on the working database', $code === 0 && preg_match('/(^|\n)0 pending\./', implode("\n", $out)) === 1);
 
+    $secretaryTypeBefore = db_one('SELECT fee_amount, is_active, requires_chairman_signature FROM document_types WHERE type_id = ?', [$tid]);
     $secretaryTemplate = $post($sec, [
         'do' => 'doctype_save', 'tab' => 'documents', 'id' => (string) $tid,
-        'is_active' => '1', 'requires_chairman_signature' => '0',
-        'fee_amount' => '0', 'template_body' => '**DEMO ONLY** {{full_name}}',
+        'is_active' => '0', 'requires_chairman_signature' => '0',
+        'fee_amount' => '99.00', 'template_body' => '**DEMO ONLY** {{full_name}}',
     ]);
-    $secretaryTemplateRow = db_one('SELECT fee_amount, template_body FROM document_types WHERE type_id = ?', [$tid]);
-    record('B2-22', 'Secretary can save document template wording and fee without receiving full settings-edit permission',
+    $secretaryTemplateRow = db_one('SELECT fee_amount, is_active, requires_chairman_signature, template_body FROM document_types WHERE type_id = ?', [$tid]);
+    record('B2-22', 'Secretary can edit document wording but forged fee, availability and signature-policy changes are ignored',
         $secretaryTemplate['status'] === 302
-        && (float) $secretaryTemplateRow['fee_amount'] === 0.0
+        && $secretaryTemplateRow['fee_amount'] === $secretaryTypeBefore['fee_amount']
+        && (int) $secretaryTemplateRow['is_active'] === (int) $secretaryTypeBefore['is_active']
+        && (int) $secretaryTemplateRow['requires_chairman_signature'] === (int) $secretaryTypeBefore['requires_chairman_signature']
         && (string) $secretaryTemplateRow['template_body'] === '**DEMO ONLY** {{full_name}}');
 
     $generalBefore = db_val("SELECT setting_value FROM settings WHERE setting_key = 'barangay_name'");
