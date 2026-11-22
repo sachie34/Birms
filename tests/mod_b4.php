@@ -6,6 +6,12 @@ function run_b4(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'");
+    if ($typeId < 1) { throw new RuntimeException('The Barangay Clearance fixture is required for B4.'); }
+    $oldCertificateType = db_one('SELECT fee_amount, template_body, requires_chairman_signature FROM document_types WHERE type_id = ?', [$typeId]);
+    $oldCaptainName = db_val("SELECT setting_value FROM settings WHERE setting_key = 'captain_name'");
+    $signatureFixture = fx_upload_chairman_signature($adm);
+    db_exec("UPDATE document_types SET fee_amount = 0.00, template_body = 'B4 draft for {{full_name}}: {{purpose}}.', requires_chairman_signature = 1 WHERE type_id = ?", [$typeId]);
+    db_exec("UPDATE settings SET setting_value = 'B4 Test Captain' WHERE setting_key = 'captain_name'");
     db_exec("INSERT IGNORE INTO document_types (name, is_active, sort_order) VALUES ('ZZ Test Inactive Doc', 0, 9990)");
     $inactive = (int) db_val("SELECT type_id FROM document_types WHERE name = 'ZZ Test Inactive Doc'");
     $purok = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
@@ -289,6 +295,7 @@ function run_b4(array $S, string $base): void
         db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM sms_outbox WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM document_attachments WHERE request_id IN (' . $marks . ')', $testRequestIds);
+        db_exec('DELETE FROM certificate_drafts WHERE request_id IN (' . $marks . ')', $testRequestIds);
         db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $testRequestIds);
     }
     db_exec("DELETE FROM notification_outbox WHERE resident_id IN (SELECT resident_id FROM residents WHERE last_name LIKE 'ZZTestFour%')");
@@ -296,4 +303,10 @@ function run_b4(array $S, string $base): void
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'");
+    if ($oldCertificateType !== null) {
+        db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, requires_chairman_signature = ? WHERE type_id = ?',
+            [$oldCertificateType['fee_amount'], $oldCertificateType['template_body'], $oldCertificateType['requires_chairman_signature'], $typeId]);
+    }
+    db_exec("UPDATE settings SET setting_value = ? WHERE setting_key = 'captain_name'", [$oldCaptainName]);
+    fx_restore_chairman_signature($signatureFixture);
 }
