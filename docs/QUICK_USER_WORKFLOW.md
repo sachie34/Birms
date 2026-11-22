@@ -31,7 +31,8 @@ The document workflow has visible handoffs. The resident keeps the reference num
 | 1. Submit | Resident, or Staff at the counter | Select an active document type, state the purpose and submit. BIRMS creates a reference number, records the request and issues a Documents queue ticket. | Pending |
 | 2. Requirements review | Secretary or Admin | Check the current document requirements and supporting details. Record missing items or mark requirements Complete only after checking them. If request details change, requirements must be reviewed again. | Pending |
 | 3. Final decision | Staff or Admin | After requirements are Complete, approve or reject. A rejection needs a reason. The server blocks a final decision while requirements are incomplete. | Approved or Rejected |
-| 4. Generate and release | Staff or Admin | For an approved request, check the resident and approved document details, generate/issue the certificate, and record the issuance. | Released |
+| 4. Review generated draft | Staff or Admin | Approval automatically saves the certificate draft and PDF preview. Review the saved resident details, wording, fee and Chairman signature. The draft remains unissued. | Approved |
+| 5. Release certificate | Staff or Admin | Release the saved draft. The issuance and any payment-ledger entry are recorded at release; the same certificate reference and saved content are retained. | Released |
 | 5. Track and retain | Resident and authorized office users | The resident checks the reference tracker. Authorized users can inspect request history and audit records. | Current status and history |
 
 **Important:** the system has internal processing states for staff (such as Review and Ready), while the resident-facing SRS statuses are Pending, Approved, Rejected and Released. A resident should use the public status, not infer the internal staff step.
@@ -50,9 +51,10 @@ The document workflow has visible handoffs. The resident keeps the reference num
 
 1. Open **Document Requests** and find the reference number.
 2. Secretary/Admin: open the request, inspect the document type, purpose and attachments, then record the requirements review.
-3. Staff/Admin: open the request after requirements are Complete. Approve it or reject it with a clear reason.
-4. Staff/Admin: issue the approved certificate using the approved template, fee and Chairman signature settings.
-5. Confirm the issuance record and give the resident the released document.
+3. Staff/Admin: open the request after requirements are Complete. Approve it or reject it with a clear reason. Approval automatically creates a saved certificate draft; approval is rolled back if required generation data or a required Chairman signature is unavailable.
+4. Staff/Admin: open Certificate Generation, review the saved draft and its PDF preview. The preview is marked DRAFT — NOT ISSUED. Secretary and Chairman cannot open this draft PDF.
+5. Staff/Admin: release the saved draft when ready. Only release creates the issuance and any cash-ledger entry; an O.R. number is recorded at this stage for paid documents. The certificate reference, wording, fee and Chairman signature snapshot remain the ones saved at approval.
+6. Confirm the Released status, issuance record and final PDF, then give the resident the released document.
 
 The app's server-side permission checks control each handoff. Do not use another person's account to perform a step.
 
