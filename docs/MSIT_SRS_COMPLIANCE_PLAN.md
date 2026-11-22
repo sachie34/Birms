@@ -517,6 +517,10 @@ All eight jobs reported zero failures and zero untested checks. The run verifies
 
 [View GitHub Actions run #1095](https://github.com/sachie34/Birms/actions/runs/45026931061)
 
+A follow-up workflow smoke test was added to start a second PHP server with `BIRMS_REQUIRE_HTTPS=1` and confirm plain HTTP receives HTTP 503 with the fixed operator-safe message and no Host-header redirect. **Run #1097** on commit `d8675c4123ff35d3ad61f5570781597a81c268d0` passed all eight matrix combinations with the same 48/48 security and 283/283 module checks per combination, zero failures and zero untested checks. The HTTPS smoke step passed in all eight environments.
+
+[View GitHub Actions run #1097](https://github.com/sachie34/Birms/actions/runs/45027183539)
+
 Intermediate failures were retained and diagnosed rather than hidden: run #1089 showed that the test harness itself needed DBA access for database-trigger metadata while the actual web application needed to remain under the limited account; PHP 8.5/8.6 built-in-server behavior also made the Apache private-folder HTTP probe return 200. The test runner and application credentials were separated, the CI server now uses an explicit test-only path guard, and Apache deny rules are independently checked in CI and setup preflight. Run #1095 passed all checks after these corrections.
 
 ### Still required before production
