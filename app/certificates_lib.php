@@ -53,6 +53,75 @@ function issuable_request(int $id): ?array
 }
 
 /**
+ * Render the deliberately small, safe Markdown subset used by the document editor.
+ * Escape first, then introduce only fixed formatting tags; user HTML is never trusted.
+ */
+function certificate_body_html(string $body): string
+{
+    $escape = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $inline = static function (string $line) use ($escape): string {
+        $line = $escape($line);
+        $line = preg_replace('/\*\*(.+?)\*\*/u', '<strong>$1</strong>', $line) ?? $line;
+        $line = preg_replace('/__(.+?)__/u', '<u>$1</u>', $line) ?? $line;
+        $line = preg_replace('/(?<!\*)\*([^*]+)\*(?!\*)/u', '<em>$1</em>', $line) ?? $line;
+        return $line;
+    };
+
+    $html = [];
+    $paragraph = [];
+    $list = null;
+    $flushParagraph = static function () use (&$paragraph, &$html, $inline): void {
+        if ($paragraph) {
+            $html[] = '<p>' . implode('<br>', array_map($inline, $paragraph)) . '</p>';
+            $paragraph = [];
+        }
+    };
+    $closeList = static function () use (&$list, &$html): void {
+        if ($list !== null) { $html[] = '</' . $list . '>'; $list = null; }
+    };
+
+    foreach (preg_split('/\r\n|\r|\n/', $body) ?: [] as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '') { $flushParagraph(); $closeList(); continue; }
+        if (preg_match('/^---+$/', $trimmed) === 1) {
+            $flushParagraph(); $closeList(); $html[] = '<hr>'; continue;
+        }
+        if (preg_match('/^(#{1,3})\s+(.+)$/u', $trimmed, $m) === 1) {
+            $flushParagraph(); $closeList();
+            $level = strlen($m[1]) + 1;
+            $html[] = '<h' . $level . '>' . $inline($m[2]) . '</h' . $level . '>';
+            continue;
+        }
+        if (preg_match('/^[-*]\s+(.+)$/u', $trimmed, $m) === 1) {
+            $flushParagraph();
+            if ($list !== 'ul') { $closeList(); $html[] = '<ul>'; $list = 'ul'; }
+            $html[] = '<li>' . $inline($m[1]) . '</li>';
+            continue;
+        }
+        if (preg_match('/^\d+[.)]\s+(.+)$/u', $trimmed, $m) === 1) {
+            $flushParagraph();
+            if ($list !== 'ol') { $closeList(); $html[] = '<ol>'; $list = 'ol'; }
+            $html[] = '<li>' . $inline($m[1]) . '</li>';
+            continue;
+        }
+        $closeList();
+        $paragraph[] = $line;
+    }
+    $flushParagraph();
+    $closeList();
+    return implode("\n", $html);
+}
+
+/** Plain-text equivalent for the dependency-free PDF writer. */
+function certificate_body_plain_text(string $body): string
+{
+    $body = preg_replace('/^#{1,3}\s+/m', '', $body) ?? $body;
+    $body = preg_replace('/^[-*]\s+/m', '• ', $body) ?? $body;
+    $body = preg_replace('/^\d+[.)]\s+/m', '• ', $body) ?? $body;
+    return str_replace(['**', '__', '*'], '', $body);
+}
+
+/**
  * Generate a downloadable certificate PDF. Dompdf is used when installed locally;
  * a small built-in PDF writer keeps offline/XAMPP installs usable without Composer.
  * The output is explicitly a draft until the Barangay approves the official layout.
@@ -89,7 +158,7 @@ function certificate_pdf_bytes(array $issuance): string
         . '<div class="head">Republic of the Philippines<br>Province of ' . $esc((string) setting('province', ''))
         . '<br>Municipality of ' . $esc((string) setting('municipality', '')) . '<br><strong>' . $esc(barangay_title()) . '</strong></div>'
         . '<div class="title">' . $esc((string) ($issuance['type_name'] ?? 'Certificate')) . '</div>'
-        . '<div class="body">' . $esc($body) . '</div>'
+        . '<div class="body">' . certificate_body_html($body) . '</div>'
         . $signatureImageHtml
         . '<div class="sign">' . $esc($signature !== '' ? $signature : 'Chairman / Punong Barangay') . '</div>'
         . '<div class="signature-note">Chairman / Punong Barangay</div>'
@@ -111,7 +180,7 @@ function certificate_pdf_bytes(array $issuance): string
     // Dependency-free PDF fallback: preserves the actual issuance text and metadata in a valid PDF.
     $lines = [$draft, '', (string) setting('province', '') . ' / ' . (string) setting('municipality', ''), barangay_title(), '',
         (string) ($issuance['type_name'] ?? 'Certificate'), ''];
-    $rawBody = str_replace(["\r\n", "\r"], "\n", $body);
+    $rawBody = str_replace(["\r\n", "\r"], "\n", certificate_body_plain_text($body));
     foreach (explode("\n", $rawBody) as $paragraph) {
         foreach (explode("\n", wordwrap($paragraph, 86, "\n", true)) as $wrapped) { $lines[] = $wrapped; }
     }
