@@ -169,6 +169,8 @@ function run_b24(array $S, string $base): void
         $draftPdf = $staff->get('/certificates/draft_pdf.php?request=' . $requestId);
         $secretaryDraftPdf = $secretary->get('/certificates/draft_pdf.php?request=' . $requestId);
         $chairmanDraftPdf = $chairman->get('/certificates/draft_pdf.php?request=' . $requestId);
+        $postPreviewIssuances = (int) db_val('SELECT COUNT(*) FROM issuances WHERE request_id = ?', [$requestId]);
+        $postPreviewLedger = (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE request_id = ?)', [$requestId]);
         record(
             'B24-04',
             'Staff cannot access the unassigned request before requirements are complete; after Secretary completes them, Staff approves and the resident is notified',
@@ -192,6 +194,8 @@ function run_b24(array $S, string $base): void
             && str_starts_with((string) $draftPdf['body'], '%PDF-1.4')
             && $secretaryDraftPdf['status'] === 403
             && $chairmanDraftPdf['status'] === 403
+            && $postPreviewIssuances === 0
+            && $postPreviewLedger === 0
             && $approvalNotice !== null
             && $approvalNotice['recipient'] === $residentEmail
             && $approvalNotice['channel'] === 'email'
@@ -203,6 +207,7 @@ function run_b24(array $S, string $base): void
             . '; draft=' . json_encode($generatedDraft) . '; premature-issuances=' . $prematureIssuances
             . '; premature-ledger=' . $prematureLedger . '; draft-pdf=' . $draftPdf['status']
             . '; secretary-pdf=' . $secretaryDraftPdf['status'] . '; chairman-pdf=' . $chairmanDraftPdf['status']
+            . '; post-preview-issuances=' . $postPreviewIssuances . '; post-preview-ledger=' . $postPreviewLedger
             . '; notice=' . json_encode($approvalNotice)
         );
 
