@@ -62,27 +62,20 @@ if (is_post()) {
             // Validate the complete upload against the current schema before changing any data.
             backup_restore_parse($sql, backup_table_names());
 
-            // Keep a same-request safety snapshot so an unexpected failure can recover current data.
-            $safetyPath = tempnam(sys_get_temp_dir(), 'birms-before-restore-');
-            if ($safetyPath === false) { throw new RuntimeException('A pre-restore safety snapshot could not be created.'); }
-            $safetyStream = fopen($safetyPath, 'wb');
-            if ($safetyStream === false) { @unlink($safetyPath); throw new RuntimeException('The pre-restore safety snapshot could not be opened.'); }
-            try {
-                backup_write_sql_export($safetyStream, backup_table_names());
-            } finally {
-                fclose($safetyStream);
-            }
-            $safetyBytes = filesize($safetyPath);
-            if ($safetyBytes === false || $safetyBytes < 1) {
-                @unlink($safetyPath);
-                throw new RuntimeException('The pre-restore safety snapshot is empty or unreadable.');
-            }
+            // Keep a bounded, same-request safety snapshot so an unexpected failure can recover current data.
+            // The helper removes its temporary file if export, size validation or reading fails.
+            $safetySnapshot = backup_full_create_safety_snapshot(
+                static function ($stream): void {
+                    backup_write_sql_export($stream, backup_table_names());
+                }
+            );
+            $safetyPath = $safetySnapshot['path'];
+            $beforeSql = $safetySnapshot['sql'];
 
             try {
                 $restored = backup_restore_apply($sql);
             } catch (Throwable $restoreError) {
-                $beforeSql = file_get_contents($safetyPath);
-                if (is_string($beforeSql) && $beforeSql !== '') {
+                if ($beforeSql !== '') {
                     try {
                         backup_restore_apply($beforeSql);
                         audit_best_effort('database_backup_restore_recovered', 'Backup', 'Warning',
