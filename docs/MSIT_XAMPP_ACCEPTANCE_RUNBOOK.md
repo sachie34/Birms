@@ -191,3 +191,48 @@ Use these exact result labels:
 For every FAIL, preserve the test ID, complete output line, diagnostic, role, URL/action, database migration state and relevant screenshot/log. Do not delete the test or mark it NOT RUN to clear a red result. Fix the code or environment, retain the regression test and rerun the full suites.
 
 Never report this system as flawless based on CI alone. Release acceptance requires zero failed tests, no unexplained NOT TESTED checks, and completed manual evidence for the target XAMPP, roles, kiosk, LAN, delivery providers, PDF/print and restore.
+
+
+## 12. Prepare the MSIT demonstration dataset and document templates
+
+Use the isolated working database only. The seeder refuses database names that do not end in _work or _test; never point it at the original barangay_db or a production database.
+
+From the BIRMS project folder, first review the read-only plan:
+
+~~~bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+~~~
+
+If the target shown is barangay_db_work and the plan is correct, insert the synthetic presentation records:
+
+~~~bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+~~~
+
+The seeder is idempotent: running it again after a complete seed reports that the demo data is already present. If it finds a partial reserved demo set, it refuses to add more rows rather than guessing how to repair it.
+
+The sample set contains:
+- 6 fictitious residents (DEMO-RES-0001 to DEMO-RES-0006) with reserved .invalid email addresses and no mobile numbers;
+- 3 clearly labelled demo-only certificate templates (Barangay Clearance, Residency and Indigency), with zero demonstration fee and no Chairman signature requirement;
+- 4 document requests: Pending, Approved with a saved unissued certificate draft, Rejected and Released with one sample issuance-history record;
+- 3 fictitious blotter cases, 2 demo venues, 2 venue reservations and 3 service-queue tickets.
+
+All generated records and document bodies say **DEMO ONLY**. No official document type, fee, barangay setting, account, password, SMS provider, email setting or real resident is changed. The .invalid email addresses cannot receive mail. The seeder does not send email or SMS.
+
+### Edit and preview certificate templates
+
+1. Sign in as an Admin account.
+2. Open **System Settings → Documents and fees**.
+3. Open one of the **DEMO ONLY - ...** document types.
+4. Use the toolbar for bold, italic, underline, headings, bullets, numbering, dividers and resident/request placeholders.
+5. Review the live preview, then save.
+6. Open **Document Requests** and review the seeded sample requests. The Approved sample has a saved certificate draft that Staff can preview and release.
+7. Open **Certificate Generation** or **Issuance History** to review the generated output. Print/PDF content remains clearly marked as draft/demo; do not represent it as an approved barangay certificate.
+
+The editor intentionally supports a small, safe formatting set rather than attempting to replace Microsoft Word. It edits the template text used by BIRMS certificate generation. The generated certificate draft is a snapshot: changes made to a template later do not rewrite an already-created draft or issued record.
+
+### Demo accounts and role journey
+
+The seeder deliberately creates **no accounts and no default passwords**. Create separate Admin, Chairman, Secretary and Staff accounts through the User Accounts page and use separate browser profiles when presenting. Follow the role restrictions in section 6; the Chairman remains read-only. Residents use the shared kiosk/request QR flow.
+
+Before the presentation, confirm the demo dashboard, request tracker, certificate preview, print/PDF, blotter, venue availability and service queues on the actual XAMPP browser. Automated CI is not a substitute for this local check.
