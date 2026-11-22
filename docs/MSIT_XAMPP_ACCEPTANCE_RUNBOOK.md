@@ -38,7 +38,14 @@ cd /d C:\xampp\htdocs\Birms-main
 C:\xampp\php\php.exe -v
 C:\xampp\php\php.exe tools\check_php_includes.php
 C:\xampp\php\php.exe tools\setup_xampp.php --check
+C:\xampp\php\php.exe -m | findstr /I "zip"
 ```
+
+Then verify the ZIP extension needed for complete system backups:
+1. Run the CLI command above and confirm `zip` appears in the module list.
+2. Open Apache's PHPInfo page and confirm the `zip` section is present there too. CLI PHP and Apache can load different `php.ini` files.
+3. If it is missing, open the active XAMPP `php.ini`, enable `extension=zip` (remove a leading semicolon if present), save, and restart Apache. Repeat the CLI and Apache checks.
+4. For browser uploads of large full-system ZIPs, review `upload_max_filesize`, `post_max_size`, `max_execution_time`, and `max_input_time`. They must permit the intended archive size (maximum 512 MiB) and enough time for staging/checksum verification. Do not raise limits unnecessarily on an internet-exposed server.
 
 Then check the version used by **Apache**, not only the CLI:
 1. Start Apache in XAMPP.
@@ -162,7 +169,9 @@ These require the actual target PC and/or approved barangay services:
 - **Email:** only after approval, configure the barangay-approved sender/relay and send a controlled test to a test mailbox. Verify actual receipt and delivery status.
 - **SMS:** only if the barangay approves a provider and accepts its charges, configure the private API key and send to an authorized test phone. Verify provider response and actual phone receipt. Never treat `Queued` as `Delivered`.
 - **Performance:** use representative synthetic data and `tools/benchmark.php`; record the measured page/operation and time. The 3-second NFR is not verified until measurements are captured.
-- **Backup/restore:** create a backup, restore it into a separate scratch database, and separately verify private attachments and the Chairman signature file. Never test restoration against the source working database.
+- **Full-system backup/restore:** enable ZIP in both CLI PHP and Apache. During a quiet maintenance window, create a complete ZIP backup. Verify its manifest, database SQL, `storage/private_uploads/` attachments and Chairman signature images, and `storage/resident_photos/` resident photos. Restore it only in a separate scratch application folder with its own scratch database and storage directory. Confirm resident photos, request attachments, current Chairman signature and historical issuance signature snapshots are available. Confirm the restored DB has no missing private-file references and inspect the application error log. Never test restoration against the source or original database.
+- **Legacy SQL-only restore:** test only when explicitly needed. It restores database records but not private files; it is not a complete system backup.
+- **Full restore behavior:** the ZIP restore validates paths and SHA-256 checksums, installs missing private files, refuses different files already present at the same path, and does not bulk-delete existing private files. Unreferenced older files may remain and require separate reviewed cleanup. Scheduled backups are not implemented.
 - **Print/PDF:** open the PDF with the office's PDF reader and test the intended printer/paper layout. Record any clipped fields or layout changes.
 
 ## 10. How to report results — do not hide failures
