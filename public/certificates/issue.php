@@ -86,8 +86,10 @@ if (is_post()) {
                 $n = db_exec("UPDATE document_requests SET status = 'Claimed', msit_status = 'Released', status_note = NULL WHERE request_id = ? AND status = 'Ready'", [$rid]);
                 if ($n !== 1) { throw new RuntimeException('state'); }
 
-                $year = (int) date('Y');
-                $reference = sprintf('CERT-%d-%04d', $year, next_counter('certificate', $year));
+                $reference = (string) $draftRow['certificate_reference_no'];
+                if (preg_match('/^CERT-\\d{4}-\\d{4,}$/', $reference) !== 1) {
+                    throw new RuntimeException('The saved certificate reference is invalid. The draft remains available for administrator review.');
+                }
                 $actor = audit_actor();
                 db_exec(
                     'INSERT INTO issuances
