@@ -124,14 +124,15 @@ record('U9', 'Database-backed rate limiter enforces a fixed window, separates id
     }
 })());
 
-record('U10', 'PHP runtime guard rejects known-unpatched and unsupported versions while accepting patched supported branches', (function (): bool {
+record('U10', 'PHP runtime guard enforces current security patch levels and accepts supported stable PHP 8.2 through 8.6 branches', (function (): bool {
     $cases = [
         80100 => false,
-        80234 => false, 80235 => true,
-        80335 => false, 80336 => true,
-        80426 => false, 80427 => true,
-        80511 => false, 80512 => true,
-        80600 => false,
+        80235 => false, 80236 => true,
+        80336 => false, 80337 => true,
+        80427 => false, 80428 => true,
+        80512 => false, 80513 => true,
+        80600 => true, 80699 => true,
+        80700 => false,
         90000 => false,
     ];
     foreach ($cases as $version => $expectedSafe) {
