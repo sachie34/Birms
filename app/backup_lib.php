@@ -538,3 +538,625 @@ function backup_restore_apply(string $sql): array
     }
     return ['table_count' => count($parsed['tables']), 'insert_count' => count($parsed['inserts'])];
 }
+
+
+/* ---------------------------------------------------------------- full-system archive backup */
+
+const BACKUP_FULL_MAX_ARCHIVE_BYTES = 536870912;       // 512 MiB upload/download
+const BACKUP_FULL_MAX_TOTAL_BYTES = 1073741824;       // 1 GiB uncompressed payload
+const BACKUP_FULL_MAX_FILE_BYTES = 104857600;         // 100 MiB per private file
+const BACKUP_FULL_MAX_FILES = 20000;
+const BACKUP_FULL_MAX_MANIFEST_BYTES = 8388608;       // 8 MiB
+
+function backup_full_zip_available(): bool
+{
+    return class_exists('ZipArchive');
+}
+
+function backup_full_require_zip(): void
+{
+    if (!backup_full_zip_available()) {
+        throw new RuntimeException('The PHP ZIP extension is required for complete database-and-files backups. Enable extension=zip in the active XAMPP php.ini, restart Apache, and check the CLI PHP configuration too.');
+    }
+}
+
+/** Accept only application-owned private file paths; archive paths are never trusted as filesystem paths. */
+function backup_full_relative_path_is_allowed(string $relative): bool
+{
+    if ($relative === '' || str_contains($relative, chr(0)) || str_contains($relative, '\\')
+        || preg_match('~^storage/(?:private_uploads|resident_photos)/[A-Za-z0-9._/-]+$~D', $relative) !== 1) {
+        return false;
+    }
+    foreach (explode('/', $relative) as $segment) {
+        if ($segment === '' || $segment === '.' || $segment === '..') { return false; }
+    }
+    return true;
+}
+
+/** Return every private path referenced by the current database. */
+function backup_full_referenced_private_paths(): array
+{
+    $paths = [];
+    foreach (db_all("SELECT storage_path AS path FROM document_attachments WHERE storage_path IS NOT NULL AND storage_path <> ''") as $row) {
+        $paths[] = (string) $row['path'];
+    }
+    foreach (db_all("SELECT photo_path AS path FROM residents WHERE photo_path IS NOT NULL AND photo_path <> ''") as $row) {
+        $paths[] = (string) $row['path'];
+    }
+    foreach (db_all("SELECT setting_value AS path FROM settings WHERE setting_key = 'chairman_signature_path' AND setting_value IS NOT NULL AND setting_value <> ''") as $row) {
+        $paths[] = (string) $row['path'];
+    }
+    foreach (db_all("SELECT chairman_signature_path AS path FROM issuances WHERE chairman_signature_path IS NOT NULL AND chairman_signature_path <> ''") as $row) {
+        $paths[] = (string) $row['path'];
+    }
+
+    $unique = [];
+    foreach ($paths as $relative) {
+        if (!backup_full_relative_path_is_allowed($relative)) {
+            throw new RuntimeException('A database record points to a file outside the approved private backup folders. Full backup was stopped.');
+        }
+        $unique[$relative] = true;
+    }
+    $result = array_keys($unique);
+    sort($result, SORT_STRING);
+    return $result;
+}
+
+/**
+ * Walk only the two private upload roots. Symlinks and special files are refused
+ * rather than silently following or omitting them.
+ */
+function backup_full_scan_private_files(): array
+{
+    $appRoot = realpath(APP_ROOT);
+    if ($appRoot === false) { throw new RuntimeException('The application folder could not be resolved.'); }
+    $files = [];
+    $totalBytes = 0;
+
+    foreach (['storage/private_uploads', 'storage/resident_photos'] as $relativeRoot) {
+        $rootPath = APP_ROOT . '/' . $relativeRoot;
+        if (!file_exists($rootPath) && !is_link($rootPath)) { continue; }
+        if (is_link($rootPath) || !is_dir($rootPath)) {
+            throw new RuntimeException('A private storage root is not a normal directory. Full backup was stopped.');
+        }
+        $realRoot = realpath($rootPath);
+        if ($realRoot === false || !str_starts_with($realRoot, $appRoot . DIRECTORY_SEPARATOR)) {
+            throw new RuntimeException('A private storage root resolves outside the application folder.');
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($rootPath, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+        foreach ($iterator as $item) {
+            $source = $item->getPathname();
+            if (is_link($source)) {
+                throw new RuntimeException('A symbolic link exists in private storage. Remove or resolve it before creating a full backup.');
+            }
+            if ($item->isDir()) { continue; }
+            if (!$item->isFile()) {
+                throw new RuntimeException('A non-regular file exists in private storage. Full backup was stopped.');
+            }
+            $real = realpath($source);
+            if ($real === false || !str_starts_with($real, $realRoot . DIRECTORY_SEPARATOR)) {
+                throw new RuntimeException('A private file resolves outside its approved storage root.');
+            }
+            $relative = str_replace(DIRECTORY_SEPARATOR, '/', substr($real, strlen($appRoot) + 1));
+            if (!backup_full_relative_path_is_allowed($relative)) {
+                throw new RuntimeException('A private file has an unsupported storage path.');
+            }
+            $size = filesize($real);
+            if ($size === false || $size < 0 || $size > BACKUP_FULL_MAX_FILE_BYTES) {
+                throw new RuntimeException('A private file exceeds the 100 MiB full-backup file limit.');
+            }
+            $totalBytes += $size;
+            if ($totalBytes > BACKUP_FULL_MAX_TOTAL_BYTES || count($files) >= BACKUP_FULL_MAX_FILES) {
+                throw new RuntimeException('Private storage exceeds the full-backup file-count or total-size limit.');
+            }
+            $hashBefore = hash_file('sha256', $real);
+            if (!is_string($hashBefore)) { throw new RuntimeException('A private file could not be checksummed.'); }
+            $files[] = ['path' => $relative, 'source' => $real, 'size' => (int) $size, 'sha256' => $hashBefore];
+        }
+    }
+
+    usort($files, static fn(array $a, array $b): int => strcmp($a['path'], $b['path']));
+    return $files;
+}
+
+/** Safely create a directory tree below a model-owned temporary folder. */
+function backup_full_make_stage_parent(string $base, string $relative): string
+{
+    $target = rtrim($base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+    $parent = dirname($target);
+    if (!is_dir($parent) && !mkdir($parent, 0700, true) && !is_dir($parent)) {
+        throw new RuntimeException('A temporary backup folder could not be created.');
+    }
+    return $target;
+}
+
+/** Remove only a temporary directory created by the full backup/restore helpers. */
+function backup_full_remove_stage(string $directory): void
+{
+    if ($directory === '' || !is_dir($directory) || is_link($directory)) { return; }
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($iterator as $item) {
+        $path = $item->getPathname();
+        if ($item->isLink() || $item->isFile()) { @unlink($path); }
+        elseif ($item->isDir()) { @rmdir($path); }
+    }
+    @rmdir($directory);
+}
+
+/**
+ * Create a ZIP containing database/backup.sql, a SHA-256 manifest, and only
+ * storage/private_uploads plus storage/resident_photos.
+ *
+ * Run during a quiet maintenance window: the database and filesystem do not share
+ * a transaction, so the operator should pause uploads/record changes while it runs.
+ */
+function backup_full_system_create_archive(string $archivePath): array
+{
+    backup_full_require_zip();
+    $stage = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'birms-full-backup-' . bin2hex(random_bytes(10));
+    if (!mkdir($stage, 0700, true)) { throw new RuntimeException('A temporary full-backup workspace could not be created.'); }
+    $zip = null;
+    try {
+        $sqlPath = backup_full_make_stage_parent($stage, 'database/backup.sql');
+        $sqlOut = fopen($sqlPath, 'wb');
+        if ($sqlOut === false) { throw new RuntimeException('The SQL snapshot could not be opened.'); }
+        try {
+            $tables = backup_table_names();
+            if (!$tables) { throw new RuntimeException('No database tables were found.'); }
+            backup_write_sql_export($sqlOut, $tables);
+        } finally {
+            fclose($sqlOut);
+        }
+        $sqlSize = filesize($sqlPath);
+        if ($sqlSize === false || $sqlSize < 32 || $sqlSize > BACKUP_RESTORE_MAX_BYTES) {
+            throw new RuntimeException('The SQL snapshot is empty or exceeds the 100 MiB SQL restore limit.');
+        }
+        $sqlHash = hash_file('sha256', $sqlPath);
+        if (!is_string($sqlHash)) { throw new RuntimeException('The SQL snapshot could not be checksummed.'); }
+
+        $files = backup_full_scan_private_files();
+        $fileMap = [];
+        foreach ($files as &$file) {
+            $stageRelative = 'files/' . $file['path'];
+            $stagedPath = backup_full_make_stage_parent($stage, $stageRelative);
+            if (!copy($file['source'], $stagedPath)) {
+                throw new RuntimeException('A private file could not be copied into the backup workspace.');
+            }
+            @chmod($stagedPath, 0600);
+            $stagedSize = filesize($stagedPath);
+            $stagedHash = hash_file('sha256', $stagedPath);
+            $sourceHashAfter = hash_file('sha256', $file['source']);
+            if ($stagedSize !== $file['size'] || !is_string($stagedHash)
+                || !hash_equals($file['sha256'], $stagedHash)
+                || !is_string($sourceHashAfter) || !hash_equals($file['sha256'], $sourceHashAfter)) {
+                throw new RuntimeException('A private file changed while the backup was being created. Retry during a quiet period.');
+            }
+            $file['sha256'] = $stagedHash;
+            $file['entry'] = $stageRelative;
+            unset($file['source']);
+            $fileMap[$file['path']] = true;
+        }
+        unset($file);
+
+        foreach (backup_full_referenced_private_paths() as $referenced) {
+            if (!isset($fileMap[$referenced])) {
+                throw new RuntimeException('The database references a private file missing from storage: ' . basename($referenced) . '. Full backup was stopped.');
+            }
+        }
+
+        $manifest = [
+            'format' => 'BIRMS_FULL_BACKUP',
+            'format_version' => 1,
+            'created_at' => date(DATE_ATOM),
+            'source_database' => (string) config('db.name'),
+            'database' => ['entry' => 'database/backup.sql', 'size' => (int) $sqlSize, 'sha256' => $sqlHash],
+            'files' => $files,
+        ];
+        $manifestPath = $stage . DIRECTORY_SEPARATOR . 'manifest.json';
+        $manifestJson = json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        if (strlen($manifestJson) > BACKUP_FULL_MAX_MANIFEST_BYTES
+            || file_put_contents($manifestPath, $manifestJson, LOCK_EX) === false) {
+            throw new RuntimeException('The full-backup manifest could not be written.');
+        }
+
+        $zip = new ZipArchive();
+        $opened = $zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        if ($opened !== true) { throw new RuntimeException('The ZIP archive could not be created.'); }
+        if (!$zip->addFile($sqlPath, 'database/backup.sql')) {
+            throw new RuntimeException('The database snapshot could not be added to the ZIP archive.');
+        }
+        foreach ($files as $file) {
+            $stagedPath = $stage . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $file['entry']);
+            if (!$zip->addFile($stagedPath, 'files/' . $file['path'])) {
+                throw new RuntimeException('A private file could not be added to the ZIP archive.');
+            }
+        }
+        if (!$zip->addFile($manifestPath, 'manifest.json')) {
+            throw new RuntimeException('The full-backup manifest could not be added to the ZIP archive.');
+        }
+        if (method_exists($zip, 'setCompressionName')) {
+            $zip->setCompressionName('database/backup.sql', ZipArchive::CM_DEFLATE, 6);
+            $zip->setCompressionName('manifest.json', ZipArchive::CM_DEFLATE, 6);
+        }
+        if (!$zip->close()) {
+            $zip = null;
+            throw new RuntimeException('The ZIP archive could not be finalized.');
+        }
+        $zip = null;
+        clearstatcache(true, $archivePath);
+        $archiveSize = filesize($archivePath);
+        if ($archiveSize === false || $archiveSize < 1 || $archiveSize > BACKUP_FULL_MAX_ARCHIVE_BYTES) {
+            throw new RuntimeException('The completed full backup exceeds the 512 MiB archive limit.');
+        }
+        @chmod($archivePath, 0600);
+        return [
+            'table_count' => count($tables),
+            'file_count' => count($files),
+            'file_bytes' => array_sum(array_column($files, 'size')),
+            'archive_bytes' => (int) $archiveSize,
+        ];
+    } finally {
+        if ($zip instanceof ZipArchive) { @$zip->close(); }
+        backup_full_remove_stage($stage);
+    }
+}
+
+/** Resolve a whitelisted destination under storage without following symlinks. */
+function backup_full_target_details(string $relative, bool $createDirectories = false): array
+{
+    if (!backup_full_relative_path_is_allowed($relative)) {
+        throw new InvalidArgumentException('The archive contains a file path outside approved private storage.');
+    }
+    $storage = APP_ROOT . '/storage';
+    if (is_link($storage)) { throw new RuntimeException('The application storage folder must not be a symbolic link.'); }
+    if (!is_dir($storage)) {
+        if (!$createDirectories || (!mkdir($storage, 0750, true) && !is_dir($storage))) {
+            throw new RuntimeException('The application storage folder is unavailable.');
+        }
+    }
+    $storageRoot = realpath($storage);
+    if ($storageRoot === false) { throw new RuntimeException('The application storage folder could not be resolved.'); }
+
+    $segments = explode('/', substr($relative, strlen('storage/')));
+    $current = $storageRoot;
+    for ($i = 0; $i < count($segments) - 1; $i++) {
+        $current .= DIRECTORY_SEPARATOR . $segments[$i];
+        if (is_link($current)) { throw new RuntimeException('A symbolic link blocks a private restore path.'); }
+        if (file_exists($current) && !is_dir($current)) {
+            throw new RuntimeException('A non-directory blocks a private restore folder.');
+        }
+        if (!is_dir($current)) {
+            if (!$createDirectories || (!mkdir($current, 0750) && !is_dir($current))) {
+                if (!$createDirectories) {
+                    return ['path' => $current . DIRECTORY_SEPARATOR . $segments[count($segments) - 1], 'exists' => false];
+                }
+                throw new RuntimeException('A private restore folder could not be created.');
+            }
+        }
+        $resolved = realpath($current);
+        if ($resolved === false || !str_starts_with($resolved, $storageRoot . DIRECTORY_SEPARATOR)) {
+            throw new RuntimeException('A private restore folder resolves outside application storage.');
+        }
+        $current = $resolved;
+    }
+
+    $target = $current . DIRECTORY_SEPARATOR . $segments[count($segments) - 1];
+    if (is_link($target)) { throw new RuntimeException('A symbolic link blocks a private restore file.'); }
+    if (file_exists($target) && !is_file($target)) {
+        throw new RuntimeException('A non-file already exists at a private restore destination.');
+    }
+    return ['path' => $target, 'exists' => is_file($target)];
+}
+
+/** Write all bytes, handling partial fwrite results. */
+function backup_full_write_stream($stream, string $bytes): void
+{
+    $offset = 0;
+    $length = strlen($bytes);
+    while ($offset < $length) {
+        $written = fwrite($stream, substr($bytes, $offset));
+        if ($written === false || $written === 0) {
+            throw new RuntimeException('A staged private file could not be written completely.');
+        }
+        $offset += $written;
+    }
+}
+
+/** Validate an archive and stage its private files without using ZipArchive::extractTo(). */
+function backup_full_archive_stage(string $archivePath): array
+{
+    backup_full_require_zip();
+    if (!is_file($archivePath) || !is_readable($archivePath)) {
+        throw new InvalidArgumentException('The uploaded full-system backup could not be read.');
+    }
+    $archiveSize = filesize($archivePath);
+    if ($archiveSize === false || $archiveSize < 1 || $archiveSize > BACKUP_FULL_MAX_ARCHIVE_BYTES) {
+        throw new InvalidArgumentException('The full-system ZIP must be no larger than 512 MiB.');
+    }
+
+    $zip = new ZipArchive();
+    $opened = $zip->open($archivePath, ZipArchive::RDONLY);
+    if ($opened !== true) { throw new InvalidArgumentException('The uploaded file is not a readable BIRMS ZIP archive.'); }
+    $stage = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'birms-full-restore-' . bin2hex(random_bytes(10));
+    $stageCreated = false;
+    try {
+        if ($zip->numFiles < 2 || $zip->numFiles > BACKUP_FULL_MAX_FILES + 2) {
+            throw new InvalidArgumentException('The archive has an invalid number of entries.');
+        }
+        $archiveEntries = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            if (!is_array($stat) || !isset($stat['name'], $stat['size'])) {
+                throw new InvalidArgumentException('The archive contains an unreadable entry.');
+            }
+            $name = (string) $stat['name'];
+            if ($name === '' || str_contains($name, chr(0)) || str_contains($name, '\\')
+                || str_starts_with($name, '/') || preg_match('/^[A-Za-z]:/', $name)
+                || str_ends_with($name, '/')) {
+                throw new InvalidArgumentException('The archive contains an unsafe entry name.');
+            }
+            if (isset($archiveEntries[$name])) { throw new InvalidArgumentException('The archive contains duplicate entry names.'); }
+            if ($zip->getExternalAttributesIndex($i, $opsys, $attributes)
+                && defined('ZipArchive::OPSYS_UNIX') && $opsys === ZipArchive::OPSYS_UNIX) {
+                $fileType = (((int) $attributes) >> 16) & 0170000;
+                if ($fileType !== 0 && $fileType !== 0100000) {
+                    throw new InvalidArgumentException('The archive contains a symbolic link or non-regular file.');
+                }
+            }
+            $entrySize = (int) $stat['size'];
+            if ($entrySize < 0 || $entrySize > BACKUP_FULL_MAX_FILE_BYTES + BACKUP_RESTORE_MAX_BYTES) {
+                throw new InvalidArgumentException('An archive entry exceeds its permitted size.');
+            }
+            $archiveEntries[$name] = $entrySize;
+        }
+
+        $manifestSize = $archiveEntries['manifest.json'] ?? null;
+        $databaseSize = $archiveEntries['database/backup.sql'] ?? null;
+        if (!is_int($manifestSize) || $manifestSize < 2 || $manifestSize > BACKUP_FULL_MAX_MANIFEST_BYTES
+            || !is_int($databaseSize) || $databaseSize < 32 || $databaseSize > BACKUP_RESTORE_MAX_BYTES) {
+            throw new InvalidArgumentException('The archive is missing its manifest or has an invalid SQL snapshot.');
+        }
+        $manifestJson = $zip->getFromName('manifest.json');
+        $sql = $zip->getFromName('database/backup.sql');
+        if (!is_string($manifestJson) || !is_string($sql)
+            || strlen($manifestJson) !== $manifestSize || strlen($sql) !== $databaseSize) {
+            throw new InvalidArgumentException('The archive manifest or SQL snapshot could not be read completely.');
+        }
+        try { $manifest = json_decode($manifestJson, true, 64, JSON_THROW_ON_ERROR); }
+        catch (Throwable) { throw new InvalidArgumentException('The archive manifest is not valid JSON.'); }
+        if (!is_array($manifest) || ($manifest['format'] ?? null) !== 'BIRMS_FULL_BACKUP'
+            || ($manifest['format_version'] ?? null) !== 1
+            || !is_array($manifest['database'] ?? null) || !is_array($manifest['files'] ?? null)) {
+            throw new InvalidArgumentException('The archive is not a supported BIRMS full-system backup.');
+        }
+        $dbInfo = $manifest['database'];
+        if (($dbInfo['entry'] ?? null) !== 'database/backup.sql'
+            || (int) ($dbInfo['size'] ?? -1) !== $databaseSize
+            || !is_string($dbInfo['sha256'] ?? null)
+            || preg_match('/^[a-f0-9]{64}$/', $dbInfo['sha256']) !== 1
+            || !hash_equals($dbInfo['sha256'], hash('sha256', $sql))) {
+            throw new InvalidArgumentException('The SQL snapshot checksum or size does not match the manifest.');
+        }
+        if (count($manifest['files']) > BACKUP_FULL_MAX_FILES) {
+            throw new InvalidArgumentException('The manifest contains too many private files.');
+        }
+
+        $expectedEntries = ['manifest.json' => true, 'database/backup.sql' => true];
+        $seenPaths = [];
+        $totalBytes = $databaseSize + $manifestSize;
+        $normalizedFiles = [];
+        foreach ($manifest['files'] as $file) {
+            if (!is_array($file) || !is_string($file['path'] ?? null)
+                || !is_int($file['size'] ?? null) || $file['size'] < 0 || $file['size'] > BACKUP_FULL_MAX_FILE_BYTES
+                || !is_string($file['sha256'] ?? null) || preg_match('/^[a-f0-9]{64}$/', $file['sha256']) !== 1
+                || !backup_full_relative_path_is_allowed($file['path'])) {
+                throw new InvalidArgumentException('The manifest contains an invalid private-file record.');
+            }
+            $relative = $file['path'];
+            if (isset($seenPaths[$relative])) { throw new InvalidArgumentException('The manifest contains duplicate private-file paths.'); }
+            $seenPaths[$relative] = true;
+            $entry = 'files/' . $relative;
+            if (($file['entry'] ?? null) !== $entry || ($archiveEntries[$entry] ?? null) !== $file['size']) {
+                throw new InvalidArgumentException('A private-file entry is missing or has a different size than the manifest.');
+            }
+            $expectedEntries[$entry] = true;
+            $totalBytes += $file['size'];
+            if ($totalBytes > BACKUP_FULL_MAX_TOTAL_BYTES) {
+                throw new InvalidArgumentException('The uncompressed archive payload exceeds the 1 GiB limit.');
+            }
+            $normalizedFiles[] = ['path' => $relative, 'entry' => $entry, 'size' => $file['size'], 'sha256' => $file['sha256']];
+        }
+        if (count($archiveEntries) !== count($expectedEntries)) {
+            throw new InvalidArgumentException('The archive contains files not listed in its manifest.');
+        }
+        foreach ($archiveEntries as $name => $_size) {
+            if (!isset($expectedEntries[$name])) { throw new InvalidArgumentException('The archive contains an unrecognized entry.'); }
+        }
+
+        // Validate the SQL against the currently installed schema before staging files or mutating data.
+        backup_restore_parse($sql, backup_table_names());
+
+        if (!mkdir($stage, 0700, true)) { throw new RuntimeException('A temporary restore workspace could not be created.'); }
+        $stageCreated = true;
+        foreach ($normalizedFiles as $file) {
+            $target = backup_full_make_stage_parent($stage, 'files/' . $file['path']);
+            $input = $zip->getStream($file['entry']);
+            if ($input === false) { throw new InvalidArgumentException('A private archive file could not be opened.'); }
+            $output = fopen($target, 'xb');
+            if ($output === false) { fclose($input); throw new RuntimeException('A staged private file could not be created.'); }
+            $hash = hash_init('sha256');
+            $written = 0;
+            try {
+                while (!feof($input)) {
+                    $chunk = fread($input, 1024 * 1024);
+                    if ($chunk === false) { throw new RuntimeException('A private archive file could not be read.'); }
+                    if ($chunk === '') { break; }
+                    $written += strlen($chunk);
+                    if ($written > $file['size']) { throw new InvalidArgumentException('A private archive file exceeds its declared size.'); }
+                    hash_update($hash, $chunk);
+                    backup_full_write_stream($output, $chunk);
+                }
+            } finally {
+                fclose($input);
+                fclose($output);
+            }
+            if ($written !== $file['size'] || !hash_equals($file['sha256'], hash_final($hash))) {
+                throw new InvalidArgumentException('A private archive file failed its size or SHA-256 check.');
+            }
+            @chmod($target, 0600);
+        }
+
+        return ['sql' => $sql, 'files' => $normalizedFiles, 'staging_dir' => $stage];
+    } catch (Throwable $e) {
+        if ($stageCreated) { backup_full_remove_stage($stage); }
+        throw $e;
+    } finally {
+        $zip->close();
+    }
+}
+
+/** Verify restored DB references point to files that exist and match stored attachment hashes. */
+function backup_full_verify_database_files(): void
+{
+    foreach (backup_full_referenced_private_paths() as $relative) {
+        $target = backup_full_target_details($relative, false);
+        if (!$target['exists']) {
+            throw new RuntimeException('The restored database references a private file that is not present in the archive or storage: ' . basename($relative) . '.');
+        }
+    }
+    foreach (db_all("SELECT storage_path, sha256 FROM document_attachments WHERE storage_path IS NOT NULL AND storage_path <> '' AND sha256 IS NOT NULL AND sha256 <> ''") as $row) {
+        $target = backup_full_target_details((string) $row['storage_path'], false);
+        $actual = $target['exists'] ? hash_file('sha256', $target['path']) : false;
+        if (!is_string($actual) || !hash_equals((string) $row['sha256'], $actual)) {
+            throw new RuntimeException('A restored document attachment failed its stored SHA-256 check: ' . basename((string) $row['storage_path']) . '.');
+        }
+    }
+}
+
+/**
+ * Restore a staged full archive. Files are overlaid, never bulk-deleted or overwritten:
+ * this keeps unrelated private assets safe. The pre-restore SQL snapshot is reapplied
+ * if installing files or verifying database references fails after the database restore.
+ */
+function backup_full_system_restore_staged(array $staged): array
+{
+    $sql = $staged['sql'] ?? null;
+    $files = $staged['files'] ?? null;
+    $stageDir = $staged['staging_dir'] ?? null;
+    if (!is_string($sql) || !is_array($files) || !is_string($stageDir) || !is_dir($stageDir)) {
+        throw new InvalidArgumentException('The staged full-system backup is incomplete.');
+    }
+    backup_restore_parse($sql, backup_table_names());
+
+    $createdFiles = [];
+    $databaseApplied = false;
+    $safetyPath = tempnam(sys_get_temp_dir(), 'birms-full-before-restore-');
+    if ($safetyPath === false) { throw new RuntimeException('A pre-restore database safety snapshot could not be created.'); }
+    $safetyOut = fopen($safetyPath, 'wb');
+    if ($safetyOut === false) { @unlink($safetyPath); throw new RuntimeException('The pre-restore database safety snapshot could not be opened.'); }
+    try {
+        backup_write_sql_export($safetyOut, backup_table_names());
+    } finally {
+        fclose($safetyOut);
+    }
+    $safetySize = filesize($safetyPath);
+    if ($safetySize === false || $safetySize < 32 || $safetySize > BACKUP_RESTORE_MAX_BYTES) {
+        @unlink($safetyPath);
+        throw new RuntimeException('The current database is too large for the automatic pre-restore safety snapshot. Restore was not started.');
+    }
+    $safetySql = file_get_contents($safetyPath);
+    if (!is_string($safetySql) || $safetySql === '') {
+        @unlink($safetyPath);
+        throw new RuntimeException('The pre-restore database safety snapshot could not be read. Restore was not started.');
+    }
+
+    try {
+        // Preflight conflicts before changing the database. Existing identical files are safe to reuse.
+        foreach ($files as $file) {
+            $target = backup_full_target_details((string) $file['path'], false);
+            if ($target['exists']) {
+                $existingHash = hash_file('sha256', $target['path']);
+                if (!is_string($existingHash) || !hash_equals((string) $file['sha256'], $existingHash)) {
+                    throw new RuntimeException('A different private file already exists at the restore destination: ' . basename((string) $file['path']) . '. No data was changed.');
+                }
+            }
+        }
+
+        backup_restore_apply($sql);
+        $databaseApplied = true;
+
+        foreach ($files as $file) {
+            $target = backup_full_target_details((string) $file['path'], true);
+            if ($target['exists']) { continue; }
+            $source = $stageDir . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR
+                . str_replace('/', DIRECTORY_SEPARATOR, (string) $file['path']);
+            $input = fopen($source, 'rb');
+            if ($input === false) { throw new RuntimeException('A staged private restore file could not be opened.'); }
+            $output = @fopen($target['path'], 'xb');
+            if ($output === false) { fclose($input); throw new RuntimeException('A private restore destination could not be created safely.'); }
+            try {
+                if (stream_copy_to_stream($input, $output) !== (int) $file['size']) {
+                    throw new RuntimeException('A private restore file was copied incompletely.');
+                }
+            } finally {
+                fclose($input);
+                fclose($output);
+            }
+            @chmod($target['path'], 0640);
+            $installedHash = hash_file('sha256', $target['path']);
+            if (!is_string($installedHash) || !hash_equals((string) $file['sha256'], $installedHash)) {
+                @unlink($target['path']);
+                throw new RuntimeException('A private restore file failed its post-copy SHA-256 check.');
+            }
+            $createdFiles[] = $target['path'];
+        }
+
+        backup_full_verify_database_files();
+        return [
+            'table_count' => count(backup_table_names()),
+            'file_count' => count($files),
+            'file_count_installed' => count($createdFiles),
+        ];
+    } catch (Throwable $e) {
+        $recoveryFailed = false;
+        if ($databaseApplied) {
+            try {
+                backup_restore_apply($safetySql);
+            } catch (Throwable $recoveryError) {
+                $recoveryFailed = true;
+                error_log('BIRMS full restore database recovery failed. Preserve safety snapshot at '
+                    . $safetyPath . '. Original restore error: ' . $e->getMessage()
+                    . '; recovery error: ' . $recoveryError->getMessage());
+            }
+        }
+        if (!$recoveryFailed) {
+            foreach ($createdFiles as $createdPath) { @unlink($createdPath); }
+            @unlink($safetyPath);
+        }
+        if ($recoveryFailed) {
+            throw new RuntimeException('Full restore failed and automatic database recovery could not be confirmed. Preserve the server safety snapshot file ' . basename($safetyPath) . ' and contact the administrator immediately.');
+        }
+        throw $e;
+    } finally {
+        // The SQL snapshot contains confidential resident records and must not be retained after success/recovery.
+        if (is_file($safetyPath)) { @unlink($safetyPath); }
+    }
+}
+
+/** Validate and restore an uploaded full-system archive, always removing its temporary staging folder. */
+function backup_full_system_restore_archive(string $archivePath): array
+{
+    $staged = backup_full_archive_stage($archivePath);
+    try {
+        return backup_full_system_restore_staged($staged);
+    } finally {
+        backup_full_remove_stage((string) $staged['staging_dir']);
+    }
+}
