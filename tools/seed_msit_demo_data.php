@@ -19,6 +19,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../app/core.php';
 require_once __DIR__ . '/../app/lookups.php';
+require_once __DIR__ . '/../app/certificates_lib.php';
 
 function msit_demo_out(string $message): void { echo $message . PHP_EOL; }
 function msit_demo_fail(string $message): never { fwrite(STDERR, 'REFUSED: ' . $message . PHP_EOL); exit(2); }
