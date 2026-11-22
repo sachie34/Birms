@@ -397,3 +397,58 @@ Both environments reported **zero failures and zero untested checks**. B17-01 th
 - Other target acceptance gates remain **NOT RUN**: Apache's actual PHP runtime, browser-based role journeys, physical kiosk/touchscreen, phone QR/LAN, actual email/SMS delivery, official certificate/print approval, representative-data performance, offline-LAN operation and office UAT.
 
 **Release decision:** The backup restore path now has automated foreign-key integrity and stale-blotter regression coverage on both CI database versions. This does not make the file backup complete or replace the target-machine restore rehearsal. Keep PR #34 as a draft until the remaining manual gates have evidence.
+
+## 16. Complete database and private-file backup/restore (2026-11-22)
+
+### Full-system ZIP backup
+
+- Added a complete ZIP archive option to the Admin backup page while retaining the legacy SQL-only download and restore paths.
+- The full archive contains:
+  - `database/backup.sql` — the schema-and-data SQL snapshot.
+  - `manifest.json` — format version, source database name, file paths, byte sizes and SHA-256 checksums.
+  - `files/storage/private_uploads/` — document attachments and Chairman signature images, including historical issuance signature snapshots.
+  - `files/storage/resident_photos/` — resident photos.
+- The backup scanner accepts only those two application-owned private storage roots. It refuses symbolic links, special files, unsafe paths, missing database-referenced files, invalid attachment hashes/MIME types, invalid resident images, or invalid Chairman signature images.
+- Limits: 512 MiB compressed archive, 1 GiB uncompressed payload, 20,000 files, 100 MiB per private file, and 100 MiB for the SQL snapshot. The archive uses PHP's ZIP extension and a SHA-256 manifest.
+- Full backup creation should be run during a quiet maintenance window because MariaDB's transaction snapshot and the filesystem cannot share one atomic transaction. The helper detects a private file changing while it is copied, but operators should pause uploads and record changes during the backup.
+
+### Full-system restore safeguards
+
+- Added an Admin-only full ZIP restore path. The legacy SQL-only restore remains available but is explicitly labelled as database-only and does not restore private files.
+- The ZIP reader does not call `ZipArchive::extractTo()`. It validates every entry name, rejects duplicate/unlisted entries and symbolic links, checks the manifest and database snapshot hashes, enforces size limits, stages each file to a temporary folder, and validates the SQL against the installed database schema before changing records.
+- Every archive path must remain inside `storage/private_uploads/` or `storage/resident_photos/`. Path traversal, absolute paths, backslashes, duplicate names and unexpected archive entries are refused.
+- Restore preflights file destination collisions before changing the database. It never overwrites a different file already present at the same private path.
+- The database is restored first under the existing permanent-blotter and foreign-key safeguards. Missing private files are then installed with exclusive file creation, SHA-256 verification and protected permissions. The restored database is checked for all referenced attachments, photos and signature files; attachment hashes/MIME types and photo/signature image formats are verified.
+- A same-request SQL safety snapshot is created before restore. If file installation or the post-restore integrity check fails after the database restore begins, the helper reapplies the safety SQL snapshot and removes only files it created. If automatic database recovery itself fails, the safety SQL snapshot is retained and its location is recorded in the server error log for administrator recovery.
+- Existing private files are **not bulk-deleted** during restore. This avoids destructive filesystem replacement, but can leave unreferenced private files from a newer state. Any cleanup must be a separate, reviewed maintenance task after confirming no database record references the files.
+- Full-system WebDAV upload accepts the ZIP archive as well as the legacy SQL file. No cloud provider or credentials are bundled. The ZIP extension must be enabled in both CLI PHP and Apache PHP. Scheduled backups remain unimplemented.
+
+### Regression coverage and automated validation
+
+Expanded `tests/mod_b17.php` with:
+- **B17-07:** creates a complete archive containing a synthetic resident photo and private attachment, deletes both, restores the ZIP, and verifies the files' SHA-256 hashes and database references.
+- **B17-08:** rejects a ZIP manifest containing a path-traversal file path before database or filesystem mutation.
+- **B17-09:** rejects a same-size tampered private file whose SHA-256 does not match the manifest, before database mutation.
+- **B17-10:** refuses a different file already present at the archive destination; confirms neither the existing file nor database records are overwritten.
+
+GitHub Actions run **#1033** validates commit `424fef880cddbf6c03462acc6256b392eb516e21` on disposable MariaDB 10.4 and 10.11:
+
+| Database | Security/authentication/audit | Module integration |
+|---|---:|---:|
+| MariaDB 10.4 | 45/45 passed | 280/280 passed |
+| MariaDB 10.11 | 45/45 passed | 280/280 passed |
+
+Both environments reported **zero failures and zero untested checks**. B17-01 through B17-10 passed on both versions. The ZIP extension is installed in CI specifically to execute the full archive tests.
+
+[View GitHub Actions run #1033](https://github.com/sachie34/Birms/actions/runs/45011376303)
+
+The first runs after the backup UI update (#1026–#1030) retained a failed B17-01 assertion because that test still expected the previous SQL-only page heading. The Admin/Chairman access result itself was not changed; B17-01 was updated to assert the new full-system restore heading and ZIP download control. The corrected run #1031 passed 45/45 security and 278/278 module checks on both databases; #1032 passed after adding file-format verification; #1033 then passed the expanded B17-09/B17-10 cases. Earlier failed runs remain visible in Actions history.
+
+### Manual target-machine limitations
+
+- GitHub Actions uses disposable MariaDB containers and Linux PHP with ZIP enabled. It does **not** establish that the target Windows/XAMPP installation has the ZIP extension loaded in both CLI and Apache, sufficient upload/time limits, available temporary disk space, or correct Windows filesystem permissions.
+- The XAMPP runbook now requires verifying the `zip` extension in both PHP runtimes and performing a complete ZIP restore in a separate scratch application folder, scratch database and separate storage directory.
+- Real barangay private files, real attachments, the official Chairman signature, historical issued certificates, and restore on the target PC have **NOT RUN** in this repository session.
+- Scheduled backup execution and backup notifications are still **Missing**.
+
+**Release decision:** Complete ZIP backup/restore now has automated integration coverage for database and private-file round-trip, archive path validation, manifest tampering, file collision safety, attachment hashes/MIME types, resident photo formats, signature image validity, database foreign-key integrity and permanent blotter preservation. Target XAMPP restore, physical office acceptance and scheduled backups remain outstanding. Keep PR #34 as a draft.
