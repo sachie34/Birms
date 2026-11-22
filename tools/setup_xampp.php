@@ -91,6 +91,7 @@ function setup_check(): int
         '/app/smsapiph_sms_provider.php',
         '/tools/test_smsapiph_sms.php',
         '/app/config.local.php.example',
+        '/public/.htaccess',
         '/tools/check_php_includes.php',
         '/tools/test_infobip_sms.php',
         '/tools/migrate.php',
