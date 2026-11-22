@@ -33,7 +33,8 @@ function run_b17(array $S, string $base): void
         $adminPage = $admin->get('/admin/backup.php');
         record('B17-01', 'Only Admin can open the backup and restore screen',
             $chairmanPage['status'] === 403 && $adminPage['status'] === 200
-            && str_contains($adminPage['body'], 'Restore a BIRMS SQL backup'));
+            && str_contains($adminPage['body'], 'Restore a complete ZIP or legacy SQL backup')
+            && str_contains($adminPage['body'], 'Download complete system ZIP'));
 
         // Make a real backup using the same exporter as the Download SQL Backup button.
         $out = fopen($backupPath, 'wb');
