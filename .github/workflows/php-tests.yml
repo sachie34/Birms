@@ -127,7 +127,7 @@ jobs:
           BIRMS_DB_USER: birms_ci_app
           BIRMS_DB_PASS: ci-app-pass
         run: |
-          php -S 127.0.0.1:8080 -t public > /tmp/birms-php-server.log 2>&1 &
+          php -S 127.0.0.1:8080 -t "$GITHUB_WORKSPACE/public" > /tmp/birms-php-server.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:8080/ > /dev/null; then
               exit 0
@@ -147,8 +147,8 @@ jobs:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
-          BIRMS_DB_USER: birms_ci_app
-          BIRMS_DB_PASS: ci-app-pass
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
         run: |
           set -o pipefail
           php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080 2>&1 | tee test-reports/security-tests.log
@@ -159,8 +159,8 @@ jobs:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
-          BIRMS_DB_USER: birms_ci_app
-          BIRMS_DB_PASS: ci-app-pass
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
         run: |
           set -o pipefail
           php tests/run_modules.php http://127.0.0.1:8080 2>&1 | tee test-reports/module-tests.log
