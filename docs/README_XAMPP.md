@@ -140,3 +140,30 @@ Do not add `--databases`. Test the restore into a scratch database. Copy the pro
 - **Cannot connect to the database:** check `app\config.local.php` and that MySQL is running.
 - **Links or styles broken:** set `'base_url' => '/Birms-main/public'` in `config.local.php` (or use the actual folder name under `htdocs`).
 - **Plain unstyled page:** the browser may be blocking assets; press F12 → Console and send me the messages.
+
+
+## 10. Load the MSIT demonstration documents and sample records
+
+The official document types remain blank until the barangay approves their wording, fees, availability and Chairman-signature policy. For a presentation, load the separate synthetic dataset into the isolated working database only.
+
+From the project folder, review the read-only plan:
+
+~~~bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+~~~
+
+Confirm that the target is barangay_db_work, then apply:
+
+~~~bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+~~~
+
+The seeder refuses database names that do not end in _work or _test. It does not create users/passwords, send email/SMS, or change official document types/settings. It inserts fictitious residents, three DEMO ONLY certificate templates, request lifecycle examples, blotter cases, venues, reservations and queue tickets. See [DEMO_DATA.md](DEMO_DATA.md) for the full list and presentation checks.
+
+### Edit the demonstration templates
+
+Open **System Settings → Documents and fees** as Admin or Secretary. The built-in template editor supports bold, italic, underline, headings, bullets, numbering, dividers, resident/request placeholders and a live preview. Formatting is carried into certificate print/PDF output.
+
+The Secretary can edit template wording only. The Admin controls document fees, template availability and signature requirements. The Chairman remains read-only. Every sample document is clearly marked **DEMO ONLY — NOT AN OFFICIAL DOCUMENT**. Do not use the sample wording or zero demo fee as an official barangay certificate or fee schedule.
+
+The seeder deliberately creates no accounts. Use the User Accounts page to create separate role accounts with strong passwords before testing the Admin, Chairman, Secretary and Staff journeys.
