@@ -195,7 +195,7 @@ jobs:
           echo "$first" | grep -Fq 'Demo dataset created successfully.'
           second="$(php tools/seed_msit_demo_data.php --apply)"
           printf '%s\n' "$second"
-          echo "$second" | grep -Fq 'Demo dataset was already present; no changes made.'
+          echo "$second" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
           echo "PASS: demo seed applies to the disposable database and a second apply creates no duplicates."
 
       - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
