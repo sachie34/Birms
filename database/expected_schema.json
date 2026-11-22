@@ -558,6 +558,12 @@
         "default": "NULL",
         "extra": ""
       },
+      "certificate_reference_no": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
       "resident_name": {
         "type": "varchar(200)",
         "nullable": false,
@@ -696,6 +702,12 @@
         "unique": true,
         "columns": [
           "request_id"
+        ]
+      },
+      "uq_certificate_draft_reference": {
+        "unique": true,
+        "columns": [
+          "certificate_reference_no"
         ]
       }
     },
