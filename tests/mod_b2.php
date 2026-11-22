@@ -14,6 +14,7 @@ function run_b2(array $S, string $base): void
         if ($response['status'] !== 200) { $adminTabsOk = false; }
     }
     $secretaryDocuments = $S['secretary']->get('/admin/settings.php?tab=documents');
+    $secretaryDashboard = $S['secretary']->get('/dashboard.php');
     $secretaryGeneral = $S['secretary']->get('/admin/settings.php?tab=general');
     $secretaryNotifications = $S['secretary']->get('/admin/settings.php?tab=notifications');
     $chairmanDocuments = $S['captain']->get('/admin/settings.php?tab=documents');
@@ -21,7 +22,10 @@ function run_b2(array $S, string $base): void
     record('B2-1', 'Admin manages system settings; Secretary accesses document wording only; Chairman and Staff cannot access template administration',
         $adminTabsOk
         && $secretaryDocuments['status'] === 200
+        && str_contains($secretaryDocuments['body'], 'Document Templates')
         && str_contains($secretaryDocuments['body'], 'You can edit document wording only')
+        && str_contains($secretaryDashboard['body'], 'Document Templates')
+        && !str_contains($secretaryDashboard['body'], 'System Settings')
         && $secretaryGeneral['status'] === 403
         && $secretaryNotifications['status'] === 403
         && $chairmanDocuments['status'] === 403
