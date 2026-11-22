@@ -134,6 +134,18 @@ function backup_webdav_destination_url(string $baseUrl, string $filename): strin
 }
 
 /** Upload a generated SQL file by HTTPS WebDAV PUT with TLS verification and redirects disabled. */
+/** Return the correct MIME type for the explicitly supported backup formats. */
+function backup_webdav_content_type(string $filename): string
+{
+    if (preg_match('/^[A-Za-z0-9_-]+\\.zip$/i', $filename) === 1) {
+        return 'application/zip';
+    }
+    if (preg_match('/^[A-Za-z0-9_-]+\\.sql$/i', $filename) === 1) {
+        return 'application/sql';
+    }
+    throw new InvalidArgumentException('The backup filename is invalid.');
+}
+
 function backup_webdav_upload_file(string $localPath, string $filename): array
 {
     $cfg = backup_webdav_configuration();
@@ -166,7 +178,7 @@ function backup_webdav_upload_file(string $localPath, string $filename): array
         CURLOPT_INFILESIZE => $size === false ? 0 : $size,
         CURLOPT_USERPWD => $cfg['username'] . ':' . $cfg['password'],
         CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/sql', 'Expect:'],
+        CURLOPT_HTTPHEADER => ['Content-Type: ' . backup_webdav_content_type($filename), 'Expect:'],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 15,
         CURLOPT_TIMEOUT => 300,
