@@ -9,7 +9,7 @@ function run_b2(array $S, string $base): void
     $types = db_all('SELECT type_id, fee_amount, template_body, is_active FROM document_types');
 
     $bad = ''; foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'sms'] as $tab) { [$ok, $why] = rbac_page($S, '/admin/settings.php?tab=' . $tab, 'settings.view'); if (!$ok) { $bad .= "{$tab}: {$why}"; } }
-    record('B2-1', 'Settings pages: every role gets exactly what the permission map says (view = Admin only)', $bad === '', $bad);
+    record('B2-1', 'Settings pages: Admin and Secretary can view; Chairman and Staff are denied', $bad === '', $bad);
 
     $sec = $S['secretary']; $adm = $S['admin']; $cap = $S['captain'];
     $r = post_as($cap, '/admin/settings.php', '/admin/settings.php', ['do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Hacked', 'municipality' => 'X1', 'province' => 'Y1', 'age_brackets' => '0-17']);
@@ -100,6 +100,33 @@ function run_b2(array $S, string $base): void
     record('B2-20', 'schema_check.php agrees with the migrated database (expected_schema.json is in sync)', $code === 0, $code === 0 ? '' : implode(' | ', array_slice($out, 0, 4)));
     $out = []; exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/migrate.php') . ' status 2>&1', $out, $code);
     record('B2-21', 'No migration is pending on the working database', $code === 0 && preg_match('/(^|\n)0 pending\./', implode("\n", $out)) === 1);
+
+    $secretaryTemplate = $post($sec, [
+        'do' => 'doctype_save', 'tab' => 'documents', 'id' => (string) $tid,
+        'is_active' => '1', 'requires_chairman_signature' => '0',
+        'fee_amount' => '0', 'template_body' => '**DEMO ONLY** {{full_name}}',
+    ]);
+    $secretaryTemplateRow = db_one('SELECT fee_amount, template_body FROM document_types WHERE type_id = ?', [$tid]);
+    record('B2-22', 'Secretary can save document template wording and fee without receiving full settings-edit permission',
+        $secretaryTemplate['status'] === 302
+        && (float) $secretaryTemplateRow['fee_amount'] === 0.0
+        && (string) $secretaryTemplateRow['template_body'] === '**DEMO ONLY** {{full_name}}');
+
+    $generalBefore = db_val("SELECT setting_value FROM settings WHERE setting_key = 'barangay_name'");
+    $secretaryGeneral = $post($sec, [
+        'do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Unauthorized',
+        'municipality' => 'Balagtas', 'province' => 'Bulacan', 'age_brackets' => '0-17,18-59,60-200',
+    ]);
+    record('B2-23', 'Secretary document-template permission does not allow editing general barangay settings',
+        $secretaryGeneral['status'] === 403
+        && db_val("SELECT setting_value FROM settings WHERE setting_key = 'barangay_name'") === $generalBefore);
+
+    $staffTemplate = post_as($S['clerk'], '/admin/settings.php', '/admin/settings.php', [
+        'do' => 'doctype_save', 'tab' => 'documents', 'id' => (string) $tid,
+        'is_active' => '1', 'fee_amount' => '0', 'template_body' => 'Unauthorized {{full_name}}',
+    ]);
+    record('B2-24', 'Staff cannot change document templates', $staffTemplate['status'] === 403);
+
 
     // cleanup: put everything back
     foreach ($snap as $k => $v) { db_exec('UPDATE settings SET setting_value = ? WHERE setting_key = ?', [$v, $k]); }
