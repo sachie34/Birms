@@ -192,7 +192,11 @@ function certificate_draft_create(int $requestId): array
         throw new RuntimeException('Only an approved request can generate a certificate draft.');
     }
 
-    $vars = certificate_vars($request);
+    $year = (int) date('Y');
+    $certificateReference = sprintf('CERT-%d-%04d', $year, next_counter('certificate', $year));
+    $requestForDraft = $request;
+    $requestForDraft['reference_no'] = $certificateReference;
+    $vars = certificate_vars($requestForDraft);
     $blockers = certificate_blockers($request, $vars);
     if ($blockers) {
         throw new InvalidArgumentException('The request cannot be approved until its certificate draft can be generated: ' . implode(' ', $blockers));
@@ -208,13 +212,13 @@ function certificate_draft_create(int $requestId): array
     $body = render_template((string) $request['template_body'], $vars);
     db_exec(
         'INSERT INTO certificate_drafts
-         (request_id, resident_id, type_id, request_reference_no, resident_name, type_name, purpose,
+         (request_id, resident_id, type_id, request_reference_no, certificate_reference_no, resident_name, type_name, purpose,
           fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate,
           body_text, captain_name, signature_text, chairman_signature_path, generated_by, generated_by_name, generated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
         [
             $requestId, $request['resident_id'], $request['type_id'], $request['reference_no'],
-            resident_name_natural($request), $request['type_name'], $request['purpose'], $request['fee_amount'],
+            $certificateReference, resident_name_natural($request), $request['type_name'], $request['purpose'], $request['fee_amount'],
             $request['fee_rule_id'] ?? null, $request['fee_category_snapshot'] ?? null,
             $request['fee_tier_snapshot'] ?? null, $request['fee_quantity'] ?? 1,
             $request['fee_unit_rate'] ?? null, $body,
