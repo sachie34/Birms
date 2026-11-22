@@ -123,6 +123,9 @@ function msit_demo_apply(): array
 
         $puroks = msit_demo_puroks();
         $activeStatus = msit_demo_lookup_id('resident_status', 'Active', 1);
+        foreach (['Transferred', 'Deceased', 'Non-resident'] as $i => $requiredStatus) {
+            msit_demo_lookup_id('resident_status', $requiredStatus, $i + 2);
+        }
         $noneType = msit_demo_lookup_id('resident_type', 'None', 1);
         $incidentType = msit_demo_lookup_id('incident_type', 'DEMO ONLY - Community concern', 9900);
 
