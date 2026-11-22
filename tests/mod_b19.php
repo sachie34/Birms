@@ -25,7 +25,9 @@ function run_b19(array $S, string $base): void
             && str_contains($adminPage['body'], 'Optional SMS gateway')
             && $chairmanPage['status'] === 403
             && $secretaryPage['status'] === 403
-            && $staffPage['status'] === 403);
+            && $staffPage['status'] === 403,
+            'admin=' . $adminPage['status'] . '; chairman=' . $chairmanPage['status']
+            . '; secretary=' . $secretaryPage['status'] . '; staff=' . $staffPage['status']);
 
         $saved = post_as($admin, '/admin/settings.php?tab=notifications', '/admin/settings.php', [
             'do' => 'email_settings_save',
