@@ -1,44 +1,64 @@
-# Demo data for presentations
+# MSIT BIRMS demonstration data
 
-The demo seeder creates a small, clearly labelled, fictitious dataset so the BIRMS dashboard, residents list, request tracker, certificate history, visitors, blotter and reports are not empty during a presentation.
+Use the MSIT-specific seeder for the revised SRS branch. The older B1–B12 seeder is not the right preparation path for this build.
 
-## Safety first
+## Safety
 
-- Run the commands only against the dedicated `barangay_db_work` or another disposable database whose name ends in `_work` or `_test`. The seeder refuses any other database name, including the original `barangay_db`.
-- It is a **CLI-only** tool; there is no public web route or button that can seed data.
-- The first command is read-only. Data is inserted only when you explicitly pass `--apply`.
-- The seed data has clear `DEMO` identifiers. Demo certificate types and saved certificate bodies say **DEMO ONLY - NOT AN OFFICIAL CERTIFICATE**.
-- It does not edit official document types, their wording, official fees, barangay settings, staff accounts or passwords. Demo document types have a `0.00` demonstration fee, but the seeder creates **no** cash-collection ledger entries, O.R. numbers, real phone numbers or SMS messages.
-- Existing active Purok/category/employment/visitor/incident lookup values are reused. A `DEMO ONLY - ...` lookup value is added only when that lookup list has no active items; those unused demo-only values are removed by the cleanup command.
-- The tool uses a database transaction, is safe to run again without duplicates, and writes audit events. Audit history is intentionally retained when demo records are removed.
+- CLI only; there is no public route that can seed records.
+- Refuses to run unless the configured database name ends in _work or _test.
+- Never point it at the original barangay_db or a production database.
+- Uses fictitious resident data and .invalid email addresses. It does not create phone numbers or send email/SMS.
+- Does not create accounts or default passwords.
+- Does not change official document types, official wording, fees, barangay settings, existing users or passwords.
+- Reuses only old synthetic residents whose last name starts with DEMO- and whose resident number is blank. It assigns a DEMO resident number and demo-only address/contact settings. It never adopts a normal resident record.
+- Existing document types are only updated when their exact name begins DEMO ONLY and matches one of the three reserved demo certificate types.
+- A database transaction is used. The script is idempotent; a complete seed is detected and not duplicated. A partial reserved seed is refused for manual inspection.
 
-## Commands on XAMPP
+## Run on XAMPP
 
-Open Command Prompt or XAMPP Shell and change into the project folder:
+Open Command Prompt and change into the MSIT BIRMS project folder:
 
-```bat
-cd C:\xampp\htdocs\birms_work
-C:\xampp\php\php.exe tools\seed_demo_data.php
-```
+~~~bat
+cd /d C:\xampp\htdocs\Birms-main
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+~~~
 
-That shows the database name and a read-only plan. If the plan points to `barangay_db_work`, add the sample dataset:
+The first command is a read-only plan. Confirm it reports the isolated working database, normally barangay_db_work. Then apply:
 
-```bat
-C:\xampp\php\php.exe tools\seed_demo_data.php --apply
-```
+~~~bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+~~~
 
-Then sign in to BIRMS and review the Residents, Requests, Certificate History, Visitor Logbook, Blotter, Dashboard and Reports pages.
+Sign in using an account created by the administrator. The seeder intentionally does not create shared/default accounts.
 
-To remove the reserved seed dataset after making a backup (or when you want a clean demo database):
+## What is included
 
-```bat
-C:\xampp\php\php.exe tools\seed_demo_data.php --remove --confirm-demo-only
-```
+- 6 fictitious resident records with DEMO-RES identifiers;
+- 3 DEMO ONLY certificate templates: Barangay Clearance, Certificate of Residency and Certificate of Indigency;
+- 4 document requests covering Pending, Approved (with a saved unissued certificate draft), Rejected and Released (with one issuance-history record);
+- 3 fictitious blotter cases;
+- 2 sample venues and 2 reservations;
+- 3 queue tickets: Documents, Blotter and Venue.
 
-Both flags are required for removal. If the seed rows have been linked to other records (for example, you attached a real uploaded file or created another request using a demo resident), the seeder refuses removal instead of deleting that related work. Review the reported dependency before making a cleanup decision.
+Every sample document prominently says DEMO ONLY — NOT AN OFFICIAL DOCUMENT. Demo templates use a zero demonstration fee and do not require the Chairman's signature image. This is not an approved fee schedule or official certificate wording.
 
-## Dataset
+## Edit templates
 
-The seed package adds **8 households, 24 residents, 12 document requests across the supported statuses, 4 demo-only issuance-history records, 8 visitor entries, 4 fictitious blotter cases, and 1 future hearing**. It uses no actual resident information and no contact phone numbers. The certificate bodies visibly state that they are fictitious and not valid for official use.
+Open System Settings → Documents and fees. The document editor supports bold, italic, underline, headings, bullet/numbered lists, dividers, resident/request placeholders and a live preview. Saved formatting is used by the certificate print and PDF views. The editor intentionally provides a focused document-template workflow, not a complete replacement for Microsoft Word.
 
-This is test/presentation data, not a data migration from physical barangay records. For real records, use the Residents CSV import template, assess the source spreadsheet first, correct errors, preview the import, and confirm only after reviewing the results.
+An automatically generated certificate draft is a snapshot. Editing a template later does not rewrite a saved draft or an already issued certificate.
+
+## Demo readiness checks
+
+Before presenting, verify the following in the browser on the actual XAMPP machine:
+
+1. Dashboard shows sample residents, requests, queues and cases.
+2. Document Requests shows Pending, Approved, Rejected and Released examples.
+3. Staff can preview the saved draft, then release it; the sample has no fee and no Chairman signature requirement.
+4. Issuance History shows the clearly marked demo issue.
+5. Blotter displays the three fictitious cases.
+6. Venue Reservations displays the two sample reservations and availability.
+7. The three service queues display their demo tickets.
+8. The print/PDF output visibly retains the DEMO ONLY warning.
+
+CI does not replace local XAMPP, browser, printer or role acceptance. Never present a demo-only document as a valid barangay certificate.
