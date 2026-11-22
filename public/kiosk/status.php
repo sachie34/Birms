@@ -37,7 +37,8 @@ if ($reference !== '') {
         if ($result !== null) {
             $history = db_all(
                 'SELECT previous_status, new_status, changed_at FROM request_status_history
-                 WHERE reference_no = ? ORDER BY history_id ASC LIMIT 30',
+                 WHERE reference_no = ? AND (previous_status IS NULL OR previous_status <> new_status)
+                 ORDER BY history_id ASC LIMIT 30',
                 [$reference]
             );
         }
