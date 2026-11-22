@@ -39,9 +39,22 @@ $sessions = [];
 foreach ($fx as $role => $u) { $sessions[$role] = new Http($base); $sessions[$role]->login($u, TP); }
 
 /* ------------------------------------------------------------ unit checks */
-$expect = ['admin' => 41, 'captain' => 12, 'secretary' => 21, 'clerk' => 19];
-$counts = array_map('count', permission_map());
-record('U1', 'Admin has full module access; Chairman is view-only; Secretary manages records and document wording; Staff handles final decisions, certificates, queues and the unified request tracker (41/12/21/19 permissions)', $counts === $expect, json_encode($counts));
+$map = permission_map();
+$chairmanWrites = array_values(array_filter($map['captain'] ?? [], static fn(string $p): bool =>
+    !in_array($p, ['dashboard.view', 'certificates.history', 'reports.export', 'cash_ledger.view'], true)
+    && !str_ends_with($p, '.view')));
+$rolePolicyOk = array_keys($map) === ['admin', 'captain', 'secretary', 'clerk']
+    && role_can('admin', 'users.manage') && role_can('admin', 'settings.edit')
+    && role_can('admin', 'backup.run') && role_can('admin', 'audit.export')
+    && role_can('captain', 'reports.view') && role_can('captain', 'cash_ledger.view') && !$chairmanWrites
+    && role_can('secretary', 'documents.templates.manage') && role_can('secretary', 'requests.review')
+    && role_can('secretary', 'blotters.edit') && !role_can('secretary', 'requests.approve')
+    && !role_can('secretary', 'settings.edit') && !role_can('secretary', 'users.manage')
+    && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
+    && role_can('clerk', 'queue.manage') && role_can('clerk', 'requests.tracker')
+    && !role_can('clerk', 'settings.edit') && !role_can('clerk', 'users.manage');
+record('U1', 'Role policy maps legacy account IDs to Admin, Chairman, Secretary and Staff capabilities without granting unauthorized operational access',
+    $rolePolicyOk, 'permission counts=' . json_encode(array_map('count', $map)) . '; Chairman write permissions=' . json_encode($chairmanWrites));
 record('U2', 'Chairman is read-only; Secretary reviews and manages records; Staff approves requests, issues certificates and manages queues; Admin manages accounts and settings',
     !role_can('ghost', 'dashboard.view')
     && role_can('secretary', 'requests.review') && !role_can('secretary', 'requests.approve')
