@@ -141,3 +141,23 @@ When several approaches are technically possible, prefer the one that:
 6. Minimizes unrelated changes and manual operational burden.
 
 If a requested feature conflicts with the revised SRS, risks data loss, cannot be safely verified, or depends on a stakeholder decision, stop before implementing the risky part. Explain the conflict and recommend the safest next step.
+
+## 11. Full-system ZIP backup and restore rules
+
+The preferred complete backup is the Admin full-system ZIP, not the legacy SQL-only export.
+
+- The archive contains the database SQL snapshot, a SHA-256 manifest, and approved private files from exactly \`storage/private_uploads/\` and \`storage/resident_photos/\`.
+- Treat document attachments, resident photos, the current Chairman signature, and historical issuance signature snapshots as confidential data.
+- Require PHP's ZIP extension in both CLI PHP and Apache PHP. CI must keep ZIP enabled so the full archive tests execute rather than silently skip.
+- Preserve the archive format, manifest version, size limits, and path allowlist unless a deliberate migration strategy and backward compatibility plan are provided.
+- Never use \`ZipArchive::extractTo()\` on an uploaded archive. Validate every entry and manifest record before writing files. Reject traversal, absolute paths, backslashes, duplicate/unlisted entries, symlinks, special files, invalid sizes, and checksum mismatches.
+- Validate the SQL against the installed schema before mutation. Preserve the foreign-key integrity check and permanent blotter case protections.
+- Verify attachment SHA-256 and MIME type, resident photo JPEG/PNG format, current Chairman signature and issuance signature snapshots, and every database-referenced private path.
+- Restore only into a deliberately selected scratch/target application and database. The operation replaces database records, so require Admin authorization, CSRF, and exact target-database confirmation.
+- Preflight all private file destinations before changing the database. Use exclusive file creation. Never overwrite a different existing private file and never bulk-delete private storage as part of restore.
+- Retain the pre-restore database safety snapshot if automatic recovery fails. Do not delete or conceal that recovery artifact until an administrator has recovered the database.
+- Run full create → verify → remove synthetic test files → restore → verify tests against disposable CI databases. Include path-traversal, checksum-tampering, destination-conflict, missing-reference, rollback, and permanent-blotter cases.
+- The database and filesystem do not share an atomic transaction. Schedule backup during a quiet maintenance window and detect files changing while they are copied. Do not describe the archive as an atomic point-in-time snapshot unless a mechanism actually guarantees that.
+- Full ZIP restore is conservative overlay behavior: it restores missing required files but does not remove newer or unreferenced private files. Any cleanup must be a separate reviewed operation that first proves no record references the files.
+- The legacy \`.sql\` export/restore is database-only. Never describe it as a complete system backup.
+- Scheduled backup execution and backup notifications are not implemented unless separately developed, tested, and documented.
