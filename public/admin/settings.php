@@ -323,7 +323,7 @@ if ($tab === 'general') {
             echo '<button type="button" class="btn btn-sm btn-light border" data-editor-wrap="' . e($marker) . '" title="' . e($tip) . '"' . (!$canEdit ? ' disabled' : '') . '>' . e($label) . '</button>';
         }
         foreach ([
-            ['Heading', '# '], ['Subheading', '## '], ['Bullets', '- '], ['Numbering', '1. '], ['Divider', "\n---\n"],
+            ['Heading', '# '], ['Subheading', '## '], ['Bullets', '- '], ['Numbering', '1. '], ['Divider', '---'],
         ] as [$label, $marker]) {
             echo '<button type="button" class="btn btn-sm btn-light border" data-editor-prefix="' . e($marker) . '"' . (!$canEdit ? ' disabled' : '') . '>' . e($label) . '</button>';
         }
