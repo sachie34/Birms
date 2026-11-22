@@ -27,7 +27,7 @@ for ($i = 0; $i < 3; $i++) {
     if ($next === $decodedPath) { break; }
     $decodedPath = $next;
 }
-$normalizedPath = str_replace('\\\\', '/', $decodedPath);
+$normalizedPath = str_replace('\\', '/', $decodedPath);
 
 if (str_contains($normalizedPath, chr(0))
     || preg_match('~(?:^|/)(?:app|database|docs|storage|tests|tools)(?:/|$)~i', $normalizedPath) === 1) {
