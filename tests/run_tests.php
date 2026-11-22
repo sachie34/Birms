@@ -139,8 +139,9 @@ record('U10', 'PHP runtime guard enforces current security patch levels and acce
         if ((php_runtime_security_issue($version, '2026-11-19') === null) !== $expectedSafe) { return false; }
     }
     return php_runtime_upgrade_notice(80235, '2026-11-19') !== null
-        && php_runtime_upgrade_notice(80336, '2026-11-19') === null
+        && php_runtime_upgrade_notice(80337, '2026-11-19') === null
         && php_runtime_security_issue(80235, '2027-01-01') !== null
+        && php_runtime_security_issue(80236, '2027-01-01') !== null
         && php_runtime_upgrade_notice(80235, '2027-01-01') === null;
 })());
 
