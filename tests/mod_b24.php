@@ -261,6 +261,9 @@ function run_b24(array $S, string $base): void
             && str_contains(loc($issued), 'print.php')
             && $issuance !== null
             && preg_match('/^CERT-' . date('Y') . '-\\d{4,}$/', (string) $issuance['reference_no']) === 1
+            && $issuance['reference_no'] === $generatedDraft['certificate_reference_no']
+            && $issuance['body_text'] === $generatedDraft['body_text']
+            && $issuance['chairman_signature_path'] === $generatedDraft['chairman_signature_path']
             && str_contains((string) $issuance['body_text'], 'JAMIE')
             && str_contains((string) $issuance['body_text'], 'B24TESTRESIDENT')
             && !empty($issuance['chairman_signature_path'])
