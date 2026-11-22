@@ -7,10 +7,11 @@ require_login();
 $canEdit = can('settings.edit');
 $canEditDocuments = $canEdit || can('documents.templates.manage');
 $tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'notifications' => 'Notifications', 'sms' => 'SMS gateway and text'];
-$tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'general';
-// Notification delivery configuration is an Admin system setting, not part of Secretary template maintenance.
-if ($tab === 'notifications') {
-    require_permission('settings.edit');
+$requestedTab = is_post() ? post_str('tab') : get_str('tab');
+$tab = isset($tabs[$requestedTab]) ? $requestedTab : 'general';
+// Secretary's template permission is deliberately isolated from system configuration.
+if ($tab === 'documents') {
+    require_permission('documents.templates.manage');
 } else {
     require_permission('settings.view');
 }
@@ -19,9 +20,10 @@ $errors = [];
 if (is_post()) {
     require_csrf();
     $do = post_str('do');
-    if (in_array($do, ['doctype_save', 'doctype_add'], true)) {
+    if ($do === 'doctype_save') {
         if (!$canEdit) { require_permission('documents.templates.manage'); }
     } else {
+        // Adding document types and changing every other setting remain Admin-only.
         require_permission('settings.edit');
     }
     $tab = isset($tabs[post_str('tab')]) ? post_str('tab') : 'general';
@@ -239,9 +241,16 @@ page_head('Settings', 'Official details are entered by the Barangay Secretary. A
 if ($canEdit) { echo '<div class="mb-3">' . btn_link('admin/chairman_signature.php', 'Manage Chairman Signature Image', 'btn-light border', 'bi-pen') . '</div>'; }
 echo errors_box($errors);
 echo '<ul class="nav nav-pills mb-3">';
-foreach ($tabs as $k => $lab) { echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('admin/settings.php?tab=' . $k)) . '">' . e($lab) . '</a></li>'; }
+foreach ($tabs as $k => $lab) {
+    if (!$canEdit && $k !== 'documents') { continue; }
+    echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('admin/settings.php?tab=' . $k)) . '">' . e($lab) . '</a></li>';
+}
 echo '</ul>';
-if (!$canEdit) { echo '<div class="alert alert-info">You can view settings but not change them.</div>'; }
+if (!$canEdit && $canEditDocuments) {
+    echo '<div class="alert alert-info">You can edit document wording only. Fees, availability, signature requirements and system settings are managed by Admin.</div>';
+} elseif (!$canEdit) {
+    echo '<div class="alert alert-info">You can view settings but not change them.</div>';
+}
 $hidden = fn(string $do) => csrf_field() . '<input type="hidden" name="do" value="' . e($do) . '"><input type="hidden" name="tab" value="' . e($tab) . '">';
 
 if ($tab === 'general') {
@@ -360,7 +369,7 @@ if ($tab === 'general') {
         if (!$canEditDocuments) { echo '</div></form>'; } else { echo '</div><button class="btn btn-primary" type="submit">Save</button></form>'; }
         card_end();
     }
-    if ($canEditDocuments) {
+    if ($canEdit) {
         card_start('Add a document type', 'For example Business certificate or First-time jobseeker, once the barangay confirms them.');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '" class="row g-2 align-items-end">' . $hidden('doctype_add')
            . '<div class="col-md-6"><label class="form-label" for="dt_name">Name</label><input class="form-control" id="dt_name" name="name" maxlength="100" required></div><div class="col-auto"><button class="btn btn-primary" type="submit">Add</button></div></form>';
