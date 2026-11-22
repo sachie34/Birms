@@ -123,7 +123,7 @@ A failed critical test blocks go-live. Keep the deployment internal and use synt
 
 At the time this runbook was added:
 
-- Hosted CI run [#1095](https://github.com/sachie34/Birms/actions/runs/45026931061) passed on PHP 8.3, 8.4, 8.5 and 8.6 across MariaDB 10.4 and 10.11: 48/48 security and 283/283 module checks in every combination, zero failures and zero untested checks. The web application ran with a limited DML-only database account; fixture setup/inspection used a separate DBA account.
+- Hosted CI run [#1097](https://github.com/sachie34/Birms/actions/runs/45027183539) passed on PHP 8.3, 8.4, 8.5 and 8.6 across MariaDB 10.4 and 10.11: 48/48 security and 283/283 module checks in every combination, zero failures and zero untested checks. The web application ran with a limited DML-only database account; fixture setup/inspection used a separate DBA account. An additional smoke test started the application with HTTPS-required mode enabled and confirmed all eight HTTP requests received 503 without a redirect.
 - Automated tests do not certify the actual Windows/XAMPP host, TLS trust, office LAN, kiosk hardware, physical printer, live notification provider, representative-data performance or full recovery rehearsal.
 - The original `barangay_db` remains protected and is not a deployment target.
 - PR #34 remains a draft until the go-live acceptance evidence and independent review are complete.
