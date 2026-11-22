@@ -41,7 +41,7 @@ This process fixes a missing/mixed local source tree without replacing your data
 **Credentials warning:** BIRMS no longer includes the old root-level `Api` file. It was not used by application code and contained an unexplained credential-looking value. If you are extracting this ZIP over an older copy of the project, delete that old `Api` file manually. If it held a real API key/token, revoke and replace it because Git history retains earlier committed versions.
 
 ## 1. Requirements
-- XAMPP with a supported, security-patched PHP runtime. As of 19 November 2026, minimum accepted versions are PHP 8.3.36, 8.4.27 or 8.5.12; PHP 8.2.35 is accepted only through 31 December 2026. Verify both CLI PHP and Apache's loaded PHP. See [PHP supported versions](https://www.php.net/supported-versions.php).
+- XAMPP with a supported, security-patched PHP runtime. As of 19 November 2026, minimum accepted versions are PHP 8.3.37, 8.4.28, 8.5.13 or 8.6.0; PHP 8.2.36 is accepted only through 31 December 2026 and upgrading to PHP 8.3 or newer is recommended. Verify both CLI PHP and Apache's loaded PHP. See [PHP supported versions](https://www.php.net/supported-versions.php).
 - PHP extensions: `pdo_mysql` and `fileinfo` (required); `curl` for the automated HTTP tests; `mbstring` is optional (the application has a fallback).
 - Keep BIRMS on the trusted local office network. **Do not expose it to the public internet.**
 
