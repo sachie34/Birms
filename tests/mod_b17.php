@@ -39,6 +39,15 @@ function run_b17(array $S, string $base): void
             && str_contains($adminPage['body'], 'Restore a complete ZIP or legacy SQL backup')
             && str_contains($adminPage['body'], 'Download complete system ZIP'));
 
+        $webdavMimeTypes = backup_webdav_content_type('birms-full-backup.zip') === 'application/zip'
+            && backup_webdav_content_type('birms-database-backup.sql') === 'application/sql';
+        $webdavInvalidRejected = false;
+        try { backup_webdav_content_type('../backup.zip'); }
+        catch (InvalidArgumentException) { $webdavInvalidRejected = true; }
+        record('B17-12', 'WebDAV backup uploads use the format-specific MIME type and reject unsupported filenames',
+            $webdavMimeTypes && $webdavInvalidRejected,
+            'zip=application/zip; sql=application/sql; invalid-filename-rejected=' . ($webdavInvalidRejected ? 'yes' : 'no'));
+
         // Make a real backup using the same exporter as the Download SQL Backup button.
         $out = fopen($backupPath, 'wb');
         if ($out === false) { throw new RuntimeException('Could not open B17 backup fixture.'); }
