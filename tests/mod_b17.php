@@ -21,9 +21,12 @@ function run_b17(array $S, string $base): void
     $fkBackupPath = null;
     $fullArchivePath = null;
     $badFullArchivePath = null;
+    $badChecksumArchivePath = null;
     $fullPhotoRelative = '';
     $fullAttachmentRelative = '';
     $fullProbeKey = 'zz_b17_full_restore_probe';
+    $checksumProbeKey = 'zz_b17_checksum_restore_probe';
+    $conflictProbeKey = 'zz_b17_conflict_restore_probe';
 
     try {
         db_exec('DELETE FROM settings WHERE setting_key = ?', [$probeKey]);
@@ -329,10 +332,81 @@ function run_b17(array $S, string $base): void
                 . '; settings-before=' . $settingsBeforeBadZip
                 . '; settings-after=' . $settingsAfterBadZip
                 . '; outside-file-created=' . ($outsidePathCreated ? 'yes' : 'no'));
+
+            // Same-size tampering must be detected by the per-file SHA-256 manifest before restore.
+            $badChecksumArchivePath = tempnam(sys_get_temp_dir(), 'birms-b17-bad-checksum-');
+            if ($badChecksumArchivePath === false) { throw new RuntimeException('B17 checksum ZIP fixture path could not be created.'); }
+            $goodZip = new ZipArchive();
+            if ($goodZip->open($fullArchivePath, ZipArchive::RDONLY) !== true) {
+                throw new RuntimeException('B17 full-system archive could not be reopened for checksum tampering.');
+            }
+            $tamperedZip = new ZipArchive();
+            if ($tamperedZip->open($badChecksumArchivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                $goodZip->close();
+                throw new RuntimeException('B17 checksum ZIP fixture could not be created.');
+            }
+            try {
+                for ($i = 0; $i < $goodZip->numFiles; $i++) {
+                    $stat = $goodZip->statIndex($i);
+                    if (!is_array($stat) || !is_string($stat['name'] ?? null)) {
+                        throw new RuntimeException('B17 checksum fixture contains an unreadable archive entry.');
+                    }
+                    $entryName = (string) $stat['name'];
+                    if ($entryName === 'files/' . $fullPhotoRelative) {
+                        $entryBytes = str_repeat('X', strlen($photoBytes));
+                    } else {
+                        $entryBytes = $goodZip->getFromName($entryName);
+                    }
+                    if (!is_string($entryBytes) || !$tamperedZip->addFromString($entryName, $entryBytes)) {
+                        throw new RuntimeException('B17 checksum fixture entry could not be copied.');
+                    }
+                }
+            } finally {
+                $goodZip->close();
+                $tamperedZip->close();
+            }
+            db_exec('DELETE FROM settings WHERE setting_key = ?', [$checksumProbeKey]);
+            db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$checksumProbeKey, 'must survive checksum rejection']);
+            $checksumRejected = false;
+            try {
+                backup_full_system_restore_archive($badChecksumArchivePath);
+            } catch (InvalidArgumentException $e) {
+                $checksumRejected = str_contains($e->getMessage(), 'failed its size or SHA-256 check');
+            }
+            $checksumProbeAfter = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$checksumProbeKey]);
+            record('B17-09', 'Full-system restore rejects a same-size private-file tamper using the SHA-256 manifest before database mutation',
+                $checksumRejected && $checksumProbeAfter === 1,
+                'checksum-rejected=' . ($checksumRejected ? 'yes' : 'no')
+                . '; post-backup-setting-preserved=' . $checksumProbeAfter);
+
+            // A destination collision with different existing bytes must never be overwritten.
+            $conflictBytes = "BIRMS B17 existing private file; do not overwrite\n";
+            if (file_put_contents(APP_ROOT . '/' . $fullPhotoRelative, $conflictBytes, LOCK_EX) !== strlen($conflictBytes)) {
+                throw new RuntimeException('B17 conflicting destination fixture could not be written.');
+            }
+            db_exec('DELETE FROM settings WHERE setting_key = ?', [$conflictProbeKey]);
+            db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$conflictProbeKey, 'must survive file collision rejection']);
+            $collisionRejected = false;
+            try {
+                backup_full_system_restore_archive($fullArchivePath);
+            } catch (RuntimeException $e) {
+                $collisionRejected = str_contains($e->getMessage(), 'different private file already exists');
+            }
+            $conflictBytesAfter = file_get_contents(APP_ROOT . '/' . $fullPhotoRelative);
+            $conflictProbeAfter = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$conflictProbeKey]);
+            record('B17-10', 'Full-system restore refuses a different existing private file without overwriting it or changing database rows',
+                $collisionRejected && $conflictBytesAfter === $conflictBytes && $conflictProbeAfter === 1,
+                'collision-rejected=' . ($collisionRejected ? 'yes' : 'no')
+                . '; existing-file-preserved=' . ($conflictBytesAfter === $conflictBytes ? 'yes' : 'no')
+                . '; post-backup-setting-preserved=' . $conflictProbeAfter);
         } else {
             record('B17-07', 'Complete ZIP backup and private-file restore requires the PHP ZIP extension', null,
                 'Enable extension=zip in the active PHP configuration to run this test.');
             record('B17-08', 'Full-system ZIP path-traversal validation requires the PHP ZIP extension', null,
+                'Enable extension=zip in the active PHP configuration to run this test.');
+            record('B17-09', 'Full-system ZIP checksum validation requires the PHP ZIP extension', null,
+                'Enable extension=zip in the active PHP configuration to run this test.');
+            record('B17-10', 'Full-system ZIP collision protection requires the PHP ZIP extension', null,
                 'Enable extension=zip in the active PHP configuration to run this test.');
         }
     } finally {
@@ -342,6 +416,7 @@ function run_b17(array $S, string $base): void
         if (is_string($fkBackupPath)) { @unlink($fkBackupPath); }
         if (is_string($fullArchivePath)) { @unlink($fullArchivePath); }
         if (is_string($badFullArchivePath)) { @unlink($badFullArchivePath); }
+        if (is_string($badChecksumArchivePath)) { @unlink($badChecksumArchivePath); }
         if ($fullPhotoRelative !== '') { @unlink(APP_ROOT . '/' . $fullPhotoRelative); }
         if ($fullAttachmentRelative !== '') { @unlink(APP_ROOT . '/' . $fullAttachmentRelative); }
         @rmdir(APP_ROOT . '/storage/resident_photos/b17-fixtures');
@@ -350,6 +425,6 @@ function run_b17(array $S, string $base): void
             db_exec('DELETE FROM resident_verification_challenges WHERE challenge_token_hash = ?', [$fkChallengeHash]);
         }
         if ($fkResidentId > 0) { db_exec('DELETE FROM residents WHERE resident_id = ?', [$fkResidentId]); }
-        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?, ?, ?)', [$probeKey, $staleProbeKey, $fkProbeKey, $fullProbeKey]);
+        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?, ?, ?, ?, ?)', [$probeKey, $staleProbeKey, $fkProbeKey, $fullProbeKey, $checksumProbeKey, $conflictProbeKey]);
     }
 }
