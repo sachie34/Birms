@@ -29,7 +29,7 @@ function certificate_blockers(array $r, array $vars): array
     if ($r['fee_amount'] === null) { $b[] = 'The fee for ' . $r['type_name'] . ' is not set yet. The Secretary must enter it in Settings, Documents and fees (0 means free).'; }
     $body = (string) ($r['template_body'] ?? '');
     if (trim($body) === '') { $b[] = 'The official wording for ' . $r['type_name'] . ' is not set yet. The Secretary must enter it in Settings, Documents and fees.'; }
-    foreach (['captain_name' => 'the Barangay Captain\'s name (Settings, Barangay details)', 'address' => 'this resident\'s household address', 'purok' => 'this resident\'s Purok'] as $tok => $what) {
+    foreach (['captain_name' => 'the Barangay Captain\'s name (Settings, Barangay details)', 'address' => 'this resident\'s Address field', 'purok' => 'this resident\'s Purok'] as $tok => $what) {
         if (str_contains($body, '{{' . $tok . '}}') && $vars[$tok] === '') { $b[] = 'The wording uses {{' . $tok . '}} but ' . $what . ' is empty.'; }
     }
     if (($r['resident_archived'] ?? null) !== null) { $b[] = 'This resident is archived. Restore the resident first.'; }
