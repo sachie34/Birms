@@ -58,7 +58,7 @@ function setup_prompt(string $message): string
 function setup_require_extensions(): array
 {
     $missing = [];
-    foreach (['pdo_mysql', 'fileinfo'] as $extension) {
+    foreach (['pdo_mysql', 'fileinfo', 'zip'] as $extension) {
         if (!extension_loaded($extension)) {
             $missing[] = $extension;
         }
@@ -78,7 +78,7 @@ function setup_check(): int
         setup_out($notice);
     }
     if ($missing) {
-        setup_out('FAIL: Required PHP extension(s) missing: ' . implode(', ', $missing));
+        setup_out('FAIL: Required PHP extension(s) missing (zip is required for complete system backup/restore): ' . implode(', ', $missing));
         return 1;
     }
     $requiredFiles = [
