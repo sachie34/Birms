@@ -19,6 +19,11 @@ function run_b17(array $S, string $base): void
     $fkResidentId = 0;
     $fkChallengeHash = '';
     $fkBackupPath = null;
+    $fullArchivePath = null;
+    $badFullArchivePath = null;
+    $fullPhotoRelative = '';
+    $fullAttachmentRelative = '';
+    $fullProbeKey = 'zz_b17_full_restore_probe';
 
     try {
         db_exec('DELETE FROM settings WHERE setting_key = ?', [$probeKey]);
@@ -203,15 +208,147 @@ function run_b17(array $S, string $base): void
             'orphan-reference-rejected=' . ($badFkRejected ? 'yes' : 'no')
             . '; preserved-post-backup-setting=' . $fkProbeCount
             . '; challenge-resident-after-rollback=' . $challengeResidentAfter);
+
+        if (backup_full_zip_available()) {
+            // Create one referenced resident photo and one additional private attachment file.
+            $jpegFixture = fx_chairman_signature_jpeg();
+            try { $photoBytes = file_get_contents($jpegFixture); }
+            finally { @unlink($jpegFixture); }
+            if (!is_string($photoBytes) || $photoBytes === '') { throw new RuntimeException('B17 full-backup photo fixture is empty.'); }
+
+            $suffix = strtolower(bin2hex(random_bytes(12)));
+            $fullPhotoRelative = 'storage/resident_photos/b17-fixtures/' . $suffix . '.jpg';
+            $fullAttachmentRelative = 'storage/private_uploads/b17-fixtures/' . $suffix . '.pdf';
+            $photoAbsolute = APP_ROOT . '/' . $fullPhotoRelative;
+            $attachmentAbsolute = APP_ROOT . '/' . $fullAttachmentRelative;
+            foreach ([dirname($photoAbsolute), dirname($attachmentAbsolute)] as $directory) {
+                if (is_link($directory) || (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory))) {
+                    throw new RuntimeException('B17 private-file fixture folders could not be created safely.');
+                }
+            }
+            if (file_put_contents($photoAbsolute, $photoBytes, LOCK_EX) !== strlen($photoBytes)) {
+                throw new RuntimeException('B17 resident photo fixture could not be written.');
+            }
+            $attachmentBytes = "%PDF-1.4\n%BIRMS B17 private attachment fixture\n";
+            if (file_put_contents($attachmentAbsolute, $attachmentBytes, LOCK_EX) !== strlen($attachmentBytes)) {
+                throw new RuntimeException('B17 private attachment fixture could not be written.');
+            }
+            db_exec('UPDATE residents SET photo_path = ? WHERE resident_id = ?', [$fullPhotoRelative, $fkResidentId]);
+
+            $fullArchivePath = tempnam(sys_get_temp_dir(), 'birms-b17-full-');
+            if ($fullArchivePath === false) { throw new RuntimeException('B17 full-system archive path could not be created.'); }
+            $fullCreated = backup_full_system_create_archive($fullArchivePath);
+            $fullZip = new ZipArchive();
+            if ($fullZip->open($fullArchivePath, ZipArchive::RDONLY) !== true) {
+                throw new RuntimeException('B17 full-system ZIP could not be opened after creation.');
+            }
+            try {
+                $manifestRaw = $fullZip->getFromName('manifest.json');
+                $manifest = is_string($manifestRaw) ? json_decode($manifestRaw, true) : null;
+                $manifestPaths = is_array($manifest['files'] ?? null)
+                    ? array_column($manifest['files'], 'path') : [];
+                $manifestValid = ($manifest['format'] ?? null) === 'BIRMS_FULL_BACKUP'
+                    && in_array($fullPhotoRelative, $manifestPaths, true)
+                    && in_array($fullAttachmentRelative, $manifestPaths, true)
+                    && $fullZip->locateName('database/backup.sql') !== false;
+            } finally {
+                $fullZip->close();
+            }
+
+            db_exec('DELETE FROM settings WHERE setting_key = ?', [$fullProbeKey]);
+            db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$fullProbeKey, 'must disappear after full restore']);
+            @unlink($photoAbsolute);
+            @unlink($attachmentAbsolute);
+
+            $fullRestore = backup_full_system_restore_archive($fullArchivePath);
+            $fullPhotoHash = hash_file('sha256', APP_ROOT . '/' . $fullPhotoRelative);
+            $fullAttachmentHash = hash_file('sha256', APP_ROOT . '/' . $fullAttachmentRelative);
+            $fullPhotoDbPath = (string) db_val('SELECT photo_path FROM residents WHERE resident_id = ?', [$fkResidentId]);
+            $fullProbeAfter = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$fullProbeKey]);
+            $fullRoundTrip = $manifestValid
+                && $fullCreated['file_count'] >= 2
+                && $fullRestore['file_count'] >= 2
+                && $fullRestore['file_count_installed'] >= 2
+                && is_string($fullPhotoHash) && hash_equals(hash('sha256', $photoBytes), $fullPhotoHash)
+                && is_string($fullAttachmentHash) && hash_equals(hash('sha256', $attachmentBytes), $fullAttachmentHash)
+                && $fullPhotoDbPath === $fullPhotoRelative
+                && $fullProbeAfter === 0;
+            record('B17-07', 'Complete ZIP backup round-trips the SQL database, resident photo and private attachment with SHA-256 verification',
+                $fullRoundTrip,
+                'manifest=' . ($manifestValid ? 'valid' : 'invalid')
+                . '; archived-files=' . $fullCreated['file_count']
+                . '; newly-installed-files=' . $fullRestore['file_count_installed']
+                . '; photo-restored=' . (is_string($fullPhotoHash) && hash_equals(hash('sha256', $photoBytes), $fullPhotoHash) ? 'yes' : 'no')
+                . '; attachment-restored=' . (is_string($fullAttachmentHash) && hash_equals(hash('sha256', $attachmentBytes), $fullAttachmentHash) ? 'yes' : 'no')
+                . '; post-backup-setting=' . $fullProbeAfter);
+
+            // A path-traversal entry in a ZIP manifest must fail before the database or filesystem is changed.
+            $badFullArchivePath = tempnam(sys_get_temp_dir(), 'birms-b17-zip-slip-');
+            if ($badFullArchivePath === false) { throw new RuntimeException('B17 unsafe ZIP fixture path could not be created.'); }
+            $badZip = new ZipArchive();
+            if ($badZip->open($badFullArchivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new RuntimeException('B17 unsafe ZIP fixture could not be created.');
+            }
+            $unsafeRelative = 'storage/private_uploads/../../outside.txt';
+            $unsafeBytes = 'must never be extracted';
+            $badManifest = [
+                'format' => 'BIRMS_FULL_BACKUP',
+                'format_version' => 1,
+                'created_at' => date(DATE_ATOM),
+                'source_database' => $databaseName,
+                'database' => [
+                    'entry' => 'database/backup.sql',
+                    'size' => strlen($sql),
+                    'sha256' => hash('sha256', $sql),
+                ],
+                'files' => [[
+                    'path' => $unsafeRelative,
+                    'entry' => 'files/' . $unsafeRelative,
+                    'size' => strlen($unsafeBytes),
+                    'sha256' => hash('sha256', $unsafeBytes),
+                ]],
+            ];
+            $badZip->addFromString('database/backup.sql', $sql);
+            $badZip->addFromString('files/' . $unsafeRelative, $unsafeBytes);
+            $badZip->addFromString('manifest.json', json_encode($badManifest, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            $badZip->close();
+
+            $settingsBeforeBadZip = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$fkProbeKey]);
+            $unsafeRejected = false;
+            try {
+                backup_full_system_restore_archive($badFullArchivePath);
+            } catch (InvalidArgumentException $e) {
+                $unsafeRejected = str_contains($e->getMessage(), 'invalid private-file record');
+            }
+            $settingsAfterBadZip = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$fkProbeKey]);
+            $outsidePathCreated = is_file(APP_ROOT . '/outside.txt');
+            record('B17-08', 'Full-system restore rejects ZIP path traversal before extraction or database changes',
+                $unsafeRejected && $settingsBeforeBadZip === $settingsAfterBadZip && !$outsidePathCreated,
+                'unsafe-path-rejected=' . ($unsafeRejected ? 'yes' : 'no')
+                . '; settings-before=' . $settingsBeforeBadZip
+                . '; settings-after=' . $settingsAfterBadZip
+                . '; outside-file-created=' . ($outsidePathCreated ? 'yes' : 'no'));
+        } else {
+            record('B17-07', 'Complete ZIP backup and private-file restore requires the PHP ZIP extension', null,
+                'Enable extension=zip in the active PHP configuration to run this test.');
+            record('B17-08', 'Full-system ZIP path-traversal validation requires the PHP ZIP extension', null,
+                'Enable extension=zip in the active PHP configuration to run this test.');
+        }
     } finally {
         @unlink($backupPath);
         @unlink($badPath);
         if (is_string($staleBackupPath)) { @unlink($staleBackupPath); }
         if (is_string($fkBackupPath)) { @unlink($fkBackupPath); }
+        if (is_string($fullArchivePath)) { @unlink($fullArchivePath); }
+        if (is_string($badFullArchivePath)) { @unlink($badFullArchivePath); }
+        if ($fullPhotoRelative !== '') { @unlink(APP_ROOT . '/' . $fullPhotoRelative); }
+        if ($fullAttachmentRelative !== '') { @unlink(APP_ROOT . '/' . $fullAttachmentRelative); }
+        @rmdir(APP_ROOT . '/storage/resident_photos/b17-fixtures');
+        @rmdir(APP_ROOT . '/storage/private_uploads/b17-fixtures');
         if ($fkChallengeHash !== '') {
             db_exec('DELETE FROM resident_verification_challenges WHERE challenge_token_hash = ?', [$fkChallengeHash]);
         }
         if ($fkResidentId > 0) { db_exec('DELETE FROM residents WHERE resident_id = ?', [$fkResidentId]); }
-        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?, ?)', [$probeKey, $staleProbeKey, $fkProbeKey]);
+        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?, ?, ?)', [$probeKey, $staleProbeKey, $fkProbeKey, $fullProbeKey]);
     }
 }
