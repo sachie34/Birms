@@ -39,7 +39,8 @@ if ($to === 'Rejected' && !v_len($note, 3, 255)) { flash_add('danger', 'Give a r
 if (str_len($note) > 255) { flash_add('danger', 'The note is too long.'); redirect('requests/view.php', ['id' => $id]); }
 
 $newSrsStatus = 'Pending';
-$done = db_transaction(function () use ($r, $to, $note, $id, &$newSrsStatus): bool {
+try {
+    $done = db_transaction(function () use ($r, $to, $note, $id, &$newSrsStatus): bool {
     $assign = ($to === 'Review' && $r['assigned_to'] === null) ? (audit_actor()['user_id'] ?? null) : $r['assigned_to'];
     $newSrsStatus = match ($to) {
         'Pending', 'Review' => 'Pending',
@@ -57,6 +58,11 @@ $done = db_transaction(function () use ($r, $to, $note, $id, &$newSrsStatus): bo
     if (in_array($to, ['Ready', 'Rejected'], true)) { $sql .= " AND requirements_status = 'Complete'"; }
     $n = db_exec($sql, [$to, $srsStatus, $note !== '' ? $note : null, $assign, $id, $r['status']]);
     if ($n !== 1) { return false; }      // someone else moved it first
+    // FR-D5: generate and persist the certificate draft in the same transaction as approval.
+    // Any missing template, fee or required Chairman signature rolls the approval back.
+    if ($to === 'Ready') {
+        certificate_draft_create($id);
+    }
     audit('request_status_changed', 'Requests', 'Success', $r['reference_no'] . ': ' . $r['status'] . ' -> ' . $to . ($note !== '' ? ' (' . $note . ')' : ''), 'request', $id);
     db_exec("INSERT INTO request_status_history
         (service, reference_no, previous_status, new_status, changed_by, note, request_id)
@@ -64,7 +70,15 @@ $done = db_transaction(function () use ($r, $to, $note, $id, &$newSrsStatus): bo
         [$r['reference_no'], (string) ($r['msit_status'] ?? 'Pending'), $srsStatus, audit_actor()['user_id'] ?? null,
          'Internal workflow step: ' . $r['status'] . ' -> ' . $to . ($note !== '' ? ' — ' . $note : ''), $id]);
     return true;
-});
+    });
+} catch (InvalidArgumentException $approvalError) {
+    flash_add('danger', $approvalError->getMessage());
+    redirect('requests/view.php', ['id' => $id]);
+} catch (Throwable $approvalError) {
+    error_log('BIRMS request approval transaction failed for ' . (string) $r['reference_no'] . ': ' . get_class($approvalError) . ': ' . $approvalError->getMessage());
+    flash_add('danger', 'The request could not be approved and its certificate draft was not saved. No approval was committed. Check the application error log or contact Admin.');
+    redirect('requests/view.php', ['id' => $id]);
+}
 
 // Notify the resident only when the public SRS status changed. Notification/provider failures
 // do not reverse the already-committed request transition.
