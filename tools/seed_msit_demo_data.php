@@ -206,7 +206,15 @@ function msit_demo_apply(): array
         );
 
         $issuedReference = sprintf('CERT-%d-9002', (int) date('Y'));
-        $issuedBody = str_replace($draftReference, $issuedReference, $draftBody);
+        $issuedBody = render_template((string) $typeDefinitions[0][1], [
+            'full_name' => $firstNames[3] . ' ' . $lastNames[3], 'age' => '28', 'civil_status' => 'Married',
+            'address' => 'DEMO ONLY - Sample Street 04', 'purok' => lookup_label($puroks[3 % count($puroks)]),
+            'purpose' => '[DEMO ONLY] Previously issued sample', 'date_issued' => date('j F Y'),
+            'barangay' => setting('barangay_name', 'Wawa'), 'municipality' => setting('municipality', 'Balagtas'),
+            'province' => setting('province', 'Bulacan'), 'reference_no' => $issuedReference,
+            'captain_name' => '', 'document_name' => 'DEMO ONLY - Barangay Clearance',
+            'day_ordinal' => date('jS'), 'month_year' => date('F Y'),
+        ]);
         db_exec(
             'INSERT INTO issuances
              (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number,
