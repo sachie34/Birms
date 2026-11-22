@@ -16,7 +16,7 @@ function permission_map(): array
             'residents.view', 'residents.add', 'residents.edit', 'residents.archive', 'residents.restore', 'residents.export',
             'requests.view', 'requests.add', 'requests.edit', 'requests.review', 'requests.approve', 'requests.tracker',
             'certificates.history', 'certificates.issue', 'certificates.print',
-            'settings.view', 'settings.edit',
+            'settings.view', 'settings.edit', 'documents.templates.manage',
             'audit.view', 'audit.export', 'users.manage', 'backup.run', 'cash_ledger.view', 'cash_ledger.manage',
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
             'blotter_requests.view', 'blotter_requests.review',
@@ -33,7 +33,7 @@ function permission_map(): array
         ],
         // Secretary maintains resident, document and blotter records and reviews document requests.
         'secretary' => [
-            'dashboard.view',
+            'dashboard.view', 'settings.view', 'documents.templates.manage',
             'residents.view',
             'requests.view', 'requests.add', 'requests.edit', 'requests.review',
             'certificates.history',
