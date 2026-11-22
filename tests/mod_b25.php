@@ -72,11 +72,12 @@ function run_b25(array $S, string $base): void
             && strlen($adminImage['body']) > 100
             && $staffImage['status'] === 200
             && ($staffImage['headers']['content-type'] ?? '') === 'image/jpeg'
-            && $anonymousImage['status'] === 403;
+            && $anonymousImage['status'] === 302
+            && str_contains((string) ($anonymousImage['location'] ?? ''), 'index.php');
         record('B25-01', 'Admin can upload a genuine resident JPG; the photo is stored outside the public folder and served only through the authorized photo route',
             $firstUploadOk,
             'create=' . $created['status'] . '; create-message=' . (preg_match('/<div class="alert alert-danger">.*?<\\/div>/s', $created['body'], $messageMatch) ? substr(trim(strip_tags($messageMatch[0])), 0, 300) : 'no validation alert found') . '; upload=' . $firstUpload['status'] . '; admin=' . $adminImage['status']
-            . '; staff=' . $staffImage['status'] . '; anonymous=' . $anonymousImage['status']
+            . '; staff=' . $staffImage['status'] . '; anonymous=' . $anonymousImage['status'] . ' redirect=' . (string) ($anonymousImage['location'] ?? 'none')
             . '; path=' . ($path1 !== '' ? 'private storage path saved' : 'missing'));
 
         $badImage = tempnam(sys_get_temp_dir(), 'birms-b25-bad-image-');
