@@ -157,6 +157,9 @@ function run_b24(array $S, string $base): void
             'id' => (string) $requestId, 'to' => 'Ready', 'note' => '',
         ]);
         $approved = db_one('SELECT status, msit_status FROM document_requests WHERE request_id = ?', [$requestId]);
+        $generatedDraft = db_one('SELECT draft_id, resident_name, body_text, chairman_signature_path, generated_at FROM certificate_drafts WHERE request_id = ?', [$requestId]);
+        $prematureIssuances = (int) db_val('SELECT COUNT(*) FROM issuances WHERE request_id = ?', [$requestId]);
+        $prematureLedger = (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE request_id = ?)', [$requestId]);
         $approvalNotice = db_one(
             "SELECT recipient, channel, delivery_status, message FROM notification_outbox
              WHERE resident_id = ? AND reference_no = ? AND event_type = 'document_request_status_changed'
@@ -174,6 +177,12 @@ function run_b24(array $S, string $base): void
             && $approved !== null
             && $approved['status'] === 'Ready'
             && $approved['msit_status'] === 'Approved'
+            && $generatedDraft !== null
+            && str_contains((string) $generatedDraft['resident_name'], 'B24TESTRESIDENT')
+            && str_contains((string) $generatedDraft['body_text'], 'B24TESTRESIDENT')
+            && !empty($generatedDraft['chairman_signature_path'])
+            && $prematureIssuances === 0
+            && $prematureLedger === 0
             && $approvalNotice !== null
             && $approvalNotice['recipient'] === $residentEmail
             && $approvalNotice['channel'] === 'email'
@@ -182,7 +191,8 @@ function run_b24(array $S, string $base): void
             'early=' . $staffEarlyApproval['status'] . '; state-after-early=' . $earlyStatus
             . '; requirements-post=' . $completeRequirements['status'] . '; saved-complete=' . ($requirementsSaved ? 'yes' : 'no')
             . '; staff-approve=' . $staffApproval['status'] . '; approved=' . json_encode($approved)
-            . '; notice=' . json_encode($approvalNotice)
+            . '; draft=' . json_encode($generatedDraft) . '; premature-issuances=' . $prematureIssuances
+            . '; premature-ledger=' . $prematureLedger . '; notice=' . json_encode($approvalNotice)
         );
 
         // 3. The public reference tracker reveals only the service/status, not resident PII.
@@ -213,6 +223,7 @@ function run_b24(array $S, string $base): void
         $issuance = db_one('SELECT issuance_id, reference_no, request_id, body_text, chairman_signature_path FROM issuances WHERE request_id = ?', [$requestId]);
         $issuanceId = (int) ($issuance['issuance_id'] ?? 0);
         $released = db_one('SELECT status, msit_status FROM document_requests WHERE request_id = ?', [$requestId]);
+        $draftAfterRelease = db_one('SELECT draft_id FROM certificate_drafts WHERE request_id = ?', [$requestId]);
         $releaseNotice = db_one(
             "SELECT recipient, channel, delivery_status, message FROM notification_outbox
              WHERE resident_id = ? AND reference_no = ? AND event_type = 'document_request_status_changed'
@@ -229,7 +240,7 @@ function run_b24(array $S, string $base): void
             'B24-06',
             'Only Staff/Admin can issue; Staff issuance generates a certificate, snapshots the Chairman signature and moves the request to Released',
             $issuePage['status'] === 200
-            && str_contains($issuePage['body'], 'Issue certificate')
+            && str_contains($issuePage['body'], 'Release certificate')
             && $secretaryIssue['status'] === 403
             && $issued['status'] === 302
             && str_contains(loc($issued), 'print.php')
@@ -241,6 +252,7 @@ function run_b24(array $S, string $base): void
             && $released !== null
             && $released['status'] === 'Claimed'
             && $released['msit_status'] === 'Released'
+            && $draftAfterRelease === null
             && $releaseHistory !== null
             && $releaseNotice !== null
             && $releaseNotice['recipient'] === $residentEmail
