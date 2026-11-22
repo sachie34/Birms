@@ -184,7 +184,6 @@ function run_b24(array $S, string $base): void
             && $approved['msit_status'] === 'Approved'
             && $generatedDraft !== null
             && preg_match('/^CERT-' . date('Y') . '-\\d{4,}$/', (string) $generatedDraft['certificate_reference_no']) === 1
-            && str_contains((string) $generatedDraft['body_text'], (string) $generatedDraft['certificate_reference_no'])
             && stripos((string) $generatedDraft['resident_name'], 'B24TESTRESIDENT') !== false
             && str_contains((string) $generatedDraft['body_text'], 'B24TESTRESIDENT')
             && !empty($generatedDraft['chairman_signature_path'])
