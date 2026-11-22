@@ -236,8 +236,11 @@ if (is_post()) {
     }
 }
 
-render_header('Settings', [['Settings', null]], 'settings');
-page_head('Settings', 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.');
+$pageTitle = $canEdit ? 'Settings' : 'Document Templates';
+render_header($pageTitle, [[$pageTitle, null]], $canEdit ? 'settings' : 'document_templates');
+page_head($pageTitle, $canEdit
+    ? 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.'
+    : 'Maintain certificate wording and placeholders. Admin controls document types, fees, availability and signature requirements.');
 if ($canEdit) { echo '<div class="mb-3">' . btn_link('admin/chairman_signature.php', 'Manage Chairman Signature Image', 'btn-light border', 'bi-pen') . '</div>'; }
 echo errors_box($errors);
 echo '<ul class="nav nav-pills mb-3">';
