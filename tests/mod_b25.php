@@ -8,7 +8,7 @@ function run_b25(array $S, string $base): void
 
     $admin = $S['admin'];
     $staff = $S['clerk'];
-    $tag = strtoupper(bin2hex(random_bytes(4)));
+    $tag = strtoupper(strtr(bin2hex(random_bytes(4)), '0123456789abcdef', 'abcdefghijklmnop'));
     $lastName = 'ZZB25' . $tag;
     $email = 'b25-' . strtolower($tag) . '@example.test';
     $purokLabel = 'ZZ B25 ' . $tag;
