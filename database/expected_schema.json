@@ -668,12 +668,6 @@
           "generated_by"
         ]
       },
-      "fk_certificate_draft_resident": {
-        "unique": false,
-        "columns": [
-          "resident_id"
-        ]
-      },
       "fk_certificate_draft_type": {
         "unique": false,
         "columns": [
