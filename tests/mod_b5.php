@@ -145,7 +145,7 @@ function run_b5(array $S, string $base): void
 
     // other pages show it
     $rv = $sec->get('/requests/view.php?id=' . $rReady); $rr = $sec->get('/residents/view.php?id=' . $res); $rReady2 = $clk->get('/requests/view.php?id=' . $r2);
-    record('B5-16', 'Request view links the certificate; Staff sees Issue for a Ready request; the resident view lists issued documents',
+    record('B5-16', 'Request view links the issued certificate; Staff sees the generated draft review link for a Ready request; the resident view lists issued documents',
         str_contains($rv['body'], (string) $row['reference_no'])
         && $rReady2['status'] === 200 && str_contains($rReady2['body'], 'Review generated draft')
         && str_contains($rr['body'], 'ZZ Test Cert Paid'),
