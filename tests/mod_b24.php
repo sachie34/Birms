@@ -305,6 +305,7 @@ function run_b24(array $S, string $base): void
             }
             db_exec('DELETE FROM queue_entries WHERE reference_no = ?', [$reference]);
             db_exec('DELETE FROM document_attachments WHERE request_id = ?', [$requestId]);
+            db_exec('DELETE FROM certificate_drafts WHERE request_id = ?', [$requestId]);
             db_exec('DELETE FROM document_requests WHERE request_id = ?', [$requestId]);
         }
         if ($residentId > 0) {
