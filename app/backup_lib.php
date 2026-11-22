@@ -647,6 +647,9 @@ function backup_full_referenced_private_paths(): array
     foreach (db_all("SELECT chairman_signature_path AS path FROM issuances WHERE chairman_signature_path IS NOT NULL AND chairman_signature_path <> ''") as $row) {
         $paths[] = (string) $row['path'];
     }
+    foreach (db_all("SELECT chairman_signature_path AS path FROM certificate_drafts WHERE chairman_signature_path IS NOT NULL AND chairman_signature_path <> ''") as $row) {
+        $paths[] = (string) $row['path'];
+    }
 
     $unique = [];
     foreach ($paths as $relative) {
@@ -1127,6 +1130,9 @@ function backup_full_verify_database_files(): void
     $currentSignature = chairman_signature_current_relative();
     if (is_string($currentSignature) && $currentSignature !== '') { $signaturePaths[$currentSignature] = true; }
     foreach (db_all("SELECT chairman_signature_path FROM issuances WHERE chairman_signature_path IS NOT NULL AND chairman_signature_path <> ''") as $row) {
+        $signaturePaths[(string) $row['chairman_signature_path']] = true;
+    }
+    foreach (db_all("SELECT chairman_signature_path FROM certificate_drafts WHERE chairman_signature_path IS NOT NULL AND chairman_signature_path <> ''") as $row) {
         $signaturePaths[(string) $row['chairman_signature_path']] = true;
     }
     foreach (array_keys($signaturePaths) as $relative) {
