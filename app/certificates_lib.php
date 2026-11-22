@@ -62,7 +62,11 @@ function certificate_pdf_bytes(array $issuance): string
     $autoload = APP_ROOT . '/vendor/autoload.php';
     if (is_file($autoload)) { require_once $autoload; }
     $esc = static fn(string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    $draft = 'DRAFT - PENDING OFFICIAL LAYOUT APPROVAL';
+    $isCertificateDraft = !empty($issuance['_is_draft']);
+    $draft = $isCertificateDraft ? 'DRAFT - NOT ISSUED - PENDING OFFICIAL LAYOUT APPROVAL' : 'DRAFT - PENDING OFFICIAL LAYOUT APPROVAL';
+    $dateLabel = $isCertificateDraft ? 'Generated: ' : 'Issued: ';
+    $feeLabel = $isCertificateDraft ? 'Quoted fee: PHP ' : 'Recorded issuance fee: PHP ';
+    $orLabel = $isCertificateDraft ? 'O.R.: Not recorded' : 'O.R.: ' . (string) ($issuance['or_number'] ?? '—');
     $body = (string) ($issuance['body_text'] ?? '');
     $signature = trim((string) ($issuance['captain_name'] ?? ''));
     $signatureImage = chairman_signature_read(isset($issuance['chairman_signature_path']) ? (string) $issuance['chairman_signature_path'] : null);
@@ -90,9 +94,9 @@ function certificate_pdf_bytes(array $issuance): string
         . '<div class="sign">' . $esc($signature !== '' ? $signature : 'Chairman / Punong Barangay') . '</div>'
         . '<div class="signature-note">Chairman / Punong Barangay</div>'
         . '<div class="muted">Reference: ' . $esc((string) ($issuance['reference_no'] ?? ''))
-        . ' | Issued: ' . $esc(isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'))
-        . ' | Recorded issuance fee: PHP ' . $esc(number_format((float) ($issuance['fee_amount'] ?? 0), 2))
-        . ' | O.R.: ' . $esc((string) ($issuance['or_number'] ?? '—')) . '</div></body></html>';
+        . ' | ' . $esc($dateLabel) . $esc(isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'))
+        . ' | ' . $esc($feeLabel) . $esc(number_format((float) ($issuance['fee_amount'] ?? 0), 2))
+        . ' | ' . $esc($orLabel) . '</div></body></html>';
 
     if (class_exists('Dompdf\\Dompdf')) {
         $options = class_exists('Dompdf\\Options') ? new \Dompdf\Options() : null;
@@ -114,9 +118,9 @@ function certificate_pdf_bytes(array $issuance): string
     $lines[] = '';
     $lines[] = 'Chairman / Punong Barangay: ' . ($signature !== '' ? $signature : 'Authorized signatory');
     $lines[] = 'Reference: ' . (string) ($issuance['reference_no'] ?? '');
-    $lines[] = 'Issued: ' . (isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'));
-    $lines[] = 'Recorded issuance fee: PHP ' . number_format((float) ($issuance['fee_amount'] ?? 0), 2);
-    $lines[] = 'O.R.: ' . (string) ($issuance['or_number'] ?? '—');
+    $lines[] = $dateLabel . (isset($issuance['issued_at']) ? date('j F Y', strtotime((string) $issuance['issued_at'])) : date('j F Y'));
+    $lines[] = $feeLabel . number_format((float) ($issuance['fee_amount'] ?? 0), 2);
+    $lines[] = $orLabel;
 
     $pages = array_chunk($lines, 50);
     if (!$pages) { $pages = [['Certificate draft']]; }
