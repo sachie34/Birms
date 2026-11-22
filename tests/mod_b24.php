@@ -131,7 +131,11 @@ function run_b24(array $S, string $base): void
             && $afterReview !== null
             && $afterReview['status'] === 'Review'
             && $afterReview['requirements_status'] === 'Not checked'
-            && $requirementsUnlocked
+            && $requirementsUnlocked,
+            'pending-form=' . $pendingForm['status'] . '; locked=' . ($requirementsLocked ? 'yes' : 'no')
+            . '; staff-review=' . $staffReviewAttempt['status'] . '; secretary-review=' . $secretaryReview['status']
+            . '; after=' . json_encode($afterReview) . '; review-form=' . $reviewForm['status']
+            . '; unlocked=' . ($requirementsUnlocked ? 'yes' : 'no')
         );
 
         $staffEarlyApproval = post_as($staff, '/requests/view.php?id=' . $requestId, '/requests/action.php', [
@@ -174,7 +178,11 @@ function run_b24(array $S, string $base): void
             && $approvalNotice['recipient'] === $residentEmail
             && $approvalNotice['channel'] === 'email'
             && in_array($approvalNotice['delivery_status'], ['queued', 'sent'], true)
-            && str_contains((string) $approvalNotice['message'], 'Approved')
+            && str_contains((string) $approvalNotice['message'], 'Approved'),
+            'early=' . $staffEarlyApproval['status'] . '; state-after-early=' . $earlyStatus
+            . '; requirements-post=' . $completeRequirements['status'] . '; saved-complete=' . ($requirementsSaved ? 'yes' : 'no')
+            . '; staff-approve=' . $staffApproval['status'] . '; approved=' . json_encode($approved)
+            . '; notice=' . json_encode($approvalNotice)
         );
 
         // 3. The public reference tracker reveals only the service/status, not resident PII.
@@ -236,7 +244,11 @@ function run_b24(array $S, string $base): void
             && $releaseNotice !== null
             && $releaseNotice['recipient'] === $residentEmail
             && in_array($releaseNotice['delivery_status'], ['queued', 'sent'], true)
-            && str_contains((string) $releaseNotice['message'], 'Released')
+            && str_contains((string) $releaseNotice['message'], 'Released'),
+            'issue-page=' . $issuePage['status'] . '; secretary-issue=' . $secretaryIssue['status']
+            . '; issue-post=' . $issued['status'] . '; location=' . (string) loc($issued)
+            . '; issuance=' . json_encode($issuance) . '; released=' . json_encode($released)
+            . '; release-history=' . json_encode($releaseHistory) . '; release-notice=' . json_encode($releaseNotice)
         );
 
         $publicAfterRelease = $kiosk->get('/kiosk/status.php?ref=' . rawurlencode($reference));
