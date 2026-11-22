@@ -98,14 +98,28 @@ jobs:
           BIRMS_DB_PASS: ci-root-pass
         run: php tools/schema_check.php
 
-      - name: Start local PHP server
-        id: start-php
+      - name: Create least-privilege application database account
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
+        run: |
+          php -r '
+            $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=mysql;charset=utf8mb4", "root", "ci-root-pass", [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $pdo->exec("CREATE USER \'birms_ci_app\'@\'%\' IDENTIFIED BY \'ci-app-pass\'");
+            $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO \'birms_ci_app\'@\'%\'");
+          '
+
+      - name: Start local PHP server
+        id: start-php
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: birms_ci_app
+          BIRMS_DB_PASS: ci-app-pass
         run: |
           php -S 127.0.0.1:8080 -t public > /tmp/birms-php-server.log 2>&1 &
           for attempt in $(seq 1 30); do
@@ -127,8 +141,8 @@ jobs:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
-          BIRMS_DB_USER: root
-          BIRMS_DB_PASS: ci-root-pass
+          BIRMS_DB_USER: birms_ci_app
+          BIRMS_DB_PASS: ci-app-pass
         run: |
           set -o pipefail
           php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080 2>&1 | tee test-reports/security-tests.log
@@ -139,8 +153,8 @@ jobs:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
-          BIRMS_DB_USER: root
-          BIRMS_DB_PASS: ci-root-pass
+          BIRMS_DB_USER: birms_ci_app
+          BIRMS_DB_PASS: ci-app-pass
         run: |
           set -o pipefail
           php tests/run_modules.php http://127.0.0.1:8080 2>&1 | tee test-reports/module-tests.log
