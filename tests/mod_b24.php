@@ -157,7 +157,7 @@ function run_b24(array $S, string $base): void
             'id' => (string) $requestId, 'to' => 'Ready', 'note' => '',
         ]);
         $approved = db_one('SELECT status, msit_status FROM document_requests WHERE request_id = ?', [$requestId]);
-        $generatedDraft = db_one('SELECT draft_id, resident_name, body_text, chairman_signature_path, generated_at FROM certificate_drafts WHERE request_id = ?', [$requestId]);
+        $generatedDraft = db_one('SELECT draft_id, certificate_reference_no, resident_name, body_text, chairman_signature_path, generated_at FROM certificate_drafts WHERE request_id = ?', [$requestId]);
         $prematureIssuances = (int) db_val('SELECT COUNT(*) FROM issuances WHERE request_id = ?', [$requestId]);
         $prematureLedger = (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE request_id = ?)', [$requestId]);
         $approvalNotice = db_one(
@@ -178,6 +178,8 @@ function run_b24(array $S, string $base): void
             && $approved['status'] === 'Ready'
             && $approved['msit_status'] === 'Approved'
             && $generatedDraft !== null
+            && preg_match('/^CERT-' . date('Y') . '-\\d{4,}$/', (string) $generatedDraft['certificate_reference_no']) === 1
+            && str_contains((string) $generatedDraft['body_text'], (string) $generatedDraft['certificate_reference_no'])
             && stripos((string) $generatedDraft['resident_name'], 'B24TESTRESIDENT') !== false
             && str_contains((string) $generatedDraft['body_text'], 'B24TESTRESIDENT')
             && !empty($generatedDraft['chairman_signature_path'])
