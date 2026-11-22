@@ -459,14 +459,35 @@ The first runs after the backup UI update (#1026–#1030) retained a failed B17-
 **Release decision:** Complete ZIP backup/restore now has automated integration coverage for database and private-file round-trip, archive path validation, manifest tampering, file collision safety, attachment hashes/MIME types, resident photo formats, signature image validity, database foreign-key integrity and permanent blotter preservation. Target XAMPP restore, physical office acceptance and scheduled backups remain outstanding. Keep PR #34 as a draft.
 
 
-## 17. Open SRS lifecycle discrepancy — FR-D5 (2026-11-22)
+## 17. FR-D5 automatic certificate generation — implemented 2026-11-22
 
-The revised SRS states in **FR-D5** that the system automatically generates the form/certificate with resident data filled in upon approval, and Section 3.2 says the generated document is returned to Staff for release. The current implementation does not generate the issuance record/PDF on the approval transition:
+The revised SRS requires the form/certificate to be generated automatically when Staff approves a request and returned to Staff for review/release. This is now implemented as a persisted draft stage, distinct from final issuance.
 
-1. The Staff approval transition moves the request into the internal `Ready` state and the public `Approved` state.
-2. A Staff user must separately open Certificate Generation and submit the Issue certificate action.
-3. That second action creates the issuance record, snapshots the Chairman signature, records any payment/O.R. details, generates the printable PDF, and changes the public state to `Released`.
+### Implemented workflow
 
-This means the code has a manual certificate-issuance step after approval. The automated B24 test verifies that flow; it does not establish strict compliance with automatic generation at approval. The current behavior may be a deliberate separation of approval, certificate preparation, payment recording and release, but the revised SRS does not define those intermediate rules.
+1. Staff approval and certificate-draft creation occur in the **same database transaction**. If required data is missing or the draft cannot be rendered, the transaction rolls back and the request does not move to Approved/Ready.
+2. Migration `019_certificate_draft_generation` adds `certificate_drafts`, storing the request/resident/document snapshots, purpose, fee snapshot, rendered wording, certificate reference, signatory text, Chairman signature path, generator and generation time.
+3. The certificate reference is reserved at draft generation. The saved reference is reused when Staff releases the document; it is not regenerated at release.
+4. Staff/Admin can review the saved draft and open a protected PDF preview. The preview is explicitly marked **DRAFT — NOT ISSUED** and records a preview audit event. Secretary and Chairman are denied the draft-PDF route.
+5. Draft generation and PDF preview do **not** create an issuance record, consume an O.R. number, create a cash-collection ledger row, increment a print count, or move the request to Released.
+6. Staff release uses the saved draft snapshots rather than re-rendering from potentially changed resident/template data. It creates the permanent issuance and, for paid documents, the cash-ledger entry; moves the public request status to Released; and removes the draft within the same transaction.
+7. Full-system backup validation now includes Chairman signature paths referenced by pending certificate drafts, so a draft remains restorable before it becomes an issuance.
 
-**Required before declaring FR-D5 complete:** confirm with the adviser/system owner whether approval must automatically create a saved certificate draft for Staff to review/release, or whether the separate Staff Issue action is accepted as the intended process. If strict automatic generation is required, implement it as a distinct, test-covered draft-generation step that does not prematurely mark the certificate Released, consume an O.R. number, or create a cash-collection ledger entry. Keep the PR draft until that decision is resolved and the accepted flow is implemented/tested.
+### Regression evidence
+
+- B24-04 verifies automatic draft generation on approval, saved resident/body/signature data, a reserved certificate reference, and no premature issuance or payment.
+- B24-04 also verifies the Staff PDF preview returns a PDF, Secretary/Chairman receive 403, and PDF preview still creates no issuance or ledger row.
+- B24-06 verifies only Staff/Admin can release the saved draft and that release transitions the request to Released.
+- B5-7 verifies the final issued wording uses the reserved certificate reference; B5-16 verifies the Staff request view exposes the generated-draft review link.
+- B4 approval tests now configure and restore valid certificate settings/signature fixtures, preserving their request lifecycle coverage without bypassing the new FR-D5 prerequisite.
+
+**GitHub Actions run #1072** validates commit `59b40d25bc9300b0e0027a8f577f0c0518256333` on disposable MariaDB 10.4 and 10.11:
+- MariaDB 10.4: 45/45 security/authentication/audit and 282/282 module checks passed.
+- MariaDB 10.11: 45/45 security/authentication/audit and 282/282 module checks passed.
+- Both environments reported zero failures and zero untested checks.
+
+[View GitHub Actions run #1072](https://github.com/sachie34/Birms/actions/runs/45018812085)
+
+### Remaining acceptance boundary
+
+FR-D5's automatic saved-draft and PDF-preview workflow is implemented and automated tests pass. This does not approve the official certificate wording/layout or prove the actual XAMPP/office printer output. The PDF retains the visible pending-official-layout-approval warning until the barangay/adviser approves the form. The target Windows/XAMPP acceptance gates in the runbook remain open.
