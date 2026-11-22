@@ -135,8 +135,13 @@
         var start = editor.selectionStart, end = editor.selectionEnd;
         var value = editor.value.slice(start, end) || 'Text';
         var prefix = button.dataset.editorPrefix;
-        var changed = prefix === '\n---\n' ? prefix + value + '\n' : value.split('\n').map(function (line) { return prefix + line; }).join('\n');
-        editor.setRangeText(changed, start, end, 'select'); editor.focus(); refresh();
+        if (prefix === '---') {
+          editor.setRangeText('\n---\n', start, end, 'end');
+        } else {
+          var changed = value.split('\n').map(function (line) { return prefix + line; }).join('\n');
+          editor.setRangeText(changed, start, end, 'select');
+        }
+        editor.focus(); refresh();
       });
     });
     wrap.querySelectorAll('[data-editor-token]').forEach(function (button) {
