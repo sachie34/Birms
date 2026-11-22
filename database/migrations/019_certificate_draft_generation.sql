@@ -1,0 +1,36 @@
+-- 019_certificate_draft_generation.sql
+-- Persist a generated certificate draft at the same transaction as Staff approval.
+-- Drafts are not issuances: no O.R., payment ledger, or Released status is created here.
+CREATE TABLE certificate_drafts (
+    draft_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    request_id INT UNSIGNED NOT NULL,
+    resident_id INT UNSIGNED NOT NULL,
+    type_id INT UNSIGNED NOT NULL,
+    request_reference_no VARCHAR(20) NOT NULL,
+    resident_name VARCHAR(200) NOT NULL,
+    type_name VARCHAR(100) NOT NULL,
+    purpose VARCHAR(255) NOT NULL,
+    fee_amount DECIMAL(8,2) NOT NULL,
+    fee_rule_id INT UNSIGNED NULL,
+    fee_category_snapshot VARCHAR(100) NULL,
+    fee_tier_snapshot VARCHAR(100) NULL,
+    fee_quantity INT UNSIGNED NOT NULL DEFAULT 1,
+    fee_unit_rate DECIMAL(10,2) NULL,
+    body_text TEXT NOT NULL,
+    captain_name VARCHAR(100) NULL,
+    signature_text VARCHAR(150) NULL,
+    chairman_signature_path VARCHAR(255) NULL,
+    generated_by INT UNSIGNED NULL,
+    generated_by_name VARCHAR(100) NOT NULL,
+    generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (draft_id),
+    UNIQUE KEY uq_certificate_draft_request (request_id),
+    KEY idx_certificate_draft_resident (resident_id),
+    KEY idx_certificate_draft_generated (generated_at),
+    CONSTRAINT fk_certificate_draft_request FOREIGN KEY (request_id) REFERENCES document_requests (request_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_certificate_draft_resident FOREIGN KEY (resident_id) REFERENCES residents (resident_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_certificate_draft_type FOREIGN KEY (type_id) REFERENCES document_types (type_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_certificate_draft_fee_rule FOREIGN KEY (fee_rule_id) REFERENCES fee_matrix (fee_rule_id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_certificate_draft_generator FOREIGN KEY (generated_by) REFERENCES users (user_id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_certificate_draft_fee CHECK (fee_amount >= 0 AND fee_quantity >= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
