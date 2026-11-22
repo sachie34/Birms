@@ -70,12 +70,19 @@ function run_b11(array $S, string $base): void
     // No files or real receipts are generated for the seed data. These are intentionally fictitious records.
     $remove = b11_run_seed(['--remove', '--confirm-demo-only']);
     $afterRemove = b11_count_demo_records();
-    record('B11-06', 'Explicit removal removes only reserved demo records and leaves no seeded resident/request records',
-        $remove['code'] === 0 && str_contains($remove['output'], 'Reserved demo records were removed')
-        && array_sum($afterRemove) === 0, substr($remove['output'], -300));
+    // FR-B5 makes demo blotter records permanent too. Removal must clear the
+    // removable demo records while retaining the four fictitious cases and hearing.
+    $expectedAfterRemove = [
+        'households' => 0, 'residents' => 0, 'types' => 0, 'requests' => 0,
+        'issuances' => 0, 'visitors' => 0, 'blotters' => 4, 'hearings' => 1,
+    ];
+    record('B11-06', 'Explicit removal clears removable demo data but preserves all four permanent demo blotter cases and their hearing',
+        $remove['code'] === 0 && str_contains($remove['output'], 'Removable demo data was removed')
+        && $afterRemove === $expectedAfterRemove, substr($remove['output'], -400));
 
+    $beforeMissingConfirm = b11_count_demo_records();
     $withoutConfirm = b11_run_seed(['--remove']);
-    record('B11-07', 'Removal refuses to run without the extra --confirm-demo-only switch',
+    record('B11-07', 'Removal refuses to run without the extra --confirm-demo-only switch and changes no retained records',
         $withoutConfirm['code'] !== 0 && str_contains($withoutConfirm['output'], 'requires BOTH --remove and --confirm-demo-only')
-        && array_sum(b11_count_demo_records()) === 0, substr($withoutConfirm['output'], -250));
+        && b11_count_demo_records() === $beforeMissingConfirm, substr($withoutConfirm['output'], -250));
 }

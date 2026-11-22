@@ -16,6 +16,16 @@ return [
         'idle_minutes' => 30,              // automatic sign-out after this many idle minutes
         'secure'       => null,            // null = secure cookies only when the site uses HTTPS
     ],
+    'security' => [
+        'require_https' => false,          // set true for a networked office/production deployment after TLS is configured
+    ],
+    // Optional outbound email. PHP mail() must be configured with a local SMTP/sendmail relay.
+    // Keep credentials in the server's mail transport configuration, never in source control.
+    'email' => [
+        'enabled' => false,
+        'from_email' => '',
+        'from_name' => 'Barangay Office',
+    ],
     // Optional private WebDAV cloud backup. Use HTTPS and a dedicated app password.
     // Keep real credentials in config.local.php or server environment variables only.
     'backup' => [

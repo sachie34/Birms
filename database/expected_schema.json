@@ -1,2295 +1,3711 @@
 {
-    "audit_log": {
-        "columns": {
-            "audit_id": {
-                "type": "bigint unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "occurred_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "user_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "username_snapshot": {
-                "type": "varchar(50)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "action": {
-                "type": "varchar(50)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "module": {
-                "type": "varchar(50)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "entity_type": {
-                "type": "varchar(40)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "entity_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "status": {
-                "type": "enum('success','failed')",
-                "nullable": false,
-                "default": "success",
-                "extra": ""
-            },
-            "remarks": {
-                "type": "varchar(1000)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "ip_address": {
-                "type": "varchar(45)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "idx_audit_module_status": {
-                "unique": false,
-                "columns": [
-                    "module",
-                    "status"
-                ]
-            },
-            "idx_audit_time": {
-                "unique": false,
-                "columns": [
-                    "occurred_at"
-                ]
-            },
-            "idx_audit_user": {
-                "unique": false,
-                "columns": [
-                    "user_id"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "audit_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_audit_user": {
-                "columns": [
-                    "user_id"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
+  "audit_log": {
+    "columns": {
+      "audit_id": {
+        "type": "bigint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "occurred_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "user_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "username_snapshot": {
+        "type": "varchar(50)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "action": {
+        "type": "varchar(50)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "module": {
+        "type": "varchar(50)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "entity_type": {
+        "type": "varchar(40)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "entity_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('success','failed')",
+        "nullable": false,
+        "default": "success",
+        "extra": ""
+      },
+      "remarks": {
+        "type": "varchar(1000)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "ip_address": {
+        "type": "varchar(45)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
     },
-    "blotter_parties": {
-        "columns": {
-            "party_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "blotter_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "party_role": {
-                "type": "enum('complainant','respondent')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "full_name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "age": {
-                "type": "tinyint(3) unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "address": {
-                "type": "varchar(255)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "contact_number": {
-                "type": "varchar(20)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "idx_party_case": {
-                "unique": false,
-                "columns": [
-                    "blotter_id",
-                    "party_role"
-                ]
-            },
-            "idx_party_name": {
-                "unique": false,
-                "columns": [
-                    "full_name"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "party_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_party_case": {
-                "columns": [
-                    "blotter_id"
-                ],
-                "ref": "blotters(blotter_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            }
-        }
+    "indexes": {
+      "idx_audit_module_status": {
+        "unique": false,
+        "columns": [
+          "module",
+          "status"
+        ]
+      },
+      "idx_audit_time": {
+        "unique": false,
+        "columns": [
+          "occurred_at"
+        ]
+      },
+      "idx_audit_user": {
+        "unique": false,
+        "columns": [
+          "user_id"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "audit_id"
+        ]
+      }
     },
-    "blotters": {
-        "columns": {
-            "blotter_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "case_no": {
-                "type": "varchar(20)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "incident_date": {
-                "type": "date",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "incident_place": {
-                "type": "varchar(150)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "purok_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "narrative": {
-                "type": "text",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "status": {
-                "type": "enum('pending','active','scheduled','resolved')",
-                "nullable": false,
-                "default": "pending",
-                "extra": ""
-            },
-            "resolution_note": {
-                "type": "varchar(500)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "resolved_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "archived_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "recorded_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "recorded_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            },
-            "incident_type_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "fk_blotter_user": {
-                "unique": false,
-                "columns": [
-                    "recorded_by"
-                ]
-            },
-            "idx_blotter_incident": {
-                "unique": false,
-                "columns": [
-                    "incident_date"
-                ]
-            },
-            "idx_blotter_purok": {
-                "unique": false,
-                "columns": [
-                    "purok_id"
-                ]
-            },
-            "idx_blotter_status": {
-                "unique": false,
-                "columns": [
-                    "status",
-                    "recorded_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "blotter_id"
-                ]
-            },
-            "uq_blotter_case": {
-                "unique": true,
-                "columns": [
-                    "case_no"
-                ]
-            },
-            "idx_blotter_incident_type": {
-                "unique": false,
-                "columns": [
-                    "incident_type_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_blotter_purok": {
-                "columns": [
-                    "purok_id"
-                ],
-                "ref": "lookups(lookup_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_blotter_user": {
-                "columns": [
-                    "recorded_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_blotter_incident_type": {
-                "columns": [
-                    "incident_type_id"
-                ],
-                "ref": "lookups(lookup_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "counters": {
-        "columns": {
-            "counter_name": {
-                "type": "varchar(30)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "counter_year": {
-                "type": "smallint unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "last_value": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "counter_name",
-                    "counter_year"
-                ]
-            }
-        },
-        "fks": []
-    },
-    "document_requests": {
-        "columns": {
-            "request_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "reference_no": {
-                "type": "varchar(20)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "visit_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "resident_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "type_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "purpose": {
-                "type": "varchar(255)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "status": {
-                "type": "enum('pending','review','ready','claimed','rejected','cancelled')",
-                "nullable": false,
-                "default": "pending",
-                "extra": ""
-            },
-            "status_note": {
-                "type": "varchar(255)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "assigned_to": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "requested_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "created_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            },
-            "requirements_status": {
-                "type": "enum('not checked','incomplete','complete')",
-                "nullable": false,
-                "default": "not checked",
-                "extra": ""
-            },
-            "requirements_note": {
-                "type": "varchar(1000)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_rule_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_category_snapshot": {
-                "type": "varchar(100)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_tier_snapshot": {
-                "type": "varchar(100)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_quantity": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "1",
-                "extra": ""
-            },
-            "fee_unit_rate": {
-                "type": "decimal(10,2)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "quoted_fee_amount": {
-                "type": "decimal(12,2)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "fk_req_assigned": {
-                "unique": false,
-                "columns": [
-                    "assigned_to"
-                ]
-            },
-            "fk_req_creator": {
-                "unique": false,
-                "columns": [
-                    "created_by"
-                ]
-            },
-            "fk_req_type": {
-                "unique": false,
-                "columns": [
-                    "type_id"
-                ]
-            },
-            "fk_req_visit": {
-                "unique": false,
-                "columns": [
-                    "visit_id"
-                ]
-            },
-            "idx_request_resident": {
-                "unique": false,
-                "columns": [
-                    "resident_id"
-                ]
-            },
-            "idx_request_status": {
-                "unique": false,
-                "columns": [
-                    "status",
-                    "requested_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "request_id"
-                ]
-            },
-            "uq_request_ref": {
-                "unique": true,
-                "columns": [
-                    "reference_no"
-                ]
-            },
-            "idx_request_fee_rule": {
-                "unique": false,
-                "columns": [
-                    "fee_rule_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_req_assigned": {
-                "columns": [
-                    "assigned_to"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_req_creator": {
-                "columns": [
-                    "created_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_req_resident": {
-                "columns": [
-                    "resident_id"
-                ],
-                "ref": "residents(resident_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_req_type": {
-                "columns": [
-                    "type_id"
-                ],
-                "ref": "document_types(type_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_req_visit": {
-                "columns": [
-                    "visit_id"
-                ],
-                "ref": "visitor_log(visit_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_request_fee_rule": {
-                "columns": [
-                    "fee_rule_id"
-                ],
-                "ref": "fee_matrix(fee_rule_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "document_types": {
-        "columns": {
-            "type_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "fee_amount": {
-                "type": "decimal(8,2)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "template_body": {
-                "type": "text",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "is_active": {
-                "type": "tinyint(1)",
-                "nullable": false,
-                "default": "1",
-                "extra": ""
-            },
-            "sort_order": {
-                "type": "int",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "type_id"
-                ]
-            },
-            "uq_doctype_name": {
-                "unique": true,
-                "columns": [
-                    "name"
-                ]
-            }
-        },
-        "fks": []
-    },
-    "hearings": {
-        "columns": {
-            "hearing_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "blotter_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "scheduled_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "venue": {
-                "type": "varchar(150)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "notes": {
-                "type": "varchar(500)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "status": {
-                "type": "enum('scheduled','held','postponed','cancelled')",
-                "nullable": false,
-                "default": "scheduled",
-                "extra": ""
-            },
-            "status_note": {
-                "type": "varchar(255)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "summons_count": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            },
-            "created_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            }
-        },
-        "indexes": {
-            "fk_hearing_user": {
-                "unique": false,
-                "columns": [
-                    "created_by"
-                ]
-            },
-            "idx_hearing_case": {
-                "unique": false,
-                "columns": [
-                    "blotter_id",
-                    "scheduled_at"
-                ]
-            },
-            "idx_hearing_status": {
-                "unique": false,
-                "columns": [
-                    "status",
-                    "scheduled_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "hearing_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_hearing_case": {
-                "columns": [
-                    "blotter_id"
-                ],
-                "ref": "blotters(blotter_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_hearing_user": {
-                "columns": [
-                    "created_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "households": {
-        "columns": {
-            "household_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "household_code": {
-                "type": "varchar(20)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "purok_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "street_address": {
-                "type": "varchar(150)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            }
-        },
-        "indexes": {
-            "idx_household_purok": {
-                "unique": false,
-                "columns": [
-                    "purok_id"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "household_id"
-                ]
-            },
-            "uq_household_code": {
-                "unique": true,
-                "columns": [
-                    "household_code"
-                ]
-            }
-        },
-        "fks": {
-            "fk_household_purok": {
-                "columns": [
-                    "purok_id"
-                ],
-                "ref": "lookups(lookup_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "issuances": {
-        "columns": {
-            "issuance_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "reference_no": {
-                "type": "varchar(20)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "request_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "resident_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "type_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "resident_name": {
-                "type": "varchar(200)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "type_name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "purpose": {
-                "type": "varchar(255)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "fee_amount": {
-                "type": "decimal(8,2)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "or_number": {
-                "type": "varchar(30)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "body_text": {
-                "type": "text",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "captain_name": {
-                "type": "varchar(100)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "issued_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "issued_by_name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "issued_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "print_count": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            },
-            "last_printed_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_rule_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_category_snapshot": {
-                "type": "varchar(100)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_tier_snapshot": {
-                "type": "varchar(100)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "fee_quantity": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "1",
-                "extra": ""
-            },
-            "fee_unit_rate": {
-                "type": "decimal(10,2)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "signature_text": {
-                "type": "varchar(150)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "fk_iss_type": {
-                "unique": false,
-                "columns": [
-                    "type_id"
-                ]
-            },
-            "fk_iss_user": {
-                "unique": false,
-                "columns": [
-                    "issued_by"
-                ]
-            },
-            "idx_issuance_resident": {
-                "unique": false,
-                "columns": [
-                    "resident_id"
-                ]
-            },
-            "idx_issuance_time": {
-                "unique": false,
-                "columns": [
-                    "issued_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "issuance_id"
-                ]
-            },
-            "uq_issuance_or": {
-                "unique": true,
-                "columns": [
-                    "or_number"
-                ]
-            },
-            "uq_issuance_ref": {
-                "unique": true,
-                "columns": [
-                    "reference_no"
-                ]
-            },
-            "uq_issuance_request": {
-                "unique": true,
-                "columns": [
-                    "request_id"
-                ]
-            },
-            "idx_issuance_fee_rule": {
-                "unique": false,
-                "columns": [
-                    "fee_rule_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_iss_request": {
-                "columns": [
-                    "request_id"
-                ],
-                "ref": "document_requests(request_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_iss_resident": {
-                "columns": [
-                    "resident_id"
-                ],
-                "ref": "residents(resident_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_iss_type": {
-                "columns": [
-                    "type_id"
-                ],
-                "ref": "document_types(type_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_iss_user": {
-                "columns": [
-                    "issued_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_issuance_fee_rule": {
-                "columns": [
-                    "fee_rule_id"
-                ],
-                "ref": "fee_matrix(fee_rule_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "login_failures": {
-        "columns": {
-            "id": {
-                "type": "bigint unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "username": {
-                "type": "varchar(50)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "ip_address": {
-                "type": "varchar(45)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "attempted_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "idx_lf_ip_time": {
-                "unique": false,
-                "columns": [
-                    "ip_address",
-                    "attempted_at"
-                ]
-            },
-            "idx_lf_user_time": {
-                "unique": false,
-                "columns": [
-                    "username",
-                    "attempted_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "id"
-                ]
-            }
-        },
-        "fks": []
-    },
-    "lookups": {
-        "columns": {
-            "lookup_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "list_key": {
-                "type": "varchar(30)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "label": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "sort_order": {
-                "type": "int",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            },
-            "is_active": {
-                "type": "tinyint(1)",
-                "nullable": false,
-                "default": "1",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "idx_lookup_list": {
-                "unique": false,
-                "columns": [
-                    "list_key",
-                    "is_active",
-                    "sort_order"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "lookup_id"
-                ]
-            },
-            "uq_lookup": {
-                "unique": true,
-                "columns": [
-                    "list_key",
-                    "label"
-                ]
-            }
-        },
-        "fks": []
-    },
-    "residents": {
-        "columns": {
-            "resident_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "household_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "last_name": {
-                "type": "varchar(50)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "first_name": {
-                "type": "varchar(60)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "middle_name": {
-                "type": "varchar(50)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "suffix": {
-                "type": "varchar(10)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "birthdate": {
-                "type": "date",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "sex": {
-                "type": "enum('male','female')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "civil_status": {
-                "type": "enum('single','married','widowed','separated','divorced')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "contact_number": {
-                "type": "varchar(20)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "category_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "residency_status": {
-                "type": "enum('active','relocated')",
-                "nullable": false,
-                "default": "active",
-                "extra": ""
-            },
-            "voter_status": {
-                "type": "enum('unverified','registered','not registered')",
-                "nullable": false,
-                "default": "unverified",
-                "extra": ""
-            },
-            "is_household_head": {
-                "type": "tinyint(1)",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            },
-            "created_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            },
-            "archived_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "employment_status_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "fk_res_category": {
-                "unique": false,
-                "columns": [
-                    "category_id"
-                ]
-            },
-            "fk_res_created": {
-                "unique": false,
-                "columns": [
-                    "created_by"
-                ]
-            },
-            "idx_res_birthdate": {
-                "unique": false,
-                "columns": [
-                    "birthdate"
-                ]
-            },
-            "idx_res_household": {
-                "unique": false,
-                "columns": [
-                    "household_id"
-                ]
-            },
-            "idx_res_name": {
-                "unique": false,
-                "columns": [
-                    "last_name",
-                    "first_name"
-                ]
-            },
-            "idx_res_status": {
-                "unique": false,
-                "columns": [
-                    "residency_status",
-                    "archived_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "resident_id"
-                ]
-            },
-            "idx_res_employment_status": {
-                "unique": false,
-                "columns": [
-                    "employment_status_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_res_category": {
-                "columns": [
-                    "category_id"
-                ],
-                "ref": "lookups(lookup_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_res_created": {
-                "columns": [
-                    "created_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_res_household": {
-                "columns": [
-                    "household_id"
-                ],
-                "ref": "households(household_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_res_employment_status": {
-                "columns": [
-                    "employment_status_id"
-                ],
-                "ref": "lookups(lookup_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "settings": {
-        "columns": {
-            "setting_key": {
-                "type": "varchar(60)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "setting_value": {
-                "type": "text",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "updated_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            }
-        },
-        "indexes": {
-            "fk_settings_user": {
-                "unique": false,
-                "columns": [
-                    "updated_by"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "setting_key"
-                ]
-            }
-        },
-        "fks": {
-            "fk_settings_user": {
-                "columns": [
-                    "updated_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "sms_outbox": {
-        "columns": {
-            "sms_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "created_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "recipient_number": {
-                "type": "varchar(20)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "message": {
-                "type": "varchar(480)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "trigger_event": {
-                "type": "varchar(40)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "request_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "hearing_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "delivery": {
-                "type": "enum('logged only','no number')",
-                "nullable": false,
-                "default": "logged only",
-                "extra": ""
-            },
-            "provider_name": {
-                "type": "varchar(30)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "provider_message_id": {
-                "type": "varchar(80)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "provider_status": {
-                "type": "enum('not_configured','no_number','not_attempted','sending','queued','pending','sent','failed','refunded','unknown')",
-                "nullable": false,
-                "default": "'not_configured'",
-                "extra": ""
-            },
-            "provider_error": {
-                "type": "varchar(1000)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "attempt_count": {
-                "type": "smallint unsigned",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            },
-            "last_attempt_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update CURRENT_TIMESTAMP"
-            }
-        },
-        "indexes": {
-            "idx_sms_request": {
-                "unique": false,
-                "columns": [
-                    "request_id"
-                ]
-            },
-            "idx_sms_time": {
-                "unique": false,
-                "columns": [
-                    "created_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "sms_id"
-                ]
-            },
-            "idx_sms_provider_status_time": {
-                "unique": false,
-                "columns": [
-                    "provider_status",
-                    "created_at"
-                ]
-            },
-            "idx_sms_provider_message": {
-                "unique": false,
-                "columns": [
-                    "provider_message_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_sms_request": {
-                "columns": [
-                    "request_id"
-                ],
-                "ref": "document_requests(request_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "users": {
-        "columns": {
-            "user_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "username": {
-                "type": "varchar(30)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "password_hash": {
-                "type": "varchar(255)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "full_name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "role": {
-                "type": "enum('admin','captain','secretary','clerk')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "status": {
-                "type": "enum('active','inactive')",
-                "nullable": false,
-                "default": "active",
-                "extra": ""
-            },
-            "must_change_password": {
-                "type": "tinyint(1)",
-                "nullable": false,
-                "default": "0",
-                "extra": ""
-            },
-            "email": {
-                "type": "varchar(100)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "contact_number": {
-                "type": "varchar(20)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "last_login_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            }
-        },
-        "indexes": {
-            "idx_users_role_status": {
-                "unique": false,
-                "columns": [
-                    "role",
-                    "status"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "user_id"
-                ]
-            },
-            "uq_users_username": {
-                "unique": true,
-                "columns": [
-                    "username"
-                ]
-            }
-        },
-        "fks": []
-    },
-    "visitor_log": {
-        "columns": {
-            "visit_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "visited_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "visitor_name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "purpose": {
-                "type": "varchar(150)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "class_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "logged_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "fk_visit_class": {
-                "unique": false,
-                "columns": [
-                    "class_id"
-                ]
-            },
-            "fk_visit_user": {
-                "unique": false,
-                "columns": [
-                    "logged_by"
-                ]
-            },
-            "idx_visit_name": {
-                "unique": false,
-                "columns": [
-                    "visitor_name"
-                ]
-            },
-            "idx_visit_time": {
-                "unique": false,
-                "columns": [
-                    "visited_at"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "visit_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_visit_class": {
-                "columns": [
-                    "class_id"
-                ],
-                "ref": "lookups(lookup_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_visit_user": {
-                "columns": [
-                    "logged_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "fee_matrix": {
-        "columns": {
-            "fee_rule_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "type_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "fee_category": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "fee_tier": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "unit_rate": {
-                "type": "decimal(10,2)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "min_quantity": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "1",
-                "extra": ""
-            },
-            "max_quantity": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "effective_from": {
-                "type": "date",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "effective_to": {
-                "type": "date",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "is_active": {
-                "type": "tinyint(1)",
-                "nullable": false,
-                "default": "1",
-                "extra": ""
-            },
-            "created_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "fee_rule_id"
-                ]
-            },
-            "uq_fee_matrix_effective": {
-                "unique": true,
-                "columns": [
-                    "type_id",
-                    "fee_category",
-                    "fee_tier",
-                    "effective_from"
-                ]
-            },
-            "idx_fee_matrix_active": {
-                "unique": false,
-                "columns": [
-                    "type_id",
-                    "is_active",
-                    "effective_from",
-                    "effective_to"
-                ]
-            },
-            "idx_fee_matrix_type": {
-                "unique": false,
-                "columns": [
-                    "type_id"
-                ]
-            },
-            "idx_fee_matrix_creator": {
-                "unique": false,
-                "columns": [
-                    "created_by"
-                ]
-            }
-        },
-        "fks": {
-            "fk_fee_matrix_type": {
-                "columns": [
-                    "type_id"
-                ],
-                "ref": "document_types(type_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_fee_matrix_creator": {
-                "columns": [
-                    "created_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "resident_verifications": {
-        "columns": {
-            "verification_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "resident_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "verification_subject": {
-                "type": "enum('identity','voter_registration')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "verification_method": {
-                "type": "enum('government_id','barangay_voter_list','other_document')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "outcome": {
-                "type": "enum('verified','unable_to_verify','registered','not_registered')",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "reference_note": {
-                "type": "varchar(150)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "remarks": {
-                "type": "varchar(500)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "verified_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "verified_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "verification_id"
-                ]
-            },
-            "idx_res_verification_history": {
-                "unique": false,
-                "columns": [
-                    "resident_id",
-                    "verified_at"
-                ]
-            },
-            "idx_res_verification_actor": {
-                "unique": false,
-                "columns": [
-                    "verified_by"
-                ]
-            }
-        },
-        "fks": {
-            "fk_res_verification_resident": {
-                "columns": [
-                    "resident_id"
-                ],
-                "ref": "residents(resident_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_res_verification_user": {
-                "columns": [
-                    "verified_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "document_attachments": {
-        "columns": {
-            "attachment_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "visit_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "request_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "original_name": {
-                "type": "varchar(255)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "storage_path": {
-                "type": "varchar(255)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "mime_type": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "byte_size": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "sha256": {
-                "type": "char(64)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "uploaded_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "uploaded_at": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            }
-        },
-        "indexes": {
-            "idx_attachment_visit": {
-                "unique": false,
-                "columns": [
-                    "visit_id"
-                ]
-            },
-            "idx_attachment_request": {
-                "unique": false,
-                "columns": [
-                    "request_id"
-                ]
-            },
-            "idx_attachment_uploader": {
-                "unique": false,
-                "columns": [
-                    "uploaded_by"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "attachment_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_attachment_visit": {
-                "columns": [
-                    "visit_id"
-                ],
-                "ref": "visitor_log(visit_id)",
-                "on_delete": "CASCADE",
-                "on_update": "CASCADE"
-            },
-            "fk_attachment_request": {
-                "columns": [
-                    "request_id"
-                ],
-                "ref": "document_requests(request_id)",
-                "on_delete": "CASCADE",
-                "on_update": "CASCADE"
-            },
-            "fk_attachment_uploader": {
-                "columns": [
-                    "uploaded_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
-    },
-    "cash_collection_ledger": {
-        "columns": {
-            "ledger_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": "auto_increment"
-            },
-            "issuance_id": {
-                "type": "int unsigned",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "transaction_date": {
-                "type": "datetime",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "requester_name": {
-                "type": "varchar(200)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "fee_amount": {
-                "type": "decimal(12,2)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "payment_method": {
-                "type": "enum('cash','bank_transfer','other')",
-                "nullable": false,
-                "default": "cash",
-                "extra": ""
-            },
-            "collector_id": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "collector_name": {
-                "type": "varchar(100)",
-                "nullable": false,
-                "default": "NULL",
-                "extra": ""
-            },
-            "reconciliation_status": {
-                "type": "enum('pending','reconciled')",
-                "nullable": false,
-                "default": "pending",
-                "extra": ""
-            },
-            "reconciled_by": {
-                "type": "int unsigned",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "reconciled_at": {
-                "type": "datetime",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "notes": {
-                "type": "varchar(500)",
-                "nullable": true,
-                "default": "null",
-                "extra": ""
-            },
-            "created_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": ""
-            },
-            "updated_at": {
-                "type": "timestamp",
-                "nullable": false,
-                "default": "current_timestamp",
-                "extra": "on update current_timestamp"
-            }
-        },
-        "indexes": {
-            "idx_cash_ledger_date": {
-                "unique": false,
-                "columns": [
-                    "transaction_date"
-                ]
-            },
-            "idx_cash_ledger_status": {
-                "unique": false,
-                "columns": [
-                    "reconciliation_status",
-                    "transaction_date"
-                ]
-            },
-            "idx_cash_ledger_collector": {
-                "unique": false,
-                "columns": [
-                    "collector_id"
-                ]
-            },
-            "idx_cash_ledger_reconciler": {
-                "unique": false,
-                "columns": [
-                    "reconciled_by"
-                ]
-            },
-            "primary": {
-                "unique": true,
-                "columns": [
-                    "ledger_id"
-                ]
-            },
-            "uq_cash_ledger_issuance": {
-                "unique": true,
-                "columns": [
-                    "issuance_id"
-                ]
-            }
-        },
-        "fks": {
-            "fk_cash_ledger_issuance": {
-                "columns": [
-                    "issuance_id"
-                ],
-                "ref": "issuances(issuance_id)",
-                "on_delete": "RESTRICT",
-                "on_update": "CASCADE"
-            },
-            "fk_cash_ledger_collector": {
-                "columns": [
-                    "collector_id"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            },
-            "fk_cash_ledger_reconciler": {
-                "columns": [
-                    "reconciled_by"
-                ],
-                "ref": "users(user_id)",
-                "on_delete": "SET NULL",
-                "on_update": "CASCADE"
-            }
-        }
+    "fks": {
+      "fk_audit_user": {
+        "columns": [
+          "user_id"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
     }
+  },
+  "blotter_parties": {
+    "columns": {
+      "party_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "blotter_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "party_role": {
+        "type": "enum('complainant','respondent')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "full_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "age": {
+        "type": "tinyint(3) unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "address": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "contact_number": {
+        "type": "varchar(20)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "idx_party_case": {
+        "unique": false,
+        "columns": [
+          "blotter_id",
+          "party_role"
+        ]
+      },
+      "idx_party_name": {
+        "unique": false,
+        "columns": [
+          "full_name"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "party_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_party_case": {
+        "columns": [
+          "blotter_id"
+        ],
+        "ref": "blotters(blotter_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "blotters": {
+    "columns": {
+      "blotter_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "case_no": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_date": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_time": {
+        "type": "time",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "incident_place": {
+        "type": "varchar(150)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "purok_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "narrative": {
+        "type": "text",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('pending','active','scheduled','resolved')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      },
+      "resolution_note": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "resolved_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "archived_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "recorded_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "recorded_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      },
+      "incident_type_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "msit_status": {
+        "type": "enum('ongoing','unresolved','resolved','dismissed','archived')",
+        "nullable": false,
+        "default": "ongoing",
+        "extra": ""
+      },
+      "archived_from_status": {
+        "type": "enum('resolved','dismissed')",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "fk_blotter_user": {
+        "unique": false,
+        "columns": [
+          "recorded_by"
+        ]
+      },
+      "idx_blotter_incident": {
+        "unique": false,
+        "columns": [
+          "incident_date"
+        ]
+      },
+      "idx_blotter_purok": {
+        "unique": false,
+        "columns": [
+          "purok_id"
+        ]
+      },
+      "idx_blotter_status": {
+        "unique": false,
+        "columns": [
+          "status",
+          "recorded_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "blotter_id"
+        ]
+      },
+      "uq_blotter_case": {
+        "unique": true,
+        "columns": [
+          "case_no"
+        ]
+      },
+      "idx_blotter_incident_type": {
+        "unique": false,
+        "columns": [
+          "incident_type_id"
+        ]
+      },
+      "idx_blotter_msit_status": {
+        "unique": false,
+        "columns": [
+          "msit_status",
+          "incident_date"
+        ]
+      }
+    },
+    "fks": {
+      "fk_blotter_purok": {
+        "columns": [
+          "purok_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_blotter_user": {
+        "columns": [
+          "recorded_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_blotter_incident_type": {
+        "columns": [
+          "incident_type_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "cash_collection_ledger": {
+    "columns": {
+      "ledger_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "issuance_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "transaction_date": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "requester_name": {
+        "type": "varchar(200)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_amount": {
+        "type": "decimal(12,2)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "payment_method": {
+        "type": "enum('cash','bank_transfer','other')",
+        "nullable": false,
+        "default": "cash",
+        "extra": ""
+      },
+      "collector_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "collector_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "reconciliation_status": {
+        "type": "enum('pending','reconciled')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      },
+      "reconciled_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "reconciled_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "notes": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "idx_cash_ledger_date": {
+        "unique": false,
+        "columns": [
+          "transaction_date"
+        ]
+      },
+      "idx_cash_ledger_status": {
+        "unique": false,
+        "columns": [
+          "reconciliation_status",
+          "transaction_date"
+        ]
+      },
+      "idx_cash_ledger_collector": {
+        "unique": false,
+        "columns": [
+          "collector_id"
+        ]
+      },
+      "idx_cash_ledger_reconciler": {
+        "unique": false,
+        "columns": [
+          "reconciled_by"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "ledger_id"
+        ]
+      },
+      "uq_cash_ledger_issuance": {
+        "unique": true,
+        "columns": [
+          "issuance_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_cash_ledger_issuance": {
+        "columns": [
+          "issuance_id"
+        ],
+        "ref": "issuances(issuance_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_cash_ledger_collector": {
+        "columns": [
+          "collector_id"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_cash_ledger_reconciler": {
+        "columns": [
+          "reconciled_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "certificate_drafts": {
+    "columns": {
+      "draft_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "type_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "request_reference_no": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "certificate_reference_no": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_name": {
+        "type": "varchar(200)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "type_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purpose": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_amount": {
+        "type": "decimal(8,2)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_rule_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_category_snapshot": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_tier_snapshot": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_quantity": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "fee_unit_rate": {
+        "type": "decimal(10,2)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "body_text": {
+        "type": "text",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "captain_name": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "signature_text": {
+        "type": "varchar(150)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "chairman_signature_path": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "generated_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "generated_by_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "generated_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "fk_certificate_draft_fee_rule": {
+        "unique": false,
+        "columns": [
+          "fee_rule_id"
+        ]
+      },
+      "fk_certificate_draft_generator": {
+        "unique": false,
+        "columns": [
+          "generated_by"
+        ]
+      },
+      "fk_certificate_draft_type": {
+        "unique": false,
+        "columns": [
+          "type_id"
+        ]
+      },
+      "idx_certificate_draft_generated": {
+        "unique": false,
+        "columns": [
+          "generated_at"
+        ]
+      },
+      "idx_certificate_draft_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "draft_id"
+        ]
+      },
+      "uq_certificate_draft_request": {
+        "unique": true,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "uq_certificate_draft_reference": {
+        "unique": true,
+        "columns": [
+          "certificate_reference_no"
+        ]
+      }
+    },
+    "fks": {
+      "fk_certificate_draft_request": {
+        "columns": [
+          "request_id"
+        ],
+        "ref": "document_requests(request_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_certificate_draft_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_certificate_draft_type": {
+        "columns": [
+          "type_id"
+        ],
+        "ref": "document_types(type_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_certificate_draft_fee_rule": {
+        "columns": [
+          "fee_rule_id"
+        ],
+        "ref": "fee_matrix(fee_rule_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_certificate_draft_generator": {
+        "columns": [
+          "generated_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "counters": {
+    "columns": {
+      "counter_name": {
+        "type": "varchar(30)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "counter_year": {
+        "type": "smallint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "last_value": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "counter_name",
+          "counter_year"
+        ]
+      }
+    },
+    "fks": []
+  },
+  "document_attachments": {
+    "columns": {
+      "attachment_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "visit_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "original_name": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "storage_path": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "mime_type": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "byte_size": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "sha256": {
+        "type": "char(64)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "uploaded_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "uploaded_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "idx_attachment_visit": {
+        "unique": false,
+        "columns": [
+          "visit_id"
+        ]
+      },
+      "idx_attachment_request": {
+        "unique": false,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "idx_attachment_uploader": {
+        "unique": false,
+        "columns": [
+          "uploaded_by"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "attachment_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_attachment_visit": {
+        "columns": [
+          "visit_id"
+        ],
+        "ref": "visitor_log(visit_id)",
+        "on_delete": "CASCADE",
+        "on_update": "CASCADE"
+      },
+      "fk_attachment_request": {
+        "columns": [
+          "request_id"
+        ],
+        "ref": "document_requests(request_id)",
+        "on_delete": "CASCADE",
+        "on_update": "CASCADE"
+      },
+      "fk_attachment_uploader": {
+        "columns": [
+          "uploaded_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "document_requests": {
+    "columns": {
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "reference_no": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "visit_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "type_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purpose": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('pending','review','ready','claimed','rejected','cancelled')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      },
+      "status_note": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "assigned_to": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "requested_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "created_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      },
+      "requirements_status": {
+        "type": "enum('not checked','incomplete','complete')",
+        "nullable": false,
+        "default": "not checked",
+        "extra": ""
+      },
+      "requirements_note": {
+        "type": "varchar(1000)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_rule_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_category_snapshot": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_tier_snapshot": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_quantity": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "fee_unit_rate": {
+        "type": "decimal(10,2)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "quoted_fee_amount": {
+        "type": "decimal(12,2)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "msit_status": {
+        "type": "enum('pending','approved','rejected','released')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "fk_req_assigned": {
+        "unique": false,
+        "columns": [
+          "assigned_to"
+        ]
+      },
+      "fk_req_creator": {
+        "unique": false,
+        "columns": [
+          "created_by"
+        ]
+      },
+      "fk_req_type": {
+        "unique": false,
+        "columns": [
+          "type_id"
+        ]
+      },
+      "fk_req_visit": {
+        "unique": false,
+        "columns": [
+          "visit_id"
+        ]
+      },
+      "idx_request_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id"
+        ]
+      },
+      "idx_request_status": {
+        "unique": false,
+        "columns": [
+          "status",
+          "requested_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "uq_request_ref": {
+        "unique": true,
+        "columns": [
+          "reference_no"
+        ]
+      },
+      "idx_request_fee_rule": {
+        "unique": false,
+        "columns": [
+          "fee_rule_id"
+        ]
+      },
+      "idx_request_msit_status": {
+        "unique": false,
+        "columns": [
+          "msit_status",
+          "requested_at"
+        ]
+      }
+    },
+    "fks": {
+      "fk_req_assigned": {
+        "columns": [
+          "assigned_to"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_req_creator": {
+        "columns": [
+          "created_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_req_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_req_type": {
+        "columns": [
+          "type_id"
+        ],
+        "ref": "document_types(type_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_req_visit": {
+        "columns": [
+          "visit_id"
+        ],
+        "ref": "visitor_log(visit_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_request_fee_rule": {
+        "columns": [
+          "fee_rule_id"
+        ],
+        "ref": "fee_matrix(fee_rule_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "document_types": {
+    "columns": {
+      "type_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_amount": {
+        "type": "decimal(8,2)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "template_body": {
+        "type": "text",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "is_active": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "requires_chairman_signature": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "sort_order": {
+        "type": "int",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "type_id"
+        ]
+      },
+      "uq_doctype_name": {
+        "unique": true,
+        "columns": [
+          "name"
+        ]
+      }
+    },
+    "fks": []
+  },
+  "fee_matrix": {
+    "columns": {
+      "fee_rule_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "type_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_category": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_tier": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "unit_rate": {
+        "type": "decimal(10,2)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "min_quantity": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "max_quantity": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "effective_from": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "effective_to": {
+        "type": "date",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "is_active": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "created_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "fee_rule_id"
+        ]
+      },
+      "uq_fee_matrix_effective": {
+        "unique": true,
+        "columns": [
+          "type_id",
+          "fee_category",
+          "fee_tier",
+          "effective_from"
+        ]
+      },
+      "idx_fee_matrix_active": {
+        "unique": false,
+        "columns": [
+          "type_id",
+          "is_active",
+          "effective_from",
+          "effective_to"
+        ]
+      },
+      "idx_fee_matrix_type": {
+        "unique": false,
+        "columns": [
+          "type_id"
+        ]
+      },
+      "idx_fee_matrix_creator": {
+        "unique": false,
+        "columns": [
+          "created_by"
+        ]
+      }
+    },
+    "fks": {
+      "fk_fee_matrix_type": {
+        "columns": [
+          "type_id"
+        ],
+        "ref": "document_types(type_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_fee_matrix_creator": {
+        "columns": [
+          "created_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "hearings": {
+    "columns": {
+      "hearing_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "blotter_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "scheduled_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "venue": {
+        "type": "varchar(150)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "notes": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('scheduled','held','postponed','cancelled')",
+        "nullable": false,
+        "default": "scheduled",
+        "extra": ""
+      },
+      "status_note": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "summons_count": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "created_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "fk_hearing_user": {
+        "unique": false,
+        "columns": [
+          "created_by"
+        ]
+      },
+      "idx_hearing_case": {
+        "unique": false,
+        "columns": [
+          "blotter_id",
+          "scheduled_at"
+        ]
+      },
+      "idx_hearing_status": {
+        "unique": false,
+        "columns": [
+          "status",
+          "scheduled_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "hearing_id"
+        ]
+      },
+      "uq_hearing_case_time_status": {
+        "unique": true,
+        "columns": [
+          "blotter_id",
+          "scheduled_at",
+          "status"
+        ]
+      }
+    },
+    "fks": {
+      "fk_hearing_case": {
+        "columns": [
+          "blotter_id"
+        ],
+        "ref": "blotters(blotter_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_hearing_user": {
+        "columns": [
+          "created_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "households": {
+    "columns": {
+      "household_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "household_code": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purok_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "street_address": {
+        "type": "varchar(150)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "idx_household_purok": {
+        "unique": false,
+        "columns": [
+          "purok_id"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "household_id"
+        ]
+      },
+      "uq_household_code": {
+        "unique": true,
+        "columns": [
+          "household_code"
+        ]
+      }
+    },
+    "fks": {
+      "fk_household_purok": {
+        "columns": [
+          "purok_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "issuances": {
+    "columns": {
+      "issuance_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "reference_no": {
+        "type": "varchar(20)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "type_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_name": {
+        "type": "varchar(200)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "type_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purpose": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "fee_amount": {
+        "type": "decimal(8,2)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "or_number": {
+        "type": "varchar(30)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "body_text": {
+        "type": "text",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "captain_name": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "issued_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "issued_by_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "issued_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "print_count": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "last_printed_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_rule_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_category_snapshot": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_tier_snapshot": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "fee_quantity": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "fee_unit_rate": {
+        "type": "decimal(10,2)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "signature_text": {
+        "type": "varchar(150)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "chairman_signature_path": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "fk_iss_type": {
+        "unique": false,
+        "columns": [
+          "type_id"
+        ]
+      },
+      "fk_iss_user": {
+        "unique": false,
+        "columns": [
+          "issued_by"
+        ]
+      },
+      "idx_issuance_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id"
+        ]
+      },
+      "idx_issuance_time": {
+        "unique": false,
+        "columns": [
+          "issued_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "issuance_id"
+        ]
+      },
+      "uq_issuance_or": {
+        "unique": true,
+        "columns": [
+          "or_number"
+        ]
+      },
+      "uq_issuance_ref": {
+        "unique": true,
+        "columns": [
+          "reference_no"
+        ]
+      },
+      "uq_issuance_request": {
+        "unique": true,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "idx_issuance_fee_rule": {
+        "unique": false,
+        "columns": [
+          "fee_rule_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_iss_request": {
+        "columns": [
+          "request_id"
+        ],
+        "ref": "document_requests(request_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_iss_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_iss_type": {
+        "columns": [
+          "type_id"
+        ],
+        "ref": "document_types(type_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_iss_user": {
+        "columns": [
+          "issued_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_issuance_fee_rule": {
+        "columns": [
+          "fee_rule_id"
+        ],
+        "ref": "fee_matrix(fee_rule_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "login_failures": {
+    "columns": {
+      "id": {
+        "type": "bigint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "username": {
+        "type": "varchar(50)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "ip_address": {
+        "type": "varchar(45)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "attempted_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "idx_lf_ip_time": {
+        "unique": false,
+        "columns": [
+          "ip_address",
+          "attempted_at"
+        ]
+      },
+      "idx_lf_user_time": {
+        "unique": false,
+        "columns": [
+          "username",
+          "attempted_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "fks": []
+  },
+  "lookups": {
+    "columns": {
+      "lookup_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "list_key": {
+        "type": "varchar(30)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "label": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "sort_order": {
+        "type": "int",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "is_active": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "idx_lookup_list": {
+        "unique": false,
+        "columns": [
+          "list_key",
+          "is_active",
+          "sort_order"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "lookup_id"
+        ]
+      },
+      "uq_lookup": {
+        "unique": true,
+        "columns": [
+          "list_key",
+          "label"
+        ]
+      }
+    },
+    "fks": []
+  },
+  "notification_outbox": {
+    "columns": {
+      "notification_id": {
+        "type": "bigint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "channel": {
+        "type": "enum('email','sms')",
+        "nullable": false,
+        "default": "email",
+        "extra": ""
+      },
+      "recipient": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "subject": {
+        "type": "varchar(200)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "message": {
+        "type": "text",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "event_type": {
+        "type": "varchar(50)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "reference_no": {
+        "type": "varchar(24)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "delivery_status": {
+        "type": "enum('queued','sending','sent','failed')",
+        "nullable": false,
+        "default": "queued",
+        "extra": ""
+      },
+      "attempt_count": {
+        "type": "smallint unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "last_error": {
+        "type": "varchar(1000)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "provider_message_id": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "last_attempt_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "sent_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "notification_id"
+        ]
+      },
+      "idx_notification_delivery": {
+        "unique": false,
+        "columns": [
+          "delivery_status",
+          "created_at"
+        ]
+      },
+      "idx_notification_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "created_at"
+        ]
+      },
+      "idx_notification_reference": {
+        "unique": false,
+        "columns": [
+          "reference_no"
+        ]
+      }
+    },
+    "fks": {
+      "fk_notification_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "queue_counters": {
+    "columns": {
+      "service": {
+        "type": "enum('blotter','documents','venue')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "queue_date": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "last_number": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "service",
+          "queue_date"
+        ]
+      }
+    },
+    "fks": {}
+  },
+  "queue_entries": {
+    "columns": {
+      "queue_id": {
+        "type": "bigint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "service": {
+        "type": "enum('blotter','documents','venue')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "queue_date": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "queue_number": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "reference_no": {
+        "type": "varchar(24)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "purpose": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('waiting','called','served','skipped','cancelled')",
+        "nullable": false,
+        "default": "waiting",
+        "extra": ""
+      },
+      "issued_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "called_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "served_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "issued_via": {
+        "type": "enum('kiosk','qr','staff')",
+        "nullable": false,
+        "default": "kiosk",
+        "extra": ""
+      },
+      "called_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "served_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "notification_preference": {
+        "type": "enum('email','sms','both')",
+        "nullable": false,
+        "default": "email",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "queue_id"
+        ]
+      },
+      "uq_queue_service_day_number": {
+        "unique": true,
+        "columns": [
+          "service",
+          "queue_date",
+          "queue_number"
+        ]
+      },
+      "idx_queue_current": {
+        "unique": false,
+        "columns": [
+          "service",
+          "queue_date",
+          "status",
+          "queue_number"
+        ]
+      },
+      "idx_queue_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "issued_at"
+        ]
+      }
+    },
+    "fks": {
+      "fk_queue_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_queue_called_by": {
+        "columns": [
+          "called_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_queue_served_by": {
+        "columns": [
+          "served_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "rate_limit_buckets": {
+    "columns": {
+      "bucket_hash": {
+        "type": "char(64)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "window_started_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "hit_count": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "idx_rate_limit_window": {
+        "unique": false,
+        "columns": [
+          "window_started_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "bucket_hash",
+          "window_started_at"
+        ]
+      }
+    },
+    "fks": {}
+  },
+  "request_status_history": {
+    "columns": {
+      "history_id": {
+        "type": "bigint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "service": {
+        "type": "enum('documents','blotter','venue')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "reference_no": {
+        "type": "varchar(24)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "previous_status": {
+        "type": "varchar(30)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "new_status": {
+        "type": "varchar(30)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "changed_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "changed_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "note": {
+        "type": "varchar(1000)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "blotter_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "reservation_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "history_id"
+        ]
+      },
+      "idx_request_history_ref": {
+        "unique": false,
+        "columns": [
+          "service",
+          "reference_no",
+          "changed_at"
+        ]
+      },
+      "idx_request_history_actor": {
+        "unique": false,
+        "columns": [
+          "changed_by",
+          "changed_at"
+        ]
+      }
+    },
+    "fks": {
+      "fk_request_history_user": {
+        "columns": [
+          "changed_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_request_history_document": {
+        "columns": [
+          "request_id"
+        ],
+        "ref": "document_requests(request_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_request_history_blotter": {
+        "columns": [
+          "blotter_id"
+        ],
+        "ref": "blotters(blotter_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_request_history_reservation": {
+        "columns": [
+          "reservation_id"
+        ],
+        "ref": "venue_reservations(reservation_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "resident_blotter_requests": {
+    "columns": {
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "reference_no": {
+        "type": "varchar(24)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_date": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_time": {
+        "type": "time",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "incident_place": {
+        "type": "varchar(150)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purok_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "incident_type_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "narrative": {
+        "type": "text",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "respondent_name": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "respondent_age": {
+        "type": "tinyint(3) unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "respondent_address": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "respondent_contact": {
+        "type": "varchar(20)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "review_status": {
+        "type": "enum('pending','accepted','rejected')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      },
+      "msit_status": {
+        "type": "enum('ongoing','unresolved','resolved','dismissed','archived')",
+        "nullable": false,
+        "default": "ongoing",
+        "extra": ""
+      },
+      "status_note": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "blotter_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "reviewed_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "submitted_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "reviewed_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "uq_resident_blotter_request_ref": {
+        "unique": true,
+        "columns": [
+          "reference_no"
+        ]
+      },
+      "uq_resident_blotter_request_case": {
+        "unique": true,
+        "columns": [
+          "blotter_id"
+        ]
+      },
+      "idx_resident_blotter_review": {
+        "unique": false,
+        "columns": [
+          "review_status",
+          "submitted_at"
+        ]
+      },
+      "idx_resident_blotter_status": {
+        "unique": false,
+        "columns": [
+          "msit_status",
+          "submitted_at"
+        ]
+      },
+      "idx_resident_blotter_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "submitted_at"
+        ]
+      },
+      "idx_resident_blotter_purok": {
+        "unique": false,
+        "columns": [
+          "purok_id",
+          "incident_date"
+        ]
+      }
+    },
+    "fks": {
+      "fk_resident_blotter_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_purok": {
+        "columns": [
+          "purok_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_type": {
+        "columns": [
+          "incident_type_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_case": {
+        "columns": [
+          "blotter_id"
+        ],
+        "ref": "blotters(blotter_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_blotter_reviewer": {
+        "columns": [
+          "reviewed_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "resident_verification_challenges": {
+    "columns": {
+      "challenge_id": {
+        "type": "bigint unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "challenge_token_hash": {
+        "type": "char(64)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "code_hash": {
+        "type": "char(64)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "channel": {
+        "type": "enum('sms','email')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "destination_snapshot": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "expires_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "attempt_count": {
+        "type": "tinyint(3) unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "verified_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "consumed_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "challenge_id"
+        ]
+      },
+      "uq_resident_challenge_token": {
+        "unique": true,
+        "columns": [
+          "challenge_token_hash"
+        ]
+      },
+      "idx_resident_challenge_expiry": {
+        "unique": false,
+        "columns": [
+          "expires_at",
+          "consumed_at"
+        ]
+      },
+      "idx_resident_challenge_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "created_at"
+        ]
+      }
+    },
+    "fks": {
+      "fk_resident_challenge_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "CASCADE",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "resident_verifications": {
+    "columns": {
+      "verification_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "verification_subject": {
+        "type": "enum('identity','voter_registration')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "verification_method": {
+        "type": "enum('government_id','barangay_voter_list','other_document')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "outcome": {
+        "type": "enum('verified','unable_to_verify','registered','not_registered')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "reference_note": {
+        "type": "varchar(150)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "remarks": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "verified_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "verified_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "verification_id"
+        ]
+      },
+      "idx_res_verification_history": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "verified_at"
+        ]
+      },
+      "idx_res_verification_actor": {
+        "unique": false,
+        "columns": [
+          "verified_by"
+        ]
+      }
+    },
+    "fks": {
+      "fk_res_verification_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_res_verification_user": {
+        "columns": [
+          "verified_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "residents": {
+    "columns": {
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "household_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "last_name": {
+        "type": "varchar(50)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "first_name": {
+        "type": "varchar(60)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "middle_name": {
+        "type": "varchar(50)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "suffix": {
+        "type": "varchar(10)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "birthdate": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "sex": {
+        "type": "enum('male','female')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "civil_status": {
+        "type": "enum('single','married','widowed','separated','divorced')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "contact_number": {
+        "type": "varchar(20)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "category_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "residency_status": {
+        "type": "enum('active','relocated')",
+        "nullable": false,
+        "default": "active",
+        "extra": ""
+      },
+      "voter_status": {
+        "type": "enum('unverified','registered','not registered')",
+        "nullable": false,
+        "default": "unverified",
+        "extra": ""
+      },
+      "is_household_head": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "created_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      },
+      "archived_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "employment_status_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "resident_no": {
+        "type": "varchar(24)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "address": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "purok_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "resident_status_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "marital_status": {
+        "type": "varchar(30)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "resident_type_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "email_address": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "photo_path": {
+        "type": "varchar(255)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "notification_preference": {
+        "type": "enum('email','sms','both')",
+        "nullable": false,
+        "default": "email",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "fk_res_category": {
+        "unique": false,
+        "columns": [
+          "category_id"
+        ]
+      },
+      "fk_res_created": {
+        "unique": false,
+        "columns": [
+          "created_by"
+        ]
+      },
+      "idx_res_birthdate": {
+        "unique": false,
+        "columns": [
+          "birthdate"
+        ]
+      },
+      "idx_res_household": {
+        "unique": false,
+        "columns": [
+          "household_id"
+        ]
+      },
+      "idx_res_name": {
+        "unique": false,
+        "columns": [
+          "last_name",
+          "first_name"
+        ]
+      },
+      "idx_res_status": {
+        "unique": false,
+        "columns": [
+          "residency_status",
+          "archived_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "resident_id"
+        ]
+      },
+      "idx_res_employment_status": {
+        "unique": false,
+        "columns": [
+          "employment_status_id"
+        ]
+      },
+      "uq_resident_no": {
+        "unique": true,
+        "columns": [
+          "resident_no"
+        ]
+      },
+      "idx_resident_purok_status_type": {
+        "unique": false,
+        "columns": [
+          "purok_id",
+          "resident_status_id",
+          "resident_type_id",
+          "archived_at"
+        ]
+      },
+      "idx_resident_type_srs": {
+        "unique": false,
+        "columns": [
+          "resident_type_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_res_category": {
+        "columns": [
+          "category_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_res_created": {
+        "columns": [
+          "created_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      },
+      "fk_res_household": {
+        "columns": [
+          "household_id"
+        ],
+        "ref": "households(household_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_res_employment_status": {
+        "columns": [
+          "employment_status_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_purok_srs": {
+        "columns": [
+          "purok_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_status_srs": {
+        "columns": [
+          "resident_status_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_resident_type_srs": {
+        "columns": [
+          "resident_type_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "settings": {
+    "columns": {
+      "setting_key": {
+        "type": "varchar(60)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "setting_value": {
+        "type": "text",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "updated_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "fk_settings_user": {
+        "unique": false,
+        "columns": [
+          "updated_by"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "setting_key"
+        ]
+      }
+    },
+    "fks": {
+      "fk_settings_user": {
+        "columns": [
+          "updated_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "sms_outbox": {
+    "columns": {
+      "sms_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "created_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "recipient_number": {
+        "type": "varchar(20)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "message": {
+        "type": "varchar(480)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "trigger_event": {
+        "type": "varchar(40)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "request_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "hearing_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "delivery": {
+        "type": "enum('logged only','no number')",
+        "nullable": false,
+        "default": "logged only",
+        "extra": ""
+      },
+      "provider_name": {
+        "type": "varchar(30)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "provider_message_id": {
+        "type": "varchar(80)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "provider_status": {
+        "type": "enum('not_configured','no_number','not_attempted','sending','queued','pending','sent','failed','refunded','unknown')",
+        "nullable": false,
+        "default": "'not_configured'",
+        "extra": ""
+      },
+      "provider_error": {
+        "type": "varchar(1000)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "attempt_count": {
+        "type": "smallint unsigned",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "last_attempt_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update CURRENT_TIMESTAMP"
+      }
+    },
+    "indexes": {
+      "idx_sms_request": {
+        "unique": false,
+        "columns": [
+          "request_id"
+        ]
+      },
+      "idx_sms_time": {
+        "unique": false,
+        "columns": [
+          "created_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "sms_id"
+        ]
+      },
+      "idx_sms_provider_status_time": {
+        "unique": false,
+        "columns": [
+          "provider_status",
+          "created_at"
+        ]
+      },
+      "idx_sms_provider_message": {
+        "unique": false,
+        "columns": [
+          "provider_message_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_sms_request": {
+        "columns": [
+          "request_id"
+        ],
+        "ref": "document_requests(request_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "users": {
+    "columns": {
+      "user_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "username": {
+        "type": "varchar(30)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "password_hash": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "full_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "role": {
+        "type": "enum('admin','captain','secretary','clerk')",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('active','inactive')",
+        "nullable": false,
+        "default": "active",
+        "extra": ""
+      },
+      "must_change_password": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "0",
+        "extra": ""
+      },
+      "email": {
+        "type": "varchar(100)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "contact_number": {
+        "type": "varchar(20)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "last_login_at": {
+        "type": "datetime",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "idx_users_role_status": {
+        "unique": false,
+        "columns": [
+          "role",
+          "status"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "user_id"
+        ]
+      },
+      "uq_users_username": {
+        "unique": true,
+        "columns": [
+          "username"
+        ]
+      }
+    },
+    "fks": []
+  },
+  "venue_reservations": {
+    "columns": {
+      "reservation_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "reference_no": {
+        "type": "varchar(24)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "venue_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "resident_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purpose": {
+        "type": "varchar(255)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "reservation_date": {
+        "type": "date",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "start_time": {
+        "type": "time",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "end_time": {
+        "type": "time",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "status": {
+        "type": "enum('pending','approved','rejected','completed')",
+        "nullable": false,
+        "default": "pending",
+        "extra": ""
+      },
+      "status_note": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "reservation_id"
+        ]
+      },
+      "uq_venue_reservation_ref": {
+        "unique": true,
+        "columns": [
+          "reference_no"
+        ]
+      },
+      "idx_venue_reservation_slot": {
+        "unique": false,
+        "columns": [
+          "venue_id",
+          "reservation_date",
+          "start_time",
+          "end_time",
+          "status"
+        ]
+      },
+      "idx_venue_reservation_resident": {
+        "unique": false,
+        "columns": [
+          "resident_id",
+          "created_at"
+        ]
+      }
+    },
+    "fks": {
+      "fk_venue_reservation_venue": {
+        "columns": [
+          "venue_id"
+        ],
+        "ref": "venues(venue_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_venue_reservation_resident": {
+        "columns": [
+          "resident_id"
+        ],
+        "ref": "residents(resident_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_venue_reservation_creator": {
+        "columns": [
+          "created_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "venues": {
+    "columns": {
+      "venue_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "name": {
+        "type": "varchar(120)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "description": {
+        "type": "varchar(500)",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "availability_override": {
+        "type": "enum('automatic','available','in_use')",
+        "nullable": false,
+        "default": "automatic",
+        "extra": ""
+      },
+      "is_active": {
+        "type": "tinyint(1)",
+        "nullable": false,
+        "default": "1",
+        "extra": ""
+      },
+      "created_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      },
+      "updated_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": "on update current_timestamp"
+      }
+    },
+    "indexes": {
+      "primary": {
+        "unique": true,
+        "columns": [
+          "venue_id"
+        ]
+      },
+      "uq_venue_name": {
+        "unique": true,
+        "columns": [
+          "name"
+        ]
+      },
+      "idx_venue_active": {
+        "unique": false,
+        "columns": [
+          "is_active",
+          "availability_override"
+        ]
+      }
+    },
+    "fks": {
+      "fk_venue_created_by": {
+        "columns": [
+          "created_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  },
+  "visitor_log": {
+    "columns": {
+      "visit_id": {
+        "type": "int unsigned",
+        "nullable": false,
+        "default": "NULL",
+        "extra": "auto_increment"
+      },
+      "visited_at": {
+        "type": "datetime",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "visitor_name": {
+        "type": "varchar(100)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "purpose": {
+        "type": "varchar(150)",
+        "nullable": false,
+        "default": "NULL",
+        "extra": ""
+      },
+      "class_id": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "logged_by": {
+        "type": "int unsigned",
+        "nullable": true,
+        "default": "null",
+        "extra": ""
+      },
+      "created_at": {
+        "type": "timestamp",
+        "nullable": false,
+        "default": "current_timestamp",
+        "extra": ""
+      }
+    },
+    "indexes": {
+      "fk_visit_class": {
+        "unique": false,
+        "columns": [
+          "class_id"
+        ]
+      },
+      "fk_visit_user": {
+        "unique": false,
+        "columns": [
+          "logged_by"
+        ]
+      },
+      "idx_visit_name": {
+        "unique": false,
+        "columns": [
+          "visitor_name"
+        ]
+      },
+      "idx_visit_time": {
+        "unique": false,
+        "columns": [
+          "visited_at"
+        ]
+      },
+      "primary": {
+        "unique": true,
+        "columns": [
+          "visit_id"
+        ]
+      }
+    },
+    "fks": {
+      "fk_visit_class": {
+        "columns": [
+          "class_id"
+        ],
+        "ref": "lookups(lookup_id)",
+        "on_delete": "RESTRICT",
+        "on_update": "CASCADE"
+      },
+      "fk_visit_user": {
+        "columns": [
+          "logged_by"
+        ],
+        "ref": "users(user_id)",
+        "on_delete": "SET NULL",
+        "on_update": "CASCADE"
+      }
+    }
+  }
 }

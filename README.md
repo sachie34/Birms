@@ -2,7 +2,7 @@
 
 Barangay Information and Records Management System.
 
-This repository contains the BIRMS application for Barangay Wawa, Balagtas, Bulacan, including the B1–B12 presentation modules, safe demo data seeder, resident CSV import, and optional SMS API PH, Semaphore or Infobip delivery (all disabled unless explicitly configured). The paper-alignment and presentation-readiness changes have been merged into `main`: data-derived reports/dashboard figures, request requirements review, fee matrix/cash ledger, manual identity/voter verification history, private attachments/PDF output, local SQL export, global record search, UI consistency checks, and a guided XAMPP setup. The PowerPoint is a design reference; its sample content is not live system data.
+This branch implements the revised MSIT SRS for BIRMS, including resident self-service, separate service queues, document requests/certificate generation, blotter, venue reservations, role-based processing, reports, and protected backup/restore. It also includes a safe MSIT demo dataset seeder and a lightweight Word-style certificate-template editor with live preview and formatted print/PDF output. Optional SMS integrations remain disabled unless explicitly configured. The PowerPoint is a design reference; its sample content is not live system data.
 
 ## Repository layout
 
@@ -26,7 +26,23 @@ The outer archive also contained earlier B1 and B1–B5 packages and duplicate S
 
 ## Download and run locally (XAMPP)
 
-For the presentation build, download the [one-click BIRMS ZIP from main](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract the entire folder under `C:\xampp\htdocs\`, rename the extracted folder to `birms_work`, start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes a separate `barangay_db_work` database, applies migrations 001-012, writes the private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
+For the revised MSIT demo build, download the [MSIT SRS branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract it under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` if you want to use the paths in the runbook. Start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes the separate `barangay_db_work` database, applies the current migrations, writes private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
+
+### Load the ready-made demo records
+
+After setup and administrator creation, open Command Prompt in the project folder and first review the read-only plan:
+
+```bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+```
+
+If it confirms `barangay_db_work`, apply the sample records:
+
+```bat
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+```
+
+This adds fictitious residents, demo-only certificate templates and requests, sample blotter cases, venue reservations and queue tickets. It creates no users or default passwords and sends no email/SMS. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme were tested across 52 role-accessible menu routes. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 

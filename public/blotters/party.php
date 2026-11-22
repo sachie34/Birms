@@ -13,7 +13,7 @@ if ($pid !== null) {
 }
 $case = $caseId === null ? null : db_one('SELECT * FROM blotters WHERE blotter_id = ?', [$caseId]);
 if ($case === null) { abort(404, 'That case was not found.'); }
-if (!case_is_open($case)) { abort(403, 'Resolved or archived cases cannot be changed.'); }
+if (!case_is_open($case)) { abort(403, 'Resolved, dismissed or archived cases cannot be changed.'); }
 
 $v = ['party_role' => (string) ($party['party_role'] ?? 'Respondent'), 'name' => (string) ($party['full_name'] ?? ''), 'age' => (string) ($party['age'] ?? ''), 'address' => (string) ($party['address'] ?? ''), 'contact' => (string) ($party['contact_number'] ?? '')];
 $errors = [];
@@ -23,17 +23,41 @@ if (is_post()) {
     if (!in_array($v['party_role'], ['Complainant', 'Respondent'], true)) { $errors[] = 'Choose Complainant or Respondent.'; }
     $c = party_clean($v['name'], $v['age'], $v['address'], $v['contact'], 'Party', $errors);
     if (!$errors && $c) {
-        db_transaction(function () use ($v, $c, $party, $case): void {
-            if ($party) {
-                db_exec('UPDATE blotter_parties SET party_role = ?, full_name = ?, age = ?, address = ?, contact_number = ? WHERE party_id = ?', [$v['party_role'], $c['name'], $c['age'], $c['address'], $c['contact'], $party['party_id']]);
-                audit('blotter_party_updated', 'Blotter', 'Success', $case['case_no'] . ': ' . $v['party_role'] . ' ' . $c['name'] . ' corrected', 'blotter', (int) $case['blotter_id']);
-            } else {
-                db_exec('INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number) VALUES (?, ?, ?, ?, ?, ?)', [$case['blotter_id'], $v['party_role'], $c['name'], $c['age'], $c['address'], $c['contact']]);
-                audit('blotter_party_added', 'Blotter', 'Success', $case['case_no'] . ': ' . $v['party_role'] . ' ' . $c['name'] . ' added', 'blotter', (int) $case['blotter_id']);
-            }
-        });
-        flash_add('success', $party ? 'Party saved.' : 'Party added.');
-        redirect('blotters/view.php', ['id' => (int) $case['blotter_id']]);
+        try {
+            db_transaction(function () use ($v, $c, $party, $case): void {
+                // Serialize party edits with case finalization so no party can be added after closure.
+                $lockedCase = db_one(
+                    'SELECT blotter_id, case_no, msit_status, archived_at FROM blotters WHERE blotter_id = ? FOR UPDATE',
+                    [$case['blotter_id']]
+                );
+                if ($lockedCase === null || !case_is_open($lockedCase)) {
+                    throw new DomainException('This case is no longer editable because it has been resolved, dismissed or archived.');
+                }
+                if ($party) {
+                    $lockedParty = db_one(
+                        'SELECT party_id FROM blotter_parties WHERE party_id = ? AND blotter_id = ? FOR UPDATE',
+                        [$party['party_id'], $lockedCase['blotter_id']]
+                    );
+                    if ($lockedParty === null) { throw new RuntimeException('That party is no longer attached to this case. Refresh and try again.'); }
+                    $changed = db_exec(
+                        'UPDATE blotter_parties SET party_role = ?, full_name = ?, age = ?, address = ?, contact_number = ? WHERE party_id = ? AND blotter_id = ?',
+                        [$v['party_role'], $c['name'], $c['age'], $c['address'], $c['contact'], $party['party_id'], $lockedCase['blotter_id']]
+                    );
+                    if ($changed !== 1) { throw new RuntimeException('The party details changed before they could be saved. Refresh and try again.'); }
+                    audit('blotter_party_updated', 'Blotter', 'Success', $lockedCase['case_no'] . ': ' . $v['party_role'] . ' ' . $c['name'] . ' corrected', 'blotter', (int) $lockedCase['blotter_id']);
+                } else {
+                    db_exec(
+                        'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number) VALUES (?, ?, ?, ?, ?, ?)',
+                        [$lockedCase['blotter_id'], $v['party_role'], $c['name'], $c['age'], $c['address'], $c['contact']]
+                    );
+                    audit('blotter_party_added', 'Blotter', 'Success', $lockedCase['case_no'] . ': ' . $v['party_role'] . ' ' . $c['name'] . ' added', 'blotter', (int) $lockedCase['blotter_id']);
+                }
+            });
+            flash_add('success', $party ? 'Party saved.' : 'Party added.');
+            redirect('blotters/view.php', ['id' => (int) $case['blotter_id']]);
+        } catch (DomainException | RuntimeException $e) {
+            $errors[] = $e->getMessage();
+        }
     }
     audit_best_effort('blotter_rejected', 'Blotter', 'Failed', 'party: ' . implode(' ', array_slice($errors, 0, 3)));
 }

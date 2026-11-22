@@ -21,7 +21,9 @@ function setting_set(string $key, ?string $value): void
 
 const LOOKUP_LISTS = [
     'purok'             => 'Puroks',
-    'resident_category' => 'Resident categories',
+    'resident_category' => 'Legacy resident categories',
+    'resident_status'   => 'Resident statuses',
+    'resident_type'     => 'Resident types',
     'visit_class'       => 'Visit classifications',
     'id_type'           => 'Government ID types',
     'employment_status' => 'Employment statuses',

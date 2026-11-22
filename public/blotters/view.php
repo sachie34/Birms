@@ -11,22 +11,23 @@ if ($b === null) { abort(404, 'That case was not found.'); }
 $open = case_is_open($b);
 $parties = case_parties((int) $id);
 $hearings = can('hearings.view') ? db_all('SELECT hearing_id, scheduled_at, venue, notes, status, status_note, summons_count FROM hearings WHERE blotter_id = ? ORDER BY scheduled_at DESC, hearing_id DESC', [$id]) : [];
-$moves = $b['archived_at'] === null ? blotter_allowed_moves((string) $b['status']) : [];
+$srsMoves = blotter_srs_allowed_moves((string) ($b['msit_status'] ?? 'Ongoing'));
 $history = db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'blotter' AND entity_id = ? ORDER BY audit_id DESC LIMIT 25", [$id]);
 
 render_header((string) $b['case_no'], [['Blotter', 'blotters/index.php'], [(string) $b['case_no'], null]], 'blotters');
 $actions = ($open && can('blotters.edit')) ? btn_link('blotters/form.php?id=' . $id, 'Edit details', 'btn-light border', 'bi-pencil') : '';
 page_head((string) $b['case_no'], 'Incident on ' . date('j F Y', strtotime((string) $b['incident_date'])), $actions);
-if ($b['archived_at'] !== null) { echo '<div class="alert alert-secondary">This case is archived (' . e(fmt_dt((string) $b['archived_at'])) . ').</div>'; }
+if (($b['msit_status'] ?? '') === 'Archived' || $b['archived_at'] !== null) { echo '<div class="alert alert-secondary">This case is archived (' . e(fmt_dt((string) $b['archived_at'])) . '). It remains in the record history.</div>'; }
 $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' . e($k) . '</th><td>' . $v . '</td></tr>';
 ?>
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card-b mb-3"><div class="card-h"><h2>Details</h2></div><div class="card-body-b"><table class="table table-sm mb-0"><tbody>
-      <?= $row('Status', status_pill((string) $b['status'])) ?>
+      <?= $row('MSIT case status', status_pill((string) ($b['msit_status'] ?? 'Ongoing'))) ?>
+      <?= $row('Incident date / time', e(date('d M Y', strtotime((string) $b['incident_date']))) . ' · ' . e(!empty($b['incident_time']) ? date('g:i A', strtotime((string) $b['incident_time'])) : 'Time not recorded')) ?>
       <?= $row('Place', e((string) ($b['incident_place'] ?? '—'))) ?><?= $row('Purok', e((string) ($b['purok'] ?? '—'))) ?><?= $row('Incident type', e((string) ($b['incident_type'] ?? 'Unclassified'))) ?>
       <?= $row('Recorded', e(fmt_dt((string) $b['recorded_at'])) . ' by ' . e((string) ($b['recorder'] ?? '—'))) ?>
-      <?php if ($b['status'] === 'Resolved'): ?><?= $row('Resolved', e(fmt_dt((string) $b['resolved_at'])) . ' · ' . e((string) $b['resolution_note'])) ?><?php endif; ?>
+      <?php if (in_array((string) $b['msit_status'], ['Resolved', 'Dismissed'], true)): ?><?= $row($b['msit_status'] === 'Resolved' ? 'Resolved' : 'Dismissal reason', ($b['msit_status'] === 'Resolved' ? e(fmt_dt((string) $b['resolved_at'])) . ' · ' : '') . e((string) ($b['resolution_note'] ?? '—'))) ?><?php endif; ?>
     </tbody></table></div></div>
     <div class="card-b mb-3"><div class="card-h"><h2>What happened</h2></div><div class="card-body-b"><p class="mb-0"><?= nl2br(e((string) $b['narrative'])) ?></p></div></div>
 
@@ -38,7 +39,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
       <?php endif; ?></div></div>
 
     <?php if (can('hearings.view')): ?>
-    <div class="card-b"><div class="card-h"><h2>Hearings</h2><p>Scheduling a hearing marks the case Scheduled. Recording the outcome of the last open hearing returns it to Active.</p></div><div class="card-body-b">
+    <div class="card-b"><div class="card-h"><h2>Hearings</h2><p>Hearing dates and outcomes are tracked separately from the five MSIT case statuses.</p></div><div class="card-body-b">
       <?php if (!$hearings): ?><?= empty_state('bi-calendar-event', 'No hearings yet.') ?><?php endif; ?>
       <?php foreach ($hearings as $h): ?>
         <div class="border rounded-3 p-3 mb-2">
@@ -63,16 +64,18 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
     <?php endif; ?>
   </div>
   <div class="col-lg-5">
-    <?php if ($moves || ($b['status'] === 'Resolved' && can('blotters.archive'))): ?><div class="card-b mb-3"><div class="card-h"><h2>Next step</h2><p>Only steps your role may take are shown.</p></div><div class="card-body-b">
-      <?php foreach ($moves as $to): $needNote = $to === 'Resolved'; ?>
-        <form method="post" action="<?= e(base_url('blotters/action.php')) ?>" class="mb-3" data-confirm="<?= e(($to === 'Active' ? 'Start handling this case' : 'Mark this case as resolved') . '?') ?>"><?= csrf_field() ?>
-          <input type="hidden" name="id" value="<?= (int) $id ?>"><input type="hidden" name="do" value="move"><input type="hidden" name="to" value="<?= e($to) ?>">
-          <?php if ($needNote): ?><div class="mb-2"><label class="form-label req" for="note_res">How was it resolved?</label><input class="form-control" id="note_res" name="note" maxlength="500" required></div><?php endif; ?>
-          <button class="btn <?= $needNote ? 'btn-outline-success' : 'btn-primary' ?>" type="submit"><?= e($to === 'Active' ? 'Start handling (Active)' : 'Mark resolved') ?></button></form>
-      <?php endforeach; ?>
-      <?php if ($b['status'] === 'Resolved' && can('blotters.archive')): ?>
-        <?= $b['archived_at'] === null ? btn_post('blotters/action.php', ['id' => $id, 'do' => 'archive'], 'Archive case', 'btn-light border', 'Archive this resolved case? It leaves the main list but stays searchable.', 'bi-archive') : btn_post('blotters/action.php', ['id' => $id, 'do' => 'restore'], 'Restore case', 'btn-light border', 'Restore this case to the main list?', 'bi-arrow-counterclockwise') ?>
-      <?php endif; ?></div></div><?php endif; ?>
+    <?php if ($srsMoves): ?><div class="card-b mb-3"><div class="card-h"><h2>Update case status</h2><p>Only statuses permitted for your role and the current case state are available.</p></div><div class="card-body-b">
+      <?php foreach ($srsMoves as $to):
+        $needNote = in_array($to, ['Resolved', 'Dismissed'], true);
+        $labels = ['Ongoing' => 'Mark Ongoing', 'Unresolved' => 'Mark Unresolved', 'Resolved' => 'Mark Resolved', 'Dismissed' => 'Dismiss case', 'Archived' => 'Archive case'];
+        $label = $labels[$to] ?? ('Mark ' . $to);
+      ?>
+        <form method="post" action="<?= e(base_url('blotters/action.php')) ?>" class="mb-3" data-confirm="<?= e($label . '?') ?>"><?= csrf_field() ?>
+          <input type="hidden" name="id" value="<?= (int) $id ?>"><input type="hidden" name="do" value="srs_move"><input type="hidden" name="to" value="<?= e($to) ?>">
+          <?php if ($needNote): ?><div class="mb-2"><label class="form-label req" for="srs_note_<?= e(strtolower($to)) ?>"><?= $to === 'Dismissed' ? 'Reason for dismissal' : 'Resolution details' ?></label><textarea class="form-control" id="srs_note_<?= e(strtolower($to)) ?>" name="note" rows="2" maxlength="500" required></textarea></div><?php endif; ?>
+          <button class="btn <?= in_array($to, ['Resolved','Dismissed','Archived'], true) ? 'btn-outline-danger' : 'btn-primary' ?>" type="submit"><?= e($label) ?></button>
+        </form>
+      <?php endforeach; ?></div></div><?php endif; ?>
     <div class="card-b"><div class="card-h"><h2>History</h2></div><div class="card-body-b">
       <?php if (!$history): ?><?= empty_state('bi-clock-history', 'No history yet.') ?><?php else: foreach ($history as $h): ?>
         <div class="border-bottom py-2"><strong><?= e((string) $h['action']) ?></strong> <span class="text-muted small">· <?= e((string) ($h['username_snapshot'] ?? 'system')) ?> · <?= e(fmt_dt((string) $h['occurred_at'])) ?></span><div class="small text-muted"><?= e((string) $h['remarks']) ?></div></div>

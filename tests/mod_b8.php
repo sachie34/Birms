@@ -7,9 +7,10 @@ function run_b8(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
     $tmp = tempnam(sys_get_temp_dir(), 'birms-b8-pdf');
-    if ($tmp === false) { record('B8-1', 'Test fixture for PDF upload created', false); return; }
+    if ($tmp === false) { record('B8-00', 'Temporary PDF fixture could not be created; dependent attachment/PDF checks cannot run', false, 'tempnam() returned false'); return; }
     file_put_contents($tmp, "%PDF-1.4\n1 0 obj <<>> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
     $paidIssuanceId = null;
+    $signatureFixture = null;
 
     $cleanup = static function () use ($tmp): void {
         $fileRows = db_all("SELECT da.storage_path FROM document_attachments da
@@ -17,6 +18,7 @@ function run_b8(array $S, string $base): void
             LEFT JOIN document_requests dr ON dr.request_id = da.request_id
             WHERE (vl.visitor_name LIKE 'ZZB %' OR vl.purpose LIKE 'ZZ-B8%') OR dr.purpose LIKE 'ZZ-B8%'");
         foreach ($fileRows as $row) { @unlink(APP_ROOT . '/' . ltrim((string) $row['storage_path'], '/\\')); }
+        db_exec("DELETE FROM request_status_history WHERE request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B8%')");
         db_exec("DELETE FROM cash_collection_ledger WHERE issuance_id IN (SELECT issuance_id FROM issuances WHERE resident_name LIKE '%ZZTestB8%')");
         db_exec("DELETE FROM issuances WHERE resident_name LIKE '%ZZTestB8%'");
         db_exec("DELETE FROM document_attachments WHERE visit_id IN (SELECT visit_id FROM visitor_log WHERE (visitor_name LIKE 'ZZB %' OR purpose LIKE 'ZZ-B8%')) OR request_id IN (SELECT request_id FROM document_requests WHERE purpose LIKE 'ZZ-B8%')");
@@ -33,40 +35,31 @@ function run_b8(array $S, string $base): void
     try {
         // Remove residue from an interrupted run, scoped only to the reserved ZZ-B8 fixture names.
         $cleanup();
+        $signatureFixture = fx_upload_chairman_signature($adm);
+        record('B8-15', 'Admin uploads a valid private Chairman JPG before document issuance',
+            $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '');
 
-        $visitClass = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'visit_class' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
-        $visitorFields = [
-            '_csrf' => $clk->token('/visitors/index.php'),
-            'visitor_name' => 'ZZB Visitor',
-            'purpose' => 'ZZ-B8 Supporting ID upload test',
-            'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
-            'visited_at' => date('Y-m-d\\TH:i'),
-        ];
-        $visitorPost = $clk->upload('/visitors/index.php', $visitorFields, 'attachment', $tmp, 'ZZ-B8 identity.pdf');
-        $visitId = null;
-        if (preg_match('/[?&]new=(\\d+)/', (string) loc($visitorPost), $m)) { $visitId = (int) $m[1]; }
-        $visitorAttachment = $visitId ? db_one('SELECT * FROM document_attachments WHERE visit_id = ? LIMIT 1', [$visitId]) : null;
-        $visitorPage = $clk->get('/visitors/index.php?q=ZZ-B8');
-        record('B8-1', 'Visitor logbook saves a private PDF attachment and shows its download link',
-            $visitorPost['status'] === 302 && $visitId !== null && $visitorAttachment !== null
-            && str_contains($visitorPage['body'], 'ZZ-B8 identity.pdf')
-            && (int) db_val('SELECT COUNT(*) FROM document_attachments WHERE visit_id = ?', [$visitId]) === 1);
+        $visitorBefore = (int) db_val('SELECT COUNT(*) FROM visitor_log');
+        $visitorRoute = $clk->get('/visitors/index.php');
+        record('B8-1', 'The old visitor logbook route is retired and redirects to the queue console',
+            $visitorRoute['status'] === 302 && str_contains((string) $visitorRoute['location'], 'queue/index.php'));
 
-        $download = $visitorAttachment
-            ? $clk->get('/files/download.php?id=' . (int) $visitorAttachment['attachment_id'])
-            : ['status' => 0, 'headers' => [], 'body' => ''];
-        record('B8-2', 'Private attachment download checks authorization and returns the stored file',
-            $download['status'] === 200 && str_starts_with($download['body'], '%PDF-')
-            && strtolower((string) ($download['headers']['content-type'] ?? '')) === 'application/pdf');
+        $visitorUpload = $clk->upload('/visitors/index.php', [
+            '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Visitor',
+            'purpose' => 'Legacy visitor attachment must not be stored',
+        ], 'attachment', $tmp, 'ZZ-B8 identity.pdf');
+        record('B8-2', 'Posting an attachment to the retired visitor route cannot create a visitor or attachment record',
+            $visitorUpload['status'] === 302
+            && (int) db_val('SELECT COUNT(*) FROM visitor_log') === $visitorBefore
+            && (int) db_val('SELECT COUNT(*) FROM document_attachments WHERE visit_id IS NOT NULL') === 0);
 
-        $invalidPost = $clk->upload('/visitors/index.php', [
+        $invalidVisitorUpload = $clk->upload('/visitors/index.php', [
             '_csrf' => $clk->token('/visitors/index.php'), 'visitor_name' => 'ZZB Invalid Upload',
-            'purpose' => 'ZZ-B8 disallowed extension', 'class_id' => $visitClass ? (string) $visitClass['lookup_id'] : '',
-            'visited_at' => date('Y-m-d\\TH:i'),
+            'purpose' => 'Legacy visitor upload must not be stored',
         ], 'attachment', $tmp, 'not-allowed.txt', 'text/plain');
-        record('B8-3', 'Disallowed upload types are rejected without saving a visitor record',
-            $invalidPost['status'] === 200 && str_contains($invalidPost['body'], 'Allowed attachment formats')
-            && (int) db_val("SELECT COUNT(*) FROM visitor_log WHERE visitor_name = 'ZZB Invalid Upload'") === 0);
+        record('B8-3', 'The retired visitor route ignores all upload types and creates no visitor record',
+            $invalidVisitorUpload['status'] === 302
+            && (int) db_val("SELECT COUNT(*) FROM visitor_log WHERE visitor_name LIKE 'ZZB %'") === 0);
 
         db_exec("INSERT IGNORE INTO lookups (list_key, label, sort_order) VALUES ('purok', 'ZZ-B8 Purok', 9998)");
         $purokId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND label = 'ZZ-B8 Purok'");
@@ -82,7 +75,7 @@ function run_b8(array $S, string $base): void
         $freeTypeId = (int) db()->lastInsertId();
         $requestForm = $clk->upload('/requests/form.php', [
             '_csrf' => $clk->token('/requests/form.php?resident=' . $residentId),
-            'resident_id' => (string) $residentId, 'visit_id' => (string) ($visitId ?? ''),
+            'resident_id' => (string) $residentId,
             'type_id' => (string) $freeTypeId, 'purpose' => 'ZZ-B8 Supporting documents',
             'assigned_to' => '', 'requirements_status' => 'Not checked', 'requirements_note' => '',
             'fee_rule_id' => '', 'fee_quantity' => '1',
@@ -112,32 +105,43 @@ function run_b8(array $S, string $base): void
         $strangerView = $requestId
             ? $otherClerk->get('/requests/view.php?id=' . $requestId)
             : ['status' => 0, 'body' => ''];
-        record('B8-4a', 'Request attachment downloads are limited to the filing/assigned Clerk; shared visitor attachments remain accessible to authorized staff',
-            $otherLogin['status'] === 302
+        $b84aOk = $otherLogin['status'] === 302
             && $ownerDownload['status'] === 200 && str_starts_with($ownerDownload['body'], '%PDF-')
             && $strangerDownload['status'] === 404
-            && $strangerView['status'] === 404
-            && $download['status'] === 200);
+            && $strangerView['status'] === 404;
+        $requestAccess = $requestId ? db_one('SELECT created_by, assigned_to FROM document_requests WHERE request_id = ?', [$requestId]) : null;
+        record('B8-4a', 'Request attachment downloads are limited to the filing/assigned Clerk; shared visitor attachments remain accessible to authorized staff',
+            $b84aOk,
+            'login=' . $otherLogin['status'] . '; owner=' . $ownerDownload['status'] . '; stranger=' . $strangerDownload['status']
+            . '; stranger-view=' . $strangerView['status']
+            . '; request-created-by=' . (string) ($requestAccess['created_by'] ?? 'null')
+            . '; request-assigned-to=' . (string) ($requestAccess['assigned_to'] ?? 'null'));
 
         $freePost = ['status' => 0, 'location' => null];
         $freeIssuanceId = null;
         if ($requestId !== null) {
             db_exec("UPDATE document_requests SET status = 'Ready', requirements_status = 'Complete' WHERE request_id = ?", [$requestId]);
-            $freePost = $sec->post('/certificates/issue.php?request=' . $requestId, [
-                '_csrf' => $sec->token('/certificates/issue.php?request=' . $requestId),
+            $freePost = $clk->post('/certificates/issue.php?request=' . $requestId, [
+                '_csrf' => $clk->token('/certificates/issue.php?request=' . $requestId),
                 'request_id' => (string) $requestId, 'or_number' => '',
-                'payment_method' => 'cash', 'signature_text' => 'ZZ B8 Typed Signatory',
             ]);
             if (preg_match('/[?&]id=(\\d+)/', (string) loc($freePost), $m)) { $freeIssuanceId = (int) $m[1]; }
         }
         $freeIssuance = $freeIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$freeIssuanceId]) : null;
-        $pdf = $freeIssuanceId ? $sec->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
-        record('B8-5', 'Issuance saves a typed-signatory snapshot and returns a server-generated PDF',
-            $freePost['status'] === 302 && $freeIssuance !== null
-            && (string) ($freeIssuance['signature_text'] ?? '') === 'ZZ B8 Typed Signatory'
+        // Staff is the role that issues and downloads certificates under the revised SRS.
+        $pdf = $freeIssuanceId ? $clk->get('/certificates/pdf.php?id=' . $freeIssuanceId) : ['status' => 0, 'headers' => [], 'body' => ''];
+        $b85Ok = $freePost['status'] === 302 && $freeIssuance !== null
+            && (string) ($freeIssuance['chairman_signature_path'] ?? '') === (string) ($signatureFixture['current'] ?? '')
+            && chairman_signature_path_to_absolute((string) ($freeIssuance['chairman_signature_path'] ?? '')) !== null
             && $pdf['status'] === 200 && str_starts_with($pdf['body'], '%PDF-')
             && strtolower((string) ($pdf['headers']['content-type'] ?? '')) === 'application/pdf'
-            && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf'));
+            && str_contains($pdf['headers']['content-disposition'] ?? '', '.pdf');
+        record('B8-5', 'Staff receives a server-generated PDF containing the per-issuance Chairman signature snapshot',
+            $b85Ok,
+            'issue=' . $freePost['status'] . '; saved=' . ($freeIssuance !== null ? 'yes' : 'no')
+            . '; signature-snapshot=' . (string) ($freeIssuance['chairman_signature_path'] ?? 'missing')
+            . '; pdf=' . $pdf['status'] . '; content-type=' . (string) ($pdf['headers']['content-type'] ?? 'none')
+            . '; pdf-header=' . substr($pdf['body'], 0, 5));
 
         db_exec("INSERT INTO document_types (name, fee_amount, template_body, is_active, sort_order)
                  VALUES ('ZZ-B8 Paid Certificate', '25.00', 'Paid draft for {{full_name}}.', 1, 9998)");
@@ -147,21 +151,20 @@ function run_b8(array $S, string $base): void
                  VALUES (?, ?, ?, 'ZZ-B8 paid issuance', 'Ready', 'Complete', NOW())", [$paidRef, $residentId, $paidTypeId]);
         $paidRequestId = (int) db()->lastInsertId();
         $receipt = 'ZZB8OR-' . substr(md5((string) microtime(true)), 0, 8);
-        $paidPost = $sec->post('/certificates/issue.php?request=' . $paidRequestId, [
-            '_csrf' => $sec->token('/certificates/issue.php?request=' . $paidRequestId),
-            'request_id' => (string) $paidRequestId, 'or_number' => $receipt,
-            'payment_method' => 'bank_transfer', 'signature_text' => 'ZZ B8 Ledger Signatory',
+        $paidPost = $clk->post('/certificates/issue.php?request=' . $paidRequestId, [
+            '_csrf' => $clk->token('/certificates/issue.php?request=' . $paidRequestId),
+            'request_id' => (string) $paidRequestId, 'or_number' => $receipt, 'payment_method' => 'bank_transfer',
         ]);
         if (preg_match('/[?&]id=(\\d+)/', (string) loc($paidPost), $m)) { $paidIssuanceId = (int) $m[1]; }
         else { $paidIssuanceId = null; }
         $paidIssuance = $paidIssuanceId ? db_one('SELECT * FROM issuances WHERE issuance_id = ?', [$paidIssuanceId]) : null;
         $ledger = $paidIssuanceId ? db_one('SELECT * FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) : null;
-        $secretaryId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_secretary'");
+        $staffId = (int) db_val("SELECT user_id FROM users WHERE username = 'zz_test_clerk'");
         record('B8-6', 'Paid issuance creates one pending ledger entry linked to issuance, payment method and collector',
             $paidPost['status'] === 302 && $paidIssuance !== null && $ledger !== null
             && (float) $ledger['fee_amount'] === 25.0
             && $ledger['payment_method'] === 'bank_transfer' && $ledger['reconciliation_status'] === 'pending'
-            && (int) $ledger['collector_id'] === $secretaryId
+            && (int) $ledger['collector_id'] === $staffId
             && (int) db_val('SELECT COUNT(*) FROM cash_collection_ledger WHERE issuance_id = ?', [$paidIssuanceId]) === 1);
 
          $adminLedger = $adm->get('/admin/ledger.php');
@@ -259,6 +262,7 @@ function run_b8(array $S, string $base): void
         record('B8-14', 'Expected schema agrees with the migrated database', $schemaCode === 0, $schemaCode === 0 ? '' : implode(' | ', array_slice($schemaOutput, 0, 4)));
     } finally {
         $cleanup();
+        if (is_array($signatureFixture)) { fx_restore_chairman_signature($signatureFixture); }
         @unlink($tmp);
     }
 }
