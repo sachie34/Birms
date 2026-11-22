@@ -110,7 +110,7 @@ function backup_webdav_is_configured(): bool
 /** Build an HTTPS WebDAV file URL and reject credentials, query strings, fragments and path traversal. */
 function backup_webdav_destination_url(string $baseUrl, string $filename): string
 {
-    if (preg_match('/^[A-Za-z0-9_-]+\.sql$/', $filename) !== 1) {
+    if (preg_match('/^[A-Za-z0-9_-]+\.(?:sql|zip)$/i', $filename) !== 1) {
         throw new InvalidArgumentException('The backup filename is invalid.');
     }
     $parts = parse_url($baseUrl);
@@ -1057,6 +1057,7 @@ function backup_full_system_restore_staged(array $staged): array
 
     $createdFiles = [];
     $databaseApplied = false;
+    $preserveSafety = false;
     $safetyPath = tempnam(sys_get_temp_dir(), 'birms-full-before-restore-');
     if ($safetyPath === false) { throw new RuntimeException('A pre-restore database safety snapshot could not be created.'); }
     $safetyOut = fopen($safetyPath, 'wb');
@@ -1131,6 +1132,7 @@ function backup_full_system_restore_staged(array $staged): array
                 backup_restore_apply($safetySql);
             } catch (Throwable $recoveryError) {
                 $recoveryFailed = true;
+                $preserveSafety = true;
                 error_log('BIRMS full restore database recovery failed. Preserve safety snapshot at '
                     . $safetyPath . '. Original restore error: ' . $e->getMessage()
                     . '; recovery error: ' . $recoveryError->getMessage());
@@ -1146,7 +1148,7 @@ function backup_full_system_restore_staged(array $staged): array
         throw $e;
     } finally {
         // The SQL snapshot contains confidential resident records and must not be retained after success/recovery.
-        if (is_file($safetyPath)) { @unlink($safetyPath); }
+        if (!$preserveSafety && is_file($safetyPath)) { @unlink($safetyPath); }
     }
 }
 
