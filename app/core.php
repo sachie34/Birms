@@ -11,8 +11,8 @@ define('PUBLIC_ROOT', APP_ROOT . '/public');
 
 /**
  * Return a user-safe reason when the active PHP runtime has not reached the
- * security patch level required for BIRMS. PHP 8.2 is accepted only at its
- * latest critical patch while that branch remains supported.
+ * minimum security patch level pinned for each supported PHP branch. PHP 8.2
+ * is accepted only while that branch remains security-supported.
  */
 function php_runtime_security_issue(int $versionId, ?string $date = null): ?string
 {
@@ -29,9 +29,6 @@ function php_runtime_security_issue(int $versionId, ?string $date = null): ?stri
         return null;
     }
 
-    if ($versionId >= 80600 && $versionId < 80700) {
-        return 'PHP 8.6 is not at the required stable release level. Update to PHP 8.6.0 or later within the 8.6 branch.';
-    }
     if ($versionId >= 80500 && $versionId < 80600) {
         return 'PHP 8.5 must be updated to 8.5.13 or later within the 8.5 branch.';
     }
