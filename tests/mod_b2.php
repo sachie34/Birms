@@ -8,8 +8,27 @@ function run_b2(array $S, string $base): void
     $snap = []; foreach ($snapKeys as $k) { $snap[$k] = db_val('SELECT setting_value FROM settings WHERE setting_key = ?', [$k]); }
     $types = db_all('SELECT type_id, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types');
 
-    $bad = ''; foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'sms'] as $tab) { [$ok, $why] = rbac_page($S, '/admin/settings.php?tab=' . $tab, 'settings.view'); if (!$ok) { $bad .= "{$tab}: {$why}"; } }
-    record('B2-1', 'Settings pages: Admin and Secretary can view; Chairman and Staff are denied', $bad === '', $bad);
+    $adminTabsOk = true;
+    foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'summons', 'notifications', 'sms'] as $tab) {
+        $response = $S['admin']->get('/admin/settings.php?tab=' . $tab);
+        if ($response['status'] !== 200) { $adminTabsOk = false; }
+    }
+    $secretaryDocuments = $S['secretary']->get('/admin/settings.php?tab=documents');
+    $secretaryGeneral = $S['secretary']->get('/admin/settings.php?tab=general');
+    $secretaryNotifications = $S['secretary']->get('/admin/settings.php?tab=notifications');
+    $chairmanDocuments = $S['captain']->get('/admin/settings.php?tab=documents');
+    $staffDocuments = $S['clerk']->get('/admin/settings.php?tab=documents');
+    record('B2-1', 'Admin manages system settings; Secretary accesses document wording only; Chairman and Staff cannot access template administration',
+        $adminTabsOk
+        && $secretaryDocuments['status'] === 200
+        && str_contains($secretaryDocuments['body'], 'You can edit document wording only')
+        && $secretaryGeneral['status'] === 403
+        && $secretaryNotifications['status'] === 403
+        && $chairmanDocuments['status'] === 403
+        && $staffDocuments['status'] === 403,
+        'secretary-documents=' . $secretaryDocuments['status'] . '; secretary-general=' . $secretaryGeneral['status']
+        . '; secretary-notifications=' . $secretaryNotifications['status'] . '; chairman-documents=' . $chairmanDocuments['status']
+        . '; staff-documents=' . $staffDocuments['status']);
 
     $sec = $S['secretary']; $adm = $S['admin']; $cap = $S['captain'];
     $r = post_as($cap, '/admin/settings.php', '/admin/settings.php', ['do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Hacked', 'municipality' => 'X1', 'province' => 'Y1', 'age_brackets' => '0-17']);
@@ -129,6 +148,13 @@ function run_b2(array $S, string $base): void
         'is_active' => '1', 'fee_amount' => '0', 'template_body' => 'Unauthorized {{full_name}}',
     ]);
     record('B2-24', 'Staff cannot change document templates', $staffTemplate['status'] === 403);
+
+    $secretaryAddType = post_as($sec, '/admin/settings.php?tab=documents', '/admin/settings.php', [
+        'do' => 'doctype_add', 'tab' => 'documents', 'name' => 'ZZ Secretary Unauthorized Type',
+    ]);
+    record('B2-25', 'Secretary may edit template wording but cannot create document types',
+        $secretaryAddType['status'] === 403
+        && (int) db_val("SELECT COUNT(*) FROM document_types WHERE name = 'ZZ Secretary Unauthorized Type'") === 0);
 
 
     // cleanup: put everything back
