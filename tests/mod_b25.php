@@ -9,7 +9,7 @@ function run_b25(array $S, string $base): void
     $admin = $S['admin'];
     $staff = $S['clerk'];
     $tag = strtoupper(strtr(bin2hex(random_bytes(4)), '0123456789abcdef', 'abcdefghijklmnop'));
-    $lastName = 'ZZB25' . $tag;
+    $lastName = 'ZZB' . $tag;
     $email = 'b25-' . strtolower($tag) . '@example.test';
     $purokLabel = 'ZZ B25 ' . $tag;
     $purokId = 0;
