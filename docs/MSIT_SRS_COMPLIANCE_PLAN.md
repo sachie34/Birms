@@ -504,7 +504,20 @@ FR-D5's automatic saved-draft and PDF-preview workflow is implemented and automa
 
 ### Verification status
 
-The application/test changes are committed on `john/msit-srs-compliance`. The expanded PHP/MariaDB matrix for the latest deployment-hardening commit must complete green before this section can be classified as automated-test verified. Do not infer a pass from the earlier PHP 8.3 / MariaDB 10.4 and 10.11 results.
+**Verified by GitHub Actions run #1095** on deployment-hardening commit `09d36e6066fcb86cd402a50aa375c00ca948dafd`: all eight PHP/MariaDB combinations completed successfully.
+
+| Runtime | MariaDB 10.4 | MariaDB 10.11 |
+|---|---:|---:|
+| PHP 8.3 | 48/48 security; 283/283 modules | 48/48 security; 283/283 modules |
+| PHP 8.4 | 48/48 security; 283/283 modules | 48/48 security; 283/283 modules |
+| PHP 8.5 | 48/48 security; 283/283 modules | 48/48 security; 283/283 modules |
+| PHP 8.6 | 48/48 security; 283/283 modules | 48/48 security; 283/283 modules |
+
+All eight jobs reported zero failures and zero untested checks. The run verifies the XAMPP preflight ZIP/private-directory checks, the HTTPS guard's configuration regression, the B17-13 failed-snapshot cleanup, the permanent blotter deletion trigger and private-path denial under the CI test server. The web application itself ran with a restricted database account granted only SELECT/INSERT/UPDATE/DELETE; test-fixture setup and inspection used the DBA account separately.
+
+[View GitHub Actions run #1095](https://github.com/sachie34/Birms/actions/runs/45026931061)
+
+Intermediate failures were retained and diagnosed rather than hidden: run #1089 showed that the test harness itself needed DBA access for database-trigger metadata while the actual web application needed to remain under the limited account; PHP 8.5/8.6 built-in-server behavior also made the Apache private-folder HTTP probe return 200. The test runner and application credentials were separated, the CI server now uses an explicit test-only path guard, and Apache deny rules are independently checked in CI and setup preflight. Run #1095 passed all checks after these corrections.
 
 ### Still required before production
 
