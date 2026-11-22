@@ -253,7 +253,7 @@ These are automated integration results against disposable CI databases. They ar
 - **Request privacy:** global search applies the same row-level visibility rule as the request tracker, so Staff/Clerk search does not expose requests they neither filed nor were assigned.
 - **Concurrency and audit:** hearing slots have a database uniqueness guard and transactional rechecks; administrator role/status changes preserve the active-administrator invariant; certificate preview GETs do not increment print counts, while the CSRF-protected print POST records the action.
 - **Abuse throttling:** migration 014, the database-backed rate-limit helper and route-level enforcement are present. The U9 regression test checks fixed-window limits, separate identities and reset at the next window.
-- **PHP runtime:** the web bootstrap, XAMPP setup preflight and standalone admin bootstrap reject known-unpatched/unsupported PHP branches before application work proceeds. Accepted minimum patch versions reflect the PHP security releases available on 19 November 2026: PHP 8.3.36, 8.4.27, and 8.5.12. PHP 8.2.35 is accepted only until 31 December 2026; after that, PHP 8.2 is rejected because its security support ends. The setup wizard warns on PHP 8.2 before that date.
+- **PHP runtime:** the web bootstrap, XAMPP setup preflight and standalone admin bootstrap reject known-unpatched/unsupported PHP branches before application work proceeds. Minimum versions were refreshed after the 19 November 2026 security releases: PHP 8.3.37, 8.4.28, and 8.5.13; PHP 8.6.0 is accepted as the first stable 8.6 release. PHP 8.2.36 is accepted only until 31 December 2026; after that, PHP 8.2 is rejected because its security support ends. The setup wizard warns on PHP 8.2 before that date. U10 checks the minimum versions and branch boundaries. PHP 8.6 application compatibility is not yet covered by the CI runtime matrix and still requires a target-runtime smoke test.
 - **CLI secrets:** the setup wizard and admin bootstrap use a shared hidden-input helper. Windows uses PowerShell `Read-Host -AsSecureString`; Unix-like terminals disable echo with `stty -echo` and restore it in a `finally` block. If a secure prompt cannot be established, the helper fails closed rather than reading the password visibly.
 - **Local vendor assets:** vendored Bootstrap was updated from 5.3.3 to 5.3.8 and Bootstrap Icons from 1.11.3 to 1.13.1. CSS, JavaScript, licenses and both icon font files were refreshed together; S3 verifies the versions and font presence.
 
@@ -419,9 +419,9 @@ Both environments reported **zero failures and zero untested checks**. B17-01 th
 - Every archive path must remain inside `storage/private_uploads/` or `storage/resident_photos/`. Path traversal, absolute paths, backslashes, duplicate names and unexpected archive entries are refused.
 - Restore preflights file destination collisions before changing the database. It never overwrites a different file already present at the same private path.
 - The database is restored first under the existing permanent-blotter and foreign-key safeguards. Missing private files are then installed with exclusive file creation, SHA-256 verification and protected permissions. The restored database is checked for all referenced attachments, photos and signature files; attachment hashes/MIME types and photo/signature image formats are verified.
-- A same-request SQL safety snapshot is created before restore. If file installation or the post-restore integrity check fails after the database restore begins, the helper reapplies the safety SQL snapshot and removes only files it created. If automatic database recovery itself fails, the safety SQL snapshot is retained and its location is recorded in the server error log for administrator recovery.
+- A same-request SQL safety snapshot is created before restore. If file installation or the post-restore integrity check fails after the database restore begins, the helper reapplies the safety SQL snapshot and removes only files it created. If snapshot creation or writing fails before restore begins, the partial confidential SQL temp file is cleaned up; B17-11 injects a writer failure and verifies no new safety file is left behind. If automatic database recovery itself fails, the completed safety SQL snapshot is retained and its location is recorded in the server error log for administrator recovery.
 - Existing private files are **not bulk-deleted** during restore. This avoids destructive filesystem replacement, but can leave unreferenced private files from a newer state. Any cleanup must be a separate, reviewed maintenance task after confirming no database record references the files.
-- Full-system WebDAV upload accepts the ZIP archive as well as the legacy SQL file. No cloud provider or credentials are bundled. The ZIP extension must be enabled in both CLI PHP and Apache PHP. Scheduled backups remain unimplemented.
+- Full-system WebDAV upload accepts the ZIP archive as well as the legacy SQL file and sends a format-specific MIME type (application/zip for ZIP and application/sql for SQL); B17-12 verifies the mapping without making a network request. No cloud provider or credentials are bundled. The ZIP extension must be enabled in both CLI PHP and Apache PHP. Scheduled backups remain unimplemented.
 
 ### Regression coverage and automated validation
 
@@ -430,17 +430,22 @@ Expanded `tests/mod_b17.php` with:
 - **B17-08:** rejects a ZIP manifest containing a path-traversal file path before database or filesystem mutation.
 - **B17-09:** rejects a same-size tampered private file whose SHA-256 does not match the manifest, before database mutation.
 - **B17-10:** refuses a different file already present at the archive destination; confirms neither the existing file nor database records are overwritten.
+- **B17-11:** injects a failure while writing the pre-restore SQL safety snapshot and verifies the temporary confidential SQL file is removed.
+- **B17-12:** verifies WebDAV selects application/zip for ZIP archives and application/sql for SQL backups, and rejects unsupported names without contacting a server.
+- **U10:** refreshed PHP runtime guard boundaries for the 19 November 2026 security releases and stable PHP 8.6.0.
 
-GitHub Actions run **#1033** validates commit `424fef880cddbf6c03462acc6256b392eb516e21` on disposable MariaDB 10.4 and 10.11:
+GitHub Actions run **#1044** validates the current branch head `cc8ebd12a31426094e07186ba35ece38352e758c` on disposable MariaDB 10.4 and 10.11:
 
 | Database | Security/authentication/audit | Module integration |
 |---|---:|---:|
-| MariaDB 10.4 | 45/45 passed | 280/280 passed |
-| MariaDB 10.11 | 45/45 passed | 280/280 passed |
+| MariaDB 10.4 | 45/45 passed | 282/282 passed |
+| MariaDB 10.11 | 45/45 passed | 282/282 passed |
 
-Both environments reported **zero failures and zero untested checks**. B17-01 through B17-10 passed on both versions. The ZIP extension is installed in CI specifically to execute the full archive tests.
+Both environments reported **zero failures and zero untested checks**. B17-01 through B17-12 and U10 passed on both versions. The ZIP extension is installed in CI specifically to execute the full archive tests.
 
-[View GitHub Actions run #1033](https://github.com/sachie34/Birms/actions/runs/45011376303)
+[View GitHub Actions run #1044](https://github.com/sachie34/Birms/actions/runs/45013028325)
+
+Earlier run #1033 passed 45/45 security and 280/280 module checks on both versions before B17-11/B17-12 and the refreshed runtime thresholds were added: [run #1033](https://github.com/sachie34/Birms/actions/runs/45011376303).
 
 The first runs after the backup UI update (#1026–#1030) retained a failed B17-01 assertion because that test still expected the previous SQL-only page heading. The Admin/Chairman access result itself was not changed; B17-01 was updated to assert the new full-system restore heading and ZIP download control. The corrected run #1031 passed 45/45 security and 278/278 module checks on both databases; #1032 passed after adding file-format verification; #1033 then passed the expanded B17-09/B17-10 cases. Earlier failed runs remain visible in Actions history.
 
@@ -452,3 +457,16 @@ The first runs after the backup UI update (#1026–#1030) retained a failed B17-
 - Scheduled backup execution and backup notifications are still **Missing**.
 
 **Release decision:** Complete ZIP backup/restore now has automated integration coverage for database and private-file round-trip, archive path validation, manifest tampering, file collision safety, attachment hashes/MIME types, resident photo formats, signature image validity, database foreign-key integrity and permanent blotter preservation. Target XAMPP restore, physical office acceptance and scheduled backups remain outstanding. Keep PR #34 as a draft.
+
+
+## 17. Open SRS lifecycle discrepancy — FR-D5 (2026-11-22)
+
+The revised SRS states in **FR-D5** that the system automatically generates the form/certificate with resident data filled in upon approval, and Section 3.2 says the generated document is returned to Staff for release. The current implementation does not generate the issuance record/PDF on the approval transition:
+
+1. The Staff approval transition moves the request into the internal `Ready` state and the public `Approved` state.
+2. A Staff user must separately open Certificate Generation and submit the Issue certificate action.
+3. That second action creates the issuance record, snapshots the Chairman signature, records any payment/O.R. details, generates the printable PDF, and changes the public state to `Released`.
+
+This means the code has a manual certificate-issuance step after approval. The automated B24 test verifies that flow; it does not establish strict compliance with automatic generation at approval. The current behavior may be a deliberate separation of approval, certificate preparation, payment recording and release, but the revised SRS does not define those intermediate rules.
+
+**Required before declaring FR-D5 complete:** confirm with the adviser/system owner whether approval must automatically create a saved certificate draft for Staff to review/release, or whether the separate Staff Issue action is accepted as the intended process. If strict automatic generation is required, implement it as a distinct, test-covered draft-generation step that does not prematurely mark the certificate Released, consume an O.R. number, or create a cash-collection ledger entry. Keep the PR draft until that decision is resolved and the accepted flow is implemented/tested.
