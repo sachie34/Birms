@@ -11,11 +11,12 @@ permissions:
 
 jobs:
   php-and-integration-tests:
-    name: PHP and MariaDB ${{ matrix.mariadb-version }} checks
+    name: PHP ${{ matrix.php-version }} and MariaDB ${{ matrix.mariadb-version }} checks
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        php-version: ['8.3', '8.4', '8.5', '8.6']
         mariadb-version: ['10.4', '10.11']
     services:
       mariadb:
@@ -53,7 +54,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php-version }}
           extensions: curl, mbstring, pdo_mysql, zip
           coverage: none
 
