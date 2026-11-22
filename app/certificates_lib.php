@@ -170,3 +170,65 @@ function certificate_pdf_bytes(array $issuance): string
     $pdf .= 'trailer << /Size ' . ($maxId + 1) . " /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF";
     return $pdf;
 }
+
+
+/** Return the automatically generated, immutable certificate draft for a request. */
+function certificate_draft_for_request(int $requestId): ?array
+{
+    return db_one('SELECT * FROM certificate_drafts WHERE request_id = ?', [$requestId]);
+}
+
+/**
+ * Generate a complete certificate draft after approval, inside the caller's transaction.
+ * This deliberately creates no issuance record, O.R. entry, cash-ledger row, or Released status.
+ */
+function certificate_draft_create(int $requestId): array
+{
+    $existing = certificate_draft_for_request($requestId);
+    if ($existing !== null) { return $existing; }
+
+    $request = issuable_request($requestId);
+    if ($request === null || (string) $request['status'] !== 'Ready') {
+        throw new RuntimeException('Only an approved request can generate a certificate draft.');
+    }
+
+    $vars = certificate_vars($request);
+    $blockers = certificate_blockers($request, $vars);
+    if ($blockers) {
+        throw new InvalidArgumentException('The request cannot be approved until its certificate draft can be generated: ' . implode(' ', $blockers));
+    }
+
+    $requiresSignature = (int) ($request['requires_chairman_signature'] ?? 1) === 1;
+    $signaturePath = $requiresSignature ? chairman_signature_current_relative() : null;
+    if ($requiresSignature && chairman_signature_read($signaturePath) === null) {
+        throw new InvalidArgumentException('The Chairman signature image is unavailable. Ask Admin to verify the signature in Settings before approving this request.');
+    }
+
+    $actor = audit_actor();
+    $body = render_template((string) $request['template_body'], $vars);
+    db_exec(
+        'INSERT INTO certificate_drafts
+         (request_id, resident_id, type_id, request_reference_no, resident_name, type_name, purpose,
+          fee_amount, fee_rule_id, fee_category_snapshot, fee_tier_snapshot, fee_quantity, fee_unit_rate,
+          body_text, captain_name, signature_text, chairman_signature_path, generated_by, generated_by_name, generated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+        [
+            $requestId, $request['resident_id'], $request['type_id'], $request['reference_no'],
+            resident_name_natural($request), $request['type_name'], $request['purpose'], $request['fee_amount'],
+            $request['fee_rule_id'] ?? null, $request['fee_category_snapshot'] ?? null,
+            $request['fee_tier_snapshot'] ?? null, $request['fee_quantity'] ?? 1,
+            $request['fee_unit_rate'] ?? null, $body,
+            $vars['captain_name'] !== '' ? $vars['captain_name'] : null,
+            $vars['captain_name'] !== '' ? $vars['captain_name'] : null,
+            $signaturePath, $actor['user_id'] ?? null,
+            (string) ($actor['full_name'] ?? 'system'),
+        ]
+    );
+    $draftId = (int) db()->lastInsertId();
+    audit('certificate_draft_generated', 'Certificates', 'Success',
+        'Generated certificate draft for ' . $request['reference_no'] . ' (' . $request['type_name'] . ')',
+        'certificate_draft', $draftId);
+    $draft = db_one('SELECT * FROM certificate_drafts WHERE draft_id = ?', [$draftId]);
+    if ($draft === null) { throw new RuntimeException('The generated certificate draft could not be reloaded.'); }
+    return $draft;
+}
