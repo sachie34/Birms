@@ -213,6 +213,29 @@ function run_b17(array $S, string $base): void
             . '; preserved-post-backup-setting=' . $fkProbeCount
             . '; challenge-resident-after-rollback=' . $challengeResidentAfter);
 
+        // A failure while writing the private pre-restore safety snapshot must not leave SQL data in temp storage.
+        $safetyPrefix = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'birms-full-before-restore-*';
+        $safetyFilesBefore = glob($safetyPrefix);
+        if (!is_array($safetyFilesBefore)) { $safetyFilesBefore = []; }
+        $snapshotWriterFailureCaught = false;
+        try {
+            backup_full_create_safety_snapshot(static function ($stream): void {
+                if (fwrite($stream, "-- BIRMS SQL backup\\n") === false) {
+                    throw new RuntimeException('B17 safety snapshot fixture could not write.');
+                }
+                throw new RuntimeException('B17 intentional safety snapshot writer failure.');
+            });
+        } catch (RuntimeException $e) {
+            $snapshotWriterFailureCaught = $e->getMessage() === 'B17 intentional safety snapshot writer failure.';
+        }
+        $safetyFilesAfter = glob($safetyPrefix);
+        if (!is_array($safetyFilesAfter)) { $safetyFilesAfter = []; }
+        $leakedSafetyFiles = array_values(array_diff($safetyFilesAfter, $safetyFilesBefore));
+        record('B17-11', 'A failed pre-restore safety snapshot write removes its temporary confidential SQL file',
+            $snapshotWriterFailureCaught && count($leakedSafetyFiles) === 0,
+            'writer-failure-caught=' . ($snapshotWriterFailureCaught ? 'yes' : 'no')
+            . '; new-safety-files-left=' . count($leakedSafetyFiles));
+
         if (backup_full_zip_available()) {
             // Create one referenced resident photo and one additional private attachment file.
             $jpegFixture = fx_chairman_signature_jpeg();
