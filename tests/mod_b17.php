@@ -15,6 +15,10 @@ function run_b17(array $S, string $base): void
     $restored = false;
     $staleBackupPath = null;
     $staleProbeKey = 'zz_b17_stale_restore_probe';
+    $fkProbeKey = 'zz_b17_fk_restore_probe';
+    $fkResidentId = 0;
+    $fkChallengeHash = '';
+    $fkBackupPath = null;
 
     try {
         db_exec('DELETE FROM settings WHERE setting_key = ?', [$probeKey]);
@@ -130,10 +134,84 @@ function run_b17(array $S, string $base): void
             'guard-blocked=' . ($staleRestoreBlocked ? 'yes' : 'no')
             . '; rolled-back-test-case=' . $newCaseCount
             . '; preserved-post-snapshot-setting=' . $staleProbeCount);
+
+        // A syntactically valid backup with a missing referenced resident must be rejected atomically.
+        $purok = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
+        $statusId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_status' AND label = 'Active' LIMIT 1");
+        $typeId = (int) db_val("SELECT lookup_id FROM lookups WHERE list_key = 'resident_type' AND label = 'None' LIMIT 1");
+        if ($statusId < 1 || $typeId < 1) { throw new RuntimeException('B17 foreign-key fixture lookups are missing.'); }
+
+        $fkSuffix = strtoupper(bin2hex(random_bytes(4)));
+        $fkResidentNo = 'RES-B17-' . $fkSuffix;
+        db_exec(
+            "INSERT INTO residents
+             (resident_no, address, purok_id, resident_status_id, marital_status, resident_type_id,
+              last_name, first_name, birthdate, sex, civil_status, contact_number, email_address,
+              notification_preference, residency_status, household_id, is_household_head, archived_at)
+             VALUES (?, '17 Restore Lane', ?, ?, 'Single', ?, 'ZZBackupFK', 'Lara', '1991-01-01',
+                     'Female', 'Single', NULL, NULL, 'email', 'Active', NULL, 0, NULL)",
+            [$fkResidentNo, $purok['lookup_id'] ?? null, $statusId, $typeId]
+        );
+        $fkResidentId = (int) db()->lastInsertId();
+        $fkChallengeHash = hash('sha256', random_bytes(32));
+        $fkCodeHash = hash('sha256', random_bytes(32));
+        $fkDestination = 'b17-' . strtolower($fkSuffix) . '@example.invalid';
+        db_exec(
+            'INSERT INTO resident_verification_challenges
+             (challenge_token_hash, code_hash, resident_id, channel, destination_snapshot, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$fkChallengeHash, $fkCodeHash, $fkResidentId, 'email', $fkDestination, date('Y-m-d H:i:s', time() + 600)]
+        );
+
+        $fkBackupPath = tempnam(sys_get_temp_dir(), 'birms-b17-fk-');
+        if ($fkBackupPath === false) { throw new RuntimeException('Could not create B17 foreign-key backup fixture.'); }
+        $fkOut = fopen($fkBackupPath, 'wb');
+        if ($fkOut === false) { throw new RuntimeException('Could not open B17 foreign-key backup fixture.'); }
+        try {
+            backup_write_sql_export($fkOut, backup_table_names());
+        } finally {
+            fclose($fkOut);
+        }
+        $fkSql = file_get_contents($fkBackupPath);
+        if (!is_string($fkSql) || $fkSql === '') { throw new RuntimeException('B17 foreign-key backup fixture is empty.'); }
+
+        $badResidentId = (int) db_val('SELECT COALESCE(MAX(resident_id), 0) + 1000 FROM residents');
+        $pdo = db();
+        $needle = $pdo->quote($fkChallengeHash) . ', ' . $pdo->quote($fkCodeHash) . ', '
+            . $pdo->quote((string) $fkResidentId) . ', ' . $pdo->quote('email') . ', ' . $pdo->quote($fkDestination);
+        $replacement = $pdo->quote($fkChallengeHash) . ', ' . $pdo->quote($fkCodeHash) . ', '
+            . $pdo->quote((string) $badResidentId) . ', ' . $pdo->quote('email') . ', ' . $pdo->quote($fkDestination);
+        $badFkSql = str_replace($needle, $replacement, $fkSql, $fkReplacementCount);
+        if ($fkReplacementCount !== 1) { throw new RuntimeException('Could not isolate the B17 resident foreign-key value in the SQL backup.'); }
+
+        db_exec('DELETE FROM settings WHERE setting_key = ?', [$fkProbeKey]);
+        db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$fkProbeKey, 'must survive invalid foreign-key restore']);
+        $badFkRejected = false;
+        try {
+            backup_restore_apply($badFkSql);
+        } catch (RuntimeException $e) {
+            if (!str_contains($e->getMessage(), 'resident_verification_challenges.resident_id contains')) { throw $e; }
+            $badFkRejected = true;
+        }
+        $fkProbeCount = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$fkProbeKey]);
+        $challengeResidentAfter = (int) db_val(
+            'SELECT resident_id FROM resident_verification_challenges WHERE challenge_token_hash = ?',
+            [$fkChallengeHash]
+        );
+        record('B17-06', 'Restore rejects a backup with a nonexistent resident foreign-key reference and rolls back every table change',
+            $badFkRejected && $fkProbeCount === 1 && $challengeResidentAfter === $fkResidentId,
+            'orphan-reference-rejected=' . ($badFkRejected ? 'yes' : 'no')
+            . '; preserved-post-backup-setting=' . $fkProbeCount
+            . '; challenge-resident-after-rollback=' . $challengeResidentAfter);
     } finally {
         @unlink($backupPath);
         @unlink($badPath);
         if (is_string($staleBackupPath)) { @unlink($staleBackupPath); }
-        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?)', [$probeKey, $staleProbeKey]);
+        if (is_string($fkBackupPath)) { @unlink($fkBackupPath); }
+        if ($fkChallengeHash !== '') {
+            db_exec('DELETE FROM resident_verification_challenges WHERE challenge_token_hash = ?', [$fkChallengeHash]);
+        }
+        if ($fkResidentId > 0) { db_exec('DELETE FROM residents WHERE resident_id = ?', [$fkResidentId]); }
+        db_exec('DELETE FROM settings WHERE setting_key IN (?, ?, ?)', [$probeKey, $staleProbeKey, $fkProbeKey]);
     }
 }
