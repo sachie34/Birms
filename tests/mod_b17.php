@@ -8,6 +8,21 @@ function run_b17(array $S, string $base): void
     $admin = $S['admin'];
     $chairman = $S['captain'];
     $databaseName = (string) config('db.name');
+    $snapshotTempBefore = glob(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'birms-full-before-restore-*') ?: [];
+    $snapshotFailureCaught = false;
+    try {
+        backup_full_create_safety_snapshot(static function ($stream): void {
+            fwrite($stream, "-- intentionally failed B17 snapshot fixture\\n");
+            throw new RuntimeException('B17 intentional snapshot export failure');
+        });
+    } catch (RuntimeException $e) {
+        $snapshotFailureCaught = str_contains($e->getMessage(), 'B17 intentional snapshot export failure');
+    }
+    $snapshotTempAfter = glob(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'birms-full-before-restore-*') ?: [];
+    record('B17-13', 'A failed pre-restore safety snapshot export removes its temporary confidential SQL file',
+        $snapshotFailureCaught && count($snapshotTempAfter) === count($snapshotTempBefore),
+        'failure-caught=' . ($snapshotFailureCaught ? 'yes' : 'no')
+        . '; temp-files-before=' . count($snapshotTempBefore) . '; temp-files-after=' . count($snapshotTempAfter));
     $backupPath = tempnam(sys_get_temp_dir(), 'birms-b17-backup-');
     $badPath = tempnam(sys_get_temp_dir(), 'birms-b17-bad-');
     $probeKey = 'zz_b17_restore_probe';
