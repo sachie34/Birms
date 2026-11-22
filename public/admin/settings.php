@@ -304,7 +304,7 @@ if ($tab === 'general') {
     }
 } elseif ($tab === 'documents') {
     $types = db_all('SELECT type_id, name, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types ORDER BY sort_order, name');
-    echo '<div class="alert alert-secondary">Placeholders for wording: ' . e('{{' . implode('}} {{', TEMPLATE_TOKENS) . '}}') . '. {{barangay}}, {{municipality}} and {{province}} insert only the name (for example Wawa). A document cannot be issued until its fee (0 means free) <strong>and</strong> wording are set.</div>';
+    echo '<div class="alert alert-secondary">Available resident/request placeholders: ' . e('{{' . implode('}} {{', TEMPLATE_TOKENS) . '}}') . '. Use the formatting toolbar and live preview below. Official document wording and fees must be approved by the barangay; only templates prefixed DEMO ONLY are preloaded with fictitious sample wording.</div>';
     foreach ($types as $t) {
         card_start((string) $t['name'], 'Fee: ' . money($t['fee_amount']) . ' · Wording: ' . ($t['template_body'] === null ? 'not set' : 'set'), 'mb-3');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('doctype_save') . '<input type="hidden" name="id" value="' . (int) $t['type_id'] . '">';
