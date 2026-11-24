@@ -35,6 +35,7 @@ function msit_demo_column_exists(string $table, string $column): bool
 function msit_demo_require_schema(): void
 {
     $required = [
+        'settings' => ['setting_key','setting_value'],
         'lookups' => ['lookup_id','list_key','label','is_active'],
         'residents' => ['resident_id','resident_no','first_name','last_name','birthdate','sex','civil_status','marital_status','address','purok_id','resident_status_id','resident_type_id','email_address','contact_number','notification_preference','household_id','is_household_head','created_by','archived_at'],
         'document_types' => ['type_id','name','fee_amount','template_body','is_active','requires_chairman_signature','sort_order'],
