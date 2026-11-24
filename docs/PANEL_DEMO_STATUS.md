@@ -61,6 +61,8 @@ Documents, Blotter and Venue have separate queues. Staff can call the next ticke
 
 ## 4. Suggested panel demonstration sequence
 
+For a timed rehearsal with role-by-role cues and recovery steps, use the [7–8 minute Panel Demo Run Sheet](PANEL_DEMO_RUNSHEET.md).
+
 Use separate browser profiles for Admin, Secretary, Staff and Chairman. Use a separate resident browser/device for the kiosk.
 
 1. **Admin:** sign in and show the dashboard, user/role administration, system settings, audit and technical controls. Explain that the Admin is the technical administrator.
