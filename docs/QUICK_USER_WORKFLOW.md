@@ -17,7 +17,7 @@ Residents use the shared **Resident Request QR** or the touchscreen kiosk. The Q
    - **Reserve a venue**
    - **Get a queue number**
    - **Check request status**
-4. When asked, choose how to receive updates: **Email**, **SMS**, or **Both**. Email is the default. SMS is optional; if SMS cannot be used and an email address is available, BIRMS records/queues the email fallback. A queued message is not proof that it reached the resident.
+4. BIRMS uses the resident's registered email address for notifications. There is no SMS/Both selector. A queued email is not proof that it reached the resident.
 5. Keep the printed or displayed **reference number** and queue ticket. Use the reference number to check progress later.
 
 The kiosk is for residents only. It is separate from the staff/admin portal. End the kiosk session when finished; the kiosk also has an inactivity reset.
@@ -42,7 +42,7 @@ The document workflow has visible handoffs. The resident keeps the reference num
 1. Tap **Request a document**.
 2. Choose the document type.
 3. Enter the purpose clearly.
-4. Select Email, SMS or Both for notifications.
+4. No notification choice is required; notices use registered email only.
 5. Submit once. Wait for the receipt; do not submit repeatedly if the page takes time.
 6. Keep the reference number and Documents queue ticket.
 7. Use **Check request status** to see the latest public status. If the office needs more information, follow the instruction given by Staff.
@@ -81,7 +81,7 @@ A queue ticket is not the same as approval of a document, blotter report or venu
 ## 5. Venue reservation lifecycle
 
 1. Resident verifies identity and chooses **Reserve a venue**.
-2. Select the venue, date, start/end time and purpose; select a notification preference.
+2. Select the venue, date, start/end time and purpose; email is the only notification channel.
 3. Submit and keep the reservation reference and Venue queue ticket.
 4. Staff/Admin reviews the reservation and approves or rejects it. A pending or approved reservation blocks overlapping requests for the same venue/time. The system rechecks conflicts when approving.
 5. The venue board shows **Green / Available** or **Red / In Use**. Staff override is an authorized operational action and should be used only when the actual venue condition requires it.
@@ -134,7 +134,7 @@ Before real use, Admin/system owner must configure and verify:
 - Venue list, operating rules and authorized staff.
 - Chairman signature image and approved certificate wording/layout.
 - Official fees and receipt/OR procedures, where applicable.
-- Email sender and optional SMS provider. Test delivery with an authorized test account/number.
+- Approved email sender/relay. Test delivery with an authorized test mailbox.
 - User accounts and the approved role-permission matrix.
 - Backups and a safe restore procedure.
 
@@ -148,11 +148,11 @@ The repository currently documents local SQL backup and optional remote WebDAV u
 - **A venue cannot be booked:** choose another time; a Pending or Approved booking may already reserve that slot.
 - **A queue ticket is not called:** watch the public display and ask Staff; do not create repeated tickets.
 - **A menu or action is unavailable:** the current account may not have that permission. Ask Admin; never share credentials or bypass access checks.
-- **Notification says queued/pending:** queued is not the same as delivered. Confirm email/SMS delivery through the configured provider.
+- **Notification says queued:** queued is not the same as delivered. Confirm email delivery through the configured mail transport.
 - **Reference number is not found:** recheck the printed number and ask Staff if it still cannot be found.
 
 ## 11. Test and deployment boundary
 
 Use only fictitious demo records on a disposable `*_work` or `*_test` database for development and presentation testing. Do not test against the original or production barangay database.
 
-Passing GitHub Actions validates automated checks against disposable CI databases. It does not prove that the target XAMPP PC, Apache PHP runtime, barangay LAN, phone QR scan, physical kiosk/touchscreen, printer, real email/SMS delivery, official signature/template, backup restoration or office user acceptance has passed. Record those manual results before declaring the system production-ready or MSIT-compliant.
+Passing GitHub Actions validates automated checks against disposable CI databases. It does not prove that the target XAMPP PC, Apache PHP runtime, barangay LAN, phone QR scan, physical kiosk/touchscreen, printer, real email delivery, official signature/template, backup restoration or office user acceptance has passed. Record those manual results before declaring the system production-ready or MSIT-compliant.
