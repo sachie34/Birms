@@ -28,7 +28,7 @@ $reservations = db_all(
 );
 
 render_header('Venue Reservations', [['Workspace', null], ['Venue Reservations', null]], 'venues');
-page_head('Venue Reservations', 'Track reservations and live venue availability. Green means available; red means in use.');
+page_head('Venue and Room Availability', 'Check shared rooms and venues. The Secretary controls the manual Available / Unavailable setting for blotter and hearing rooms. Staff processes resident reservations.');
 if (can('venues.manage')) {
     card_start('Add a venue', 'Configure the names of spaces that residents can reserve.');
     echo '<form method="post" action="' . e(base_url('venues/action.php')) . '" class="row g-3 align-items-end">' . csrf_field()
@@ -38,26 +38,26 @@ if (can('venues.manage')) {
         . '<div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Add venue</button></div></form>';
     card_end();
 }
-card_start('Availability board', 'Availability is calculated from approved reservations unless staff set a manual override.');
+card_start('Blotter / Hearing Room Availability', 'Automatic follows approved reservations. The Secretary can manually mark a room Available or Unavailable for blotter and hearing schedules.');
 if (!$venues) {
     echo empty_state('bi-building', 'No venues have been configured yet.');
 } else {
     echo '<div class="row g-3">';
     foreach ($venues as $venue) {
         $state = $venue['current_state'];
-        $label = $state === 'in_use' ? 'Red · In Use' : 'Green · Available';
+        $label = $state === 'in_use' ? 'Red · Unavailable / In Use' : 'Green · Available';
         $class = $state === 'in_use' ? 'border-danger' : 'border-success';
         echo '<div class="col-md-6 col-xl-4"><div class="card h-100 ' . $class . '"><div class="card-body">'
             . '<div class="d-flex align-items-center justify-content-between gap-2"><h2 class="h5 mb-0">' . e((string) $venue['name']) . '</h2>'
             . '<span class="badge ' . ($state === 'in_use' ? 'text-bg-danger' : 'text-bg-success') . '">' . e($label) . '</span></div>'
             . '<p class="text-muted mt-2 mb-3">' . e((string) ($venue['description'] ?? '')) . '</p>';
-        if (can('venues.manage')) {
+        if (can('venues.availability.manage')) {
             echo '<form method="post" action="' . e(base_url('venues/action.php')) . '" class="d-flex flex-wrap gap-2">' . csrf_field()
                 . '<input type="hidden" name="do" value="override"><input type="hidden" name="venue_id" value="' . (int) $venue['venue_id'] . '">'
                 . '<select class="form-select form-select-sm flex-grow-1" name="override" aria-label="Venue availability override">'
                 . '<option value="automatic"' . ($venue['availability_override'] === 'automatic' ? ' selected' : '') . '>Automatic</option>'
                 . '<option value="available"' . ($venue['availability_override'] === 'available' ? ' selected' : '') . '>Green / Available</option>'
-                . '<option value="in_use"' . ($venue['availability_override'] === 'in_use' ? ' selected' : '') . '>Red / In Use</option>'
+                . '<option value="in_use"' . ($venue['availability_override'] === 'in_use' ? ' selected' : '') . '>Red / Unavailable</option>'
                 . '</select><button class="btn btn-sm btn-outline-primary" type="submit">Save status</button></form>';
         }
         echo '</div></div></div>';
