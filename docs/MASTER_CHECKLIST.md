@@ -2,7 +2,7 @@
 
 Barangay Wawa, Balagtas, Bulacan. Original baseline: 17 Oct 2026.
 
-> **Historical checklist — superseded for current status.** This file preserves the earlier B1–B6 snapshot and test counts. Do not treat its older B7/B8/B9 “NOT STARTED” rows or old test totals as the present state. The current source has report/dashboard and SQL export/optional WebDAV configuration flows with automated coverage; the latest combined CI run passed 37/37 authentication/security/audit checks and 184/184 module checks (221 total). See [the current 20-function verification checklist](FINAL_20_FUNCTION_VERIFICATION.md) and [paper-to-code alignment](PAPER_CODE_ALIGNMENT.md) for current status. Local XAMPP/browser/PDF/printer checks, approval of official templates/fees/role policy, live email delivery confirmation and live cloud upload/restore remain separate acceptance tasks.
+> **Historical checklist — superseded for current status.** This file preserves an earlier B1–B6 snapshot and test counts. Do not treat its older module statuses, role descriptions or CI totals as the current MSIT candidate state. For the current branch, role map, exact CI evidence and target-PC acceptance gates, use [the MSIT XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [the panel demo status](PANEL_DEMO_STATUS.md) and [the current quick user workflow](QUICK_USER_WORKFLOW.md). Local XAMPP/browser/PDF/printer checks and official template/fee/policy approvals remain separate acceptance tasks.
 **Rule:** nothing is "verified" until its test passes on the owner's XAMPP. "Sandbox" below means my test environment
 (PHP 8.3.6, MariaDB 10.11, PHP built-in server), which is **not** the owner's XAMPP.
 
