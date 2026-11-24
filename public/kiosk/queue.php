@@ -3,7 +3,6 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 $resident = kiosk_require_resident();
-$selectedNotificationPreference = queue_resolve_notification_preference(null, (string) ($resident['notification_preference'] ?? 'email'));
 
 if (is_post()) {
     require_csrf();
@@ -11,17 +10,12 @@ if (is_post()) {
         'You have requested several queue tickets. Please wait before trying again.');
     $service = post_str('service');
     $purpose = post_str('purpose');
-    $requestedPreference = post_str('notification_preference');
-    if ($requestedPreference !== '' && queue_valid_notification_preference($requestedPreference)) {
-        $selectedNotificationPreference = $requestedPreference;
-    }
     if (!queue_valid_service($service)) {
         kiosk_flash('Choose Blotter, Documents or Venue.', 'error');
         redirect('kiosk/queue.php');
     }
     try {
-        $ticket = queue_issue_number($service, (int) $resident['resident_id'], null, 'kiosk', $purpose,
-            $requestedPreference !== '' ? $requestedPreference : null);
+        $ticket = queue_issue_number($service, (int) $resident['resident_id'], null, 'kiosk', $purpose);
         $_SESSION['kiosk_last_queue_ticket'] = $ticket;
         kiosk_flash('Your ' . $service . ' queue number is ' . (int) $ticket['queue_number'] . '. Please watch the public queue display.', 'success');
         redirect('kiosk/ticket.php');
@@ -39,9 +33,7 @@ foreach (QUEUE_SERVICES as $service) {
 }
 echo '</select></div>'
     . '<div class="kiosk-field"><label for="purpose">Purpose of visit</label><input type="text" id="purpose" name="purpose" maxlength="255" required></div>'
-    . '<div class="kiosk-field"><label for="notification_preference">How should we notify you?</label><select id="notification_preference" name="notification_preference" required>'
-    . queue_notification_preference_options($selectedNotificationPreference)
-    . '</select><p class="kiosk-helper">Email is the default. If SMS is unavailable, BIRMS will use your registered email when available. Watch the queue display too.</p></div>'
+    . '<p class="kiosk-helper">Queue updates are sent to your registered email address when email delivery is configured. The queue display always shows the number being served.</p>'
     . '<button class="kiosk-primary" type="submit">Get queue number</button></form>'
     . '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';
 kiosk_page_end();
