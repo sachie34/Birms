@@ -19,8 +19,6 @@ $root = dirname(__DIR__);
 $requiredFiles = [
     'app/bootstrap.php',
     'app/core.php',
-    'app/infobip_sms_provider.php',
-    'tools/test_infobip_sms.php',
 ];
 
 $errors = [];
