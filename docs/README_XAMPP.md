@@ -158,7 +158,7 @@ Confirm that the target is barangay_db_work, then apply:
 C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
 ~~~
 
-The seeder refuses database names that do not end in _work or _test. It does not create users/passwords, send email/SMS, or change official document types/settings. It inserts fictitious residents, three DEMO ONLY certificate templates, request lifecycle examples, blotter cases, venues, reservations and queue tickets. See [DEMO_DATA.md](DEMO_DATA.md) for the full list and presentation checks.
+The seeder refuses database names that do not end in _work or _test. It does not create users/passwords, send email, or change official document types/settings. It inserts fictitious residents, three DEMO ONLY certificate templates, request lifecycle examples, blotter cases, venues, reservations and queue tickets. See [DEMO_DATA.md](DEMO_DATA.md) for the full list and presentation checks.
 
 ### Edit the demonstration templates
 
