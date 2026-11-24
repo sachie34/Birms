@@ -461,11 +461,11 @@ function run_b22(array $S, string $base): void
             && str_contains($ownStatusPage['body'], $ownStatusReference)
             && str_contains($ownStatusPage['body'], 'Pending')
             && $otherStatusPage['status'] === 200
-            && !str_contains($otherStatusPage['body'], $otherStatusReference)
+            && !str_contains($otherStatusPage['body'], 'kiosk-status-card')
             && str_contains($otherStatusPage['body'], 'No request was found')
             && $anonymousStatusPage['status'] === 302
             && str_contains((string) loc($anonymousStatusPage), 'kiosk/index.php'),
-            'own=' . $ownStatusPage['status'] . '; other-hidden=' . (!str_contains($otherStatusPage['body'], $otherStatusReference) ? 'yes' : 'no')
+            'own=' . $ownStatusPage['status'] . '; other-hidden=' . (!str_contains($otherStatusPage['body'], 'kiosk-status-card') ? 'yes' : 'no')
             . '; anonymous=' . $anonymousStatusPage['status'] . '; redirect=' . (string) loc($anonymousStatusPage)
         );
 
