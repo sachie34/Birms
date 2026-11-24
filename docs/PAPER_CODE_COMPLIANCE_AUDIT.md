@@ -1,4 +1,4 @@
-> **Current status pointer (2026-10-29):** This document preserves an earlier paper-compliance audit snapshot. For current code/test readiness, see [FINAL_20_FUNCTION_VERIFICATION.md](FINAL_20_FUNCTION_VERIFICATION.md), [PAPER_CODE_ALIGNMENT.md](PAPER_CODE_ALIGNMENT.md), and [QUICK_USER_WORKFLOW.md](QUICK_USER_WORKFLOW.md). Do not use the historical test totals below as the latest run.
+> **Historical paper-compliance snapshot:** this document contains earlier B1–B12 and Captain/Clerk role assumptions. Do not use it as current MSIT acceptance authority. For the revised candidate use [MSIT XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [current quick user workflow](QUICK_USER_WORKFLOW.md), and [panel demo status](PANEL_DEMO_STATUS.md). Do not use the historical CI totals or role matrix below to describe the current candidate.
 
 # Paper-to-Code Compliance Audit — BIRMS
 
