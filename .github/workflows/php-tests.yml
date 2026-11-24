@@ -81,6 +81,10 @@ jobs:
       - name: Prepare local config
         run: cp app/config.local.php.example app/config.local.php
 
+      - name: Verify production PHP errors are hidden from visitors
+        run: |
+          php -r 'require "app/bootstrap.php"; if (ini_get("display_errors") !== "0") { fwrite(STDERR, "display_errors must be disabled in production.\\n"); exit(1); } echo "PASS: display_errors=0 in production configuration.\\n";'
+
       - name: Generate checksum manifest while excluding local secrets/runtime data
         run: |
           set -euo pipefail
