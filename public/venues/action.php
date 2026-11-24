@@ -11,7 +11,7 @@ $do = post_str('do');
 try {
     if ($do === 'create_venue') {
         require_permission('venues.manage');
-            $name = post_str('name');
+        $name = post_str('name');
             $description = post_str('description');
             if (!v_len($name, 2, 120)) { throw new InvalidArgumentException('Venue name must be 2-120 characters.'); }
             if (str_len($description) > 500) { throw new InvalidArgumentException('Venue description is limited to 500 characters.'); }
@@ -22,7 +22,7 @@ try {
                 $id = (int) db()->lastInsertId();
                 audit('venue_created', 'Venues', 'Success', 'Venue created: ' . $name, 'venue', $id);
             });
-            flash_add('success', 'Venue added.');
+        flash_add('success', 'Venue added.');
     } elseif ($do === 'override') {
         require_permission('venues.availability.manage');
         $id = post_int('venue_id');
