@@ -10,7 +10,7 @@ $do = post_str('do');
 
 try {
     if ($do === 'create_venue') {
-        require_permission('venues.manage');
+        require_permission('venues.configure');
         $name = post_str('name');
             $description = post_str('description');
             if (!v_len($name, 2, 120)) { throw new InvalidArgumentException('Venue name must be 2-120 characters.'); }
