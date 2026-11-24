@@ -437,10 +437,10 @@ function msit_demo_apply(): array
         }
 
         $docSpecs = [
-            ['DEMO-DOC-PENDING-01', 0, 'pending', 'pending', 'not checked'],
-            ['DEMO-DOC-READY-01', 1, 'ready', 'approved', 'complete'],
-            ['DEMO-DOC-REJECT-01', 2, 'rejected', 'rejected', 'complete'],
-            ['DEMO-DOC-ISSUED-01', 0, 'claimed', 'released', 'complete'],
+            ['DEMO-DOC-PENDING-01', 0, 'pending', 'Pending', 'not checked'],
+            ['DEMO-DOC-READY-01', 1, 'ready', 'Approved', 'complete'],
+            ['DEMO-DOC-REJECT-01', 2, 'rejected', 'Rejected', 'complete'],
+            ['DEMO-DOC-ISSUED-01', 0, 'claimed', 'Released', 'complete'],
         ];
         $requestIds = [];
         foreach ($docSpecs as $i => [$ref, $typeIndex, $legacyStatus, $publicStatus, $requirements]) {
@@ -456,7 +456,7 @@ function msit_demo_apply(): array
             $requestIds[] = (int) db()->lastInsertId();
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, request_id)
-                 VALUES (\'documents\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
+                 VALUES (\'Documents\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
                 [$ref, ucfirst($publicStatus), $requestIds[$i]]
             );
         }
@@ -512,7 +512,7 @@ function msit_demo_apply(): array
         }
         $tomorrow = (new DateTimeImmutable('tomorrow'))->format('Y-m-d');
         $venueRefs = ['DEMO-VEN-0001', 'DEMO-VEN-0002'];
-        $venueStatuses = ['approved', 'pending'];
+        $venueStatuses = ['Approved', 'Pending'];
         foreach ($venueRefs as $i => $ref) {
             db_exec(
                 'INSERT INTO venue_reservations
@@ -523,13 +523,13 @@ function msit_demo_apply(): array
             );
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, reservation_id)
-                 VALUES (\'venue\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
+                 VALUES (\'Venue\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
                 [$ref, ucfirst($venueStatuses[$i]), (int) db()->lastInsertId()]
             );
         }
 
         $caseRefs = ['MSIT-DEMO-BLT-0001','MSIT-DEMO-BLT-0002','MSIT-DEMO-BLT-0003'];
-        $caseStatuses = ['ongoing','unresolved','resolved'];
+        $caseStatuses = ['Ongoing','Unresolved','Resolved'];
         $caseIds = [];
         foreach ($caseRefs as $i => $caseRef) {
             db_exec(
@@ -554,7 +554,7 @@ function msit_demo_apply(): array
             );
             db_exec(
                 'INSERT INTO request_status_history (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
-                 VALUES (\'blotter\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
+                 VALUES (\'Blotter\', ?, NULL, ?, NULL, \'[DEMO ONLY] Seeded presentation example.\', ?)',
                 [$caseRef, ucfirst($caseStatuses[$i]), $caseId]
             );
         }
