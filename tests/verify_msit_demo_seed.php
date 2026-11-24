@@ -41,6 +41,7 @@ $queues = db_all("SELECT queue_id, service, queue_date, queue_number, status, re
 seed_check('six synthetic residents exist', count($residents) === 6, 'found ' . count($residents));
 seed_check('Secretary can maintain certificate wording and hearings but cannot issue certificates or manage queues',
     role_can('secretary', 'documents.templates.manage')
+    && role_can('secretary', 'hearings.summons.manage')
     && role_can('secretary', 'hearings.add')
     && role_can('secretary', 'hearings.edit')
     && role_can('secretary', 'venues.availability.manage')
@@ -49,6 +50,7 @@ seed_check('Secretary can maintain certificate wording and hearings but cannot i
     && !role_can('secretary', 'queue.manage'));
 seed_check('Chairman remains read-only and cannot create, edit, approve, print or issue documents',
     !role_can('captain', 'documents.templates.manage')
+    && !role_can('captain', 'hearings.summons.manage')
     && !role_can('captain', 'requests.add')
     && !role_can('captain', 'requests.approve')
     && !role_can('captain', 'certificates.issue')
@@ -56,7 +58,8 @@ seed_check('Chairman remains read-only and cannot create, edit, approve, print o
     && !role_can('captain', 'hearings.add')
     && !role_can('captain', 'queue.manage'));
 seed_check('Staff has the operational permissions to approve/reject, issue certificates, review blotter intake, approve venues and call queues',
-    role_can('clerk', 'requests.approve')
+    !role_can('clerk', 'hearings.summons.manage')
+    && role_can('clerk', 'requests.approve')
     && role_can('clerk', 'certificates.issue')
     && role_can('clerk', 'certificates.print')
     && role_can('clerk', 'blotter_requests.review')
