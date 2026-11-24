@@ -1,18 +1,18 @@
 # BIRMS working copy: install and run on XAMPP
 
-This runbook now points to the **MSIT SRS compliance branch**. For the revised resident, blotter, documents, venue, queue and kiosk workflows, use `john/msit-srs-compliance` and [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), not the older B1–B12 `main` presentation build. Setup and test tools target a separate `barangay_db_work` or `_test` database. Never point them at the original `barangay_db`.
+This runbook points to the validated revised-MSIT demonstration candidate **`john/phase2-kiosk-no-sms`** (draft PR #39). For the revised resident, blotter, documents, venue, queue and kiosk workflows, use this branch and [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), not the older B1–B12 `main` presentation build or the earlier MSIT baseline branch. Setup and test tools target a separate `barangay_db_work` or `_test` database. Never point them at the original `barangay_db`.
 It never touches your original `barangay_db`.
 
 **Important:** this wizard provisions the isolated `barangay_db_work` working/demo database. It is not the production database procedure. For a real office deployment, follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md), which provisions a separate production database and requires HTTPS, least-privilege access and go-live evidence.
 
-> **MSIT acceptance status:** hosted CI is run on disposable MariaDB 10.4 and 10.11. Latest results are recorded in [the MSIT compliance plan](MSIT_SRS_COMPLIANCE_PLAN.md) and [PR #34](https://github.com/sachie34/Birms/pull/34). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
+> **MSIT acceptance status:** the revised candidate's exact-head CI evidence is linked from [PR #39](https://github.com/sachie34/Birms/pull/39) and [panel demo status](PANEL_DEMO_STATUS.md). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
 
 ## Quick install (recommended)
 
-1. Download the [MSIT branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
+1. Download the [validated revised-MSIT candidate ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
-4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–019), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
+4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–021), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
 5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
@@ -20,11 +20,11 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
 
 ## Repair an incomplete or outdated local project folder
 
-If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The `john/msit-srs-compliance` branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
+If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The `john/phase2-kiosk-no-sms` candidate branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
 
 1. Back up the current project folder. Keep your MySQL database as it is.
-2. Download a fresh ZIP from the [MSIT compliance branch](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip) and extract it into a **new folder**, for example `C:\xampp\htdocs\Birms-main-fixed`. Do not extract over the old folder.
-3. From the old project, copy only the private local files that exist: `app\config.local.php` and `app\infobip.local.php`, placing each into the matching `app` folder in the new copy. Do **not** copy the old `app` folder over the new one. Preserve `storage\private_uploads` and any backups you need. Never copy or restore the old root-level `Api` file.
+2. Download a fresh ZIP from the [validated MSIT candidate branch](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip) and extract it into a **new folder**, for example `C:\xampp\htdocs\Birms-main-fixed`. Do not extract over the old folder.
+3. From the old project, copy only the private local configuration `app\config.local.php` into the matching `app` folder in the new copy. Do **not** copy the old `app` folder over the new one. Preserve the required private data from the backup, including `storage\private_uploads`, `storage\resident_photos` and Chairman signature assets where present. Do not copy obsolete SMS-provider configuration or the old root-level `Api` file.
 4. Open Command Prompt and run these checks from the **new** project path:
    ```bat
    cd /d C:\xampp\htdocs\Birms-main-fixed
@@ -33,7 +33,7 @@ If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`,
    ```
    Both should finish successfully. The include check is read-only: it checks that required source files exist and that statically referenced local include paths resolve.
 5. Open `http://localhost/Birms-main-fixed/public/`. Use your existing Administrator account if `app\config.local.php` still points to the same `barangay_db_work` database. Do not run `SETUP_XAMPP.bat` again just to replace missing source files, and do not drop/recreate the database.
-6. If the local config has a manually set `base_url` pointing to the old folder, update it to `/Birms-main-fixed/public`; otherwise leave an auto-detected/null base URL unchanged. Keep the Infobip key only in the private `app\infobip.local.php` file.
+6. If the local config has a manually set `base_url` pointing to the old folder, update it to `/Birms-main-fixed/public`; otherwise leave an auto-detected/null base URL unchanged. The revised candidate has no SMS provider. Do not copy or configure an Infobip/SMS key.
 
 This process fixes a missing/mixed local source tree without replacing your database. It does not prove that all interactive flows work; complete the browser/print tests and automated test suite below.
 
@@ -61,7 +61,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   On this branch the migration runner applies the numbered migrations through 019, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, notification outbox and blotter no-delete protections. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
+   On this candidate the migration runner applies the numbered migrations through 021, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, notification outbox, blotter no-delete protections and reporting/directory indexes. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -86,8 +86,7 @@ This process fixes a missing/mixed local source tree without replacing your data
 - Migration scripts for your real schema are written only after I have seen that report. Nothing is applied to your original database.
 
 ## 4. Accounts and roles
-Four roles: Administrator, Barangay Captain, Barangay Secretary, Barangay Staff/Clerk.
-In the merged presentation build, the Administrator has all currently defined module permissions plus account, settings, audit and backup access, matching the intended highest-privilege role. Captain, Secretary and Clerk use the existing **PROVISIONAL** role map until the Barangay Secretary/system owner approves the final matrix. The map must still be validated against the approved paper and office responsibilities.
+Four operational roles: Admin, Chairman / Punong Barangay, Secretary and Staff. Existing database role IDs `captain` and `clerk` are retained internally and map to Chairman and Staff for account compatibility. Admin handles technical administration; Chairman is read-only; Secretary reviews document requirements, maintains permitted blotter/hearing records and controls room availability; Staff makes final request decisions, releases certificates and manages reservations/queues. The revised permission map is enforced server-side; obtain system-owner approval before production use.
 - New users get a temporary password and must change it at first sign-in.
 - Forgot password: the Administrator sets a new temporary password (User Accounts → Manage).
 - If the Administrator is locked out: `C:\xampp\php\php.exe tools\create_admin.php --reset=username`.
@@ -95,9 +94,7 @@ In the merged presentation build, the Administrator has all currently defined mo
 - Sessions end after 30 idle minutes (setting `session.idle_minutes`).
 
 ## 5. HTTP and HTTPS
-This version works over plain HTTP, which is acceptable for a trusted wired office network but not ideal because
-passwords cross the network unencrypted. HTTPS is **still to be decided**. When HTTPS is on, secure cookies switch on
-automatically. Keep the firewall limited to your office network and do not forward any router port to this PC.
+For a single-PC localhost demonstration, use the local XAMPP URL. Do not expose plain HTTP over the barangay Wi-Fi/LAN: credentials and resident records must be protected with trusted HTTPS before phones or other PCs connect. For production, enable the HTTPS requirement in the private configuration and follow the production deployment runbook. Restrict the firewall to the authorized local network; do not forward router ports to this PC.
 
 ## 6. Run the tests on YOUR XAMPP
 ```
@@ -121,12 +118,12 @@ mysqldump -u root -p --routines --triggers --events --single-transaction baranga
 Do not add `--databases`. Test the restore into a scratch database. Copy the project folder too.
 
 ## 8. Known limitations
-- **Implemented on the MSIT compliance branch; pending target-PC acceptance:** revised resident/Purok/status/type records; documents and certificates; blotter request and case workflows; venue reservations and overlap protection; kiosk/QR identity and request paths; separate daily queues; email-only notification/outbox logic; Chairman signature snapshot; reports and the All Services Tracker. The complete checklist is in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
-- Migrations 007–011 are required for the latest branch. Enter the barangay-approved employment-status and incident-type categories under Settings → Other lists and approved fee rules under Settings → Multi-tier fee matrix. No categories or rates are guessed.
+- **Implemented on the revised-MSIT candidate; pending target-PC acceptance:** revised resident/Purok/status/type records; documents and certificates; blotter request and case workflows; venue reservations and overlap protection; kiosk/QR identity and request paths; separate daily queues; email-only notification/outbox logic; Chairman signature snapshot; reports and the All Services Tracker. The complete checklist is in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
+- The current migration set runs through 021; use `tools\migrate.php status` to identify any pending migrations on the working copy. Enter the barangay-approved employment-status and incident-type categories under Settings → Other lists and approved fee rules under Settings → Multi-tier fee matrix. No categories or rates are guessed.
 - Resident identity and voter-list checks can be recorded manually in the resident profile with actor/date/history. The system does not query COMELEC. The separate cash-collection ledger records staff-entered amounts and reconciliation state; this is not a payment gateway and not independent proof of a bank deposit. Issuance history totals use ledger entries and label missing entries.
-- The backup page downloads a local SQL file only. Cloud storage, scheduled backups, automatic restore verification, and a completed restoration test are not included.
+- The candidate supports local SQL export and complete ZIP backups that include private files. Optional HTTPS WebDAV upload can be configured, but a live destination upload and successful full restore are not verified here; scheduled backup jobs are not implemented. Rehearse restore only in a separate scratch application/database/storage location.
 - Email delivery is disabled unless explicitly configured. Resident notifications use email only; legacy SMS outbox records and migrations remain for audit compatibility, but no SMS provider is active. CI checks the email outbox; actual mailbox delivery must still be tested on the local system.
-- Blotter look-up shows matching parties' information to roles with blotter lookup access. The role matrix is still provisional and needs approval by the Barangay Secretary / system owner.
+- Blotter lookup shows matching case-party information only to authorized roles. The revised role map is implemented in code and must still receive system-owner approval before production.
 - Visitor and request attachments accept PDF/JPG/PNG up to 10 MB, are stored in `storage/private_uploads` with randomized names (outside `public/`), and are served only through an authenticated, permission-checked download endpoint. Confirm the folder is writable by Apache and not served directly by the web server.
 - Paid certificate issuance records a Pending item in the cash-collection ledger. Ledger management is Administrator-only; reconciled entries should be supported by the office's approved evidence process.
 - Certificate PDF download is server-generated. Dompdf is used when installed; an offline-compatible built-in PDF writer is the fallback. The output is prominently marked **DRAFT — PENDING OFFICIAL LAYOUT APPROVAL**. Typed signatory text is not a cryptographic digital signature.
