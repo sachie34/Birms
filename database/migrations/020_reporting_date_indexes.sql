@@ -10,4 +10,5 @@ ALTER TABLE venue_reservations
     ADD KEY idx_venue_reservation_date (reservation_date);
 
 ALTER TABLE queue_entries
-    ADD KEY idx_queue_issued_at (issued_at);
+    ADD KEY idx_queue_issued_at (issued_at),
+    ADD KEY idx_queue_date_status (queue_date, status);
