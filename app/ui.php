@@ -180,13 +180,13 @@ function current_page_help(): ?array
                 'Open the public display when you need to show queue numbers to residents.',
                 'Refer issuing, calling or cancelling numbers to Staff or Administrator.',
             ], 'Chairman and Secretary have view-only access to queue management.'),
-        'venues/index.php' => role_can($role, 'venues.manage')
+        'venues/index.php' => (role_can($role, 'venues.availability.manage') || role_can($role, 'venues.manage'))
             ? $general('Manage venue availability and process counter reservation requests.', [
                 'Check the availability board before recording a new reservation.',
                 'Enter the correct resident, venue, purpose, date and time range.',
                 'Review pending reservations and approve or reject them when authorized.',
             ], 'Approved reservations prevent overlapping bookings; check the saved status after each action.')
-            : $general('View venue availability and reservation statuses.', [
+            : $general($role === 'secretary' ? 'Set each room to Available or In Use for blotter/hearing arrangements; reservation decisions remain with Staff.' : 'View venue availability and reservation statuses.', [
                 'Use the green/red availability board to check whether a venue is available.',
                 'Filter the reservation tracker by status or date.',
                 'Refer reservation changes or decisions to Staff or Administrator.',
