@@ -1,7 +1,7 @@
 # BIRMS — Revised MSIT Panel Demonstration Guide
 
 **Current demonstration build:** `main` (merged from `john/phase2-kiosk-no-sms`)  
-**Merge record:** [PR #39 — merged to main](https://github.com/sachie34/Birms/pull/39) at `735a5404f71f24ca1d697d61919704274d3b1e07`  
+**Latest workflow fixes:** [PR #41 — complete demo seed and queue counters](https://github.com/sachie34/Birms/pull/41) · [PR #42 — Secretary summons permissions](https://github.com/sachie34/Birms/pull/42) · Main commit `9c01fe27bc76e488c78ec94300bba3a85c245deb`  
 **Demo ZIP:** [Download the current main branch](https://github.com/sachie34/Birms/archive/refs/heads/main.zip)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Defense preparation:** [Timed demo run sheet](PANEL_DEMO_RUNSHEET.md) · [Panel questions and suggested answers](PANEL_DEFENSE_QA.md)
