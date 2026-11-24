@@ -22,8 +22,52 @@ if ($emailEnabled) {
     fwrite(STDERR, "REFUSED: real email notifications are enabled. Disable email in the database Settings and app/config.local.php/environment before running module tests; test requests may create outbound notifications.\n");
     exit(2);
 }
-$base = rtrim('http://127.0.0.1:8080', '/');
-foreach (array_slice($argv, 1) as $a) { if (!str_starts_with($a, '--')) { $base = rtrim($a, '/'); } }
+$base = trim((string) (getenv('BIRMS_TEST_BASE_URL') ?: 'http://127.0.0.1:8080'));
+foreach (array_slice($argv, 1) as $a) {
+    if (str_starts_with($a, '--base=')) {
+        $base = substr($a, 7);
+    } elseif (!str_starts_with($a, '--')) {
+        $base = $a;
+    }
+}
+$base = rtrim($base, '/');
+$baseParts = parse_url($base);
+if (!is_array($baseParts) || !in_array(strtolower((string) ($baseParts['scheme'] ?? '')), ['http', 'https'], true)
+    || empty($baseParts['host'])) {
+    fwrite(STDERR, "REFUSED: invalid test base URL. Pass http://localhost/<project>/public or set BIRMS_TEST_BASE_URL.\\n");
+    exit(2);
+}
+
+// Fail before creating test accounts if the configured application URL is unavailable.
+// CI starts its own PHP server on 127.0.0.1:8080; local XAMPP users should pass their public URL.
+$probe = curl_init($base . '/index.php');
+curl_setopt_array($probe, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_TIMEOUT => 8,
+    CURLOPT_NOBODY => true,
+]);
+$probeResult = curl_exec($probe);
+$probeStatus = (int) curl_getinfo($probe, CURLINFO_RESPONSE_CODE);
+$probeError = curl_error($probe);
+curl_close($probe);
+if ($probeResult === false || $probeStatus < 200 || $probeStatus >= 400) {
+    fwrite(STDERR, "REFUSED: BIRMS test server did not return a successful response from {$base}/index.php (HTTP {$probeStatus}). {$probeError}\\n");
+    fwrite(STDERR, "Start Apache or the CI PHP server, then pass the correct public base URL, for example: php tests/run_modules.php http://localhost/<project>/public\\n");
+    exit(2);
+}
+
+// The module suite creates and removes test fixtures. Never run it against a database
+// that already contains either the revised MSIT demo seed or the retired household demo seed.
+$demoFixtureCount = (int) db_val("SELECT COUNT(*) FROM residents WHERE resident_no LIKE 'DEMO-RES-%'")
+    + (int) db_val("SELECT COUNT(*) FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%'")
+    + (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE reference_no IN ('DEMO-DOC-PENDING-01', 'MSIT-DEMO-BLT-0001', 'DEMO-VEN-0001')")
+    + (int) db_val("SELECT COUNT(*) FROM households WHERE household_code LIKE 'DEMO-HH-%'");
+if ($demoFixtureCount > 0) {
+    fwrite(STDERR, "REFUSED: reserved demo seed records already exist in {$dbName}. Module tests are destructive fixtures and must run against a separate, clean migrated *_test database. Keep the presentation database intact; apply the MSIT demo seed only after module tests have completed.\\n");
+    exit(2);
+}
 define('TP', 'Test-Pass-2026a');
 
 echo "BIRMS module tests  base={$base}  db={$dbName}\n" . str_repeat('-', 78) . "\n";
