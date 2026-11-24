@@ -20,9 +20,18 @@ function run_b9(array $S, string $base): void
                 || !str_contains($page['body'], 'class="content"')) {
                 $layoutProblems[] = $role . ':' . $item['path'] . '=' . $page['status'];
             }
-            $activeLink = 'class="nav-link-item active" href="' . e(base_url((string) $item['path'])) . '"';
-            if (!str_contains($page['body'], $activeLink)) {
-                $layoutProblems[] = $role . ':' . $item['path'] . ' active navigation item missing';
+            $activeMatches = preg_match('/<a class="nav-link-item active" href="([^"]+)"/', $page['body'], $activeMatch) === 1;
+            if ($activeMatches) {
+                $activeHref = html_entity_decode($activeMatch[1], ENT_QUOTES, 'UTF-8');
+                $activePath = (string) (parse_url($activeHref, PHP_URL_PATH) ?? '');
+                $activeQuery = (string) (parse_url($activeHref, PHP_URL_QUERY) ?? '');
+                $expectedPath = '/' . ltrim((string) (parse_url((string) $item['path'], PHP_URL_PATH) ?? ''), '/');
+                $expectedQuery = (string) (parse_url((string) $item['path'], PHP_URL_QUERY) ?? '');
+                $activeMatches = str_ends_with(rtrim($activePath, '/'), $expectedPath)
+                    && $activeQuery === $expectedQuery;
+            }
+            if (!$activeMatches) {
+                $layoutProblems[] = $role . ':' . $item['path'] . ' active navigation item missing or points to a different tab';
             }
         }
         $searchPage = $S[$role]->get('/search.php');
@@ -72,15 +81,22 @@ function run_b9(array $S, string $base): void
     }
     record('B9-5', 'Page-help panel and role-specific Request Tracker instructions render for all four roles', !$helpProblems, implode(', ', $helpProblems));
     $signature = $S['admin']->get('/admin/chairman_signature.php');
-    $signatureBreadcrumb = 'href="' . e(base_url('admin/settings.php?tab=general')) . '"';
-    $signatureActive = 'class="nav-link-item active" href="' . e(base_url('admin/chairman_signature.php')) . '"';
+    $breadcrumbOk = preg_match('~<a href="([^"]+)"[^>]*>Settings</a>~', $signature['body'], $breadcrumbMatch) === 1;
+    if ($breadcrumbOk) {
+        $breadcrumbHref = html_entity_decode($breadcrumbMatch[1], ENT_QUOTES, 'UTF-8');
+        $breadcrumbOk = str_ends_with((string) (parse_url($breadcrumbHref, PHP_URL_PATH) ?? ''), '/admin/settings.php')
+            && (string) (parse_url($breadcrumbHref, PHP_URL_QUERY) ?? '') === 'tab=general';
+    }
+    $signatureActiveOk = preg_match('/<a class="nav-link-item active" href="([^"]+)"/', $signature['body'], $activeMatch) === 1;
+    if ($signatureActiveOk) {
+        $activeHref = html_entity_decode($activeMatch[1], ENT_QUOTES, 'UTF-8');
+        $signatureActiveOk = str_ends_with((string) (parse_url($activeHref, PHP_URL_PATH) ?? ''), '/admin/chairman_signature.php');
+    }
     record('B9-6', 'Chairman Signature page highlights its own sidebar item and links back to the valid General settings tab',
-        $signature['status'] === 200
-        && str_contains($signature['body'], $signatureBreadcrumb)
-        && str_contains($signature['body'], $signatureActive),
+        $signature['status'] === 200 && $breadcrumbOk && $signatureActiveOk,
         'HTTP=' . $signature['status']
-        . '; settings breadcrumb=' . (str_contains($signature['body'], $signatureBreadcrumb) ? 'yes' : 'no')
-        . '; active item=' . (str_contains($signature['body'], $signatureActive) ? 'yes' : 'no'));
+        . '; settings breadcrumb=' . ($breadcrumbOk ? 'yes' : 'no')
+        . '; active item=' . ($signatureActiveOk ? 'yes' : 'no'));
 
     $portalCss = $S['admin']->get('/assets/css/birms.css');
     $kioskCss = $S['admin']->get('/assets/css/kiosk.css');
@@ -106,7 +122,7 @@ function run_b9(array $S, string $base): void
             '/blotters/hearings.php' => 'Manage hearing schedules and record outcomes for assigned blotter cases.',
             '/queue/index.php' => 'Issue and manage daily queue tickets for Blotter, Documents and Venue.',
             '/venues/index.php' => 'Manage venue availability and process counter reservation requests.',
-            '/blotter_requests/index.php' => 'Review reports submitted through the resident kiosk.',
+            '/blotter_requests/index.php' => 'Review resident-submitted blotter reports before accepting or rejecting them.',
         ],
         'captain' => [
             '/blotters/index.php' => 'View official blotter cases without changing them.',
@@ -127,7 +143,7 @@ function run_b9(array $S, string $base): void
             '/blotters/hearings.php' => 'View hearing schedules and related cases without changing hearing records.',
             '/queue/index.php' => 'Issue and manage daily queue tickets for Blotter, Documents and Venue.',
             '/venues/index.php' => 'Manage venue availability and process counter reservation requests.',
-            '/blotter_requests/index.php' => 'Review reports submitted through the resident kiosk.',
+            '/blotter_requests/index.php' => 'Review resident-submitted blotter reports before accepting or rejecting them.',
         ],
     ];
     $roleGuidanceProblems = [];
