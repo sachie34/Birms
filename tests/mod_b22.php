@@ -706,8 +706,7 @@ function run_b22(array $S, string $base): void
             db_exec('DELETE FROM notification_outbox WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
             db_exec('DELETE FROM resident_verification_challenges WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
         }
-        db_exec(
-            // Legacy SMS history is intentionally not deleted by this test.
+        // Legacy SMS history is intentionally not deleted by this test.
         if ($venueId !== null) {
             db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id = ?)', [$venueId]);
             db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$venueId]);
