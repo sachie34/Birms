@@ -421,9 +421,9 @@ function msit_ext_seed_reservations(array $residentIds): void
     $hallId = (int) db_val("SELECT venue_id FROM venues WHERE name = 'DEMO ONLY - Multi-purpose Hall'");
     $specs = [
         ['DEMO-EXT-VEN-0003', $courtId, $residentIds[4], date('Y-m-d', strtotime('+1 day')), '15:00:00', '16:00:00', 'Rejected',
-            'Pending', 'Rejected', '[DEMO ONLY] Extended reservation was rejected in the presentation fixture.'],
+            'Pending', 'Rejected', '[DEMO ONLY] EXTENDED MSIT reservation was rejected in the presentation fixture.'],
         ['DEMO-EXT-VEN-0004', $hallId, $residentIds[5], date('Y-m-d', strtotime('-1 day')), '15:00:00', '16:00:00', 'Completed',
-            'Pending', 'Approved', '[DEMO ONLY] Extended reservation was approved before its sample completion.'],
+            'Pending', 'Approved', '[DEMO ONLY] EXTENDED MSIT reservation was approved before its sample completion.'],
     ];
     foreach ($specs as [$reference, $venueId, $residentId, $date, $start, $end, $status, $firstPrevious, $firstNext, $note]) {
         db_exec(
