@@ -2,9 +2,9 @@ name: BIRMS PHP and MySQL checks
 
 on:
   pull_request:
-    branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness]
+    branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness, release/deploy-ready]
   push:
-    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, codex/presentation-role-ui-readiness, john/phase2-kiosk-no-sms]
+    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, codex/presentation-role-ui-readiness, john/phase2-kiosk-no-sms, release/deploy-ready]
 
 permissions:
   contents: read
@@ -66,7 +66,7 @@ jobs:
 
       - name: Validate PHP syntax
         run: |
-          find app public tests tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          find . -type f -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
 
       - name: Check repository-wide PHP include paths
         run: php tools/check_php_includes.php
