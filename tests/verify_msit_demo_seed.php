@@ -26,7 +26,7 @@ function seed_check(string $label, bool $ok, string $detail = ''): void
     if (!$ok) { $failures++; }
 }
 
-$residents = db_all("SELECT resident_id, resident_no FROM residents WHERE resident_no LIKE 'DEMO-RES-%' ORDER BY resident_no");
+$residents = db_all("SELECT resident_id, resident_no FROM residents WHERE resident_no LIKE 'DEMO-RES-%' AND resident_no NOT LIKE 'DEMO-RES-EXT-%' ORDER BY resident_no");
 $types = db_all("SELECT type_id, name, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types WHERE name IN ('DEMO ONLY - Barangay Clearance', 'DEMO ONLY - Certificate of Residency', 'DEMO ONLY - Certificate of Indigency') ORDER BY name");
 $requests = db_all("SELECT request_id, reference_no, msit_status, requirements_status FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%' ORDER BY reference_no");
 $draft = db_one("SELECT d.*, r.reference_no AS request_ref FROM certificate_drafts d JOIN document_requests r ON r.request_id = d.request_id WHERE r.reference_no = 'DEMO-DOC-READY-01'");
