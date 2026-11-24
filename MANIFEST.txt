@@ -3,6 +3,6 @@ BIRMS checksum manifest
 The old checked-in SHA-256 list was stale and has been replaced with this instruction file.
 After extracting the current repository, generate a checksum list for that exact working copy with:
 
-  C:\xampp\php\php.exe tools\generate_manifest.php
+  php tools\generate_manifest.php
 
 The command writes a fresh SHA-256 list to MANIFEST.txt. It excludes this file, local API/database credential files, environment secrets, the legacy root-level Api file, logs, backups, and private uploads. The generated list is useful for detecting later changes to the same working copy; it is not, by itself, proof that a download came from a trusted source.
