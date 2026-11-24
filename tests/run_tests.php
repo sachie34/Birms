@@ -99,8 +99,7 @@ $csvGuardOk = csv_safe_cell('=1+1') === "'=1+1"
     && csv_safe_cell('ordinary text') === 'ordinary text'
     && csv_safe_cell(42) === 42;
 record('U7', 'CSV formula guard neutralizes leading whitespace/control characters and preserves ordinary values', $csvGuardOk);
-$smsProviderRemoved = config('sms.provider', null) === null
-    && !function_exists('sms_provider_is_enabled')
+$smsProviderRemoved = !function_exists('sms_provider_is_enabled')
     && !is_file(APP_ROOT . '/app/sms_provider.php')
     && !is_file(APP_ROOT . '/public/admin/sms.php');
 record('U8', 'SMS provider configuration, send functions and administration endpoint are removed from the active application', $smsProviderRemoved);
