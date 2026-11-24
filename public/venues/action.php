@@ -9,9 +9,8 @@ require_csrf();
 $do = post_str('do');
 
 try {
-    if ($do === 'create_venue' || $do === 'override') {
+    if ($do === 'create_venue') {
         require_permission('venues.manage');
-        if ($do === 'create_venue') {
             $name = post_str('name');
             $description = post_str('description');
             if (!v_len($name, 2, 120)) { throw new InvalidArgumentException('Venue name must be 2-120 characters.'); }
@@ -24,12 +23,12 @@ try {
                 audit('venue_created', 'Venues', 'Success', 'Venue created: ' . $name, 'venue', $id);
             });
             flash_add('success', 'Venue added.');
-        } else {
-            $id = post_int('venue_id');
-            if ($id === null) { throw new InvalidArgumentException('Choose a valid venue.'); }
-            venue_set_override($id, post_str('override'));
-            flash_add('success', 'Venue availability override saved.');
-        }
+    } elseif ($do === 'override') {
+        require_permission('venues.availability.manage');
+        $id = post_int('venue_id');
+        if ($id === null) { throw new InvalidArgumentException('Choose a valid venue.'); }
+        venue_set_override($id, post_str('override'));
+        flash_add('success', 'Room availability updated.');
     } elseif ($do === 'reserve') {
         require_permission('venues.manage');
         $venueId = post_int('venue_id');
