@@ -14,6 +14,7 @@ require_once __DIR__ . '/../app/core.php';
 date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
 require_once __DIR__ . '/../app/lookups.php';
 require_once __DIR__ . '/../app/queue_lib.php';
+require_once __DIR__ . '/../app/permissions.php';
 
 $dbName = (string) config('db.name');
 if (!preg_match('/(_work|_test)$/', $dbName)) {
@@ -42,6 +43,29 @@ $reservations = db_all("SELECT reference_no, status FROM venue_reservations WHER
 $queues = db_all("SELECT queue_id, service, queue_date, queue_number, status, reference_no, purpose FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%' ORDER BY service");
 
 seed_check('six synthetic residents exist', count($residents) === 6, 'found ' . count($residents));
+seed_check('Secretary can maintain certificate wording and hearings but cannot issue certificates or manage queues',
+    role_can('secretary', 'documents.templates.manage')
+    && role_can('secretary', 'hearings.add')
+    && role_can('secretary', 'hearings.edit')
+    && role_can('secretary', 'venues.availability.manage')
+    && !role_can('secretary', 'certificates.issue')
+    && !role_can('secretary', 'requests.approve')
+    && !role_can('secretary', 'queue.manage'));
+seed_check('Chairman remains read-only and cannot create, edit, approve, print or issue documents',
+    !role_can('captain', 'documents.templates.manage')
+    && !role_can('captain', 'requests.add')
+    && !role_can('captain', 'requests.approve')
+    && !role_can('captain', 'certificates.issue')
+    && !role_can('captain', 'certificates.print')
+    && !role_can('captain', 'hearings.add')
+    && !role_can('captain', 'queue.manage'));
+seed_check('Staff has the operational permissions to approve/reject, issue certificates, review blotter intake, approve venues and call queues',
+    role_can('clerk', 'requests.approve')
+    && role_can('clerk', 'certificates.issue')
+    && role_can('clerk', 'certificates.print')
+    && role_can('clerk', 'blotter_requests.review')
+    && role_can('clerk', 'venues.approve')
+    && role_can('clerk', 'queue.manage'));
 seed_check('three demo-only certificate templates exist', count($types) === 3, 'found ' . count($types));
 $templatesSafe = count($types) === 3;
 foreach ($types as $type) {
