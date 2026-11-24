@@ -236,8 +236,8 @@ $pageTitle = $canEdit ? 'Settings' : ($tab === 'summons' ? 'Hearing Summons' : '
 $activeMenuKey = $tab === 'documents' ? 'document_templates' : 'settings';
 render_header($pageTitle, [[$pageTitle, null]], $activeMenuKey);
 page_head($pageTitle, $canEdit
-    ? 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.'
-    : 'Maintain certificate wording and placeholders. Admin controls document types, fees, availability and signature requirements.');
+    ? 'Manage system settings and official records. Details not yet confirmed remain blank until approved.'
+    : 'Maintain certificate and summons wording. Admin controls document types, fees, availability, signature requirements and general system settings.');
 if ($canEdit) { echo '<div class="mb-3">' . btn_link('admin/chairman_signature.php', 'Manage Chairman Signature Image', 'btn-light border', 'bi-pen') . '</div>'; }
 echo errors_box($errors);
 echo '<ul class="nav nav-pills mb-3">';
@@ -247,7 +247,7 @@ foreach ($tabs as $k => $lab) {
 }
 echo '</ul>';
 if (!$canEdit && $canEditDocuments) {
-    echo '<div class="alert alert-info">You can edit document wording only. Fees, availability, signature requirements and system settings are managed by Admin.</div>';
+    echo '<div class="alert alert-info">You can edit certificate and hearing-summons wording only. Fees, availability, signature requirements and general system settings are managed by Admin.</div>';
 } elseif (!$canEdit) {
     echo '<div class="alert alert-info">You can view settings but not change them.</div>';
 }
@@ -376,7 +376,7 @@ if ($tab === 'general') {
         card_end();
     }
 } elseif ($tab === 'summons') {
-    card_start('Hearing summons wording', 'The official text printed on a summons. Nothing is pre-filled; a summons cannot be printed until this is set.');
+    card_start('Hearing summons wording', 'The Secretary maintains the official summons wording; only saved wording can be used for printing. Confirm the final format with the Barangay before production use.');
     echo '<div class="alert alert-secondary">Placeholders: ' . e('{{' . implode('}} {{', SUMMONS_TOKENS) . '}}') . '</div>';
     echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('summons_save');
     echo f_textarea('summons_wording', 'Official wording', (string) setting('summons_wording', ''), ['rows' => 7, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
