@@ -219,7 +219,7 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
     <?= f_select('resident_status_id', 'Resident status', $statuses, (string) $v['resident_status_id'], ['required' => true, 'blank' => 'Select status', 'col' => 'col-12']) ?>
     <?= f_select('resident_type_id', 'Resident type', $types, (string) $v['resident_type_id'], ['required' => true, 'blank' => 'Select type', 'col' => 'col-12']) ?>
   </div></div></div></div>
-  <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Contact and notifications</h2></div><div class="card-body-b"><div class="row">
+  <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Contact information</h2></div><div class="card-body-b"><div class="row">
     <?= f_text('contact_number', 'Mobile number', (string) $v['contact_number'], ['maxlength' => 20, 'placeholder' => '09171234567', 'col' => 'col-12']) ?>
     <?= f_text('email_address', 'Email address', (string) $v['email_address'], ['type' => 'email', 'maxlength' => 100, 'placeholder' => 'resident@example.com', 'col' => 'col-12']) ?>
     <div class="col-12">
