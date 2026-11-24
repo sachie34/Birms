@@ -1,7 +1,11 @@
 app/config.local.php
+.env
+.env.*
+!.env.example
 storage/logs/*
 storage/backups/*
 storage/private_uploads/
+storage/resident_photos/
 app/infobip.local.php
 app/smsapiph.local.php
 
