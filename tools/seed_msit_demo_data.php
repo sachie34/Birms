@@ -282,6 +282,7 @@ function msit_demo_apply(): array
         }
         $noneType = msit_demo_lookup_id('resident_type', 'None', 1);
         $incidentType = msit_demo_lookup_id('incident_type', 'DEMO ONLY - Community concern', 9900);
+        msit_demo_seed_default_settings();
 
         $typeDefinitions = [
             ['DEMO ONLY - Barangay Clearance', msit_demo_template('BARANGAY CLEARANCE', 'This sample confirms that the named fictitious resident is listed in the sample BIRMS registry.')],
@@ -454,6 +455,7 @@ function msit_demo_apply(): array
 
         $caseRefs = ['MSIT-DEMO-BLT-0001','MSIT-DEMO-BLT-0002','MSIT-DEMO-BLT-0003'];
         $caseStatuses = ['ongoing','unresolved','resolved'];
+        $caseIds = [];
         foreach ($caseRefs as $i => $caseRef) {
             db_exec(
                 'INSERT INTO blotters
@@ -468,6 +470,7 @@ function msit_demo_apply(): array
                  $i === 2 ? date('Y-m-d H:i:s') : null]
             );
             $caseId = (int) db()->lastInsertId();
+            $caseIds[] = $caseId;
             db_exec(
                 'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number)
                  VALUES (?, \'complainant\', ?, 30, ?, NULL), (?, \'respondent\', ?, 31, ?, NULL)',
@@ -480,6 +483,8 @@ function msit_demo_apply(): array
                 [$caseRef, ucfirst($caseStatuses[$i]), $caseId]
             );
         }
+
+        msit_demo_seed_blotter_and_hearing($residents, $caseIds, (int) $venues[1]);
 
         $queueItems = [
             ['Documents', $residents[0], 'DEMO-DOC-PENDING-01', '[DEMO ONLY] Documents service queue sample'],
