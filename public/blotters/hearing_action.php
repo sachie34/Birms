@@ -41,6 +41,10 @@ if ($do === 'schedule') {
         $errors[] = 'The hearing cannot be more than a year ahead.';
     }
     if ($venue !== '' && !v_len($venue, 3, 150)) { $errors[] = 'The venue must be 3-150 characters.'; }
+    if ($at !== null && $venue !== '') {
+        $roomBlock = venue_hearing_block_reason($venue, $at);
+        if ($roomBlock !== null) { $errors[] = $roomBlock; }
+    }
     if ($notes !== '' && !v_len($notes, 3, 500)) { $errors[] = 'Notes must be 3-500 characters.'; }
     if ($errors) { $fail(implode(' ', $errors), (int) $id, (string) $case['case_no']); }
 
@@ -53,6 +57,10 @@ if ($do === 'schedule') {
         );
         if ($lockedCase === null) { return 'That case was not found.'; }
         if (!case_is_open($lockedCase)) { return 'The case is no longer Ongoing or Unresolved.'; }
+        if ($venue !== '') {
+            $roomBlock = venue_hearing_block_reason($venue, $at, true);
+            if ($roomBlock !== null) { return $roomBlock; }
+        }
         $duplicate = (int) db_val(
             "SELECT COUNT(*) FROM hearings WHERE blotter_id = ? AND status = 'Scheduled' AND scheduled_at = ?",
             [$id, $at]
