@@ -125,7 +125,7 @@ function current_page_help(): ?array
             'Save the visitor entry and check that it appears in the logbook.',
             'For a document request, use Start a document request and complete the request form.',
         ], 'Collect only information needed for the office task.'),
-        'blotters/index.php' => in_array($role, ['admin', 'secretary'], true)
+        'blotters/index.php' => $role === 'secretary'
             ? $general('Manage official blotter records using the permissions available to your role.', [
                 'Search for an existing case before filing a new one.',
                 'Open a case to confirm the parties, incident details and current status.',
