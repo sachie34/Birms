@@ -249,6 +249,10 @@ function run_b7(array $S, string $base): void
         $benchmarkCode === 0
         && str_contains($benchmarkText, 'BIRMS read-only performance check')
         && str_contains($benchmarkText, 'Resident search + first 20 results')
+        && str_contains($benchmarkText, 'Recent request directory (first 25)')
+        && str_contains($benchmarkText, 'Recent blotter directory (first 25)')
+        && str_contains($benchmarkText, 'Recent venue directory (latest 200)')
+        && str_contains($benchmarkText, 'Today queue dashboard totals')
         && str_contains($benchmarkText, 'Monthly cash-collection report')
         && str_contains($benchmarkText, 'Monthly request-processing report')
         && str_contains($benchmarkText, 'Monthly venue-reservation report')
@@ -259,14 +263,28 @@ function run_b7(array $S, string $base): void
     $reportIndexRows = db_all(
         "SELECT DISTINCT INDEX_NAME FROM information_schema.STATISTICS
          WHERE TABLE_SCHEMA = DATABASE()
-           AND INDEX_NAME IN ('idx_request_requested_at', 'idx_venue_reservation_date', 'idx_queue_issued_at', 'idx_queue_date_status')"
+           AND INDEX_NAME IN ('idx_request_requested_at', 'idx_venue_reservation_order', 'idx_queue_issued_at', 'idx_queue_date_status')"
     );
     $reportIndexNames = array_column($reportIndexRows, 'INDEX_NAME');
     record('B7-18', 'Request, venue and queue date-range reports have dedicated leading indexes',
         count(array_intersect(
-            ['idx_request_requested_at', 'idx_venue_reservation_date', 'idx_queue_issued_at', 'idx_queue_date_status'],
+            ['idx_request_requested_at', 'idx_venue_reservation_order', 'idx_queue_issued_at', 'idx_queue_date_status'],
             $reportIndexNames
         )) === 4);
+
+    $blotterOrderColumns = array_column(db_all(
+        "SELECT COLUMN_NAME FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'blotters'
+           AND INDEX_NAME = 'idx_blotter_incident_order' ORDER BY SEQ_IN_INDEX"
+    ), 'COLUMN_NAME');
+    $venueOrderColumns = array_column(db_all(
+        "SELECT COLUMN_NAME FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'venue_reservations'
+           AND INDEX_NAME = 'idx_venue_reservation_order' ORDER BY SEQ_IN_INDEX"
+    ), 'COLUMN_NAME');
+    record('B7-19', 'Blotter and venue directory indexes match their date/time/ID sort order',
+        $blotterOrderColumns === ['incident_date', 'incident_time', 'blotter_id']
+        && $venueOrderColumns === ['reservation_date', 'start_time', 'reservation_id']);
 
     $backupAdmin = $adm->get('/admin/backup.php');
     record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
