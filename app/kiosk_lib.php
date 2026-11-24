@@ -110,6 +110,18 @@ function kiosk_mask_destination(string $destination): string
     return $visible . str_repeat('•', max(2, min(6, strlen($name) - 1))) . '@' . $parts[1];
 }
 
+/** Remove the one-time code from the durable email outbox after the delivery attempt. */
+function kiosk_redact_verification_notification(int $notificationId): void
+{
+    if ($notificationId < 1) { return; }
+    db_exec(
+        "UPDATE notification_outbox
+         SET message = 'Kiosk verification message content redacted after delivery attempt.'
+         WHERE notification_id = ? AND channel = 'email' AND event_type = 'resident_verification'",
+        [$notificationId]
+    );
+}
+
 /** Email-only OTP. Residents without a valid email use Resident ID + birthdate verification. */
 function kiosk_send_verification_code(array $resident): array
 {
@@ -136,14 +148,23 @@ function kiosk_send_verification_code(array $resident): array
         'Your Barangay service kiosk verification code is ' . $code . '. It expires in 5 minutes. Do not share this code.',
         'resident_verification', null
     );
+    $delivery = ['ok' => false];
     try {
-        $result = email_send_notification($notificationId);
-        if (!empty($result['ok'])) {
-            $_SESSION['kiosk_challenge_token'] = $token;
-            return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination($email)];
-        }
+        $delivery = email_send_notification($notificationId);
     } catch (Throwable $emailError) {
         error_log('BIRMS kiosk verification email failed for resident #' . $residentId . ': ' . get_class($emailError));
+    } finally {
+        try {
+            kiosk_redact_verification_notification($notificationId);
+        } catch (Throwable $redactionError) {
+            error_log('BIRMS kiosk verification outbox redaction failed for notification #' . $notificationId . ': ' . get_class($redactionError));
+            audit_best_effort('resident_verification_redaction_failed', 'Security', 'Failed',
+                'A kiosk verification email outbox message could not be redacted after its delivery attempt.');
+        }
+    }
+    if (!empty($delivery['ok'])) {
+        $_SESSION['kiosk_challenge_token'] = $token;
+        return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination($email)];
     }
     db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
     return ['ok' => false, 'message' => 'The verification email could not be sent. Use your Resident ID and birthdate, or ask Staff for help.'];
