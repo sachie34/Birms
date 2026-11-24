@@ -197,6 +197,17 @@ jobs:
           grep -Fq 'BIRMS requires HTTPS for this deployment' /tmp/birms-https-guard-body
           echo "PASS: HTTPS-required mode returns 503 for plain HTTP without redirecting to a Host header."
 
+      - name: Verify HTTPS session cookies include the Secure flag
+        run: |
+          php -S 127.0.0.1:8082 -t "$GITHUB_WORKSPACE/public" "$GITHUB_WORKSPACE/tests/php_server_https_router.php" > /tmp/birms-https-cookie.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:8082/index.php; then break; fi
+            sleep 1
+          done
+          curl --silent --dump-header /tmp/birms-https-cookie-headers --output /dev/null http://127.0.0.1:8082/index.php
+          grep -Eiq '^Set-Cookie: BIRMSSESS=.*;.*secure' /tmp/birms-https-cookie-headers
+          echo "PASS: HTTPS requests set the Secure flag on the BIRMS session cookie."
+
       - name: Prepare test report directory
         if: always() && steps.start-php.outcome == 'success'
         run: mkdir -p test-reports
