@@ -4,7 +4,7 @@ Barangay Information and Records Management System.
 
 This branch implements the revised MSIT SRS for BIRMS, including resident self-service, separate service queues, document requests/certificate generation, blotter, venue reservations, role-based processing, reports, and protected backup/restore. It also includes a safe MSIT demo dataset seeder and a lightweight Word-style certificate-template editor with live preview and formatted print/PDF output. Resident notifications use email only. The QR kiosk supports resident self-service; historical SMS records are retained for audit but no SMS is sent. The PowerPoint is a design reference; its sample content is not live system data.
 
-> **Current demonstration build:** use `main`. The current demo build includes the workflow-seed and summons-permission fixes merged through [PR #41](https://github.com/sachie34/Birms/pull/41) and [PR #42](https://github.com/sachie34/Birms/pull/42), at commit `9c01fe27bc76e488c78ec94300bba3a85c245deb`. Post-merge GitHub Actions run [#1355](https://github.com/sachie34/Birms/actions/runs/45392747052) passed all 8 PHP/MariaDB jobs; each reported 48/48 security and 284/284 module checks, plus the demo-seed workflow verifier. Target-PC XAMPP/browser/printer acceptance remains separate; this is a controlled demonstration build, not production approval.
+> **Current MSIT demo baseline:** `main` contains the revised workflows merged through PR #41 and PR #42. **Current deployment-readiness candidate:** `release/deploy-ready` is under review in [draft PR #46](https://github.com/sachie34/Birms/pull/46); its deployment-hardening changes are not yet in `main`. For this candidate, download the [release/deploy-ready ZIP](https://github.com/sachie34/Birms/archive/refs/heads/release/deploy-ready.zip), not the `main` ZIP. Check PR #46 for a successful CI run on the exact commit you intend to install. Neither hosted CI nor this README certifies target-PC XAMPP/browser/printer acceptance or production approval.
 
 ## Repository layout
 
@@ -24,11 +24,11 @@ Initial import branch: `integration/import-b6`
 
 Source package: `birms_work_B1-B6.zip` from the uploaded `Claudecodebirms.zip` bundle.
 
-The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files; the B1–B6 package was selected as the initial self-contained import. The revised MSIT candidate was later merged into `main` through PR #39. The source branch `john/phase2-kiosk-no-sms` is retained as merge history; `main` is now the authoritative defense build.
+The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files; the B1–B6 package was selected as the initial self-contained import. The revised MSIT demonstration baseline was merged into `main` through PR #39. The separate deployment-readiness candidate is maintained on `release/deploy-ready` and reviewed through draft PR #46; `main` remains unchanged until that review is approved.
 
 ## Download and run locally (XAMPP)
 
-For the revised MSIT demo build, download the [current main-branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract it under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` if you want to use the paths in the runbook. Start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes the separate `barangay_db_work` database, applies the current migrations, writes private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
+For the current deployment-readiness candidate, download the [release/deploy-ready ZIP](https://github.com/sachie34/Birms/archive/refs/heads/release/deploy-ready.zip), extract it under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` if you want to use the paths in the runbook. The `main` branch is still the prior demo baseline and does not contain the PR #46 hardening changes. Start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes the separate `barangay_db_work` database, applies the current migrations, writes private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
 
 ### Load the ready-made demo records
 
@@ -49,11 +49,11 @@ The verifier checks demo templates, document states, blotter intake states, the 
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme are exercised across 57 role-accessible menu routes in the current main-branch automated UI checks. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 
-Read [the XAMPP setup guide](docs/README_XAMPP.md), [the MSIT XAMPP acceptance runbook](docs/MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [the panel demo status and sequence](docs/PANEL_DEMO_STATUS.md), [the timed panel demo run sheet](docs/PANEL_DEMO_RUNSHEET.md), [the panel defense Q&A](docs/PANEL_DEFENSE_QA.md), [the demo-data seeder guide](docs/DEMO_DATA.md), [the quick user workflow](docs/QUICK_USER_WORKFLOW.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). The [20-function verification file](docs/FINAL_20_FUNCTION_VERIFICATION.md) is a historical audit snapshot, not the current role or acceptance authority. Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
+Read [the XAMPP setup guide](README_XAMPP.md), [the MSIT XAMPP acceptance runbook](docs/MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [the panel demo status and sequence](docs/PANEL_DEMO_STATUS.md), [the timed panel demo run sheet](docs/PANEL_DEMO_RUNSHEET.md), [the panel defense Q&A](docs/PANEL_DEFENSE_QA.md), [the demo-data seeder guide](docs/DEMO_DATA.md), [the quick user workflow](docs/QUICK_USER_WORKFLOW.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). The [20-function verification file](docs/FINAL_20_FUNCTION_VERIFICATION.md) is a historical audit snapshot, not the current role or acceptance authority. Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
 
 ## Local setup
 
-Follow [`docs/README_XAMPP.md`](docs/README_XAMPP.md) for the intended PHP, MariaDB/MySQL, Apache, and XAMPP setup. Copy `app/config.local.php.example` to `app/config.local.php` and provide local credentials outside Git.
+Follow [`README_XAMPP.md`](README_XAMPP.md) for the intended PHP, MariaDB/MySQL, Apache, and XAMPP setup. Copy `app/config.local.php.example` to `app/config.local.php` and provide local credentials outside Git.
 
 Do not commit database passwords, generated logs, backups, or local configuration files.
 
@@ -75,7 +75,7 @@ After extracting the repository, refresh the local SHA-256 manifest with `C:\\xa
 
 ## Scope boundary
 
-The `main` branch now contains the revised MSIT demonstration build. The older B1–B12 workflow is historical and must not be presented as the current MSIT workflow. Use the `main` ZIP linked above. The uploaded PowerPoint, BPMN and ERD remain separate reference/design artifacts; the live app uses its own data-backed pages. Run the complete test suite on a disposable `_work` or `_test` database before presenting.
+The `main` branch contains the revised MSIT demonstration baseline. The current deployment-readiness candidate is `release/deploy-ready` under draft PR #46; use the release-branch ZIP linked above when testing the deployment candidate. The older B1–B12 workflow is historical and must not be presented as the current MSIT workflow. The uploaded PowerPoint, BPMN and ERD remain separate reference/design artifacts; the live app uses its own data-backed pages. Run the complete test suite on a disposable `_work` or `_test` database before presenting.
 
 Read the workflow run attached to the exact commit or pull request you are reviewing. Results from an older branch do not certify newer changes. The CI workflow checks PHP syntax, include paths, XAMPP preflight, migrations, authentication/security/audit behavior, and module integration on a disposable MariaDB database. Historical SMS provider tests have been removed; no SMS integration is active. Browser/UAT on the target office PC, official template approval, live email delivery, and live cloud backup/restore are separate acceptance checks. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md), [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md), and [the Lab Activity 1 remediation status and UAT record](docs/BIRMS_LAB_ACTIVITY1_REMEDIATION_STATUS.md).
 
