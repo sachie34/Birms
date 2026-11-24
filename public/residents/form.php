@@ -71,6 +71,10 @@ if (is_post()) {
         $v[$k] = post_str($k);
     }
     $v['confirm_dup'] = post_str('confirm_dup') === '1';
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && $legacyPreference !== 'email') {
+        $errors[] = 'Notification channels are no longer selectable. BIRMS uses email only.';
+    }
 
     if (!v_person_name($v['last_name'])) { $errors[] = 'Last name is required (letters, spaces, . \' - only).'; }
     if (!v_person_name($v['first_name'])) { $errors[] = 'First name is required (letters, spaces, . \' - only).'; }
