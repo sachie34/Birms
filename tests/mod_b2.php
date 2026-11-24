@@ -6,6 +6,7 @@ function run_b2(array $S, string $base): void
 {
     $snapKeys = ['barangay_name', 'municipality', 'province', 'captain_name', 'secretary_name', 'age_brackets'];
     $snap = []; foreach ($snapKeys as $k) { $snap[$k] = db_val('SELECT setting_value FROM settings WHERE setting_key = ?', [$k]); }
+    $legacySmsSettingBefore = db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'");
     $types = db_all('SELECT type_id, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types');
 
     $adminTabsOk = true;
@@ -91,7 +92,7 @@ function run_b2(array $S, string $base): void
         $smsTab['status'] === 200 && !str_contains($smsTab['body'], 'SMS gateway')
         && str_contains($smsTab['body'], 'Barangay details')
         && $smsPost['status'] === 200 && str_contains($smsPost['body'], 'Unknown action.')
-        && db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'") === null);
+        && db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'") === $legacySmsSettingBefore);
 
     // Multi-tier fee matrix: rules are configured only by the Administrator; no rates are seeded.
     $ruleStart = date('Y-m-d');
