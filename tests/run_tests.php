@@ -61,6 +61,8 @@ record('U2', 'Chairman is read-only; Secretary reviews and manages records; Staf
     && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
     && !role_can('clerk', 'settings.edit') && !role_can('clerk', 'users.manage')
     && role_can('clerk', 'queue.manage') && role_can('clerk', 'venues.approve')
+     && role_can('secretary', 'venues.override') && role_can('clerk', 'venues.override')
+     && !role_can('secretary', 'venues.approve') && !role_can('captain', 'venues.override')
      && role_can('admin', 'requests.tracker') && role_can('clerk', 'requests.tracker')
      && !role_can('secretary', 'requests.tracker') && !role_can('captain', 'requests.tracker')
     && !role_can('secretary', 'residents.add') && !role_can('secretary', 'residents.edit')
