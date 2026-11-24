@@ -1,5 +1,7 @@
 # BIRMS Professional System Audit — 29 October 2026
 
+> **Scope update (2026-11-24):** This historical audit predates the Phase 2 QR kiosk and email-only change. The current candidate removes SMS provider code, administration and live-send tools while preserving historical SMS tables/migrations. The SMS-related checks and deployment instructions below describe the older candidate, not the current Phase 2 branch.
+
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
 **Main snapshot at report preparation:** `e66ca645e41396ba02d84660629c3ea8a37783a9`  
 **Audit fixes merged:** [PR #24](https://github.com/sachie34/Birms/pull/24), merge commit `6aef2c4f9b7ccce5cde50d39ea61742d2b7edf12`  
