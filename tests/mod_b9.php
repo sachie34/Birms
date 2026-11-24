@@ -118,11 +118,11 @@ function run_b9(array $S, string $base): void
 
     $roleGuidance = [
         'admin' => [
-            '/blotters/index.php' => 'Manage official blotter records using the permissions available to your role.',
-            '/blotters/hearings.php' => 'Manage hearing schedules and record outcomes for assigned blotter cases.',
-            '/queue/index.php' => 'Issue and manage daily queue tickets for Blotter, Documents and Venue.',
-            '/venues/index.php' => 'Manage resident venue reservations and counter requests.',
-            '/blotter_requests/index.php' => 'Review resident-submitted blotter reports before accepting or rejecting them.',
+            '/blotters/index.php' => 'View official blotter cases without changing them.',
+            '/blotters/hearings.php' => 'View hearing schedules and related cases without changing hearing records.',
+            '/queue/index.php' => 'Monitor current queue numbers and waiting counts for each service.',
+            '/venues/index.php' => 'Maintain the official venue list as the Technical Administrator.',
+            '/blotter_requests/index.php' => 'View resident-submitted blotter reports and their saved review status.',
         ],
         'captain' => [
             '/blotters/index.php' => 'View official blotter cases without changing them.',
