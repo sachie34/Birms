@@ -12,6 +12,10 @@ if (is_post()) {
         'Too many venue requests were submitted. Please ask Staff for help.');
     $venueId = post_int('venue_id');
     $purpose = post_str('purpose');
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && !queue_valid_notification_preference($legacyPreference)) {
+        $errors[] = 'Notification channels are no longer selectable. BIRMS uses email only.';
+    }
     if ($venueId === null) { $errors[] = 'Choose a venue.'; }
     if (!$errors) {
         try {
