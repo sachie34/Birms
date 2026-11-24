@@ -9,7 +9,9 @@ $types = [
     'issuance' => 'Issuance summary',
     'requests' => 'Request processing summary',
     'blotter' => 'Blotter summary',
-    'periodic' => 'Monthly / Quarterly Administrative Report',
+    'venues' => 'Venue usage summary',
+    'queues' => 'Queue utilization and waiting time',
+    'periodic' => 'Periodic Administrative Report',
 ];
 $type = get_str('type');
 if (!isset($types[$type])) { $type = 'demographics'; }
@@ -23,31 +25,59 @@ $recipient = get_str('recipient');
 if (!isset($recipients[$recipient])) { $recipient = 'internal'; }
 $recipientLabel = $recipients[$recipient];
 $isCsv = get_str('format') === 'csv';
-require_permission($isCsv ? 'reports.export' : 'reports.view');
+$isExcel = get_str('format') === 'excel';
+$isExport = $isCsv || $isExcel;
+require_permission($isExport ? 'reports.export' : 'reports.view');
 
-$range = report_period_range(get_str('period'), get_int('year'), get_int('month'), get_int('quarter'));
+$anchorDate = get_str('anchor_date');
+$range = report_period_range(get_str('period'), get_int('year'), get_int('month'), get_int('quarter'), $anchorDate);
 $data = match ($type) {
     'demographics' => report_demographics(),
     'issuance' => report_issuances($range),
     'requests' => report_requests($range),
     'blotter' => report_blotters($range),
+    'venues' => report_venues($range),
+    'queues' => report_queueing($range),
     'periodic' => report_periodic_administrative($range),
 };
 $reportLabel = $types[$type];
 $periodLabel = $type === 'demographics' ? date('j F Y') . ' (current active resident records)' : $range['label'];
-audit_best_effort($isCsv ? 'report_exported' : 'report_generated', 'Reports', 'Success',
-    $reportLabel . ' for ' . $recipientLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label']) . ($isCsv ? ' CSV' : ' viewed'));
+audit_best_effort($isExport ? 'report_exported' : 'report_generated', 'Reports', 'Success',
+    $reportLabel . ' for ' . $recipientLabel . ($type === 'demographics' ? ' current snapshot' : ' for ' . $range['label'])
+    . ($isExcel ? ' Excel-compatible workbook' : ($isCsv ? ' CSV' : ' viewed')));
 
-if ($isCsv) {
-    $filename = 'birms-' . $recipient . '-' . $type . '-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($type === 'demographics' ? date('Y-m-d') : $range['label'])) . '.csv';
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('X-Content-Type-Options: nosniff');
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF");
-    $write = static function (array $row) use ($out): void {
-        fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\');
-    };
+if ($isExport) {
+    $stem = 'birms-' . $recipient . '-' . $type . '-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', strtolower($type === 'demographics' ? date('Y-m-d') : $range['label']));
+    if ($isExcel) {
+        $filename = $stem . '.xls';
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        echo "\xEF\xBB\xBF";
+        echo '<!doctype html><html><head><meta charset="UTF-8"><title>' . e($reportLabel) . '</title>'
+            . '<style>body{font-family:Arial,sans-serif}table{border-collapse:collapse}td{border:1px solid #999;padding:5px;mso-number-format:"\\@";}tr:first-child td{font-weight:bold}</style>'
+            . '</head><body><table>';
+        $write = static function (array $row): void {
+            echo '<tr>';
+            foreach ($row as $cell) {
+                $value = is_string($cell) ? $cell : (string) $cell;
+                if (is_string($cell) && preg_match('/^\\s*[=+@-]/', $value) === 1) { $value = "'" . $value; }
+                echo '<td>' . e($value) . '</td>';
+            }
+            echo '</tr>';
+        };
+    } else {
+        $filename = $stem . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('X-Content-Type-Options: nosniff');
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF");
+        $write = static function (array $row) use ($out): void {
+            fputcsv($out, array_map('csv_safe_cell', $row), ',', '"', '\\');
+        };
+    }
     $write(['Prepared for', $recipientLabel]);
     $write(['Template status', 'Draft standardized BIRMS summary; official agency-specific format pending recipient approval']);
     $write(['Report period', $periodLabel]);
@@ -55,8 +85,9 @@ if ($isCsv) {
         $write(['Section', 'Category', 'Count']);
         $write(['Population', 'Current active residents', $data['total']]);
         foreach ([
-            'Age bracket' => $data['age_brackets'], 'Sex' => $data['sex'], 'Civil status' => $data['civil_status'],
-            'Employment status' => $data['employment_status'], 'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
+            'Age bracket' => $data['age_brackets'], 'Sex' => $data['sex'], 'Marital status' => $data['marital_status'],
+            'Resident type' => $data['resident_type'], 'Employment status' => $data['employment_status'],
+            'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
         ] as $section => $items) {
             foreach ($items as $category => $count) { $write([$section, $category, $count]); }
         }
@@ -77,8 +108,8 @@ if ($isCsv) {
         $write(['Metric', 'Status / category', 'Count']);
         $write(['Requests', 'Total requests created in period', (int) $s['total']]);
         foreach ([
-            'Pending' => $s['pending_count'], 'Review' => $s['review_count'], 'Ready' => $s['ready_count'],
-            'Claimed' => $s['claimed_count'], 'Rejected' => $s['rejected_count'], 'Cancelled' => $s['cancelled_count'],
+            'Pending' => $s['pending_count'], 'Approved' => $s['approved_count'],
+            'Rejected' => $s['rejected_count'], 'Released' => $s['released_count'],
         ] as $status => $count) { $write(['Current status', $status, (int) $count]); }
         foreach ($data['by_type'] as $row) {
             $write(['Document type', $row['type_name'], (int) $row['request_count']]);
@@ -87,15 +118,53 @@ if ($isCsv) {
             $write(['Assigned to', $row['assigned_to'], (int) $row['request_count']]);
         }
         $write(['Note', 'Status reflects the saved current status when the report is generated.', '']);
+    } elseif ($type === 'venues') {
+        $s = $data['summary'];
+        $write(['Report', 'Venue usage summary']);
+        $write(['Report period (reservation date)', $range['label']]);
+        foreach (['Total reservations'=>'total','Pending'=>'pending_count','Approved'=>'approved_count','Rejected'=>'rejected_count','Completed'=>'completed_count'] as $label => $key) {
+            $write([$label, (int) $s[$key]]);
+        }
+        $write(['Booked hours (Approved and Completed)', number_format((float) $s['booked_hours'], 2, '.', '')]);
+        $write([]);
+        $write(['Venue', 'Reservations', 'Pending', 'Approved', 'Rejected', 'Completed', 'Booked hours']);
+        foreach ($data['by_venue'] as $row) {
+            $write([$row['venue_name'], (int) $row['reservation_count'], (int) $row['pending_count'],
+                (int) $row['approved_count'], (int) $row['rejected_count'], (int) $row['completed_count'],
+                number_format((float) $row['booked_hours'], 2, '.', '')]);
+        }
+        $write([]);
+        $write(['Status', 'Reservations']);
+        foreach ($data['by_status'] as $row) { $write([$row['status'], (int) $row['reservation_count']]); }
+    } elseif ($type === 'queues') {
+        $s = $data['summary'];
+        $write(['Report', 'Queue utilization and waiting time']);
+        $write(['Report period', $range['label']]);
+        $write(['Metric', 'Count / duration']);
+        foreach ([
+            'Tickets issued' => 'total', 'Waiting' => 'waiting_count', 'Called' => 'called_count',
+            'Served' => 'served_count', 'Skipped' => 'skipped_count', 'Cancelled' => 'cancelled_count',
+        ] as $label => $key) { $write([$label, (int) $s[$key]]); }
+        $write(['Average waiting time (minutes)', $s['average_wait_seconds'] === null ? 'Not available' : number_format((float) $s['average_wait_seconds'] / 60, 1, '.', '')]);
+        $write([]);
+        $write(['Service', 'Tickets issued', 'Waiting', 'Called', 'Served', 'Skipped', 'Cancelled', 'Average wait (minutes)']);
+        foreach ($data['by_service'] as $row) {
+            $write([$row['service'], (int) $row['total'], (int) $row['waiting_count'], (int) $row['called_count'],
+                (int) $row['served_count'], (int) $row['skipped_count'], (int) $row['cancelled_count'],
+                $row['average_wait_seconds'] === null ? 'Not available' : number_format((float) $row['average_wait_seconds'] / 60, 1, '.', '')]);
+        }
     } elseif ($type === 'periodic') {
         $population = $data['population'];
         $issuance = $data['issuance'];
         $collections = $data['collections'];
         $requests = $data['requests'];
         $blotter = $data['blotter'];
+        $queues = $data['queues'];
+        $venues = $data['venues'];
         $write(['Section', 'Metric', 'Value']);
         $write(['Population', 'Current active resident snapshot (not historical population)', (int) $population['total']]);
         foreach ($population['purok'] as $purok => $count) { $write(['Population by Purok', $purok, (int) $count]); }
+        foreach ($population['resident_type'] as $residentType => $count) { $write(['Population by resident type', $residentType, (int) $count]); }
         $write(['Certificates', 'Documents issued in selected period', (int) $issuance['summary']['issued_count']]);
         $write(['Certificates', 'Recorded issuance fee amounts (not confirmed collections)', number_format((float) $issuance['summary']['recorded_fees'], 2, '.', '')]);
         $write(['Collections', 'Reconciled cash-collection ledger amount', number_format((float) $collections['collected_amount'], 2, '.', '')]);
@@ -106,24 +175,35 @@ if ($isCsv) {
             $write(['Requests by current status', $status, (int) $requests['summary'][$key]]);
         }
         foreach ($requests['by_type'] as $row) { $write(['Requests by document type', $row['type_name'], (int) $row['request_count']]); }
-        $write(['Blotters', 'Non-archived incidents in selected period', (int) $blotter['summary']['total']]);
-        foreach (['Pending'=>'pending_count','Active'=>'active_count','Scheduled'=>'scheduled_count','Resolved'=>'resolved_count'] as $status => $key) {
+        $write(['Blotters', 'Total incidents in selected period', (int) $blotter['summary']['total']]);
+        foreach (['Ongoing'=>'ongoing_count','Unresolved'=>'unresolved_count','Resolved'=>'resolved_count','Dismissed'=>'dismissed_count','Archived'=>'archived_count'] as $status => $key) {
             $write(['Blotters by status', $status, (int) $blotter['summary'][$key]]);
         }
-        $write(['Blotters', 'Resolution rate (%)', number_format((float) $blotter['summary']['resolution_rate'], 1, '.', '')]);
+        $write(['Blotters', 'Resolution rate among non-archived cases (%)', number_format((float) $blotter['summary']['resolution_rate'], 1, '.', '')]);
         foreach ($blotter['by_type'] as $row) { $write(['Blotters by incident type', $row['incident_type'], (int) $row['case_count']]); }
         foreach ($blotter['by_purok'] as $row) { $write(['Blotters by Purok', $row['purok'], (int) $row['case_count']]); }
+        $write(['Queues', 'Total tickets issued', (int) $queues['summary']['total']]);
+        foreach (['Waiting'=>'waiting_count','Called'=>'called_count','Served'=>'served_count','Skipped'=>'skipped_count','Cancelled'=>'cancelled_count'] as $status => $key) {
+            $write(['Queue by status', $status, (int) $queues['summary'][$key]]);
+        }
+        $write(['Queues', 'Average wait in minutes', $queues['summary']['average_wait_seconds'] === null ? 'Not available' : number_format((float) $queues['summary']['average_wait_seconds'] / 60, 1, '.', '')]);
+        foreach ($queues['by_service'] as $row) { $write(['Queue by service', $row['service'], (int) $row['total']]); }
+        $write(['Venues', 'Total reservations in period', (int) $venues['summary']['total']]);
+        foreach (['Pending'=>'pending_count','Approved'=>'approved_count','Rejected'=>'rejected_count','Completed'=>'completed_count'] as $status => $key) {
+            $write(['Venue reservations by status', $status, (int) $venues['summary'][$key]]);
+        }
+        $write(['Venues', 'Booked hours (Approved and Completed)', number_format((float) $venues['summary']['booked_hours'], 2, '.', '')]);
+        foreach ($venues['by_venue'] as $row) { $write(['Venue usage', $row['venue_name'], (int) $row['reservation_count']]); }
         $write(['Note', 'Request status counts are the current saved statuses at report time; official agency-specific templates remain pending approval.', '']);
     } else {
         $s = $data['summary'];
         $write(['Report period', $range['label']]);
         $write(['Section', 'Category', 'Count / rate']);
-        $write(['Cases', 'Total non-archived incidents', (int) $s['total']]);
-        $write(['Cases', 'Pending', (int) $s['pending_count']]);
-        $write(['Cases', 'Active', (int) $s['active_count']]);
-        $write(['Cases', 'Scheduled', (int) $s['scheduled_count']]);
-        $write(['Cases', 'Resolved', (int) $s['resolved_count']]);
-        $write(['Cases', 'Resolution rate (%)', number_format((float) $s['resolution_rate'], 1, '.', '')]);
+        $write(['Cases', 'Total incidents', (int) $s['total']]);
+        foreach (['Ongoing'=>'ongoing_count','Unresolved'=>'unresolved_count','Resolved'=>'resolved_count','Dismissed'=>'dismissed_count','Archived'=>'archived_count'] as $status => $key) {
+            $write(['Cases by MSIT status', $status, (int) $s[$key]]);
+        }
+        $write(['Cases', 'Resolution rate among non-archived cases (%)', number_format((float) $s['resolution_rate'], 1, '.', '')]);
         foreach ([
             'Incident type' => $data['by_type'], 'Purok' => $data['by_purok'], 'Status' => $data['by_status'],
         ] as $section => $rows) {
@@ -134,7 +214,11 @@ if ($isCsv) {
             }
         }
     }
-    fclose($out);
+    if ($isExcel) {
+        echo '</table></body></html>';
+    } else {
+        fclose($out);
+    }
     exit;
 }
 
@@ -145,9 +229,14 @@ $period = $range['period'];
 $filterQuery = ['type' => $type, 'period' => $period, 'year' => $range['year'], 'recipient' => $recipient];
 if ($period === 'month') { $filterQuery['month'] = $range['month']; }
 if ($period === 'quarter') { $filterQuery['quarter'] = $range['quarter']; }
-$exportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
-$reportActions = '<button class="btn btn-light border" type="button" data-print><i class="bi bi-printer me-1"></i>Print</button>';
-if (can('reports.export')) { $reportActions .= ' <a class="btn btn-primary" href="' . e($exportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>'; }
+if (in_array($period, ['day', 'week'], true)) { $filterQuery['anchor_date'] = $anchorDate !== '' ? $anchorDate : date('Y-m-d'); }
+$excelExportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'excel']);
+$csvExportUrl = base_url('reports/index.php') . '?' . http_build_query($filterQuery + ['format' => 'csv']);
+$reportActions = '<button class="btn btn-light border" type="button" data-print><i class="bi bi-printer me-1"></i>Print / Save as PDF</button>';
+if (can('reports.export')) {
+    $reportActions .= ' <a class="btn btn-primary" href="' . e($excelExportUrl) . '"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Excel</a>'
+        . ' <a class="btn btn-light border" href="' . e($csvExportUrl) . '"><i class="bi bi-download me-1"></i>Export CSV</a>';
+}
 
 render_header('Reports & Analytics', [['Reports & Analytics', null]], 'reports');
 page_head('Reports & Analytics', 'Generate data-backed administrative summaries. Select the intended recipient and reporting period.', $reportActions);
@@ -168,11 +257,14 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
       </div>
       <div class="col-md-2"><label class="form-label" for="period">Period</label>
         <select class="form-select" name="period" id="period">
+          <option value="day"<?= $period === 'day' ? ' selected' : '' ?>>Daily</option>
+          <option value="week"<?= $period === 'week' ? ' selected' : '' ?>>Weekly</option>
           <option value="month"<?= $period === 'month' ? ' selected' : '' ?>>Monthly</option>
           <option value="quarter"<?= $period === 'quarter' ? ' selected' : '' ?>>Quarterly</option>
           <option value="year"<?= $period === 'year' ? ' selected' : '' ?>>Annual</option>
         </select>
       </div>
+      <div class="col-md-2"><label class="form-label" for="anchor_date">Date / week of</label><input class="form-control" type="date" name="anchor_date" id="anchor_date" value="<?= e($anchorDate !== '' ? $anchorDate : date('Y-m-d')) ?>"></div>
       <div class="col-md-2"><label class="form-label" for="year">Year</label>
         <select class="form-select" name="year" id="year"><?php for ($y = (int) date('Y'); $y >= 2000; $y--): ?><option value="<?= $y ?>"<?= $y === (int) $range['year'] ? ' selected' : '' ?>><?= $y ?></option><?php endfor; ?></select>
       </div>
@@ -201,8 +293,9 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     <div class="col-md-4"><div class="card-b h-100"><div class="card-h"><h2>Data classification</h2></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format(array_sum($data['employment_status'])) ?></div><div class="text-muted small">Active residents included in employment-status summary. Unspecified entries remain visible as “Not specified.”</div></div></div></div>
   </div>
   <?php foreach ([
-      'Age brackets' => $data['age_brackets'], 'Sex' => $data['sex'], 'Civil status' => $data['civil_status'],
-      'Employment status' => $data['employment_status'], 'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
+      'Age brackets' => $data['age_brackets'], 'Sex' => $data['sex'], 'Marital status' => $data['marital_status'],
+      'Resident type' => $data['resident_type'], 'Employment status' => $data['employment_status'],
+      'Voter status' => $data['voter_status'], 'Population by Purok' => $data['purok'],
   ] as $section => $items): ?>
     <div class="card-b mb-3">
       <div class="card-h"><h2><?= e($section) ?></h2></div>
@@ -214,7 +307,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
       </div>
     </div>
   <?php endforeach; ?>
-  <div class="alert alert-info">The employment-status categories are managed under Settings → Other lists. The system does not assume a barangay-approved employment classification; residents without a selection are counted as “Not specified.”</div>
+  <div class="alert alert-info">Resident types and statuses are managed under Settings → Other lists. The employment-status summary is retained as optional legacy data. The system does not assume a barangay-approved employment classification; residents without a selection are counted as “Not specified.”</div>
 
 <?php elseif ($type === 'issuance'): ?>
   <div class="row g-3 mb-3">
@@ -245,23 +338,76 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
   <div class="alert alert-info">This report counts requests created during <?= e($range['label']) ?>. Status counts reflect the current saved status when the report is generated, not a historical status snapshot.</div>
   <div class="row g-3 mb-3">
     <?php foreach ([
-      'Total requests' => (int) $s['total'], 'Pending' => (int) $s['pending_count'], 'In review' => (int) $s['review_count'],
-      'Ready for pickup' => (int) $s['ready_count'], 'Claimed' => (int) $s['claimed_count'],
-      'Rejected' => (int) $s['rejected_count'], 'Cancelled' => (int) $s['cancelled_count'],
+      'Total requests' => (int) $s['total'], 'Pending' => (int) $s['pending_count'],
+      'Approved' => (int) $s['approved_count'], 'Rejected' => (int) $s['rejected_count'],
+      'Released' => (int) $s['released_count'],
     ] as $label => $count): ?>
       <div class="col-6 col-lg-3"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div>
     <?php endforeach; ?>
   </div>
   <div class="card-b mb-3"><div class="card-h"><h2>Requests by document type</h2></div><div class="card-body-b">
     <?php if (!$data['by_type']): ?><?= empty_state('bi-inbox', 'No requests were filed in this period.') ?>
-    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Review</th><th class="text-end">Ready</th><th class="text-end">Claimed</th></tr></thead><tbody>
-      <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td><td class="text-end"><?= number_format((int) $row['pending_count']) ?></td><td class="text-end"><?= number_format((int) $row['review_count']) ?></td><td class="text-end"><?= number_format((int) $row['ready_count']) ?></td><td class="text-end"><?= number_format((int) $row['claimed_count']) ?></td></tr><?php endforeach; ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Document type</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Approved</th><th class="text-end">Rejected</th><th class="text-end">Released</th></tr></thead><tbody>
+      <?php foreach ($data['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td><td class="text-end"><?= number_format((int) $row['pending_count']) ?></td><td class="text-end"><?= number_format((int) $row['approved_count']) ?></td><td class="text-end"><?= number_format((int) $row['rejected_count']) ?></td><td class="text-end"><?= number_format((int) $row['released_count']) ?></td></tr><?php endforeach; ?>
     </tbody></table></div><?php endif; ?>
   </div></div>
   <div class="card-b mb-3"><div class="card-h"><h2>Requests by assignee</h2></div><div class="card-body-b">
     <?php if (!$data['by_assignee']): ?><?= empty_state('bi-people', 'No requests were assigned in this period.') ?>
     <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Assigned to</th><th class="text-end">Requests</th></tr></thead><tbody>
       <?php foreach ($data['by_assignee'] as $row): ?><tr><td><?= e((string) $row['assigned_to']) ?></td><td class="text-end"><?= number_format((int) $row['request_count']) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+
+<?php elseif ($type === 'venues'): ?>
+  <?php $s = $data['summary']; ?>
+  <div class="alert alert-info">Venue usage is grouped by the reservation date. Booked hours include reservations that are Approved or Completed; Pending and Rejected requests are shown separately and are not counted as used hours.</div>
+  <div class="row g-3 mb-3">
+    <?php foreach ([
+      'Total reservations' => (int) $s['total'],
+      'Approved' => (int) $s['approved_count'],
+      'Completed' => (int) $s['completed_count'],
+      'Booked hours' => number_format((float) $s['booked_hours'], 2),
+    ] as $label => $value): ?>
+      <div class="col-6 col-lg-3"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= e((string) $value) ?></div></div></div></div>
+    <?php endforeach; ?>
+  </div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Reservations by venue</h2><p>Counts use the current reservation status for each reservation date in the selected period.</p></div><div class="card-body-b">
+    <?php if (!$data['by_venue']): ?><?= empty_state('bi-building', 'No venues or reservations are available for this report.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Venue</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Approved</th><th class="text-end">Rejected</th><th class="text-end">Completed</th><th class="text-end">Booked hours</th></tr></thead><tbody>
+      <?php foreach ($data['by_venue'] as $row): ?><tr>
+        <td><?= e((string) $row['venue_name']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['reservation_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['pending_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['approved_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['rejected_count']) ?></td>
+        <td class="text-end"><?= number_format((int) $row['completed_count']) ?></td>
+        <td class="text-end"><?= number_format((float) $row['booked_hours'], 2) ?></td>
+      </tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+  <div class="card-b"><div class="card-h"><h2>Reservations by status</h2></div><div class="card-body-b">
+    <?php if (!$data['by_status']): ?><?= empty_state('bi-calendar-check', 'No reservation status records are available for this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Status</th><th class="text-end">Reservations</th></tr></thead><tbody>
+      <?php foreach ($data['by_status'] as $row): ?><tr><td><?= e((string) $row['status']) ?></td><td class="text-end"><?= number_format((int) $row['reservation_count']) ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
+
+<?php elseif ($type === 'queues'): ?>
+  <?php $s = $data['summary']; ?>
+  <div class="alert alert-info">Queue totals are counted by ticket issue time. Average waiting time uses served tickets only; waiting, called, skipped and cancelled tickets are not included in that average.</div>
+  <div class="row g-3 mb-3">
+    <?php foreach ([
+      'Tickets issued' => (int) $s['total'], 'Waiting' => (int) $s['waiting_count'], 'Called' => (int) $s['called_count'],
+      'Served' => (int) $s['served_count'], 'Skipped' => (int) $s['skipped_count'], 'Cancelled' => (int) $s['cancelled_count'],
+    ] as $label => $count): ?>
+      <div class="col-6 col-lg-4"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div>
+    <?php endforeach; ?>
+    <div class="col-6 col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Average wait</h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= $s['average_wait_seconds'] === null ? '—' : number_format((float) $s['average_wait_seconds'] / 60, 1) . ' min' ?></div></div></div></div>
+  </div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Queue performance by service</h2></div><div class="card-body-b">
+    <?php if (!$data['by_service']): ?><?= empty_state('bi-ticket', 'No queue tickets were issued in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Service</th><th class="text-end">Issued</th><th class="text-end">Waiting</th><th class="text-end">Called</th><th class="text-end">Served</th><th class="text-end">Skipped</th><th class="text-end">Cancelled</th><th class="text-end">Average wait</th></tr></thead><tbody>
+      <?php foreach ($data['by_service'] as $row): ?><tr><td><?= e((string) $row['service']) ?></td><td class="text-end"><?= number_format((int) $row['total']) ?></td><td class="text-end"><?= number_format((int) $row['waiting_count']) ?></td><td class="text-end"><?= number_format((int) $row['called_count']) ?></td><td class="text-end"><?= number_format((int) $row['served_count']) ?></td><td class="text-end"><?= number_format((int) $row['skipped_count']) ?></td><td class="text-end"><?= number_format((int) $row['cancelled_count']) ?></td><td class="text-end"><?= $row['average_wait_seconds'] === null ? '—' : number_format((float) $row['average_wait_seconds'] / 60, 1) . ' min' ?></td></tr><?php endforeach; ?>
     </tbody></table></div><?php endif; ?>
   </div></div>
 
@@ -272,6 +418,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     $collections = $data['collections'];
     $requests = $data['requests'];
     $blotter = $data['blotter'];
+    $queues = $data['queues'];
   ?>
   <div class="alert alert-info">This is a consolidated BIRMS administrative summary for <?= e($range['label']) ?>. Resident population is a current snapshot, not a historical period-end count. Collected revenue includes reconciled cash-ledger rows only. Agency-specific forms and mandatory report fields still require confirmation by the receiving office.</div>
   <div class="row g-3 mb-3">
@@ -281,7 +428,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     <div class="col-md-3"><div class="card-b h-100"><div class="card-h"><h2>Pending collection</h2></div><div class="card-body-b"><div class="fs-3 fw-bold">₱<?= number_format((float) $collections['pending_amount'], 2) ?></div><small class="text-muted">Awaiting reconciliation</small></div></div></div>
   </div>
   <div class="card-b mb-3">
-    <div class="card-h"><h2>Current population by Purok</h2><p>Grouped from active residents and their household assignments.</p></div>
+    <div class="card-h"><h2>Current population by Purok</h2><p>Grouped from active resident records by Purok.</p></div>
     <div class="card-body-b">
       <?php if (!$population['purok']): ?><?= empty_state('bi-people', 'No active resident records are available.') ?>
       <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Residents</th></tr></thead><tbody>
@@ -292,7 +439,7 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
   <div class="card-b mb-3">
     <div class="card-h"><h2>Request queue summary</h2><p>Requests created in the selected period; displayed status counts reflect current status at generation time.</p></div>
     <div class="card-body-b"><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Status</th><th class="text-end">Requests</th></tr></thead><tbody>
-      <?php foreach (['Pending'=>'pending_count','Review'=>'review_count','Ready'=>'ready_count','Claimed'=>'claimed_count','Rejected'=>'rejected_count','Cancelled'=>'cancelled_count'] as $status => $key): ?><tr><td><?= e($status) ?></td><td class="text-end"><?= number_format((int) $requests['summary'][$key]) ?></td></tr><?php endforeach; ?>
+      <?php foreach (['Pending'=>'pending_count','Approved'=>'approved_count','Rejected'=>'rejected_count','Released'=>'released_count'] as $status => $key): ?><tr><td><?= e($status) ?></td><td class="text-end"><?= number_format((int) $requests['summary'][$key]) ?></td></tr><?php endforeach; ?>
     </tbody></table></div></div>
   </div>
   <div class="row g-3 mb-3">
@@ -303,9 +450,10 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
       <?php if (!$issuance['by_type']): ?><div class="text-muted mt-3">No certificates were issued in this period.</div><?php else: ?><div class="table-responsive mt-3"><table class="table table-b mb-0"><thead><tr><th>Document</th><th class="text-end">Issued</th></tr></thead><tbody><?php foreach ($issuance['by_type'] as $row): ?><tr><td><?= e((string) $row['type_name']) ?></td><td class="text-end"><?= number_format((int) $row['issued_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
     </div></div></div>
     <div class="col-lg-6"><div class="card-b h-100"><div class="card-h"><h2>Blotter summary</h2></div><div class="card-body-b">
-      <div class="mb-2">Non-archived cases in period: <strong><?= number_format((int) $blotter['summary']['total']) ?></strong></div>
-      <div class="mb-2">Resolved: <strong><?= number_format((int) $blotter['summary']['resolved_count']) ?></strong></div>
-      <div class="mb-3">Resolution rate: <strong><?= number_format((float) $blotter['summary']['resolution_rate'], 1) ?>%</strong></div>
+      <div class="mb-2">Total incidents in period: <strong><?= number_format((int) $blotter['summary']['total']) ?></strong></div>
+      <div class="mb-2">Resolved: <strong><?= number_format((int) $blotter['summary']['resolved_count']) ?></strong> · Dismissed: <strong><?= number_format((int) $blotter['summary']['dismissed_count']) ?></strong></div>
+      <div class="mb-3">Resolution rate (non-archived): <strong><?= number_format((float) $blotter['summary']['resolution_rate'], 1) ?>%</strong></div>
+      <div class="small text-muted">Ongoing <?= (int) $blotter['summary']['ongoing_count'] ?> · Unresolved <?= (int) $blotter['summary']['unresolved_count'] ?> · Archived <?= (int) $blotter['summary']['archived_count'] ?></div>
       <?php if (!$blotter['by_type']): ?><div class="text-muted">No incidents were recorded in this period.</div><?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Incident type</th><th class="text-end">Cases</th></tr></thead><tbody><?php foreach ($blotter['by_type'] as $row): ?><tr><td><?= e((string) $row['incident_type']) ?></td><td class="text-end"><?= number_format((int) $row['case_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
     </div></div></div>
   </div>
@@ -313,13 +461,25 @@ page_head('Reports & Analytics', 'Generate data-backed administrative summaries.
     <?php if (!$blotter['by_purok']): ?><?= empty_state('bi-shield-exclamation', 'No cases were recorded in this period.') ?>
     <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Purok</th><th class="text-end">Cases</th></tr></thead><tbody><?php foreach ($blotter['by_purok'] as $row): ?><tr><td><?= e((string) $row['purok']) ?></td><td class="text-end"><?= number_format((int) $row['case_count']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?>
   </div></div>
+  <div class="card-b mb-3"><div class="card-h"><h2>Queue statistics</h2><p>Daily service queues summarized across the selected period.</p></div><div class="card-body-b">
+    <div class="row g-3 mb-3">
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Tickets issued</div><div class="fs-4 fw-bold"><?= number_format((int) $queues['summary']['total']) ?></div></div></div>
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Served</div><div class="fs-4 fw-bold"><?= number_format((int) $queues['summary']['served_count']) ?></div></div></div>
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Waiting + called</div><div class="fs-4 fw-bold"><?= number_format((int) $queues['summary']['waiting_count'] + (int) $queues['summary']['called_count']) ?></div></div></div>
+      <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Average wait</div><div class="fs-4 fw-bold"><?= $queues['summary']['average_wait_seconds'] === null ? '—' : number_format((float) $queues['summary']['average_wait_seconds'] / 60, 1) . ' min' ?></div></div></div>
+    </div>
+    <?php if (!$queues['by_service']): ?><?= empty_state('bi-ticket', 'No queue tickets were issued in this period.') ?>
+    <?php else: ?><div class="table-responsive"><table class="table table-b mb-0"><thead><tr><th>Service</th><th class="text-end">Issued</th><th class="text-end">Served</th><th class="text-end">Average wait</th></tr></thead><tbody>
+      <?php foreach ($queues['by_service'] as $row): ?><tr><td><?= e((string) $row['service']) ?></td><td class="text-end"><?= number_format((int) $row['total']) ?></td><td class="text-end"><?= number_format((int) $row['served_count']) ?></td><td class="text-end"><?= $row['average_wait_seconds'] === null ? '—' : number_format((float) $row['average_wait_seconds'] / 60, 1) . ' min' ?></td></tr><?php endforeach; ?>
+    </tbody></table></div><?php endif; ?>
+  </div></div>
 <?php else: ?>
   <?php $s = $data['summary']; ?>
   <div class="row g-3 mb-3">
     <?php foreach ([
-      'Total incidents' => (int) $s['total'], 'Pending' => (int) $s['pending_count'], 'Active' => (int) $s['active_count'],
-      'Scheduled' => (int) $s['scheduled_count'], 'Resolved' => (int) $s['resolved_count'],
-    ] as $label => $count): ?><div class="col-6 col-lg"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div><?php endforeach; ?>
+      'Total incidents' => (int) $s['total'], 'Ongoing' => (int) $s['ongoing_count'], 'Unresolved' => (int) $s['unresolved_count'],
+      'Resolved' => (int) $s['resolved_count'], 'Dismissed' => (int) $s['dismissed_count'], 'Archived' => (int) $s['archived_count'],
+    ] as $label => $count): ?><div class="col-6 col-lg-4"><div class="card-b h-100"><div class="card-h"><h2><?= e($label) ?></h2></div><div class="card-body-b"><div class="fs-3 fw-bold"><?= number_format($count) ?></div></div></div></div><?php endforeach; ?>
   </div>
   <div class="card-b mb-3"><div class="card-h"><h2>Resolution rate</h2></div><div class="card-body-b"><div class="fs-2 fw-bold"><?= number_format((float) $s['resolution_rate'], 1) ?>%</div><div class="text-muted small">Resolved cases divided by all non-archived cases recorded in the selected incident-date period.</div></div></div>
   <?php foreach ([

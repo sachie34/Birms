@@ -2,7 +2,7 @@
 
 Barangay Wawa, Balagtas, Bulacan. Original baseline: 17 Oct 2026.
 
-> **Historical checklist — superseded for current status.** This file preserves the earlier B1–B6 snapshot and test counts. Do not treat its older B7/B8/B9 “NOT STARTED” rows or old test totals as the present state. The current source has report/dashboard and SQL export/optional WebDAV configuration flows with automated coverage; the latest combined CI run passed 37/37 authentication/security/audit checks and 184/184 module checks (221 total). See [the current 20-function verification checklist](FINAL_20_FUNCTION_VERIFICATION.md) and [paper-to-code alignment](PAPER_CODE_ALIGNMENT.md) for current status. Local XAMPP/browser/PDF/printer checks, approval of official templates/fees/role policy, live SMS confirmation and live cloud upload/restore remain separate acceptance tasks.
+> **Historical checklist — superseded for current status.** This file preserves an earlier B1–B6 snapshot and test counts. Do not treat its older module statuses, role descriptions or CI totals as the current MSIT candidate state. For the current branch, role map, exact CI evidence and target-PC acceptance gates, use [the MSIT XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [the panel demo status](PANEL_DEMO_STATUS.md) and [the current quick user workflow](QUICK_USER_WORKFLOW.md). Local XAMPP/browser/PDF/printer checks and official template/fee/policy approvals remain separate acceptance tasks.
 **Rule:** nothing is "verified" until its test passes on the owner's XAMPP. "Sandbox" below means my test environment
 (PHP 8.3.6, MariaDB 10.11, PHP built-in server), which is **not** the owner's XAMPP.
 
@@ -10,9 +10,9 @@ Barangay Wawa, Balagtas, Bulacan. Original baseline: 17 Oct 2026.
 | Batch | Content | Status |
 |---|---|---|
 | B1 | Accounts, sign-in lockout, roles (provisional), audit trail, user management, layout | Built. Sandbox-verified. XAMPP retest pending |
-| B2 | Settings: barangay details, Puroks and lists, document types with fee and wording, age brackets, SMS text | Built. Sandbox-verified. XAMPP retest pending |
+| B2 | Settings: barangay details, Puroks and lists, document types with fee and wording, age brackets, and email notification settings | Built. Sandbox-verified. XAMPP retest pending |
 | B3 | Residents and households: register, edit, search, archive/restore, household head, CSV export | Built. Sandbox-verified. XAMPP retest pending |
-| B4 | Visitor log, document requests, request tracker and SMS outbox with optional Semaphore/Infobip adapters | Built and mocked-provider tested. Real XAMPP/SMS delivery check pending |
+| B4 | Visitor log, document requests, request tracker and email-only resident notifications; legacy SMS outbox records retained | Automated outbox coverage updated. Real XAMPP/email delivery check pending |
 | B5 | Certificate issue, print, issuance history and export, unique O.R. numbers | Built. Sandbox-verified. XAMPP retest pending |
 | B6 | Blotter: cases, parties, status, hearings with printable summons, case look-up, clearance background check | Built. Sandbox-verified. XAMPP retest pending |
 | B7 | Reports (monthly, quarterly), real dashboard figures, incident counts by Purok, demographic breakdown | NOT STARTED |
@@ -42,7 +42,7 @@ Barangay Wawa, Balagtas, Bulacan. Original baseline: 17 Oct 2026.
 | 18 | Audit trail | Built (sandbox) | A1 to A6, B2-16, B3-18, B4-18, B5-8 |
 | 19 | Executive dashboard | Partial | Shell and recent activity only. Real figures in B7 |
 | 20 | Backup and export | NOT STARTED | CSV exports exist for audit, residents and history |
-| 21 | SMS notifications | Optional provider integration; disabled by default | B12-01–B12-10 cover mocked provider behavior; real SMS submission/delivery remains unverified |
+| 21 | Resident notifications | Email-only notification outbox; QR kiosk and status tracker are the resident-facing workflow | Automated email-outbox tests; real mailbox delivery remains unverified. Legacy SMS records/migrations are retained, but no SMS is sent. |
 
 ## 3. Test evidence (sandbox, 16 Oct 2026)
 | Suite | PASS | FAIL | NOT TESTED |
@@ -65,7 +65,7 @@ Fix applied, awaiting retest: M7 (needs Apache), L5 and L6 (need a browser) (3).
 
 ## 6. Pending (not invented)
 Official Purok list, fees and tiers, certificate wording and letterhead, Captain and Secretary names, resident categories, government report formats,
-SMS provider, voter-check method, HTTPS setup, the Barangay Secretary's validation of permissions, the owner's real `barangay_db` structure.
+email transport, voter-check method, HTTPS setup, the Barangay Secretary's validation of permissions, the owner's real `barangay_db` structure.
 
 ## 7. How to continue
 1. Run both test runners on your XAMPP (README_XAMPP.md section 6) and send the full output.

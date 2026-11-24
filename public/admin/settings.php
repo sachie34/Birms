@@ -1,19 +1,32 @@
 <?php
-/** Settings: barangay details, Puroks and lists, document types with fees and wording, SMS text. */
+/** Settings: barangay details, Puroks and lists, document types with fees and wording, and email notifications. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
-require_permission('settings.view');
 $canEdit = can('settings.edit');
-$tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'sms' => 'SMS text'];
-$tab = get_str('tab'); $tab = isset($tabs[$tab]) ? $tab : 'general';
+$canEditDocuments = $canEdit || can('documents.templates.manage');
+$tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'notifications' => 'Notifications'];
+$requestedTab = is_post() ? post_str('tab') : get_str('tab');
+$tab = isset($tabs[$requestedTab]) ? $requestedTab : 'general';
+// Secretary's template permission is deliberately isolated from system configuration.
+if ($tab === 'documents') {
+    require_permission('documents.templates.manage');
+} else {
+    require_permission('settings.view');
+}
 $errors = [];
 
 if (is_post()) {
     require_csrf();
-    require_permission('settings.edit');
-    $do = post_str('do'); $tab = isset($tabs[post_str('tab')]) ? post_str('tab') : 'general';
+    $do = post_str('do');
+    if ($do === 'doctype_save') {
+        if (!$canEdit) { require_permission('documents.templates.manage'); }
+    } else {
+        // Adding document types and changing every other setting remain Admin-only.
+        require_permission('settings.edit');
+    }
+    $tab = isset($tabs[post_str('tab')]) ? post_str('tab') : 'general';
     try {
         db_transaction(function () use ($do, &$errors): void {
             switch ($do) {
@@ -38,9 +51,44 @@ if (is_post()) {
                     audit('lookup_added', 'Settings', 'Success', LOOKUP_LISTS[$key] . ': ' . $label, 'lookup', (int) db()->lastInsertId());
                     flash_add('success', 'Added.');
                     break;
+                case 'lookup_rename':
+                    $id = post_int('id');
+                    $label = post_str('label');
+                    $row = $id === null ? null : db_one('SELECT lookup_id, list_key, label FROM lookups WHERE lookup_id = ?', [$id]);
+                    if ($row === null || !isset(LOOKUP_LISTS[(string) ($row['list_key'] ?? '')])) {
+                        $errors[] = 'That list entry does not exist.';
+                    } elseif ($row['list_key'] === 'resident_status'
+                        && in_array((string) $row['label'], ['Active', 'Transferred', 'Deceased', 'Non-resident'], true)) {
+                        $errors[] = 'The four required resident statuses are protected because system logic and reports depend on their names. Add a new status instead.';
+                    } elseif (!v_len($label, 1, 100)) {
+                        $errors[] = 'The list name must be 1-100 characters.';
+                    } elseif (db_val(
+                        'SELECT COUNT(*) FROM lookups WHERE list_key = ? AND label = ? AND lookup_id <> ?',
+                        [$row['list_key'], $label, $id]
+                    )) {
+                        $errors[] = 'Another entry already uses that name.';
+                    }
+                    if ($errors) { throw new RuntimeException('invalid'); }
+                    $changed = db_exec(
+                        'UPDATE lookups SET label = ? WHERE lookup_id = ? AND list_key = ?',
+                        [$label, $id, $row['list_key']]
+                    );
+                    if ($changed !== 1 && (string) $row['label'] !== $label) {
+                        throw new RuntimeException('The list entry changed before it could be renamed. Refresh and try again.');
+                    }
+                    audit('lookup_renamed', 'Settings', 'Success',
+                        LOOKUP_LISTS[(string) $row['list_key']] . ': ' . $row['label'] . ' -> ' . $label,
+                        'lookup', (int) $id);
+                    flash_add('success', 'List name updated. Existing resident records keep their linked value.');
+                    break;
                 case 'lookup_toggle':
                     $id = post_int('id'); $row = $id === null ? null : db_one('SELECT lookup_id, list_key, label, is_active FROM lookups WHERE lookup_id = ?', [$id]);
                     if ($row === null) { $errors[] = 'That entry does not exist.'; throw new RuntimeException('invalid'); }
+                    if ($row['list_key'] === 'resident_status'
+                        && in_array((string) $row['label'], ['Active', 'Transferred', 'Deceased', 'Non-resident'], true)) {
+                        $errors[] = 'The four required resident statuses cannot be hidden because system logic and reports depend on them.';
+                        throw new RuntimeException('invalid');
+                    }
                     db_exec('UPDATE lookups SET is_active = 1 - is_active WHERE lookup_id = ?', [$id]);
                     audit('lookup_toggled', 'Settings', 'Success', $row['label'] . ($row['is_active'] ? ' hidden' : ' shown'), 'lookup', (int) $id);
                     flash_add('success', 'Updated. Hidden entries stay on old records but cannot be chosen for new ones.');
@@ -55,15 +103,34 @@ if (is_post()) {
                     flash_add('success', 'Document added. Set its fee and wording before it can be issued.');
                     break;
                 case 'doctype_save':
-                    $id = post_int('id'); $dt = $id === null ? null : db_one('SELECT type_id, name FROM document_types WHERE type_id = ?', [$id]);
-                    $fee = post_str('fee_amount'); $body = post_text('template_body');
+                    $id = post_int('id');
+                    $dt = $id === null ? null : db_one('SELECT type_id, name, fee_amount, is_active, requires_chairman_signature FROM document_types WHERE type_id = ?', [$id]);
+                    $canManageDocumentSettings = can('settings.edit');
+                    $fee = $canManageDocumentSettings
+                        ? post_str('fee_amount')
+                        : (string) ($dt['fee_amount'] ?? '');
+                    $body = post_text('template_body');
+                    if ($canManageDocumentSettings) {
+                        $requiresSignatureInput = post_str('requires_chairman_signature');
+                        $requiresSignature = $requiresSignatureInput === ''
+                            ? (int) ($dt['requires_chairman_signature'] ?? 1)
+                            : ($requiresSignatureInput === '1' ? 1 : 0);
+                        $isActive = post_str('is_active') === '1' ? 1 : 0;
+                    } else {
+                        // Secretary may maintain wording, but cannot alter fees, availability or signature policy.
+                        $requiresSignature = (int) ($dt['requires_chairman_signature'] ?? 1);
+                        $isActive = (int) ($dt['is_active'] ?? 0);
+                    }
                     if ($dt === null) { $errors[] = 'That document does not exist.'; }
                     if ($fee !== '' && !v_money($fee)) { $errors[] = 'Fee must be an amount like 50 or 50.00 (0 means free).'; }
                     if (str_len($body) > 4000) { $errors[] = 'Wording is limited to 4,000 characters.'; }
                     if ($unknown = template_unknown_tokens($body, TEMPLATE_TOKENS)) { $errors[] = 'Unknown placeholder(s): {{' . implode('}}, {{', $unknown) . '}}.'; }
                     if ($errors) { throw new RuntimeException('invalid'); }
-                    db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ? WHERE type_id = ?', [$fee === '' ? null : $fee, $body === '' ? null : $body, post_str('is_active') === '1' ? 1 : 0, $id]);
-                    audit('doctype_saved', 'Settings', 'Success', $dt['name'] . ': fee ' . ($fee === '' ? 'not set' : $fee) . ', wording ' . ($body === '' ? 'not set' : 'set'), 'document_type', (int) $id);
+                    db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, is_active = ?, requires_chairman_signature = ? WHERE type_id = ?',
+                        [$fee === '' ? null : $fee, $body === '' ? null : $body, $isActive, $requiresSignature, $id]);
+                    audit('doctype_saved', 'Settings', 'Success',
+                        $dt['name'] . ': fee ' . ($fee === '' ? 'not set' : $fee) . ', wording ' . ($body === '' ? 'not set' : 'set')
+                        . ', Chairman signature ' . ($requiresSignature ? 'required' : 'not required'), 'document_type', (int) $id);
                     flash_add('success', 'Saved ' . $dt['name'] . '.');
                     break;
                 case 'fee_rule_add':
@@ -132,14 +199,22 @@ if (is_post()) {
                     audit('settings_saved', 'Settings', 'Success', 'Hearing summons wording ' . ($t === '' ? 'cleared' : 'updated'), 'settings', null);
                     flash_add('success', 'Summons wording saved.');
                     break;
-                case 'sms_save':
-                    $t = post_str('sms_ready_text');
-                    if (str_len($t) > 300) { $errors[] = 'SMS text is limited to 300 characters.'; }
-                    if ($unknown = template_unknown_tokens($t, SMS_TOKENS)) { $errors[] = 'Unknown placeholder(s): {{' . implode('}}, {{', $unknown) . '}}.'; }
+                case 'email_settings_save':
+                    $enabled = post_str('email_enabled');
+                    $from = trim(post_str('email_from_email'));
+                    $name = trim(post_str('email_from_name'));
+                    if (!in_array($enabled, ['0', '1'], true)) { $errors[] = 'Choose whether email notifications are enabled.'; }
+                    if ($enabled === '1' && !v_email($from)) { $errors[] = 'Enter a valid sender email address before enabling email notifications.'; }
+                    elseif ($from !== '' && !v_email($from)) { $errors[] = 'Sender email address is invalid.'; }
+                    if (!v_len($name, 2, 100)) { $errors[] = 'Sender display name must be 2-100 characters.'; }
+                    if (preg_match('/[\\r\\n]/', $name) === 1) { $errors[] = 'Sender display name cannot contain line breaks.'; }
                     if ($errors) { throw new RuntimeException('invalid'); }
-                    setting_set('sms_ready_text', $t);
-                    audit('settings_saved', 'Settings', 'Success', 'SMS text updated', 'settings', null);
-                    flash_add('success', 'SMS text saved.');
+                    setting_set('email_enabled', $enabled);
+                    setting_set('email_from_email', $from);
+                    setting_set('email_from_name', $name);
+                    audit('notification_email_settings_saved', 'Notifications', 'Success',
+                        'Email notifications ' . ($enabled === '1' ? 'enabled' : 'disabled') . '; sender identity updated.');
+                    flash_add('success', 'Email notification settings saved. The PHP mail transport must also be configured on the server before messages can be delivered.');
                     break;
                 default:
                     $errors[] = 'Unknown action.'; throw new RuntimeException('invalid');
@@ -152,13 +227,25 @@ if (is_post()) {
     }
 }
 
-render_header('Settings', [['Settings', null]], 'settings');
-page_head('Settings', 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.');
+$pageTitle = $canEdit ? 'Settings' : 'Document Templates';
+$activeMenuKey = $tab === 'documents' ? 'document_templates' : 'settings';
+render_header($pageTitle, [[$pageTitle, null]], $activeMenuKey);
+page_head($pageTitle, $canEdit
+    ? 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.'
+    : 'Maintain certificate wording and placeholders. Admin controls document types, fees, availability and signature requirements.');
+if ($canEdit) { echo '<div class="mb-3">' . btn_link('admin/chairman_signature.php', 'Manage Chairman Signature Image', 'btn-light border', 'bi-pen') . '</div>'; }
 echo errors_box($errors);
 echo '<ul class="nav nav-pills mb-3">';
-foreach ($tabs as $k => $lab) { echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('admin/settings.php?tab=' . $k)) . '">' . e($lab) . '</a></li>'; }
+foreach ($tabs as $k => $lab) {
+    if (!$canEdit && $k !== 'documents') { continue; }
+    echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('admin/settings.php?tab=' . $k)) . '">' . e($lab) . '</a></li>';
+}
 echo '</ul>';
-if (!$canEdit) { echo '<div class="alert alert-info">You can view settings but not change them.</div>'; }
+if (!$canEdit && $canEditDocuments) {
+    echo '<div class="alert alert-info">You can edit document wording only. Fees, availability, signature requirements and system settings are managed by Admin.</div>';
+} elseif (!$canEdit) {
+    echo '<div class="alert alert-info">You can view settings but not change them.</div>';
+}
 $hidden = fn(string $do) => csrf_field() . '<input type="hidden" name="do" value="' . e($do) . '"><input type="hidden" name="tab" value="' . e($tab) . '">';
 
 if ($tab === 'general') {
@@ -174,7 +261,9 @@ if ($tab === 'general') {
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
     card_end();
 } elseif ($tab === 'puroks' || $tab === 'lists') {
-    $keys = $tab === 'puroks' ? ['purok'] : ['resident_category', 'visit_class', 'id_type', 'employment_status', 'incident_type'];
+    // Revised MSIT lists replace the old household/category/visit classifications.
+    // Hiding a value prevents new selection but preserves existing resident references.
+    $keys = $tab === 'puroks' ? ['purok'] : ['resident_status', 'resident_type', 'incident_type'];
     foreach ($keys as $key) {
         $items = db_all('SELECT lookup_id, label, is_active FROM lookups WHERE list_key = ? ORDER BY sort_order, label', [$key]);
         card_start(LOOKUP_LISTS[$key], $key === 'purok' ? 'The official Purok names have not been provided. Enter them here.' : 'Enter the categories approved for your barangay. Reporting will group records using these values.', 'mb-3');
@@ -182,7 +271,15 @@ if ($tab === 'general') {
         else {
             echo '<table class="table table-b mb-3"><tbody>';
             foreach ($items as $it) {
-                echo '<tr><td>' . e((string) $it['label']) . '</td><td>' . ($it['is_active'] ? pill('Shown', 'green') : pill('Hidden', 'grey')) . '</td><td class="text-end">'
+                echo '<tr><td class="align-middle">'
+                   . ($canEdit
+                       ? '<form method="post" action="' . e(base_url('admin/settings.php')) . '" class="d-flex gap-2 align-items-center">' . $hidden('lookup_rename')
+                           . '<input type="hidden" name="id" value="' . (int) $it['lookup_id'] . '">'
+                           . '<label class="visually-hidden" for="lookup_label_' . (int) $it['lookup_id'] . '">Rename ' . e((string) $it['label']) . '</label>'
+                           . '<input class="form-control form-control-sm" id="lookup_label_' . (int) $it['lookup_id'] . '" name="label" value="' . e((string) $it['label']) . '" maxlength="100" required>'
+                           . '<button class="btn btn-sm btn-light border" type="submit">Rename</button></form>'
+                       : e((string) $it['label']))
+                   . '</td><td class="align-middle">' . ($it['is_active'] ? pill('Shown', 'green') : pill('Hidden', 'grey')) . '</td><td class="text-end align-middle">'
                    . ($canEdit ? btn_post('admin/settings.php', ['do' => 'lookup_toggle', 'tab' => $tab, 'id' => $it['lookup_id']], $it['is_active'] ? 'Hide' : 'Show', 'btn-sm btn-light border') : '') . '</td></tr>';
             }
             echo '</tbody></table>';
@@ -233,15 +330,38 @@ if ($tab === 'general') {
         card_end();
     }
 } elseif ($tab === 'documents') {
-    $types = db_all('SELECT type_id, name, fee_amount, template_body, is_active FROM document_types ORDER BY sort_order, name');
-    echo '<div class="alert alert-secondary">Placeholders for wording: ' . e('{{' . implode('}} {{', TEMPLATE_TOKENS) . '}}') . '. {{barangay}}, {{municipality}} and {{province}} insert only the name (for example Wawa). A document cannot be issued until its fee (0 means free) <strong>and</strong> wording are set.</div>';
+    $types = db_all('SELECT type_id, name, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types ORDER BY sort_order, name');
+    echo '<div class="alert alert-secondary">Available resident/request placeholders: ' . e('{{' . implode('}} {{', TEMPLATE_TOKENS) . '}}') . '. Use the formatting toolbar and live preview below. Official document wording and fees must be approved by the barangay; only templates prefixed DEMO ONLY are preloaded with fictitious sample wording.</div>';
     foreach ($types as $t) {
         card_start((string) $t['name'], 'Fee: ' . money($t['fee_amount']) . ' · Wording: ' . ($t['template_body'] === null ? 'not set' : 'set'), 'mb-3');
         echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('doctype_save') . '<input type="hidden" name="id" value="' . (int) $t['type_id'] . '">';
         echo f_text('fee_amount', 'Fee (PHP)', $t['fee_amount'] === null ? '' : (string) $t['fee_amount'], ['maxlength' => 9, 'inputmode' => 'decimal', 'help' => 'Blank = not set yet. 0 = free.', 'disabled' => !$canEdit, 'col' => 'col-md-3']);
         echo f_select('is_active', 'Available', ['1' => 'Yes', '0' => 'No'], $t['is_active'] ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-3']);
-        echo f_textarea('template_body', 'Official wording', (string) $t['template_body'], ['rows' => 5, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
-        if (!$canEdit) { echo '</div></form>'; } else { echo '</div><button class="btn btn-primary" type="submit">Save</button></form>'; }
+        echo f_select('requires_chairman_signature', 'Chairman signature required', ['1' => 'Yes — apply stored image', '0' => 'No — no Chairman signature needed'], (int) $t['requires_chairman_signature'] === 1 ? '1' : '0', ['disabled' => !$canEdit, 'col' => 'col-md-6', 'help' => 'When Yes, certificate issuance is blocked until Admin uploads the current Chairman signature image.']);
+        echo '<div class="col-12 document-editor-wrap">';
+        echo '<label class="form-label" for="template_body_' . (int) $t['type_id'] . '">Document wording and layout</label>';
+        echo '<p class="form-text">Use the toolbar to format the document. Supported formatting is saved with the template and appears in print/PDF output. Placeholder fields are filled from the resident/request record.</p>';
+        echo '<div class="document-editor-toolbar" role="toolbar" aria-label="Document formatting">';
+        foreach ([
+            ['Bold', '**', 'Wrap selected text in bold'],
+            ['Italic', '*', 'Wrap selected text in italics'],
+            ['Underline', '__', 'Underline selected text'],
+        ] as [$label, $marker, $tip]) {
+            echo '<button type="button" class="btn btn-sm btn-light border" data-editor-wrap="' . e($marker) . '" title="' . e($tip) . '"' . (!$canEditDocuments ? ' disabled' : '') . '>' . e($label) . '</button>';
+        }
+        foreach ([
+            ['Heading', '# '], ['Subheading', '## '], ['Bullets', '- '], ['Numbering', '1. '], ['Divider', '---'],
+        ] as [$label, $marker]) {
+            echo '<button type="button" class="btn btn-sm btn-light border" data-editor-prefix="' . e($marker) . '"' . (!$canEditDocuments ? ' disabled' : '') . '>' . e($label) . '</button>';
+        }
+        foreach (TEMPLATE_TOKENS as $token) {
+            echo '<button type="button" class="btn btn-sm btn-outline-secondary" data-editor-token="{{' . e($token) . '}}" title="Insert resident/request field"' . (!$canEditDocuments ? ' disabled' : '') . '>{{' . e($token) . '}}</button>';
+        }
+        echo '</div>';
+        echo '<textarea class="form-control document-template-editor" id="template_body_' . (int) $t['type_id'] . '" name="template_body" rows="9" maxlength="4000" data-document-editor' . (!$canEditDocuments ? ' readonly' : '') . '>' . e((string) $t['template_body']) . '</textarea>';
+        echo '<div class="document-preview-label">Live document preview</div><div class="document-template-preview" data-document-preview aria-live="polite"></div>';
+        echo '</div>';
+        if (!$canEditDocuments) { echo '</div></form>'; } else { echo '</div><button class="btn btn-primary" type="submit">Save</button></form>'; }
         card_end();
     }
     if ($canEdit) {
@@ -257,17 +377,19 @@ if ($tab === 'general') {
     echo f_textarea('summons_wording', 'Official wording', (string) setting('summons_wording', ''), ['rows' => 7, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
     card_end();
+} elseif ($tab === 'notifications') {
+    $emailStatus = email_provider_config();
+    card_start('Default email notifications', 'Email is the default resident notification channel. The server must have a working PHP mail transport; setting a sender address alone does not create an email account or SMTP relay.');
+    echo '<div class="alert alert-' . ($emailStatus['enabled'] ? 'success' : 'secondary') . '"><strong>Email status: ' . ($emailStatus['enabled'] ? 'Enabled' : 'Not ready') . '</strong><br>' . e((string) $emailStatus['reason']) . '</div>';
+    echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('email_settings_save');
+    echo f_select('email_enabled', 'Email notification channel', ['1' => 'Enabled', '0' => 'Disabled'], $emailStatus['requested_enabled'] ? '1' : '0', ['required' => true, 'disabled' => !$canEdit, 'col' => 'col-md-4', 'help' => 'New resident status notices use email by default.']);
+    echo f_text('email_from_email', 'Sender email address', (string) $emailStatus['from_email'], ['type' => 'email', 'maxlength' => 100, 'required' => $emailStatus['requested_enabled'], 'disabled' => !$canEdit, 'col' => 'col-md-4']);
+    echo f_text('email_from_name', 'Sender display name', (string) $emailStatus['from_name'], ['maxlength' => 100, 'required' => true, 'disabled' => !$canEdit, 'col' => 'col-md-4']);
+    echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save email settings</button>' : '') . '</form>';
+    echo '<p class="small text-muted mt-3 mb-0">Do not put SMTP passwords or provider API keys in this page. Configure the approved mail relay in the private server configuration. Email notices remain in the outbox when delivery is not configured.</p>';
+    card_end();
 } else {
-    $smsStatus = sms_provider_status_summary();
-    echo '<div class="alert alert-' . ($smsStatus['enabled'] ? 'success' : 'secondary') . '"><strong>' . e((string) $smsStatus['provider']) . ' SMS: ' . ($smsStatus['enabled'] ? 'Enabled' : 'Disabled') . '</strong><br>' . e((string) $smsStatus['reason']) . '. API keys are read only from private server configuration and are never stored in this Settings page.</div>';
-    echo '<div class="alert alert-warning">When enabled, changing a request to Ready can send a real SMS and incur provider charges. Network failures do not undo the saved request status. Unknown outcomes are not retried automatically.</div>';
-    if ($canEdit) {
-        echo '<p>' . btn_link('admin/sms.php', 'Open SMS Delivery Log', 'btn-primary', 'bi-chat-dots') . '</p>';
-    }
-    card_start('SMS text', 'Template for the ready-for-pickup notification. Messages are recorded in the outbox; the selected provider sends them only when explicitly enabled in private config.');
-    echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('sms_save');
-    echo f_textarea('sms_ready_text', 'Message when a request is ready (placeholders: {{reference_no}} {{document_name}})', (string) setting('sms_ready_text', ''), ['rows' => 3, 'maxlength' => 300, 'help' => 'Default: Your request {{reference_no}} ({{document_name}}) is ready for pickup at the barangay office.']);
-    echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
+    card_start('System settings', 'Choose a settings tab to continue.');
     card_end();
 }
 render_footer();

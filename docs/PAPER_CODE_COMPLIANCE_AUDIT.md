@@ -1,4 +1,4 @@
-> **Current status pointer (2026-10-29):** This document preserves an earlier paper-compliance audit snapshot. For current code/test readiness, see [FINAL_20_FUNCTION_VERIFICATION.md](FINAL_20_FUNCTION_VERIFICATION.md), [PAPER_CODE_ALIGNMENT.md](PAPER_CODE_ALIGNMENT.md), and [QUICK_USER_WORKFLOW.md](QUICK_USER_WORKFLOW.md). Do not use the historical test totals below as the latest run.
+> **Historical paper-compliance snapshot:** this document contains earlier B1–B12 and Captain/Clerk role assumptions. Do not use it as current MSIT acceptance authority. For the revised candidate use [MSIT XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [current quick user workflow](QUICK_USER_WORKFLOW.md), and [panel demo status](PANEL_DEMO_STATUS.md). Do not use the historical CI totals or role matrix below to describe the current candidate.
 
 # Paper-to-Code Compliance Audit — BIRMS
 
@@ -13,7 +13,7 @@
 1. The submitted research paper defines the approved study objectives, core modules, scope, and limitations.
 2. The two five-module process-documentation files define additional detailed workflows submitted by the team. These must be mapped to the approved paper before treating them as mandatory system scope.
 3. Existing repository code, schema, tests, and setup notes determine what is actually implemented.
-4. Never invent official barangay fees, Purok names, certificate wording, or SMS-provider settings.
+4. Never invent official barangay fees, Purok names, certificate wording, or notification-provider settings.
 
 ## Paper-scope decisions required before final submission
 
@@ -83,7 +83,7 @@ The following table tracks the additional 20 assigned functions in `BIRMS_Projec
 - Report functionality is implemented and integration-tested on disposable MariaDB, but office-data reconciliation, actual XAMPP/browser checks, retrieval-time measurements and approved agency output templates remain outstanding.
 - The paper excludes online payment gateways, resident self-service accounts, native mobile apps, and external national-LGU database integrations. Do not add these as part of this compliance pass.
 - The second submitted paper contains an unresolved `{specify}` placeholder for the documents covered by communication/hearing notices. Do not infer a new feature from that placeholder.
-- SMS is currently described in the repository setup notes as **log-only**. The paper's later objectives and panel recommendations request automated SMS. This is a documented gap until a real gateway is configured, tested, and authorized; do not claim messages are sent when they are only logged.
+- The project owner has removed SMS from the active system in favor of the shared QR kiosk. Historical SMS outbox tables and migration history remain for compatibility and audit preservation; no new SMS messages are created or sent. Resident notifications are email-only.
 
 ## Safe implementation and verification rules
 
@@ -102,7 +102,7 @@ The merged main branch implements authentication/RBAC, resident management, cert
 Recent supplementary changes include private visitor/request attachments; server-generated draft PDF certificates; fee-matrix quotations and a separate cash-collection ledger; ledger-aware issuance history with transaction date and reconciliation filter; combined monthly/quarterly administrative reporting; dashboard collection figures sourced from reconciled ledger entries; and optional HTTPS WebDAV backup upload. Optional cloud upload is implemented but cannot be considered deployed or verified until an approved cloud destination and private credentials are supplied.
 
 
-**Still not verified / deliberately not claimed:** target-XAMPP/browser UAT; official role-matrix approval; official certificate/summons wording and fee rates; manual-vs-digital retrieval timings; office-data reconciliation; a successful backup restoration; cloud/scheduled backup; actual SMS delivery; and external COMELEC lookup. The verification log records a staff check and does not contact COMELEC. The fee matrix quotes an approved rate but does not prove cash was received. SMS remains log-only.
+**Still not verified / deliberately not claimed:** target-XAMPP/browser UAT; official role-matrix approval; official certificate/summons wording and fee rates; manual-vs-digital retrieval timings; office-data reconciliation; a successful backup restoration; cloud/scheduled backup; actual email delivery; and external COMELEC lookup. The verification log records a staff check and does not contact COMELEC. The fee matrix quotes an approved rate but does not prove cash was received. SMS delivery is removed; historical records remain.
 
 This report records the current automated verification and remaining gaps; it is not a substitute for end-to-end testing against a configured XAMPP working copy.
 

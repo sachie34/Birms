@@ -1,54 +1,44 @@
 <?php
-/** POST only: move a case to its next status, archive a resolved case, or restore it. */
+/** POST-only SRS case-status action. Legacy Pending/Active/Scheduled actions are retired. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
 require_login();
+if (!is_post()) { abort(405, 'Blotter actions must use POST.'); }
 require_csrf();
 require_permission('blotters.view');
-$id = post_int('id'); $do = post_str('do');
-if ($id === null || !in_array($do, ['move', 'archive', 'restore'], true)) { abort(404, 'Unknown action.'); }
-$c = db_one('SELECT * FROM blotters WHERE blotter_id = ?', [$id]);
-if ($c === null) { abort(404, 'That case was not found.'); }
-$back = fn() => redirect('blotters/view.php', ['id' => $id]);
-$refuse = function (string $why) use ($c, $do, $back): never {
-    audit_best_effort('blotter_action_refused', 'Blotter', 'Failed', $c['case_no'] . ' ' . $do . ': ' . $why);
-    flash_add('danger', $why); $back();
-};
 
-if ($do === 'move') {
-    $to = post_str('to'); $note = post_str('note');
-    if ($c['archived_at'] !== null) { $refuse('Archived cases cannot change status.'); }
-    $perm = BLOTTER_MOVES[(string) $c['status']][$to] ?? null;
-    if ($perm === null) { $refuse('A ' . $c['status'] . ' case cannot be moved to ' . ($to === '' ? 'that status' : $to) . '.'); }
-    require_permission($perm);
-    if ($to === 'Resolved') {
-        if (!v_len($note, 3, 500)) { $refuse('Say how the case was resolved (3-500 characters).'); }
-        if ((int) db_val("SELECT COUNT(*) FROM hearings WHERE blotter_id = ? AND status = 'Scheduled'", [$id]) > 0) { $refuse('Record the outcome of the scheduled hearing first (Held, Postponed or Cancelled), then resolve the case.'); }
-    }
-    $ok = db_transaction(function () use ($c, $to, $note): bool {
-        $n = db_exec("UPDATE blotters SET status = ?, resolution_note = ?, resolved_at = " . ($to === 'Resolved' ? 'NOW()' : 'NULL') . " WHERE blotter_id = ? AND status = ? AND archived_at IS NULL",
-            [$to, $to === 'Resolved' ? $note : null, $c['blotter_id'], $c['status']]);
-        if ($n !== 1) { return false; }
-        audit('blotter_status_changed', 'Blotter', 'Success', $c['case_no'] . ': ' . $c['status'] . ' -> ' . $to . ($to === 'Resolved' ? ' (' . $note . ')' : ''), 'blotter', (int) $c['blotter_id']);
-        return true;
-    });
-    if (!$ok) { $refuse('This case was changed by someone else. Reload and try again.'); }
-    flash_add('success', 'Case is now ' . $to . '.'); $back();
+$id = post_int('id');
+$do = post_str('do');
+$to = post_str('to');
+$note = post_str('note');
+if ($id === null || $id < 1 || $do !== 'srs_move') {
+    abort(404, 'Unknown blotter action.');
 }
 
-require_permission('blotters.archive');
-if ($do === 'archive') {
-    if ($c['status'] !== 'Resolved' || $c['archived_at'] !== null) { $refuse('Only a resolved case can be archived.'); }
-    db_transaction(function () use ($c): void {
-        db_exec('UPDATE blotters SET archived_at = NOW() WHERE blotter_id = ? AND archived_at IS NULL', [$c['blotter_id']]);
-        audit('blotter_archived', 'Blotter', 'Success', $c['case_no'] . ' archived', 'blotter', (int) $c['blotter_id']);
-    });
-    flash_add('success', 'Case archived.'); $back();
+$case = db_one('SELECT blotter_id, case_no, msit_status FROM blotters WHERE blotter_id = ?', [$id]);
+if ($case === null) { abort(404, 'That case was not found.'); }
+
+$permission = MSIT_BLOTTER_MOVES[(string) $case['msit_status']][$to] ?? null;
+if ($permission === null) {
+    audit_best_effort('blotter_action_refused', 'Blotter', 'Failed',
+        (string) $case['case_no'] . ': invalid transition to ' . ($to !== '' ? $to : '(empty)'));
+    flash_add('danger', 'That case cannot be moved to the selected status.');
+    redirect('blotters/view.php', ['id' => $id]);
 }
-if ($c['archived_at'] === null) { $refuse('This case is not archived.'); }
-db_transaction(function () use ($c): void {
-    db_exec('UPDATE blotters SET archived_at = NULL WHERE blotter_id = ? AND archived_at IS NOT NULL', [$c['blotter_id']]);
-    audit('blotter_restored', 'Blotter', 'Success', $c['case_no'] . ' restored', 'blotter', (int) $c['blotter_id']);
-});
-flash_add('success', 'Case restored.'); $back();
+require_permission($permission);
+
+try {
+    blotter_srs_change_status($id, $to, $note);
+    flash_add('success', 'Case status updated to ' . $to . '.');
+} catch (DomainException $e) {
+    abort(403, $e->getMessage());
+} catch (InvalidArgumentException | RuntimeException $e) {
+    audit_best_effort('blotter_action_refused', 'Blotter', 'Failed',
+        (string) $case['case_no'] . ': ' . $e->getMessage());
+    flash_add('danger', $e->getMessage());
+} catch (Throwable $e) {
+    error_log('BIRMS blotter status update failed: ' . get_class($e) . ': ' . $e->getMessage());
+    flash_add('danger', 'The case status could not be saved. Refresh and try again.');
+}
+redirect('blotters/view.php', ['id' => $id]);

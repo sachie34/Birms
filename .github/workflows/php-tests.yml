@@ -2,20 +2,21 @@ name: BIRMS PHP and MySQL checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness]
   push:
-    branches: [main, john/paper-code-compliance]
+    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, codex/presentation-role-ui-readiness, john/phase2-kiosk-no-sms]
 
 permissions:
   contents: read
 
 jobs:
   php-and-integration-tests:
-    name: PHP and MariaDB ${{ matrix.mariadb-version }} checks
+    name: PHP ${{ matrix.php-version }} and MariaDB ${{ matrix.mariadb-version }} checks
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        php-version: ['8.3', '8.4', '8.5', '8.6']
         mariadb-version: ['10.4', '10.11']
     services:
       mariadb:
@@ -49,12 +50,18 @@ jobs:
           grep -Fq '<FilesMatch "^\."' .htaccess
           grep -Fq 'Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
           grep -Fq 'RewriteRule (^|/)\.git(?:/|$) - [F,L]' .htaccess
+          grep -Fq 'Options -Indexes' public/.htaccess
+          for private_dir in app database docs storage tests tools; do
+            test -f "$private_dir/.htaccess"
+            grep -Fq 'Require all denied' "$private_dir/.htaccess"
+            grep -Fq 'Deny from all' "$private_dir/.htaccess"
+          done
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: curl, mbstring, pdo_mysql
+          php-version: ${{ matrix.php-version }}
+          extensions: curl, mbstring, pdo_mysql, zip
           coverage: none
 
       - name: Validate PHP syntax
@@ -82,7 +89,16 @@ jobs:
           BIRMS_DB_PASS: ci-root-pass
         run: php tools/migrate.php up
 
-      - name: Start local PHP server
+      - name: Verify migrated database matches the checked-in schema snapshot
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: php tools/schema_check.php
+
+      - name: Create least-privilege application database account
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
@@ -90,7 +106,28 @@ jobs:
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
         run: |
-          php -S 127.0.0.1:8080 -t public > /tmp/birms-php-server.log 2>&1 &
+          php <<'PHP'
+          <?php
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=mysql;charset=utf8mb4',
+              'root',
+              'ci-root-pass',
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $pdo->exec("CREATE USER 'birms_ci_app'@'%' IDENTIFIED BY 'ci-app-pass'");
+          $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON barangay_db_work.* TO 'birms_ci_app'@'%'");
+          PHP
+
+      - name: Start local PHP server
+        id: start-php
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: birms_ci_app
+          BIRMS_DB_PASS: ci-app-pass
+        run: |
+          php -S 127.0.0.1:8080 -t "$GITHUB_WORKSPACE/public" "$GITHUB_WORKSPACE/tests/php_server_router.php" > /tmp/birms-php-server.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:8080/ > /dev/null; then
               exit 0
@@ -100,20 +137,83 @@ jobs:
           cat /tmp/birms-php-server.log
           exit 1
 
+      - name: Verify HTTPS-required mode rejects plain HTTP
+        run: |
+          BIRMS_REQUIRE_HTTPS=1 php -S 127.0.0.1:8081 -t "$GITHUB_WORKSPACE/public" "$GITHUB_WORKSPACE/tests/php_server_router.php" > /tmp/birms-https-guard.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            status="$(curl --silent --output /tmp/birms-https-guard-body --write-out '%{http_code}' http://127.0.0.1:8081/ || true)"
+            if [ "$status" = "503" ]; then
+              break
+            fi
+            sleep 1
+          done
+          test "$status" = "503"
+          grep -Fq 'BIRMS requires HTTPS for this deployment' /tmp/birms-https-guard-body
+          echo "PASS: HTTPS-required mode returns 503 for plain HTTP without redirecting to a Host header."
+
+      - name: Prepare test report directory
+        if: always() && steps.start-php.outcome == 'success'
+        run: mkdir -p test-reports
+
       - name: Run authentication, security and audit tests
+        if: always() && steps.start-php.outcome == 'success'
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
-        run: php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080
+        run: |
+          set -o pipefail
+          php tests/run_tests.php http://127.0.0.1:8080 --root=http://127.0.0.1:8080 2>&1 | tee test-reports/security-tests.log
 
       - name: Run module integration tests, including reporting and backup access
+        if: always() && steps.start-php.outcome == 'success'
         env:
           BIRMS_DB_HOST: 127.0.0.1
           BIRMS_DB_PORT: 3306
           BIRMS_DB_NAME: barangay_db_work
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
-        run: php tests/run_modules.php http://127.0.0.1:8080
+        run: |
+          set -o pipefail
+          php tests/run_modules.php http://127.0.0.1:8080 2>&1 | tee test-reports/module-tests.log
+
+      - name: Seed and verify isolated MSIT demonstration dataset
+        if: always() && steps.start-php.outcome == 'success'
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: |
+          set -euo pipefail
+          php tools/seed_msit_demo_data.php
+          first="$(php tools/seed_msit_demo_data.php --apply)"
+          printf '%s\n' "$first"
+          echo "$first" | grep -Fq 'Demo dataset created successfully.'
+          second="$(php tools/seed_msit_demo_data.php --apply)"
+          printf '%s\n' "$second"
+          echo "$second" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
+          echo "PASS: demo seed applies to the disposable database and a second apply creates no duplicates."
+
+      - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
+        if: always() && steps.start-php.outcome == 'success'
+        run: |
+          if [ -f /tmp/birms-php-server.log ]; then
+            cp /tmp/birms-php-server.log test-reports/php-server.log
+            echo "---- PHP development-server log (last 200 lines) ----"
+            tail -n 200 /tmp/birms-php-server.log
+          else
+            echo "PHP server log was not created."
+          fi
+
+      - name: Upload test reports, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: birms-test-reports-mariadb-${{ matrix.mariadb-version }}
+          path: test-reports/*.log
+          if-no-files-found: warn
+          retention-days: 30

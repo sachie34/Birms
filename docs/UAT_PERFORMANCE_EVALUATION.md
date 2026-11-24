@@ -22,7 +22,7 @@ Use this sheet for the research paper's functional usability, data accuracy, and
 
 ## Retrieval-speed measurement
 
-The script below measures system-side read operations on the configured working database and reports median, mean, and maximum milliseconds. It prints no resident names or personal details.
+The script below measures system-side read operations on the configured working database and reports median, mean, and maximum milliseconds. It covers resident search, the recent request/blotter/venue directory queries, daily queue dashboard totals, demographic totals, issuance and cash-collection reports, request processing, blotter, venue reservations, and queue statistics. It prints no resident names or personal details. These timings are database-operation timings, not full browser page-load measurements.
 
 ```text
 C:\xampp\php\php.exe tools\benchmark.php --iterations=10
@@ -64,5 +64,5 @@ Record the actual times. Do not write projected speed improvements as measured r
 - Staff-recorded voter status and manual verification do not mean that BIRMS queries COMELEC.
 - Fee matrix rules are configurable; no official rates are preloaded. The certificate issuance history and its CSV use the separate cash-collection ledger for amounts and reconciliation filters; other issuance/report/dashboard fee figures may reflect saved issuance snapshots. Ledger entries are staff-recorded and are not independent proof of cash counts or bank deposits. Review missing historical ledger entries against reliable O.R./cash evidence before financial use. No online payment gateway exists.
 - The backup feature downloads a local SQL export and supports optional one-click HTTPS WebDAV upload when an approved remote folder and dedicated app credentials are configured privately. CI checks URL validation and configuration behavior; a real cloud transfer has not been tested because no cloud account is bundled. Scheduled backups/notifications and verified restoration are not implemented. Test a downloaded or remotely uploaded SQL file by restoring it only into a separate scratch database.
-- SMS is log-only unless a real provider has been authorized and configured.
+- SMS delivery has been removed. Historical SMS outbox tables remain for audit compatibility; resident notifications are email-only.
 - The final role matrix and official certificate/summons wording must be approved by the barangay/system owner.

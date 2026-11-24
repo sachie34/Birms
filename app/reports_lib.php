@@ -8,11 +8,26 @@
 declare(strict_types=1);
 
 /** Return a validated reporting range. End dates are exclusive. */
-function report_period_range(string $period, ?int $year = null, ?int $month = null, ?int $quarter = null): array
+function report_period_range(string $period, ?int $year = null, ?int $month = null, ?int $quarter = null, ?string $anchorDate = null): array
 {
     $now = new DateTimeImmutable('today');
     $year = ($year !== null && $year >= 2000 && $year <= 2100) ? $year : (int) $now->format('Y');
-    $period = in_array($period, ['month', 'quarter', 'year'], true) ? $period : 'month';
+    $period = in_array($period, ['day', 'week', 'month', 'quarter', 'year'], true) ? $period : 'month';
+    $anchorDate = $anchorDate !== null && v_date($anchorDate) ? $anchorDate : $now->format('Y-m-d');
+
+    if ($period === 'day') {
+        $start = new DateTimeImmutable($anchorDate);
+        $end = $start->modify('+1 day');
+        return ['period' => $period, 'year' => (int) $start->format('Y'), 'month' => (int) $start->format('n'), 'quarter' => null,
+            'start' => $start->format('Y-m-d 00:00:00'), 'end' => $end->format('Y-m-d 00:00:00'), 'label' => $start->format('j F Y')];
+    }
+    if ($period === 'week') {
+        $anchor = new DateTimeImmutable($anchorDate);
+        $start = $anchor->modify('-' . ((int) $anchor->format('N') - 1) . ' days');
+        $end = $start->modify('+7 days');
+        return ['period' => $period, 'year' => (int) $start->format('Y'), 'month' => (int) $start->format('n'), 'quarter' => null,
+            'start' => $start->format('Y-m-d 00:00:00'), 'end' => $end->format('Y-m-d 00:00:00'), 'label' => 'Week of ' . $start->format('j F Y')];
+    }
 
     if ($period === 'month') {
         $month = ($month !== null && $month >= 1 && $month <= 12) ? $month : (int) $now->format('n');
@@ -48,27 +63,38 @@ function report_count_value(array &$counts, string $label): void
 function report_demographics(): array
 {
     $rows = db_all(
-        "SELECT r.birthdate, r.sex, r.civil_status, r.voter_status,
+        "SELECT r.birthdate, r.sex,
+                COALESCE(NULLIF(r.marital_status, ''), r.civil_status) AS marital_status,
+                r.voter_status,
                 COALESCE(emp.label, 'Not specified') AS employment_status,
-                COALESCE(pk.label, 'Purok not assigned') AS purok
+                COALESCE(pk.label, 'Purok not assigned') AS purok,
+                COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) AS resident_status,
+                COALESCE(rt.label, oldcat.label, 'Not specified') AS resident_type
          FROM residents r
-         LEFT JOIN households h ON h.household_id = r.household_id
-         LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id AND pk.list_key = 'purok'
+         LEFT JOIN lookups pk ON pk.lookup_id = r.purok_id AND pk.list_key = 'purok'
+         LEFT JOIN lookups rs ON rs.lookup_id = r.resident_status_id AND rs.list_key = 'resident_status'
+         LEFT JOIN lookups rt ON rt.lookup_id = r.resident_type_id AND rt.list_key = 'resident_type'
+         LEFT JOIN lookups oldcat ON oldcat.lookup_id = r.category_id AND oldcat.list_key = 'resident_category'
          LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status'
-         WHERE r.archived_at IS NULL AND r.residency_status = 'Active'
-         ORDER BY r.resident_id"
+         WHERE r.archived_at IS NULL
+           AND COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) = 'Active'"
     );
     $data = [
-        'total' => count($rows), 'age_brackets' => [], 'sex' => [], 'civil_status' => [],
-        'employment_status' => [], 'voter_status' => [], 'purok' => [],
+        'total' => count($rows), 'age_brackets' => [], 'sex' => [], 'marital_status' => [],
+        'civil_status' => [], 'employment_status' => [], 'voter_status' => [],
+        'purok' => [], 'resident_type' => [], 'resident_status' => [],
     ];
     $brackets = age_brackets();
     foreach ($rows as $r) {
         report_count_value($data['sex'], (string) $r['sex']);
-        report_count_value($data['civil_status'], (string) $r['civil_status']);
+        report_count_value($data['marital_status'], (string) $r['marital_status']);
+        // Keep the old key for older report integrations while the revised UI uses marital_status.
+        report_count_value($data['civil_status'], (string) $r['marital_status']);
         report_count_value($data['employment_status'], (string) $r['employment_status']);
         report_count_value($data['voter_status'], (string) $r['voter_status']);
         report_count_value($data['purok'], (string) $r['purok']);
+        report_count_value($data['resident_type'], (string) $r['resident_type']);
+        report_count_value($data['resident_status'], (string) $r['resident_status']);
 
         $age = age_on((string) $r['birthdate']);
         $ageLabel = 'Outside configured age brackets';
@@ -77,7 +103,7 @@ function report_demographics(): array
         }
         report_count_value($data['age_brackets'], $ageLabel);
     }
-    foreach (['sex', 'civil_status', 'employment_status', 'voter_status', 'purok', 'age_brackets'] as $key) {
+    foreach (['sex','marital_status','civil_status','employment_status','voter_status','purok','resident_type','resident_status','age_brackets'] as $key) {
         ksort($data[$key], SORT_NATURAL | SORT_FLAG_CASE);
     }
     return $data;
@@ -126,24 +152,23 @@ function report_issuances(array $range): array
 function report_requests(array $range): array
 {
     $params = [$range['start'], $range['end']];
+    // Report only the four public/request-tracker states defined by the revised MSIT SRS.
+    // Legacy internal review steps (Review/Ready/Claimed) are intentionally not exposed here.
     $summary = db_one(
         "SELECT COUNT(*) AS total,
-                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
-                COALESCE(SUM(status = 'Review'), 0) AS review_count,
-                COALESCE(SUM(status = 'Ready'), 0) AS ready_count,
-                COALESCE(SUM(status = 'Claimed'), 0) AS claimed_count,
-                COALESCE(SUM(status = 'Rejected'), 0) AS rejected_count,
-                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count
+                COALESCE(SUM(msit_status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(msit_status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(msit_status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(msit_status = 'Released'), 0) AS released_count
          FROM document_requests WHERE requested_at >= ? AND requested_at < ?", $params
-    ) ?? ['total' => 0, 'pending_count' => 0, 'review_count' => 0, 'ready_count' => 0,
-          'claimed_count' => 0, 'rejected_count' => 0, 'cancelled_count' => 0];
+    ) ?? ['total' => 0, 'pending_count' => 0, 'approved_count' => 0, 'rejected_count' => 0, 'released_count' => 0];
 
     $byType = db_all(
         "SELECT dt.name AS type_name, COUNT(*) AS request_count,
-                COALESCE(SUM(dr.status = 'Pending'), 0) AS pending_count,
-                COALESCE(SUM(dr.status = 'Review'), 0) AS review_count,
-                COALESCE(SUM(dr.status = 'Ready'), 0) AS ready_count,
-                COALESCE(SUM(dr.status = 'Claimed'), 0) AS claimed_count
+                COALESCE(SUM(dr.msit_status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(dr.msit_status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(dr.msit_status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(dr.msit_status = 'Released'), 0) AS released_count
          FROM document_requests dr JOIN document_types dt ON dt.type_id = dr.type_id
          WHERE dr.requested_at >= ? AND dr.requested_at < ?
          GROUP BY dt.type_id, dt.name ORDER BY dt.name", $params
@@ -157,14 +182,51 @@ function report_requests(array $range): array
     );
 
     $byStatus = db_all(
-        "SELECT status, COUNT(*) AS request_count
+        "SELECT msit_status AS status, COUNT(*) AS request_count
          FROM document_requests
          WHERE requested_at >= ? AND requested_at < ?
-         GROUP BY status
-         ORDER BY FIELD(status, 'Pending', 'Review', 'Ready', 'Claimed', 'Rejected', 'Cancelled')", $params
+         GROUP BY msit_status
+         ORDER BY FIELD(msit_status, 'Pending', 'Approved', 'Rejected', 'Released')", $params
     );
 
     return ['summary' => $summary, 'by_type' => $byType, 'by_assignee' => $byAssignee, 'by_status' => $byStatus];
+}
+
+/** Queue statistics for a monthly, quarterly or annual reporting window. */
+function report_queueing(array $range): array
+{
+    $summary = db_one(
+        "SELECT COUNT(*) AS total,
+                COALESCE(SUM(status = 'Waiting'), 0) AS waiting_count,
+                COALESCE(SUM(status = 'Called'), 0) AS called_count,
+                COALESCE(SUM(status = 'Served'), 0) AS served_count,
+                COALESCE(SUM(status = 'Skipped'), 0) AS skipped_count,
+                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count,
+                AVG(CASE WHEN status = 'Served' AND called_at IS NOT NULL
+                    THEN TIMESTAMPDIFF(SECOND, issued_at, called_at) ELSE NULL END) AS average_wait_seconds
+         FROM queue_entries
+         WHERE issued_at >= ? AND issued_at < ?",
+        [$range['start'], $range['end']]
+    ) ?? [
+        'total' => 0, 'waiting_count' => 0, 'called_count' => 0, 'served_count' => 0,
+        'skipped_count' => 0, 'cancelled_count' => 0, 'average_wait_seconds' => null,
+    ];
+    $byService = db_all(
+        "SELECT service, COUNT(*) AS total,
+                COALESCE(SUM(status = 'Waiting'), 0) AS waiting_count,
+                COALESCE(SUM(status = 'Called'), 0) AS called_count,
+                COALESCE(SUM(status = 'Served'), 0) AS served_count,
+                COALESCE(SUM(status = 'Skipped'), 0) AS skipped_count,
+                COALESCE(SUM(status = 'Cancelled'), 0) AS cancelled_count,
+                AVG(CASE WHEN status = 'Served' AND called_at IS NOT NULL
+                    THEN TIMESTAMPDIFF(SECOND, issued_at, called_at) ELSE NULL END) AS average_wait_seconds
+         FROM queue_entries
+         WHERE issued_at >= ? AND issued_at < ?
+         GROUP BY service
+         ORDER BY FIELD(service, 'Blotter', 'Documents', 'Venue')",
+        [$range['start'], $range['end']]
+    );
+    return ['summary' => $summary, 'by_service' => $byService];
 }
 
 /** Compile the data-backed sections used by the monthly/quarterly administrative summary. */
@@ -176,6 +238,8 @@ function report_periodic_administrative(array $range): array
         'collections' => report_cash_collections($range),
         'requests' => report_requests($range),
         'blotter' => report_blotters($range),
+        'venues' => report_venues($range),
+        'queues' => report_queueing($range),
     ];
 }
 
@@ -185,33 +249,100 @@ function report_blotters(array $range): array
     $params = [$range['start'], $range['end']];
     $summary = db_one(
         "SELECT COUNT(*) AS total,
-                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
-                COALESCE(SUM(status = 'Active'), 0) AS active_count,
-                COALESCE(SUM(status = 'Scheduled'), 0) AS scheduled_count,
-                COALESCE(SUM(status = 'Resolved'), 0) AS resolved_count
-         FROM blotters WHERE archived_at IS NULL AND incident_date >= ? AND incident_date < ?", $params
-    ) ?? ['total' => 0, 'pending_count' => 0, 'active_count' => 0, 'scheduled_count' => 0, 'resolved_count' => 0];
-    $total = (int) $summary['total'];
-    $resolved = (int) $summary['resolved_count'];
-    $summary['resolution_rate'] = $total > 0 ? round(($resolved / $total) * 100, 1) : 0.0;
+                COALESCE(SUM(msit_status = 'Ongoing'), 0) AS ongoing_count,
+                COALESCE(SUM(msit_status = 'Unresolved'), 0) AS unresolved_count,
+                COALESCE(SUM(msit_status = 'Resolved'), 0) AS resolved_count,
+                COALESCE(SUM(msit_status = 'Dismissed'), 0) AS dismissed_count,
+                COALESCE(SUM(msit_status = 'Archived'), 0) AS archived_count
+         FROM blotters WHERE incident_date >= ? AND incident_date < ?", $params
+    ) ?? [
+        'total' => 0, 'ongoing_count' => 0, 'unresolved_count' => 0,
+        'resolved_count' => 0, 'dismissed_count' => 0, 'archived_count' => 0,
+    ];
+    $activeTotal = (int) $summary['total'] - (int) $summary['archived_count'];
+    $summary['resolution_rate'] = $activeTotal > 0
+        ? round(((int) $summary['resolved_count'] / $activeTotal) * 100, 1) : 0.0;
 
     $byType = db_all(
         "SELECT COALESCE(it.label, 'Unclassified') AS incident_type, COUNT(*) AS case_count,
-                COALESCE(SUM(b.status = 'Resolved'), 0) AS resolved_count
+                COALESCE(SUM(b.msit_status = 'Resolved'), 0) AS resolved_count,
+                COALESCE(SUM(b.msit_status = 'Dismissed'), 0) AS dismissed_count,
+                COALESCE(SUM(b.msit_status = 'Archived'), 0) AS archived_count
          FROM blotters b LEFT JOIN lookups it ON it.lookup_id = b.incident_type_id AND it.list_key = 'incident_type'
-         WHERE b.archived_at IS NULL AND b.incident_date >= ? AND b.incident_date < ?
+         WHERE b.incident_date >= ? AND b.incident_date < ?
          GROUP BY COALESCE(it.label, 'Unclassified') ORDER BY case_count DESC, incident_type", $params
     );
     $byPurok = db_all(
         "SELECT COALESCE(pk.label, 'Purok not assigned') AS purok, COUNT(*) AS case_count
          FROM blotters b LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id AND pk.list_key = 'purok'
-         WHERE b.archived_at IS NULL AND b.incident_date >= ? AND b.incident_date < ?
+         WHERE b.incident_date >= ? AND b.incident_date < ?
          GROUP BY COALESCE(pk.label, 'Purok not assigned') ORDER BY case_count DESC, purok", $params
     );
     $byStatus = db_all(
-        "SELECT status, COUNT(*) AS case_count
-         FROM blotters WHERE archived_at IS NULL AND incident_date >= ? AND incident_date < ?
-         GROUP BY status ORDER BY FIELD(status, 'Pending', 'Active', 'Scheduled', 'Resolved')", $params
+        "SELECT msit_status AS status, COUNT(*) AS case_count
+         FROM blotters WHERE incident_date >= ? AND incident_date < ?
+         GROUP BY msit_status
+         ORDER BY FIELD(msit_status, 'Ongoing', 'Unresolved', 'Resolved', 'Dismissed', 'Archived')", $params
     );
     return ['summary' => $summary, 'by_type' => $byType, 'by_purok' => $byPurok, 'by_status' => $byStatus];
+}
+
+
+/** Venue use within the selected reservation-date window, grouped by venue and public status. */
+function report_venues(array $range): array
+{
+    $startDate = substr((string) $range['start'], 0, 10);
+    $endDate = substr((string) $range['end'], 0, 10);
+    $params = [$startDate, $endDate];
+
+    $summary = db_one(
+        "SELECT COUNT(*) AS total,
+                COALESCE(SUM(status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(status = 'Completed'), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN status IN ('Approved','Completed')
+                    THEN TIME_TO_SEC(TIMEDIFF(end_time, start_time)) ELSE 0 END), 0) AS booked_seconds
+         FROM venue_reservations
+         WHERE reservation_date >= ? AND reservation_date < ?",
+        $params
+    ) ?? [
+        'total' => 0, 'pending_count' => 0, 'approved_count' => 0,
+        'rejected_count' => 0, 'completed_count' => 0, 'booked_seconds' => 0,
+    ];
+
+    $byVenue = db_all(
+        "SELECT v.venue_id, v.name AS venue_name,
+                COUNT(vr.reservation_id) AS reservation_count,
+                COALESCE(SUM(vr.status = 'Pending'), 0) AS pending_count,
+                COALESCE(SUM(vr.status = 'Approved'), 0) AS approved_count,
+                COALESCE(SUM(vr.status = 'Rejected'), 0) AS rejected_count,
+                COALESCE(SUM(vr.status = 'Completed'), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN vr.status IN ('Approved','Completed')
+                    THEN TIME_TO_SEC(TIMEDIFF(vr.end_time, vr.start_time)) ELSE 0 END), 0) AS booked_seconds
+         FROM venues v
+         LEFT JOIN venue_reservations vr
+           ON vr.venue_id = v.venue_id
+          AND vr.reservation_date >= ? AND vr.reservation_date < ?
+         GROUP BY v.venue_id, v.name
+         ORDER BY reservation_count DESC, v.name",
+        $params
+    );
+
+    $byStatus = db_all(
+        "SELECT status, COUNT(*) AS reservation_count
+         FROM venue_reservations
+         WHERE reservation_date >= ? AND reservation_date < ?
+         GROUP BY status
+         ORDER BY FIELD(status, 'Pending', 'Approved', 'Rejected', 'Completed')",
+        $params
+    );
+
+    $summary['booked_hours'] = round((float) $summary['booked_seconds'] / 3600, 2);
+    foreach ($byVenue as &$venue) {
+        $venue['booked_hours'] = round((float) $venue['booked_seconds'] / 3600, 2);
+    }
+    unset($venue);
+
+    return ['summary' => $summary, 'by_venue' => $byVenue, 'by_status' => $byStatus];
 }

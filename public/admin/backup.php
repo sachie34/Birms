@@ -11,7 +11,147 @@ $cloudConfigured = backup_webdav_is_configured();
 if (is_post()) {
     require_csrf();
     $action = post_str('do');
-    if (!in_array($action, ['download', 'cloud_upload'], true)) { abort(400, 'Unknown backup action.'); }
+    if (!in_array($action, ['download', 'cloud_upload', 'full_download', 'full_cloud_upload', 'restore'], true)) { abort(400, 'Unknown backup action.'); }
+
+    if ($action === 'restore') {
+        $databaseName = (string) config('db.name');
+        if (post_str('confirm_database') !== $databaseName) {
+            flash_add('danger', 'The confirmation text did not match the configured database name. No data was changed.');
+            redirect('admin/backup.php');
+        }
+        $upload = $_FILES['backup_file'] ?? null;
+        $uploadName = is_array($upload) && is_string($upload['name'] ?? null) ? (string) $upload['name'] : '';
+        $uploadExtension = strtolower(pathinfo($uploadName, PATHINFO_EXTENSION));
+        $isFullArchive = $uploadExtension === 'zip';
+        $uploadLimit = $isFullArchive ? BACKUP_FULL_MAX_ARCHIVE_BYTES : BACKUP_RESTORE_MAX_BYTES;
+        if (!is_array($upload) || !in_array($uploadExtension, ['zip', 'sql'], true)
+            || (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK
+            || !is_uploaded_file((string) ($upload['tmp_name'] ?? ''))
+            || (int) ($upload['size'] ?? 0) < 32
+            || (int) ($upload['size'] ?? 0) > $uploadLimit) {
+            flash_add('danger', 'Choose a BIRMS full-system ZIP (maximum 512 MiB) or a legacy SQL backup (maximum 100 MiB). Check PHP upload limits if the file is rejected.');
+            redirect('admin/backup.php');
+        }
+
+        if ($isFullArchive) {
+            try {
+                $restored = backup_full_system_restore_archive((string) $upload['tmp_name']);
+                audit_best_effort('database_backup_full_restored', 'Backup', 'Success',
+                    'Restored ' . $restored['table_count'] . ' database tables; archive entries: '
+                    . $restored['file_count'] . '; newly installed private files: ' . $restored['file_count_installed'] . '.');
+                flash_add('success', 'Full-system restore completed. ' . $restored['table_count'] . ' database tables were restored and '
+                    . $restored['file_count_installed'] . ' missing private files were installed. Existing private files were not bulk-deleted or overwritten. Verify key records, resident photos, attachments and issued certificate signatures.');
+                redirect('admin/backup.php');
+            } catch (InvalidArgumentException $e) {
+                flash_add('danger', $e->getMessage() . ' No successful full restore was reported.');
+                redirect('admin/backup.php');
+            } catch (Throwable $e) {
+                error_log('BIRMS full-system restore failed: ' . $e->getMessage());
+                flash_add('danger', $e->getMessage());
+                redirect('admin/backup.php');
+            }
+        }
+
+        $sql = file_get_contents((string) $upload['tmp_name']);
+        if (!is_string($sql) || $sql === '') {
+            flash_add('danger', 'The uploaded SQL backup could not be read. No data was changed.');
+            redirect('admin/backup.php');
+        }
+
+        try {
+            // Validate the complete upload against the current schema before changing any data.
+            backup_restore_parse($sql, backup_table_names());
+
+            // Keep a bounded, same-request safety snapshot so an unexpected failure can recover current data.
+            // The helper removes its temporary file if export, size validation or reading fails.
+            $safetySnapshot = backup_full_create_safety_snapshot(
+                static function ($stream): void {
+                    backup_write_sql_export($stream, backup_table_names());
+                }
+            );
+            $safetyPath = $safetySnapshot['path'];
+            $beforeSql = $safetySnapshot['sql'];
+
+            try {
+                $restored = backup_restore_apply($sql);
+            } catch (Throwable $restoreError) {
+                if ($beforeSql !== '') {
+                    try {
+                        backup_restore_apply($beforeSql);
+                        audit_best_effort('database_backup_restore_recovered', 'Backup', 'Warning',
+                            'A restore attempt failed; the pre-restore database snapshot was reapplied.');
+                    } catch (Throwable $recoveryError) {
+                        error_log('BIRMS restore recovery failed. Safety snapshot remains at ' . $safetyPath . '. Restore error: '
+                            . $restoreError->getMessage() . '; recovery error: ' . $recoveryError->getMessage());
+                        throw new RuntimeException('Restore failed and automatic recovery could not be confirmed. Preserve the server temporary file ' . basename($safetyPath) . ' and contact the system administrator immediately.');
+                    }
+                }
+                @unlink($safetyPath);
+                throw new RuntimeException('The uploaded backup could not be restored. The pre-restore database snapshot was reapplied; no partial restore was reported.');
+            }
+
+            @unlink($safetyPath);
+            audit_best_effort('database_backup_restored', 'Backup', 'Success',
+                'Restored ' . $restored['table_count'] . ' tables from an uploaded BIRMS SQL backup (' . $restored['insert_count'] . ' data statements).');
+            flash_add('success', 'Database restore completed. ' . $restored['table_count'] . ' tables were restored. Sign out and back in, then verify key records and separately restore private uploaded files from their matching file backup.');
+            redirect('admin/backup.php');
+        } catch (InvalidArgumentException $e) {
+            flash_add('danger', $e->getMessage() . ' No restore was performed.');
+            redirect('admin/backup.php');
+        } catch (Throwable $e) {
+            error_log('BIRMS database restore failed: ' . $e->getMessage());
+            flash_add('danger', $e->getMessage());
+            redirect('admin/backup.php');
+        }
+    }
+
+    if (in_array($action, ['full_download', 'full_cloud_upload'], true)) {
+        if ($action === 'full_cloud_upload' && !$cloudConfigured) {
+            abort(400, 'Cloud upload is not configured. Set the HTTPS WebDAV URL and credentials in protected local configuration before trying again.');
+        }
+        $filename = 'birms-full-backup-' . date('Y-m-d-His') . '-' . bin2hex(random_bytes(3)) . '.zip';
+        $archivePath = tempnam(sys_get_temp_dir(), 'birms-full-backup-');
+        if ($archivePath === false) { abort(500, 'Could not create a temporary full-backup file.'); }
+        try {
+            $created = backup_full_system_create_archive($archivePath);
+            if ($action === 'full_download') {
+                audit('database_backup_full_exported', 'Backup', 'Success',
+                    'Full-system archive prepared; tables: ' . $created['table_count']
+                    . '; private files: ' . $created['file_count'] . '; bytes: ' . $created['archive_bytes']);
+                header('Content-Type: application/zip');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('X-Content-Type-Options: nosniff');
+                header('Cache-Control: no-store, max-age=0');
+                $read = readfile($archivePath);
+                @unlink($archivePath);
+                if ($read === false) { error_log('BIRMS: could not stream completed full-system backup.'); }
+                exit;
+            }
+
+            audit('database_backup_full_cloud_started', 'Backup', 'Success',
+                'HTTPS WebDAV full-system archive upload started; tables: ' . $created['table_count']
+                . '; private files: ' . $created['file_count'] . '; bytes: ' . $created['archive_bytes']);
+            $uploadResult = backup_webdav_upload_file($archivePath, $filename);
+            @unlink($archivePath);
+            if (!$uploadResult['ok']) {
+                audit_best_effort('database_backup_full_cloud_failed', 'Backup', 'Failed',
+                    'Full-system HTTPS WebDAV upload did not return success; HTTP status: ' . (int) $uploadResult['http_status']);
+                error_log('BIRMS full-system WebDAV upload failed; HTTP status ' . (int) $uploadResult['http_status'] . '; ' . (string) $uploadResult['error']);
+                flash_add('danger', 'Full-system cloud backup upload failed (HTTP status ' . (int) $uploadResult['http_status'] . '). No successful cloud backup is being reported.');
+                redirect('admin/backup.php');
+            }
+            audit_best_effort('database_backup_full_cloud_uploaded', 'Backup', 'Success',
+                'Full-system ZIP uploaded to configured HTTPS WebDAV storage; HTTP status: '
+                . (int) $uploadResult['http_status'] . '; bytes: ' . $created['archive_bytes']);
+            flash_add('success', 'Full-system ZIP uploaded to the configured HTTPS WebDAV destination. Verify the file in the storage service and test restoration separately.');
+            redirect('admin/backup.php');
+        } catch (Throwable $e) {
+            @unlink($archivePath);
+            error_log('BIRMS full-system backup generation/transfer error: ' . $e->getMessage());
+            abort(500, 'Full-system backup failed. No successful backup is being reported; check the application error log and ZIP extension configuration.');
+        }
+    }
+
     if ($action === 'cloud_upload' && !$cloudConfigured) {
         abort(400, 'Cloud upload is not configured. Set the WebDAV URL and credentials in protected local configuration before trying again.');
     }
@@ -79,15 +219,40 @@ page_head('Database Backup & Export', 'Create a one-click SQL backup and, when c
 <div class="row g-3">
   <div class="col-lg-8">
     <div class="card-b mb-3">
-      <div class="card-h"><h2>Download a SQL backup</h2><p>Restricted to the System Administrator.</p></div>
+      <div class="card-h"><h2>Download a complete system backup</h2><p>Recommended. Includes SQL records, document attachments, resident photos and Chairman signature files.</p></div>
+      <div class="card-body-b">
+        <p>Creates one ZIP archive with the database snapshot, approved private storage folders and a SHA-256 manifest. Use it for a complete BIRMS backup.</p>
+        <div class="alert alert-warning"><strong>Confidential data:</strong> the archive contains resident information, documents, photos, certificates and signatures. Store it only in an approved, access-controlled location. Create backups during a quiet maintenance window so records and files are not changing while the snapshot is made.</div>
+        <?php if (backup_full_zip_available()): ?>
+          <form method="post" action="<?= e(base_url('admin/backup.php')) ?>"><?= csrf_field() ?><input type="hidden" name="do" value="full_download"><button class="btn btn-primary" type="submit"><i class="bi bi-archive me-1"></i>Download complete system ZIP</button></form>
+        <?php else: ?>
+          <div class="alert alert-danger mb-0">Complete backups require PHP's ZIP extension. Enable <code>extension=zip</code> in the active XAMPP <code>php.ini</code>, restart Apache, and verify the CLI PHP configuration.</div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <div class="card-b mb-3">
+      <div class="card-h"><h2>Download a SQL-only backup</h2><p>Database records only; does not include private files.</p></div>
       <div class="card-body-b">
         <p>This creates a SQL file containing the database structure and records currently stored in the BIRMS database configured for this application. It does not change application records.</p>
         <div class="alert alert-warning"><strong>Confidential data:</strong> the file may contain resident details, document requests, case information, user accounts, and audit records. Store it only in an approved, access-controlled location.</div>
         <form method="post" action="<?= e(base_url('admin/backup.php')) ?>"><?= csrf_field() ?><input type="hidden" name="do" value="download"><button class="btn btn-primary" type="submit"><i class="bi bi-download me-1"></i>Download SQL backup</button></form>
       </div>
     </div>
+    <div class="card-b mb-3">
+      <div class="card-h"><h2>Full-system cloud backup</h2><p>Uploads the complete ZIP archive, including private files, to the configured HTTPS WebDAV folder.</p></div>
+      <div class="card-body-b">
+        <?php if ($cloudConfigured && backup_full_zip_available()): ?>
+          <div class="alert alert-success">HTTPS WebDAV is configured. The destination and credentials remain hidden.</div>
+          <form method="post" action="<?= e(base_url('admin/backup.php')) ?>"><?= csrf_field() ?><input type="hidden" name="do" value="full_cloud_upload"><button class="btn btn-primary" type="submit"><i class="bi bi-cloud-arrow-up me-1"></i>Create and upload full-system ZIP</button></form>
+        <?php elseif (!$cloudConfigured): ?>
+          <div class="alert alert-secondary mb-0">Configure the approved HTTPS WebDAV URL and credentials in protected local configuration before uploading full backups.</div>
+        <?php else: ?>
+          <div class="alert alert-danger mb-0">Full-system cloud backups require PHP's ZIP extension. Enable <code>extension=zip</code> and restart Apache.</div>
+        <?php endif; ?>
+      </div>
+    </div>
     <div class="card-b">
-      <div class="card-h"><h2>Cloud backup</h2><p>Uploads the generated SQL file to a configured HTTPS WebDAV folder.</p></div>
+      <div class="card-h"><h2>SQL-only cloud backup</h2><p>Uploads the database SQL file to a configured HTTPS WebDAV folder.</p></div>
       <div class="card-body-b">
         <?php if ($cloudConfigured): ?>
           <div class="alert alert-success">Cloud destination is configured. The endpoint and credentials are read from protected local configuration and are not displayed here.</div>
@@ -101,15 +266,31 @@ page_head('Database Backup & Export', 'Create a one-click SQL backup and, when c
       </div>
     </div>
   </div>
+  <div class="col-lg-8">
+    <div class="card-b">
+      <div class="card-h"><h2>Restore a complete ZIP or legacy SQL backup</h2><p>Administrator-only. A complete ZIP restores database records and required private files. A legacy SQL file restores database records only.</p></div>
+      <div class="card-body-b">
+        <div class="alert alert-danger"><strong>Destructive database action:</strong> restore replaces database records, including residents, requests, users and audit history, subject to permanent blotter protections. A full ZIP also adds any missing private files required by the restored database. Existing private files are not bulk-deleted or overwritten. Download a fresh full-system backup first. Use a backup made by the same BIRMS schema version.</div>
+        <form method="post" enctype="multipart/form-data" action="<?= e(base_url('admin/backup.php')) ?>" class="row g-3">
+          <?= csrf_field() ?><input type="hidden" name="do" value="restore">
+          <div class="col-12"><label class="form-label req" for="backup_file">BIRMS full-system ZIP (recommended) or legacy SQL file</label><input class="form-control" type="file" name="backup_file" id="backup_file" accept=".zip,.sql,application/zip,application/sql,text/plain" required><div class="form-text">ZIP maximum 512 MiB; SQL maximum 100 MiB. The PHP server upload and post limits may be lower. SQL-only restore does not restore attachments, resident photos or signature images.</div></div>
+          <div class="col-12"><label class="form-label req" for="confirm_database">Type the target database name to confirm</label><input class="form-control" name="confirm_database" id="confirm_database" maxlength="64" autocomplete="off" required><div class="form-text">Target: <code><?= e((string) config('db.name')) ?></code></div></div>
+          <div class="col-12"><button class="btn btn-danger" type="submit">Validate and restore database</button></div>
+        </form>
+        <p class="small text-muted mt-3 mb-0">BIRMS validates the manifest, archive paths, checksums and database schema before changing data. Full ZIP restore verifies every restored database file reference and uses a temporary pre-restore database snapshot for automatic recovery from an unexpected failure.</p>
+      </div>
+    </div>
+  </div>
   <div class="col-lg-4">
     <div class="card-b h-100">
       <div class="card-h"><h2>Important limitations</h2></div>
       <div class="card-body-b">
         <ul class="mb-0">
           <li>Cloud upload requires an approved HTTPS WebDAV endpoint and credentials; no real service or account is bundled.</li>
-          <li>The SQL backup does not include uploaded attachment files. Back up <code>storage/private_uploads/</code> separately at the same time and preserve its directory structure so database records continue to point to the right files.</li>
-          <li>Backups are one-click; scheduled backups and backup notifications are not included.</li>
-          <li>Successful transfer does not prove restoration will work. Test restoration in a separate scratch database before relying on a backup.</li>
+          <li>The legacy SQL-only backup does not include private files. Use the complete ZIP for the database plus approved private upload folders.</li>
+          <li>Full ZIP restore adds missing files and verifies database references; it does not bulk-delete existing private files or overwrite a different file at the same path. Unreferenced old private files may remain and require a separate, reviewed cleanup process.</li>
+          <li>Backups are operator-triggered; scheduled backups and backup notifications are not included.</li>
+          <li>Successful transfer does not prove restoration will work. Test a complete ZIP restore in a separate scratch database and verify private files before relying on a backup.</li>
           <li>Download, upload-start, success, and failure events are written to the audit trail.</li>
         </ul>
       </div>

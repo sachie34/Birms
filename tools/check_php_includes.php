@@ -19,8 +19,6 @@ $root = dirname(__DIR__);
 $requiredFiles = [
     'app/bootstrap.php',
     'app/core.php',
-    'app/infobip_sms_provider.php',
-    'tools/test_infobip_sms.php',
 ];
 
 $errors = [];
@@ -111,4 +109,4 @@ if ($errors) {
 }
 
 echo "PASS: checked {$scanned} PHP files and {$checked} static include path(s); all referenced targets exist.\n";
-echo "PASS: shared bootstrap, PHP core, and Infobip test/provider files are present.\n";
+echo "PASS: shared bootstrap and PHP core are present.\n";

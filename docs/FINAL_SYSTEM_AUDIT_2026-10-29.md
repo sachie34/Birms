@@ -1,5 +1,7 @@
 # BIRMS Professional System Audit — 29 October 2026
 
+> **Scope update (2026-11-24):** This historical audit predates the Phase 2 QR kiosk and email-only change. The current candidate removes SMS provider code, administration and live-send tools while preserving historical SMS tables/migrations. The SMS-related checks and deployment instructions below describe the older candidate, not the current Phase 2 branch.
+
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
 **Main snapshot at report preparation:** `e66ca645e41396ba02d84660629c3ea8a37783a9`  
 **Audit fixes merged:** [PR #24](https://github.com/sachie34/Birms/pull/24), merge commit `6aef2c4f9b7ccce5cde50d39ea61742d2b7edf12`  
@@ -44,7 +46,7 @@ Key limitations that must stay visible in presentations and documentation:
 
 Do these using a separate working database and fictitious records; do not run tests against the original `barangay_db`.
 
-1. **Local XAMPP:** pull the latest `main`, use `barangay_db_work`, run both test runners with all real SMS providers disabled, and retain the complete output.
+1. **Historical instruction — superseded:** do not pull `main` for the revised MSIT demonstration. Use `john/phase2-kiosk-no-sms` and follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md). Use `barangay_db_work` and email disabled during the test suites.
 2. **Four roles:** sign in as Administrator, Captain, Secretary and Clerk. Check menu visibility, direct-page denials, page-help instructions, request queues, edit permissions, preview/print behavior and audit entries.
 3. **Request lifecycle:** create a request; verify intake starts with requirements Not checked; start review; edit a material field/attachment and confirm the checklist resets; recheck requirements; approve/reject; verify issue and history.
 4. **Artifacts:** test private upload/download, resident and history CSV exports, report CSVs, certificate PDF, print preview and the physical printer.

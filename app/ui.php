@@ -27,20 +27,20 @@ function current_page_help(): ?array
     };
 
     $help = [
-        'residents/index.php' => $general('Find a resident before creating a new record.', [
-            'Search by name or household code; use the filters to narrow the list.',
-            'Open the matching profile to check the details before making changes.',
+        'residents/index.php' => $general('Find the correct resident before opening or registering a profile.', [
+            'Search by Resident ID or name, then narrow the list with the Purok, resident status and resident type filters.',
+            'Open the matching profile and confirm the address and personal details before taking action.',
             'Use Add Resident only when the person is not already registered and your role allows it.',
         ], 'Residents are archived rather than permanently deleted.'),
         'residents/form.php' => $general('Enter the resident details carefully, then save the record.', [
             'Check whether the resident already exists before creating a new profile.',
-            'Complete required fields and choose the correct household, Purok and residency status.',
-            'Review the information once more, then save and open the resident profile.',
+            'Complete the address, Purok, resident status, marital status and resident type fields.',
+            'Add the available contact details and photo, review the information, then save the profile.',
         ], 'Use real, authorized records only in the official database.'),
         'residents/view.php' => $general('Use this profile to confirm a resident’s saved information.', [
-            'Check the name, household, address and current residency status.',
-            'Review related requests and verification history when available.',
-            'Use Edit or Verify only if the action is shown and you have permission.',
+            'Check the name, Resident ID, address, Purok, resident status and resident type.',
+            'Review contact details, related requests and verification history when available.',
+            'Use Edit, Archive or Verify only if the action is shown and your role allows it.',
         ], 'A recorded voter/ID check is manual; BIRMS does not contact COMELEC.'),
         'residents/households.php' => $general('Use households to organize residents by address and Purok.', [
             'Search for the household before adding or changing one.',
@@ -73,28 +73,28 @@ function current_page_help(): ?array
             'Save the verification record and review its date and result on the profile.',
         ], 'This records a staff check; it is not an automated COMELEC lookup.'),
         'requests/index.php' => $role === 'captain'
-            ? $general('Your main task here is the final decision on eligible requests.', [
-                'Open Pending Final Approval and check the resident and document details.',
-                'Approve or reject only after the requirements review is marked Complete.',
-                'Give a clear rejection reason, or approve the request for Ready for Pickup.',
-            ], 'There is no separate saved “Approved” status; approval moves the request to Ready for Pickup.')
+            ? $general('Chairman access is read-only. Use this page to monitor document requests.', [
+                'Open View Only to inspect request details, status and progress.',
+                'Check saved requirements and identify requests that may need follow-up.',
+                'Refer processing questions or missing information to the Secretary or Staff.',
+            ], 'The Chairman cannot edit, approve, reject or release requests. Staff/Admin handle final decisions and releases.')
             : ($role === 'secretary'
-                ? $general('Your main task here is to check request requirements.', [
+                ? $general('Your task is to review request details and supporting requirements.', [
                     'Open Needs Review and select a pending request.',
-                    'Check the required supporting documents and mark the checklist Complete only when verified.',
-                    'Leave incomplete requests in review and record what is missing.',
-                ], 'The Captain or Administrator makes the final request decision.')
+                    'Check the supporting documents and mark requirements Complete only after verification.',
+                    'Record what is missing and leave incomplete requests in review.',
+                ], 'Staff/Admin make the final approval or rejection; the Secretary does not release certificates.')
                 : ($role === 'clerk'
-                    ? $general('Use My Requests to follow requests you filed or are assigned to.', [
-                        'Choose New Request to start a request for an existing active resident.',
-                        'Open a request to check its status and any missing information.',
-                        'Use the progress tracker to see what step comes next.',
-                    ], 'You cannot complete the formal requirements review, approve/reject requests or issue certificates.')
-                    : $general('Use the queue that matches the task you need to complete.', [
-                        'Open Needs Review to check requirements, or Pending Final Approval to decide an eligible request.',
-                        'Open a request and read the progress tracker and blockers.',
-                        'Use only the actions permitted at the current step, then check the saved status.',
-                    ], 'Secretary/Admin review requirements; Captain/Admin make the final decision.'))),
+                    ? $general('Process requests that have completed the Secretary requirements review.', [
+                        'Open Needs Final Decision and select a request with complete requirements.',
+                        'Approve or reject with a clear reason, then verify the saved status.',
+                        'For approved requests, open Certificate Generation and issue/release only after checking the draft and fee details.',
+                    ], 'Staff cannot mark the Secretary requirements checklist complete or change the Chairman signature.')
+                    : $general('Administrator can oversee document request processing and perform authorized corrections.', [
+                        'Use the request filters to locate items needing review or a final decision.',
+                        'Check the resident details, supporting requirements and current request status.',
+                        'Use only the permitted action for the current step and confirm the saved status.',
+                    ], 'The normal flow is Secretary requirements review, Staff final decision, then Staff document release; Administrator has system oversight.'))),
         'requests/form.php' => $general('Create a document request for the correct resident.', [
             'Find and select an existing active resident first.',
             'Choose the document type, enter the purpose and add any required supporting files.',
@@ -125,11 +125,19 @@ function current_page_help(): ?array
             'Save the visitor entry and check that it appears in the logbook.',
             'For a document request, use Start a document request and complete the request form.',
         ], 'Collect only information needed for the office task.'),
-        'blotters/index.php' => $general('Use the blotter list to file and follow up incidents.', [
-            'Search for an existing case before filing a new one.',
-            'Choose File a Case and record the incident details and known parties accurately.',
-            'Open the saved case to check its status, schedule a hearing or record an outcome if permitted.',
-        ], 'A possible name match is not proof of identity. Handle case details confidentially.'),
+        'blotters/index.php' => in_array($role, ['admin', 'secretary'], true)
+            ? $general('Manage official blotter records using the permissions available to your role.', [
+                'Search for an existing case before filing a new one.',
+                'Open a case to confirm the parties, incident details and current status.',
+                'File or update a case only when the information is verified, then confirm the saved status.',
+            ], 'Handle incident and party information confidentially. A possible name match is not proof of identity.')
+            : $general('View official blotter cases without changing them.', [
+                'Search by case number or person name and narrow results by date, Purok or status.',
+                'Open a case to review its saved information and hearing details.',
+                'Refer corrections or official case changes to the Secretary or Administrator.',
+            ], $role === 'captain'
+                ? 'Chairman access is view-only. Staff can review new resident reports in Resident Blotter Requests.'
+                : 'Staff can review new resident reports in Resident Blotter Requests; the Secretary/Admin maintain official blotter cases.'),
         'blotters/form.php' => $general('Record the incident using the information actually reported.', [
             'Enter the date, place and a clear factual narrative.',
             'Add complainant/respondent details only as known; avoid guessing missing information.',
@@ -150,17 +158,56 @@ function current_page_help(): ?array
             'Compare the result with available age, address and case details.',
             'Refer a possible match to authorized staff for review before taking action.',
         ], 'A lookup result is not proof of identity and should not automatically determine a certificate decision.'),
-        'blotters/hearings.php' => $role === 'clerk'
-            ? $general('Use this page to view hearing schedules available to your role.', [
-                'Check the case reference, date, time and venue.',
-                'Open the related case if you need more context.',
-                'Refer changes or hearing outcomes to an authorized Secretary or Captain.',
+        'blotter_requests/index.php' => role_can($role, 'blotter_requests.review')
+            ? $general('Review resident-submitted blotter reports before accepting or rejecting them.', [
+                'Check the resident identity, report details and any matching existing case.',
+                'Accept only a report that should become an official blotter case, or reject it with a clear reason.',
+                'Confirm the resulting official case or saved rejection status after the action.',
+            ], 'A report is not an official case until Staff/Admin accepts it; duplicate acceptance is blocked.')
+            : $general('View resident-submitted blotter reports and their saved review status.', [
+                'Search by reference or resident and use the review/status filters.',
+                'Open the submission details and check whether it has been reviewed.',
+                'Refer a pending report that needs action to Staff or Administrator.',
+            ], 'Chairman and Secretary have view-only access to this review queue.'),
+        'queue/index.php' => role_can($role, 'queue.manage')
+            ? $general('Issue and manage daily queue tickets for Blotter, Documents and Venue.', [
+                'Issue a number with the correct service and a clear purpose of visit.',
+                'Call the next number, then mark it served, skipped or cancelled as appropriate.',
+                'Check the public display to make sure the correct service number is being shown.',
+            ], 'Each service has a separate daily number sequence; the public display must not show resident personal data.')
+            : $general('Monitor current queue numbers and waiting counts for each service.', [
+                'Check the Now Serving and Waiting counts for Blotter, Documents and Venue.',
+                'Open the public display when you need to show queue numbers to residents.',
+                'Refer issuing, calling or cancelling numbers to Staff or Administrator.',
+            ], 'Chairman and Secretary have view-only access to queue management.'),
+        'venues/index.php' => $role === 'secretary'
+            ? $general('Set each room to Available or In Use for blotter/hearing arrangements; reservation decisions remain with Staff.', [
+                'Check the room on the availability board before a blotter or hearing is arranged.',
+                'Choose Automatic, Available or In Use for the correct room, then select Save status.',
+                'Leave reservation creation, approval, rejection and completion to Staff or Administrator.',
+            ], 'The Secretary can change room availability only. The Secretary cannot create or decide venue reservations.')
+            : ((role_can($role, 'venues.availability.manage') || role_can($role, 'venues.manage'))
+                ? $general('Manage venue availability and process counter reservation requests.', [
+                    'Check the availability board before recording a new reservation.',
+                    'Enter the correct resident, venue, purpose, date and time range.',
+                    'Review pending reservations and approve or reject them when authorized.',
+                ], 'Approved reservations prevent overlapping bookings; check the saved status after each action.')
+                : $general('View venue availability and reservation statuses.', [
+                    'Use the green/red availability board to check whether a venue is available.',
+                    'Filter the reservation tracker by status or date.',
+                    'Refer reservation changes or decisions to Staff or Administrator.',
+                ], 'Chairman has read-only access to venue availability and reservation statuses.')),
+        'blotters/hearings.php' => in_array($role, ['admin', 'secretary'], true)
+            ? $general('Manage hearing schedules and record outcomes for assigned blotter cases.', [
+                'Open the related case and confirm the parties before scheduling.',
+                'Enter the confirmed date, time and venue for the hearing.',
+                'After the meeting, record the actual outcome and verify the saved case status.',
             ])
-            : $general('Use the hearing list to manage scheduled case meetings.', [
-                'Open a case and schedule a hearing with the confirmed date, time and venue.',
-                'Check the list for upcoming or overdue hearings.',
-                'Record the actual outcome after the hearing and verify the saved case status.',
-            ]),
+            : $general('View hearing schedules and related cases without changing hearing records.', [
+                'Check the case reference, scheduled date, time and venue.',
+                'Open the related case if you need more context.',
+                'Refer scheduling changes or hearing outcomes to the Secretary or Administrator.',
+            ], 'Chairman and Staff have view-only access to the hearing list.'),
         'blotters/summons.php' => $general('Review the case and hearing details before preparing a summons.', [
             'Confirm the parties, case reference, hearing date, time and venue.',
             'Review the generated text carefully for missing or incorrect details.',
@@ -181,16 +228,16 @@ function current_page_help(): ?array
             'Change only the details and role authorized by the system owner.',
             'Save, then verify that the account has only the access it needs.',
         ], 'Avoid sharing one account across multiple people.'),
-        'admin/settings.php' => $role === 'captain'
-            ? $general('Review the official settings that your role is allowed to view.', [
-                'Check the barangay details, document options and approved values.',
-                'Report missing or incorrect settings to the Secretary/Administrator.',
-                'Do not use draft certificate wording, fee rules or signatory details as official.',
-            ])
-            : $general('Maintain only settings approved by the barangay.', [
+        'admin/settings.php' => $role === 'secretary'
+            ? $general('Maintain approved certificate wording and placeholders only.', [
+                'Open a document template and review its current wording.',
+                'Use the formatting toolbar and live preview to check the layout and placeholders.',
+                'Save the wording, then reopen the preview to confirm the change.',
+            ], 'Admin controls document types, fees, availability, signature requirements and all other system settings.')
+            : $general('Maintain only system settings approved by the barangay.', [
                 'Check barangay details, Purok lists, document types, wording and fee rules.',
-                'Enter the approved values exactly; leave unknown values unset rather than guessing.',
-                'Save changes and revisit the related page to confirm the setting is applied.',
+                'Enter approved values exactly; leave unknown values unset rather than guessing.',
+                'Save changes and revisit the related page to confirm each setting is applied.',
             ], 'The fee schedule, certificate wording and signatory policy must be approved by the barangay.'),
         'admin/ledger.php' => $role === 'captain'
             ? $general('Use this page to review recorded cash-ledger entries.', [
@@ -213,11 +260,6 @@ function current_page_help(): ?array
             'Check the timestamp, result, target record and details together.',
             'Export only when authorized and keep the file confidential.',
         ]),
-        'admin/sms.php' => $general('Review the notification queue and delivery results.', [
-            'Check the provider, recipient and recorded message status.',
-            'Treat Queued/Pending as accepted for processing, not proof of delivery to a phone.',
-            'Retry only when the provider status and office policy allow it.',
-        ], 'SMS is disabled until an administrator configures a provider and credentials. Keep API keys private.'),
         'search.php' => $general('Use global search to find records your role may view.', [
             'Enter a name, request reference, certificate/O.R. number or case detail.',
             'Open the matching result and confirm its details before acting.',

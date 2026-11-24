@@ -9,6 +9,51 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__));
 define('PUBLIC_ROOT', APP_ROOT . '/public');
 
+/**
+ * Return a user-safe reason when the active PHP runtime has not reached the
+ * minimum security patch level pinned for each supported PHP branch. PHP 8.2
+ * is accepted only while that branch remains security-supported.
+ */
+function php_runtime_security_issue(int $versionId, ?string $date = null): ?string
+{
+    $date ??= gmdate('Y-m-d');
+    $php82StillSupported = $date < '2027-01-01';
+
+    // Minimum patched releases as of 19 November 2026. Refresh these thresholds
+    // whenever PHP publishes a security update for a supported branch.
+    if ((($versionId >= 80236 && $versionId < 80300) && $php82StillSupported)
+        || ($versionId >= 80337 && $versionId < 80400)
+        || ($versionId >= 80428 && $versionId < 80500)
+        || ($versionId >= 80513 && $versionId < 80600)
+        || ($versionId >= 80600 && $versionId < 80700)) {
+        return null;
+    }
+
+    if ($versionId >= 80500 && $versionId < 80600) {
+        return 'PHP 8.5 must be updated to 8.5.13 or later within the 8.5 branch.';
+    }
+    if ($versionId >= 80400 && $versionId < 80500) {
+        return 'PHP 8.4 must be updated to 8.4.28 or later within the 8.4 branch.';
+    }
+    if ($versionId >= 80300 && $versionId < 80400) {
+        return 'PHP 8.3 must be updated to 8.3.37 or later within the 8.3 branch.';
+    }
+    if ($versionId >= 80200 && $versionId < 80300) {
+        return $php82StillSupported
+            ? 'PHP 8.2 must be updated to 8.2.36 or later. PHP 8.2 security support ends on 31 December 2026; upgrading to PHP 8.3 or newer is recommended.'
+            : 'PHP 8.2 reached end of security support on 31 December 2026. Upgrade to a supported PHP branch before running BIRMS.';
+    }
+    return 'Use a supported stable PHP 8.2, 8.3, 8.4, 8.5, or 8.6 release at its required security patch level. See https://www.php.net/supported-versions.php.';
+}
+
+function php_runtime_upgrade_notice(int $versionId, ?string $date = null): ?string
+{
+    $date ??= gmdate('Y-m-d');
+    return ($versionId >= 80200 && $versionId < 80300 && $date < '2027-01-01')
+        ? 'WARNING: PHP 8.2 security support ends on 31 December 2026. Upgrade to PHP 8.3 or newer.'
+        : null;
+}
+
 function config(?string $path = null, mixed $default = null): mixed
 {
     static $cfg = null;
@@ -26,18 +71,11 @@ function config(?string $path = null, mixed $default = null): mixed
             'session'  => ['name' => 'BIRMSSESS', 'idle_minutes' => 30, 'secure' => null], // secure null = auto (HTTPS only)
             'security' => [
                 'max_failed_logins' => 5, 'lockout_minutes' => 15, 'ip_max_failed' => 30,
-                'password_min_length' => 10, 'csp' => true,
+                'password_min_length' => 10, 'csp' => true, 'require_https' => false,
             ],
+            'email' => ['enabled' => false, 'from_email' => '', 'from_name' => 'Barangay Office'],
             'backup' => [
                 'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
-            ],
-            // Outbound notifications remain disabled until an operator explicitly configures a provider.
-            'sms' => [
-                'provider' => 'smsapiph',
-                'smsapiph_enabled' => false, 'smsapiph_api_key' => '',
-                'semaphore_enabled' => false, 'semaphore_api_key' => '', 'semaphore_sendername' => '',
-                'infobip_enabled' => false, 'infobip_api_key' => '', 'infobip_base_url' => '', 'infobip_sender' => 'ServiceSMS',
-                'connect_timeout' => 4, 'timeout' => 12,
             ],
         ];
         $local = __DIR__ . '/config.local.php';
@@ -45,52 +83,18 @@ function config(?string $path = null, mixed $default = null): mixed
             $o = require $local;
             if (is_array($o)) { $cfg = array_replace_recursive($cfg, $o); }
         }
-        // Optional dedicated, Git-ignored Infobip credentials file. This file stays outside
-        // the public web root and only provides the key, Base URL, and sender value.
-        $infobipLocal = __DIR__ . '/infobip.local.php';
-        if (is_file($infobipLocal)) {
-            $infobip = require $infobipLocal;
-            if (is_array($infobip)) {
-                if (array_key_exists('api_key', $infobip)) {
-                    $cfg['sms']['infobip_api_key'] = is_string($infobip['api_key']) ? trim($infobip['api_key']) : '';
-                }
-                if (array_key_exists('base_url', $infobip)) {
-                    $cfg['sms']['infobip_base_url'] = is_string($infobip['base_url']) ? trim($infobip['base_url']) : '';
-                }
-                if (array_key_exists('sender', $infobip)) {
-                    $cfg['sms']['infobip_sender'] = is_string($infobip['sender']) ? trim($infobip['sender']) : '';
-                }
-            }
-        }
-
-        // Optional dedicated, Git-ignored SMS API PH credentials file. A blank example key
-        // must not erase a key explicitly entered in config.local.php.
-        $smsapiphLocal = __DIR__ . '/smsapiph.local.php';
-        if (is_file($smsapiphLocal)) {
-            $smsapiph = require $smsapiphLocal;
-            if (is_array($smsapiph) && isset($smsapiph['api_key']) && is_string($smsapiph['api_key'])
-                && trim($smsapiph['api_key']) !== '') {
-                $cfg['sms']['smsapiph_api_key'] = trim($smsapiph['api_key']);
-            }
-        }
 
         $envMap = [
-            'BIRMS_DB_HOST' => ['db', 'host'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
+            'BIRMS_DB_HOST' => ['db', 'host'],
+            'BIRMS_EMAIL_ENABLED' => ['email', 'enabled'],
+            'BIRMS_EMAIL_FROM' => ['email', 'from_email'],
+            'BIRMS_EMAIL_FROM_NAME' => ['email', 'from_name'], 'BIRMS_DB_PORT' => ['db', 'port'], 'BIRMS_DB_NAME' => ['db', 'name'],
             'BIRMS_DB_USER' => ['db', 'user'], 'BIRMS_DB_PASS' => ['db', 'pass'], 'BIRMS_ENV' => ['env', null],
             'BIRMS_IDLE_MINUTES' => ['session', 'idle_minutes'],
+            'BIRMS_REQUIRE_HTTPS' => ['security', 'require_https'],
             'BIRMS_BACKUP_WEBDAV_URL' => ['backup', 'webdav_url'],
             'BIRMS_BACKUP_WEBDAV_USERNAME' => ['backup', 'webdav_username'],
             'BIRMS_BACKUP_WEBDAV_PASSWORD' => ['backup', 'webdav_password'],
-            'BIRMS_SEMAPHORE_ENABLED' => ['sms', 'semaphore_enabled'],
-            'BIRMS_SEMAPHORE_API_KEY' => ['sms', 'semaphore_api_key'],
-            'BIRMS_SEMAPHORE_SENDERNAME' => ['sms', 'semaphore_sendername'],
-            'BIRMS_SMS_PROVIDER' => ['sms', 'provider'],
-            'BIRMS_SMSAPIPH_ENABLED' => ['sms', 'smsapiph_enabled'],
-            'BIRMS_SMSAPIPH_API_KEY' => ['sms', 'smsapiph_api_key'],
-            'BIRMS_INFOBIP_ENABLED' => ['sms', 'infobip_enabled'],
-            'BIRMS_INFOBIP_API_KEY' => ['sms', 'infobip_api_key'],
-            'BIRMS_INFOBIP_BASE_URL' => ['sms', 'infobip_base_url'],
-            'BIRMS_INFOBIP_SENDER' => ['sms', 'infobip_sender'],
         ];
         foreach ($envMap as $name => [$a, $b]) {
             $v = getenv($name);
@@ -344,4 +348,45 @@ function mb_substr_safe(string $s, int $len): string
     if (function_exists('mb_substr')) { return mb_substr($s, 0, $len, 'UTF-8'); }
     // No mbstring (some PHP setups): cut by characters, never in the middle of a multi-byte letter.
     return preg_match('/^.{0,' . max(0, $len) . '}/us', $s, $m) === 1 ? $m[0] : substr($s, 0, $len);
+}
+
+
+/**
+ * Fixed-window, database-backed limiter. Raw identifiers (such as IP or resident ID)
+ * are never stored; only a SHA-256 bucket digest is persisted.
+ */
+function rate_limit_allow(string $scope, string $identifier, int $limit, int $windowSeconds, ?int $now = null): bool
+{
+    $now ??= time();
+    $scope = trim($scope);
+    $identifier = trim($identifier);
+    $limit = max(1, min(10000, $limit));
+    $windowSeconds = max(1, min(86400, $windowSeconds));
+    if ($scope === '' || $identifier === '') {
+        throw new InvalidArgumentException('Rate-limit scope and identifier are required.');
+    }
+    $bucketHash = hash('sha256', $scope . "\0" . $identifier);
+    $windowStart = date('Y-m-d H:i:s', intdiv($now, $windowSeconds) * $windowSeconds);
+    db_exec(
+        'INSERT INTO rate_limit_buckets (bucket_hash, window_started_at, hit_count)
+         VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE hit_count = hit_count + 1',
+        [$bucketHash, $windowStart]
+    );
+    $hits = (int) db_val(
+        'SELECT hit_count FROM rate_limit_buckets WHERE bucket_hash = ? AND window_started_at = ?',
+        [$bucketHash, $windowStart]
+    );
+    if (random_int(1, 100) === 1) {
+        db_exec('DELETE FROM rate_limit_buckets WHERE window_started_at < (NOW() - INTERVAL 2 DAY)');
+    }
+    return $hits <= $limit;
+}
+
+function rate_limit_require(string $scope, string $identifier, int $limit, int $windowSeconds, string $message = 'Too many attempts. Please try again later.'): void
+{
+    if (!rate_limit_allow($scope, $identifier, $limit, $windowSeconds)) {
+        audit_best_effort('rate_limit_exceeded', 'Security', 'Failed', 'Rate limit exceeded for ' . preg_replace('/[^a-zA-Z0-9_.-]/', '', $scope));
+        abort(429, $message);
+    }
 }

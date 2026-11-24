@@ -15,6 +15,7 @@ if ($id !== null) {
         abort(403, 'A request under review can only be edited by the Secretary or Administrator.');
     }
 } else { require_permission('requests.add'); require_permission('residents.view'); }
+$canEditRequirements = $canReview && $ex !== null && (string) $ex['status'] === 'Review';
 
 $types = []; foreach (db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') as $t) { $types[(int) $t['type_id']] = (string) $t['name']; }
 $feeRules = db_all("SELECT fm.fee_rule_id, fm.type_id, fm.fee_category, fm.fee_tier, fm.unit_rate, fm.min_quantity, fm.max_quantity, fm.effective_from, fm.effective_to, fm.is_active, dt.name AS type_name
@@ -206,6 +207,10 @@ if (is_post() && $resident !== null) {
                 [$ref, $visit['visit_id'] ?? null, $resident['resident_id'], (int) $v['type_id'], $v['purpose'], $assigned, $v['requirements_status'], $v['requirements_note'] !== '' ? $v['requirements_note'] : null,
                  $pricing['fee_rule_id'], $pricing['fee_category_snapshot'], $pricing['fee_tier_snapshot'], $pricing['fee_quantity'], $pricing['fee_unit_rate'], $pricing['quoted_fee_amount'], audit_actor()['user_id'] ?? null]);
             $new = (int) db()->lastInsertId();
+            db_exec("INSERT INTO request_status_history
+                     (service, reference_no, previous_status, new_status, changed_by, note, request_id)
+                     VALUES ('Documents', ?, NULL, 'Pending', ?, 'Request submitted through the office intake form.', ?)",
+                [$ref, audit_actor()['user_id'] ?? null, $new]);
             store_document_upload('request', $new, $file);
             audit('request_created', 'Requests', 'Success',
                 $ref . ' filed for ' . $resident['last_name'] . ', ' . $resident['first_name'] . ($pricing['quoted_fee_amount'] !== null ? '; quoted fee ' . number_format((float) $pricing['quoted_fee_amount'], 2, '.', '') : ''),
@@ -228,13 +233,17 @@ page_head($title, $resident ? 'For ' . resident_name($resident) . ($resident['re
 echo errors_box($errors);
 if ($resident === null) {
     $q = get_str('q') !== '' ? get_str('q') : (string) ($visit['visitor_name'] ?? '');
-    $found = $q !== '' ? resident_search(['q' => $q, 'purok' => '', 'status' => '', 'category' => '', 'show' => ''], 10, 0)[0] : [];
-    card_start('Find the resident', 'Search by name or household code.');
+    $searchFilters = resident_filters(['q' => $q, 'purok' => '', 'status' => '', 'type' => '', 'show' => ''], false);
+    $found = $q !== '' ? resident_search($searchFilters, 10, 0)[0] : [];
+    card_start('Find the resident', 'Search by name, Resident ID, address or email. Purok is shown in each result.');
     echo '<form method="get" action="' . e(base_url('requests/form.php')) . '" class="filters px-0 border-0">' . ($visit ? '<input type="hidden" name="visit" value="' . (int) $visit['visit_id'] . '">' : '')
-       . '<div><label class="form-label" for="q">Name</label><input class="form-control" id="q" name="q" value="' . e($q) . '" maxlength="60" required autofocus></div><div><button class="btn btn-primary" type="submit">Search</button></div></form>';
+       . '<div><label class="form-label" for="q">Resident name, ID, address or email</label><input class="form-control" id="q" name="q" value="' . e($q) . '" maxlength="80" required autofocus></div><div><button class="btn btn-primary" type="submit">Search</button></div></form>';
     if ($q !== '' && !$found) { echo empty_state('bi-person-x', 'No resident matches. Register the resident first.') . (can('residents.add') ? '<p class="text-center">' . btn_link('residents/form.php', 'Register resident', 'btn-light border') . '</p>' : ''); }
-    foreach ($found as $r) { echo '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><strong>' . e(resident_name($r)) . '</strong><div class="small text-muted">' . e((string) ($r['household_code'] ?? 'no household')) . ' · ' . e((string) ($r['purok'] ?? '')) . '</div></div>'
-        . '<a class="btn btn-sm btn-primary" href="' . e(base_url('requests/form.php?resident=' . (int) $r['resident_id'] . ($visit ? '&visit=' . (int) $visit['visit_id'] : ''))) . '">Select</a></div>'; }
+    foreach ($found as $r) {
+        $details = trim((string) ($r['resident_no'] ?? 'Resident ID not assigned') . ' · ' . (string) ($r['address'] ?? 'Address not recorded') . ' · ' . (string) ($r['purok'] ?? 'Purok not assigned'));
+        echo '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><strong>' . e(resident_name($r)) . '</strong><div class="small text-muted">' . e($details) . '</div></div>'
+            . '<a class="btn btn-sm btn-primary" href="' . e(base_url('requests/form.php?resident=' . (int) $r['resident_id'] . ($visit ? '&visit=' . (int) $visit['visit_id'] : ''))) . '">Select</a></div>';
+    }
     card_end();
 } else {
     $action = base_url('requests/form.php' . ($ex ? '?id=' . (int) $ex['request_id'] : ''));
@@ -266,10 +275,20 @@ if ($resident === null) {
            . '. The quote is saved with the request and does not record a payment.</div></div>';
     }
     echo f_select('assigned_to', 'Assigned to', $staff, $v['assigned_to'], ['blank' => 'Nobody yet', 'disabled' => !$canReview]);
+    $requirementsHelp = !$canReview
+        ? 'Only the Secretary or Administrator can update the requirements review.'
+        : ($canEditRequirements
+            ? 'Check the current request and supporting details. Mark Complete only after they have been verified.'
+            : 'Start formal review from the request details first. Requirements cannot be completed during intake.');
+    $requirementsNoteHelp = !$canReview
+        ? 'The Secretary or Administrator will record any missing documents or follow-up notes.'
+        : ($canEditRequirements
+            ? 'Required when marking the requirements as incomplete.'
+            : 'These notes become editable after formal review starts.');
     echo f_select('requirements_status', 'Requirements review', [
         'Not checked' => 'Not checked yet', 'Incomplete' => 'Incomplete — needs follow-up', 'Complete' => 'Complete',
-    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => $canReview ? 'Review supporting information before approving this request as Ready. No specific supporting documents are assumed by the system.' : 'Only the Secretary or Administrator can update the requirements review.', 'disabled' => !$canReview]);
-    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => $canReview ? 'Required when marking the requirements as incomplete.' : 'The Secretary or Administrator will record any missing documents or follow-up notes.', 'disabled' => !$canReview]);
+    ], $v['requirements_status'], ['required' => true, 'col' => 'col-12', 'help' => $requirementsHelp, 'disabled' => !$canEditRequirements]);
+    echo f_textarea('requirements_note', 'Requirements / follow-up notes', $v['requirements_note'], ['rows' => 2, 'maxlength' => 1000, 'help' => $requirementsNoteHelp, 'disabled' => !$canEditRequirements]);
     echo f_textarea('purpose', 'Purpose / request details', $v['purpose'], ['required' => true, 'rows' => 3, 'maxlength' => 255]);
     echo '<div class="col-12 mb-3"><label class="form-label" for="attachment">Supporting document (optional)</label><input class="form-control" id="attachment" name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"><div class="form-text">PDF, JPG or PNG; maximum 10 MB. Uploads are private and available to authorized staff.</div></div>';
     echo '</div><button class="btn btn-primary" type="submit">' . ($ex ? 'Save changes' : 'File request') . '</button> <a class="btn btn-light border" href="' . e(base_url('requests/index.php')) . '">Cancel</a></form>';
