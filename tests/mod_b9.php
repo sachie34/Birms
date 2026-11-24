@@ -159,4 +159,43 @@ function run_b9(array $S, string $base): void
     record('B9-8', 'Blotter, hearing, queue, venue and resident-blotter pages explain each role’s actual permitted actions',
         !$roleGuidanceProblems, implode(', ', $roleGuidanceProblems));
 
+
+    $secretaryVenue = $S['secretary']->get('/venues/index.php');
+    $clerkVenue = $S['clerk']->get('/venues/index.php');
+    $captainVenue = $S['captain']->get('/venues/index.php');
+    $overrideForm = 'name="do" value="override"';
+    $overrideVisibleOnlyToSecretary = str_contains($secretaryVenue['body'], $overrideForm)
+        && !str_contains($clerkVenue['body'], $overrideForm)
+        && !str_contains($captainVenue['body'], $overrideForm);
+    record('B9-9', 'Only Secretary sees the blotter/hearing room availability toggle; Staff and Chairman are view-only for this setting',
+        $secretaryVenue['status'] === 200 && $clerkVenue['status'] === 200 && $captainVenue['status'] === 200
+        && $overrideVisibleOnlyToSecretary,
+        'Secretary=' . $secretaryVenue['status'] . '; Staff=' . $clerkVenue['status']
+        . '; Chairman=' . $captainVenue['status'] . '; toggle secretary/staff/chairman='
+        . (str_contains($secretaryVenue['body'], $overrideForm) ? 'yes' : 'no') . '/'
+        . (str_contains($clerkVenue['body'], $overrideForm) ? 'yes' : 'no') . '/'
+        . (str_contains($captainVenue['body'], $overrideForm) ? 'yes' : 'no'));
+
+    $venueName = 'ZZ-B9-ROOM-' . strtoupper(bin2hex(random_bytes(3)));
+    db_exec("INSERT INTO venues (name, description, availability_override, is_active, created_by)
+             VALUES (?, 'B9 temporary availability permission test', 'automatic', 1, NULL)", [$venueName]);
+    $venueId = (int) db()->lastInsertId();
+    try {
+        $secretarySave = post_as($S['secretary'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'available',
+        ]);
+        $afterSecretary = (string) db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]);
+        $staffAttempt = post_as($S['clerk'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'in_use',
+        ]);
+        $afterStaff = (string) db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]);
+        record('B9-10', 'Secretary can save room availability while a direct Staff POST is denied server-side',
+            $secretarySave['status'] === 302 && $afterSecretary === 'available'
+            && $staffAttempt['status'] === 403 && $afterStaff === 'available',
+            'Secretary POST=' . $secretarySave['status'] . '; Staff POST=' . $staffAttempt['status']
+            . '; final override=' . $afterStaff);
+    } finally {
+        db_exec('DELETE FROM venues WHERE venue_id = ?', [$venueId]);
+    }
+
 }
