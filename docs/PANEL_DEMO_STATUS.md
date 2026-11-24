@@ -68,7 +68,7 @@ Use separate browser profiles for Admin, Secretary, Staff and Chairman. Use a se
 
 1. **Admin:** sign in and show the dashboard, user/role administration, system settings, audit and technical controls. Explain that the Admin is the technical administrator.
 2. **Resident:** open the shared kiosk QR; verify a synthetic resident; submit a demo document request; show the blotter and venue options; obtain a queue ticket; open request tracking.
-3. **Secretary:** show the incoming document request, review/complete its requirements, demonstrate certificate-wording editing, then show the room-availability control. Do not demonstrate final approval or certificate issuance from this account.
+3. **Secretary:** show the incoming document request, review/complete its requirements, edit certificate wording, prepare the hearing-summons wording under the scoped summons permission, then show the room-availability control. Do not demonstrate final approval or certificate issuance from this account.
 4. **Staff:** make the final document decision; open the automatically saved draft PDF and show its DRAFT — NOT ISSUED marking; release the test certificate; review a blotter submission; manage a venue reservation and call a queue ticket.
 5. **Chairman:** show read-only records and reports. Attempting an operational action must be denied. Explain that the stored signature image is applied by the system to eligible certificate output.
 6. **Close:** show request status, issuance/history, audit and reports. State clearly which tests are automated and which target-PC checks are still awaiting evidence.
