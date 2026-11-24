@@ -104,6 +104,56 @@ function msit_demo_has_markers(array $c): bool
     }
     return false;
 }
+
+function msit_demo_legacy_seed_is_complete(array $c): bool
+{
+    return $c === [
+        'residents'=>6,'document_types'=>3,'requests'=>4,'drafts'=>1,'issuances'=>1,
+        'blotters'=>3,'venues'=>2,'reservations'=>2,'queues'=>3,'blotter_intakes'=>0,'hearings'=>0
+    ];
+}
+function msit_demo_upgrade_existing_seed(): array
+{
+    return db_transaction(function (): array {
+        $before = msit_demo_marker_counts();
+        if (msit_demo_is_complete($before)) { return ['already_seeded' => true, 'counts' => $before]; }
+        if (!msit_demo_legacy_seed_is_complete($before)) {
+            throw new RuntimeException('The existing demo set is partial or has additional linked records. No data was changed; inspect it before retrying.');
+        }
+        $residentIds = array_map('intval', array_column(
+            db_all("SELECT resident_id FROM residents WHERE resident_no LIKE 'DEMO-RES-%' ORDER BY resident_no"),
+            'resident_id'
+        ));
+        $caseIds = array_map('intval', array_column(
+            db_all("SELECT blotter_id FROM blotters WHERE case_no LIKE 'MSIT-DEMO-BLT-%' ORDER BY case_no"),
+            'blotter_id'
+        ));
+        $venueId = (int) db_val("SELECT venue_id FROM venues WHERE name = 'DEMO ONLY - Multi-purpose Hall'");
+        if (count($residentIds) !== 6 || count($caseIds) !== 3 || $venueId < 1) {
+            throw new RuntimeException('The existing DEMO seed is missing a resident, case or venue required for the safe upgrade.');
+        }
+
+        // Fill blank official details with unmistakable demo values only; never overwrite configured names/text.
+        msit_demo_seed_default_settings();
+        $definitions = [
+            ['DEMO ONLY - Barangay Clearance', msit_demo_template('BARANGAY CLEARANCE', 'This sample confirms that the named fictitious resident is listed in the sample BIRMS registry.')],
+            ['DEMO ONLY - Certificate of Residency', msit_demo_template('CERTIFICATE OF RESIDENCY', 'This sample states that the named fictitious resident has a sample address in the selected Purok.')],
+            ['DEMO ONLY - Certificate of Indigency', msit_demo_template('CERTIFICATE OF INDIGENCY', 'This sample is a layout demonstration only. It does not determine or certify actual indigency.')],
+        ];
+        foreach ($definitions as $index => [$name, $body]) {
+            db_exec(
+                'UPDATE document_types SET template_body = ?, fee_amount = 0.00, is_active = 1, requires_chairman_signature = 0 WHERE name = ?',
+                [$body, $name]
+            );
+        }
+        msit_demo_seed_blotter_and_hearing($residentIds, $caseIds, $venueId);
+        msit_demo_sync_demo_queue_counters();
+        audit('msit_demo_workflow_seed_upgraded', 'Demo Data', 'Success',
+            'Added DEMO ONLY resident blotter intake and Secretary hearing/summons examples; synchronized demo queue counters.');
+        return ['already_seeded' => false, 'counts' => msit_demo_marker_counts()];
+    });
+}
+
 function msit_demo_unique_certificate_reference(int $start): string
 {
     $year = (int) date('Y');
