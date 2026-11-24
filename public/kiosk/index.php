@@ -56,7 +56,7 @@ if ($resident !== null) {
     ];
     echo '<p class="kiosk-helper"><strong>Selected service:</strong> ' . e($serviceLabels[$requestedNext]) . '</p>'
         . '<h2 class="kiosk-form-section-title">Verify your identity to continue</h2>'
-        . '<p>Use your Resident ID and birthdate. If you do not know your ID, enter your name and birthdate to receive a one-time code at your registered email or mobile number.</p>'
+        . '<p>Use your Resident ID and birthdate. If you do not know your ID, enter your name and birthdate to receive a one-time code at your registered email address.</p>'
         . '<form method="post" action="' . e(base_url('kiosk/identify.php')) . '" class="kiosk-form">'
         . csrf_field()
         . '<input type="hidden" name="next" value="' . e($requestedNext) . '">'
@@ -65,7 +65,7 @@ if ($resident !== null) {
         . '<div class="kiosk-field"><label for="first_name">First name</label><input id="first_name" name="first_name" maxlength="100" autocomplete="given-name"></div>'
         . '<div class="kiosk-field"><label for="birthdate">Birthdate</label><input id="birthdate" name="birthdate" type="date" required></div>'
         . '<button class="kiosk-primary" type="submit">Continue</button></form>'
-        . '<p class="kiosk-helper">No email or mobile number registered? Please ask Staff to verify your identity at the counter.</p>';
+        . '<p class="kiosk-helper">No email address registered? Use your Resident ID and birthdate, or ask Staff to verify your identity at the counter.</p>';
 } else {
     echo '<p class="kiosk-helper">Choose a service above to continue. Request details and resident information are shown only after identity verification.</p>';
 }
