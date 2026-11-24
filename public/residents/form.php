@@ -61,16 +61,17 @@ $v = [
     'contact_number' => $ex['contact_number'] ?? '',
     'email_address' => $ex['email_address'] ?? '',
     'photo_path' => $ex['photo_path'] ?? null,
-    'notification_preference' => $ex['notification_preference'] ?? 'email',
+    'notification_preference' => 'email',
     'confirm_dup' => false,
 ];
 
 if (is_post()) {
     require_csrf();
     foreach (['last_name','first_name','middle_name','suffix','birthdate','sex','marital_status','address','purok_id',
-              'resident_status_id','resident_type_id','contact_number','email_address','notification_preference'] as $k) {
+              'resident_status_id','resident_type_id','contact_number','email_address'] as $k) {
         $v[$k] = post_str($k);
     }
+    $v['notification_preference'] = 'email';
     $v['confirm_dup'] = post_str('confirm_dup') === '1';
 
     if (!v_person_name($v['last_name'])) { $errors[] = 'Last name is required (letters, spaces, . \' - only).'; }
@@ -91,11 +92,6 @@ if (is_post()) {
     $photoFile = $_FILES['photo'] ?? null;
     $photoError = resident_photo_upload_error(is_array($photoFile) ? $photoFile : null);
     if ($photoError !== null) { $errors[] = $photoError; }
-    if (!in_array($v['notification_preference'], ['email','sms','both'], true)) { $errors[] = 'Choose Email, SMS or Both for notifications.'; }
-    if (in_array($v['notification_preference'], ['sms','both'], true) && $v['contact_number'] === '') { $errors[] = 'Enter a mobile number for SMS notifications.'; }
-    if (in_array($v['notification_preference'], ['email','both'], true) && $v['email_address'] === '') {
-        $errors[] = 'Enter an email address or select SMS as the notification channel.';
-    }
 
     $identityChanged = $ex === null
         || $ex['first_name'] !== $v['first_name']
@@ -229,7 +225,7 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
       <input class="form-control" type="file" id="photo" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
       <?php if ($ex && !empty($ex['photo_path'])): ?><div class="mt-2"><img src="<?= e(base_url('residents/photo.php?id=' . (int) $ex['resident_id'])) ?>" alt="Current resident photo" width="112" height="112" class="img-thumbnail"><div class="form-text">Choose a new image to replace the current photo.</div></div><?php endif; ?>
     </div>
-    <?= f_select('notification_preference', 'Notification channel', ['email'=>'Email','sms'=>'SMS','both'=>'Both'], (string) $v['notification_preference'], ['required' => true, 'col' => 'col-12', 'help' => 'Email is the default. SMS is optional and requires a mobile number.']) ?>
+    <p class="form-text mb-0">Resident request and queue updates use the registered email address only. Leave this blank when no email address is available; the resident can still ask Staff for status assistance.</p>
   </div></div></div></div>
 </div>
 <?php if ($dupFound): ?><div class="card-b mt-3"><div class="card-body-b pt-3"><?= f_check('confirm_dup', 'This is a different person with the same name and birthdate', false) ?></div></div><?php endif; ?>
