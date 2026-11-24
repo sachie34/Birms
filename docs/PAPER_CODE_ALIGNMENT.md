@@ -1,4 +1,6 @@
-# BIRMS paper-to-code alignment and presentation sign-off
+# BIRMS paper-to-code alignment — Historical Snapshot
+
+> **Historical document:** this alignment report describes the older `main`/B1–B12 application and earlier role assumptions. It is not the acceptance authority for the revised MSIT demonstration candidate. Use [MSIT_SRS_COMPLIANCE_PLAN.md](MSIT_SRS_COMPLIANCE_PLAN.md), [QUICK_USER_WORKFLOW.md](QUICK_USER_WORKFLOW.md) and [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) for the current revised-SRS implementation and role model. The current candidate branch is `john/phase2-kiosk-no-sms` (draft PR #39); target-PC acceptance is still separate from hosted CI.
 
 **Merged into:** `main` via pull request #2  
 **Review date:** 2026-10-28  
