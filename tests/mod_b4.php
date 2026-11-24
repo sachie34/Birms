@@ -1,5 +1,5 @@
 <?php
-/** B4 tests: revised document requests, request tracker, SMS outbox and optional provider. */
+/** B4 tests: revised document requests, request tracker, and email-only resident notices. */
 declare(strict_types=1);
 
 function run_b4(array $S, string $base): void
@@ -141,7 +141,7 @@ function run_b4(array $S, string $base): void
         && $clerkForeignEdit['status'] === 404
         && $clerkForeignCancel['status'] === 404
         && $status($foreignId) === 'Pending');
-    $outBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
+    // Legacy SMS rows are retained for audit compatibility; this workflow must not add any.
     $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
         'assigned_to' => '', 'requirements_status' => 'Incomplete', 'requirements_note' => '',
@@ -183,9 +183,9 @@ function run_b4(array $S, string $base): void
     $filed('ZZ Test purpose nophone', $nophone); $id2 = $rid('ZZ Test purpose nophone');
     $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($clk, $id2, 'Ready');
     $noContactNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE reference_no = (SELECT reference_no FROM document_requests WHERE request_id = ?)", [$id2]);
-    $noContactSms = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
-    record('B4-10', 'When the resident has no saved email or mobile number, the request still advances but no impossible delivery is reported',
-        $status($id2) === 'Ready' && $noContactNotice === 0 && $noContactSms === $outBefore);
+    $legacySmsAfter = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
+    record('B4-10', 'When the resident has no saved email, the request still advances without a notification or new legacy SMS row',
+        $status($id2) === 'Ready' && $noContactNotice === 0 && $legacySmsAfter === $legacySmsBefore);
 
     $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject');
     $pendingReject = $move($cap, $id4, 'Rejected', 'Attempt before review');
