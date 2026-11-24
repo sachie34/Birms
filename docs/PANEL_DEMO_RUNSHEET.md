@@ -1,7 +1,7 @@
 # BIRMS — Panel Demonstration Run Sheet
 
 **Use this with:** [Panel Demo Status](PANEL_DEMO_STATUS.md) and the [MSIT XAMPP Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md)  
-**Build:** john/phase2-kiosk-no-sms  
+**Build:** main at commit 735a5404f71f24ca1d697d61919704274d3b1e07  
 **Suggested duration:** 7–8 minutes  
 **Data rule:** Use only fictitious DEMO ONLY records. Never show real resident information.
 
