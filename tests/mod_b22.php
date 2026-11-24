@@ -237,14 +237,14 @@ function run_b22(array $S, string $base): void
             && count($rows) === 2
             && $rows[0]['notification_preference'] === 'email'
             && $rows[1]['notification_preference'] === 'email'
-            && $savedBoth === 'email'
+            && $savedPreference === 'email'
             && $smsIssuedCount === 0
             && $emailIssuedCount === 2;
         record(
             'B22-02',
             'Email-only preference is saved on the resident and each queue ticket; no SMS outbox rows are created',
             $choiceSaved,
-            'tickets=' . count($rows) . '; saved=' . $savedBoth . '; SMS outbox=' . $smsIssuedCount . '; email outbox=' . $emailIssuedCount
+            'tickets=' . count($rows) . '; saved=' . $savedPreference . '; SMS outbox=' . $smsIssuedCount . '; email outbox=' . $emailIssuedCount
         );
 
         // Change the profile preference after issuance. Notifications for existing tickets
