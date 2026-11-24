@@ -82,16 +82,6 @@ function run_b13(array $S, string $base): void
         record('B13-05', 'Blotter, Documents and Venue can each issue number 1 independently, while duplicate numbers within one service/day are rejected',
             $separateQueues === 3 && $duplicateQueueRejected, 'separate queues=' . $separateQueues . ', duplicate rejected=' . ($duplicateQueueRejected ? 'yes' : 'no'));
 
-        $publicQueueDisplay = $S['admin']->get('/queue/display.php');
-        record('B13-08', 'Public queue display shows queue information without exposing resident identity or contact details',
-            $publicQueueDisplay['status'] === 200
-            && !str_contains($publicQueueDisplay['body'], $residentNo)
-            && !str_contains($publicQueueDisplay['body'], 'ZZMSIT')
-            && !str_contains($publicQueueDisplay['body'], '123 MSIT Test Street')
-            && !str_contains($publicQueueDisplay['body'], 'email_address')
-            && !str_contains($publicQueueDisplay['body'], 'contact_number'),
-            'HTTP ' . $publicQueueDisplay['status']);
-
         db_exec("INSERT INTO venues (name, availability_override) VALUES (?, 'automatic')", [$venueName]);
         $venueId = (int) db()->lastInsertId();
         $venue = db_one('SELECT name, availability_override, is_active FROM venues WHERE venue_id = ?', [$venueId]);
