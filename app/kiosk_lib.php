@@ -75,7 +75,7 @@ function kiosk_current_resident(bool $touch = true): ?array
     }
     $resident = db_one(
         'SELECT resident_id, resident_no, last_name, first_name, middle_name, suffix, address, purok_id,
-                resident_status_id, contact_number, email_address, notification_preference, archived_at
+                resident_status_id, contact_number, email_address, archived_at
          FROM residents WHERE resident_id = ?',
         [(int) $id]
     );
@@ -100,34 +100,17 @@ function kiosk_require_resident(): array
     return $resident;
 }
 
-/** Select an available OTP delivery channel while honoring Email/SMS/Both with a safe fallback. */
-function kiosk_verification_channel(string $preference, bool $smsEnabled, bool $emailEnabled): ?string
+/** Mask the email address used for one-time kiosk verification. */
+function kiosk_mask_destination(string $destination): string
 {
-    if (!in_array($preference, ['email', 'sms', 'both'], true)) { $preference = 'email'; }
-    if (in_array($preference, ['sms', 'both'], true) && $smsEnabled) { return 'sms'; }
-    if ($emailEnabled) { return 'email'; }
-    if ($smsEnabled) { return 'sms'; }
-    return null;
-}
-
-function kiosk_mask_destination(string $channel, string $destination): string
-{
-    $destination = trim($destination);
-    if ($channel === 'sms') {
-        $digits = preg_replace('/\D/', '', $destination) ?? '';
-        return $digits === '' ? 'mobile number' : '••••••' . substr($digits, -4);
-    }
-    $parts = explode('@', $destination, 2);
+    $parts = explode('@', trim($destination), 2);
     if (count($parts) !== 2) { return 'email address'; }
     $name = $parts[0];
     $masked = ($name !== '' ? substr($name, 0, 1) : '') . str_repeat('•', max(2, min(6, strlen($name) - 1)));
     return $masked . '@' . $parts[1];
 }
 
-/**
- * Send a one-time identity code through an enabled resident contact channel.
- * The raw code and challenge token are never returned to web callers.
- */
+/** Send a one-time identity code to the resident's registered email only. */
 function kiosk_send_verification_code(array $resident): array
 {
     $residentId = (int) ($resident['resident_id'] ?? 0);
@@ -138,66 +121,36 @@ function kiosk_send_verification_code(array $resident): array
         'Too many verification codes were requested for this resident. Please wait 15 minutes or visit Staff.');
 
     $email = trim((string) ($resident['email_address'] ?? ''));
-    $mobile = trim((string) ($resident['contact_number'] ?? ''));
-    $preference = (string) ($resident['notification_preference'] ?? 'email');
-    $smsEnabled = $mobile !== '' && sms_provider_is_enabled();
-    $emailEnabled = $email !== '' && email_provider_is_enabled();
-
-    $channel = kiosk_verification_channel($preference, $smsEnabled, $emailEnabled);
-    if ($channel === null) {
-        return ['ok' => false, 'message' => 'A one-time code cannot be delivered because no verified email or SMS service is configured. Please ask Staff to verify your record at the counter.'];
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !email_provider_is_enabled()) {
+        return ['ok' => false, 'message' => 'No configured email address is available for this resident. Please ask Staff to verify your identity at the counter.'];
     }
 
     $token = bin2hex(random_bytes(24));
     $code = (string) random_int(100000, 999999);
     $tokenHash = hash('sha256', $token);
     $codeHash = hash('sha256', $token . ':' . $code);
-    $destination = $channel === 'sms' ? $mobile : $email;
     db_exec(
-        'INSERT INTO resident_verification_challenges
+        "INSERT INTO resident_verification_challenges
          (challenge_token_hash, code_hash, resident_id, channel, destination_snapshot, expires_at, attempt_count)
-         VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 0)',
-        [$tokenHash, $codeHash, $residentId, $channel, $destination, KIOSK_CODE_TTL_SECONDS]
+         VALUES (?, ?, ?, 'email', ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 0)",
+        [$tokenHash, $codeHash, $residentId, $email, KIOSK_CODE_TTL_SECONDS]
     );
     $challengeId = (int) db()->lastInsertId();
     $message = 'Your Barangay service kiosk verification code is ' . $code . '. It expires in 5 minutes. Do not share this code with anyone.';
-
-    if ($channel === 'sms') {
-        db_exec(
-            "INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status)
-             VALUES (?, ?, 'resident_verification', NULL, 'Waiting to send', ?, 'not_attempted')",
-            [$mobile, mb_substr_safe($message, 480), sms_provider_selected_name()]
-        );
-        $smsId = (int) db()->lastInsertId();
-        $result = sms_send_outbox($smsId);
-        $status = (string) ($result['status'] ?? 'unknown');
-        if (in_array($status, ['queued','pending','sent'], true)) {
-            $_SESSION['kiosk_challenge_token'] = $token;
-            return ['ok' => true, 'channel' => 'sms', 'destination' => kiosk_mask_destination('sms', $destination)];
+    try {
+        $notificationId = email_queue_notification($residentId, $email, 'Barangay kiosk verification code', $message, 'resident_verification', null);
+        $result = email_send_notification($notificationId);
+        if (empty($result['ok'])) {
+            db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
+            return ['ok' => false, 'message' => 'The verification email could not be sent. Please ask Staff to verify your identity at the counter.'];
         }
-        // A confirmed failure may fall back to email. Unknown is not retried because the
-        // provider may already have accepted the SMS.
-        if (in_array($status, ['failed','refunded','not_configured','no_number'], true) && $emailEnabled) {
-            db_exec('UPDATE resident_verification_challenges SET channel = \'email\', destination_snapshot = ? WHERE challenge_id = ?', [$email, $challengeId]);
-            $notificationId = email_queue_notification($residentId, $email, 'Barangay kiosk verification code', $message, 'resident_verification', null);
-            $emailResult = email_send_notification($notificationId);
-            if (!empty($emailResult['ok'])) {
-                $_SESSION['kiosk_challenge_token'] = $token;
-                return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination('email', $email)];
-            }
-        }
-        db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
-        return ['ok' => false, 'message' => 'The verification message could not be sent or confirmed. Please ask Staff to verify your record at the counter.'];
-    }
-
-    $notificationId = email_queue_notification($residentId, $email, 'Barangay kiosk verification code', $message, 'resident_verification', null);
-    $result = email_send_notification($notificationId);
-    if (!empty($result['ok'])) {
         $_SESSION['kiosk_challenge_token'] = $token;
-        return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination('email', $destination)];
+        return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination($email)];
+    } catch (Throwable $emailError) {
+        db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
+        error_log('BIRMS kiosk verification email failed: ' . get_class($emailError));
+        return ['ok' => false, 'message' => 'The verification email could not be sent. Please ask Staff to verify your identity at the counter.'];
     }
-    db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
-    return ['ok' => false, 'message' => 'The verification email could not be sent. Please ask Staff to verify your record at the counter.'];
 }
 
 /** Verify a one-time code, enforce expiry/attempt limits, and establish a short resident-only kiosk session. */
