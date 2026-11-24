@@ -780,23 +780,5 @@ if ($tab === 'general') {
     echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save email settings</button>' : '') . '</form>';
     echo '<p class="small text-muted mt-3 mb-0">Do not put SMTP passwords or provider API keys in this page. Configure the approved mail relay in the private server configuration. Email notices remain in the outbox when delivery is not configured.</p>';
     card_end();
-    $smsStatus = sms_provider_status_summary();
-    card_start('Optional SMS gateway', 'SMS is optional. The gateway and API key are configured in the private server configuration and are never displayed in this page.');
-    echo '<div class="alert alert-' . ($smsStatus['enabled'] ? 'success' : 'secondary') . '"><strong>' . e((string) $smsStatus['provider']) . ': ' . ($smsStatus['enabled'] ? 'Enabled' : 'Disabled') . '</strong><br>' . e((string) $smsStatus['reason']) . '</div>';
-    if ($canEdit) { echo '<p>' . btn_link('admin/sms.php', 'Open SMS Delivery Log', 'btn-primary', 'bi-chat-dots') . '</p>'; }
-    echo '<p class="small text-muted mb-0">Residents can choose SMS, email or both. When SMS is unavailable or a provider confirms failure, BIRMS falls back to email where a valid address is on record. The queue display remains the final visible source for queue numbers.</p>';
-    card_end();
-} else {
-    $smsStatus = sms_provider_status_summary();
-    echo '<div class="alert alert-' . ($smsStatus['enabled'] ? 'success' : 'secondary') . '"><strong>' . e((string) $smsStatus['provider']) . ' SMS: ' . ($smsStatus['enabled'] ? 'Enabled' : 'Disabled') . '</strong><br>' . e((string) $smsStatus['reason']) . '. API keys are read only from private server configuration and are never stored in this Settings page.</div>';
-    echo '<div class="alert alert-warning">When enabled, changing a request to Ready can send a real SMS and incur provider charges. Network failures do not undo the saved request status. Unknown outcomes are not retried automatically.</div>';
-    if ($canEdit) {
-        echo '<p>' . btn_link('admin/sms.php', 'Open SMS Delivery Log', 'btn-primary', 'bi-chat-dots') . '</p>';
-    }
-    card_start('SMS text', 'Template for the ready-for-pickup notification. Messages are recorded in the outbox; the selected provider sends them only when explicitly enabled in private config.');
-    echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('sms_save');
-    echo f_textarea('sms_ready_text', 'Message when a request is ready (placeholders: {{reference_no}} {{document_name}})', (string) setting('sms_ready_text', ''), ['rows' => 3, 'maxlength' => 300, 'help' => 'Default: Your request {{reference_no}} ({{document_name}}) is ready for pickup at the barangay office.']);
-    echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
-    card_end();
 }
 render_footer();
