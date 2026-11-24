@@ -34,7 +34,7 @@ $base = rtrim($base, '/');
 $baseParts = parse_url($base);
 if (!is_array($baseParts) || !in_array(strtolower((string) ($baseParts['scheme'] ?? '')), ['http', 'https'], true)
     || empty($baseParts['host'])) {
-    fwrite(STDERR, "REFUSED: invalid test base URL. Pass http://localhost/<project>/public or set BIRMS_TEST_BASE_URL.\\n");
+    fwrite(STDERR, "REFUSED: invalid test base URL. Pass http://localhost/<project>/public or set BIRMS_TEST_BASE_URL.\n");
     exit(2);
 }
 
@@ -53,8 +53,8 @@ $probeStatus = (int) curl_getinfo($probe, CURLINFO_RESPONSE_CODE);
 $probeError = curl_error($probe);
 curl_close($probe);
 if ($probeResult === false || $probeStatus < 200 || $probeStatus >= 400) {
-    fwrite(STDERR, "REFUSED: BIRMS test server did not return a successful response from {$base}/index.php (HTTP {$probeStatus}). {$probeError}\\n");
-    fwrite(STDERR, "Start Apache or the CI PHP server, then pass the correct public base URL, for example: php tests/run_modules.php http://localhost/<project>/public\\n");
+    fwrite(STDERR, "REFUSED: BIRMS test server did not return a successful response from {$base}/index.php (HTTP {$probeStatus}). {$probeError}\n");
+    fwrite(STDERR, "Start Apache or the CI PHP server, then pass the correct public base URL, for example: php tests/run_modules.php http://localhost/<project>/public\n");
     exit(2);
 }
 
@@ -65,7 +65,7 @@ $demoFixtureCount = (int) db_val("SELECT COUNT(*) FROM residents WHERE resident_
     + (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE reference_no IN ('DEMO-DOC-PENDING-01', 'MSIT-DEMO-BLT-0001', 'DEMO-VEN-0001')")
     + (int) db_val("SELECT COUNT(*) FROM households WHERE household_code LIKE 'DEMO-HH-%'");
 if ($demoFixtureCount > 0) {
-    fwrite(STDERR, "REFUSED: reserved demo seed records already exist in {$dbName}. Module tests are destructive fixtures and must run against a separate, clean migrated *_test database. Keep the presentation database intact; apply the MSIT demo seed only after module tests have completed.\\n");
+    fwrite(STDERR, "REFUSED: reserved demo seed records already exist in {$dbName}. Module tests are destructive fixtures and must run against a separate, clean migrated *_test database. Keep the presentation database intact; apply the MSIT demo seed only after module tests have completed.\n");
     exit(2);
 }
 define('TP', 'Test-Pass-2026a');
