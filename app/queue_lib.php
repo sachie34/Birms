@@ -25,12 +25,6 @@ function queue_resolve_notification_preference(?string $requested, ?string $fall
     return 'email';
 }
 
-/** Render the sole supported resident notification choice. */
-function queue_notification_preference_options(?string $selected = 'email'): string
-{
-    return '<option value="email" selected>Email</option>';
-}
-
 /**
  * Issue the next number for a service/day. The counter row is locked inside the transaction,
  * so simultaneous counter/kiosk requests cannot receive the same number.
@@ -57,7 +51,7 @@ function queue_issue_number(
     $resident = null;
     if ($residentId !== null) {
         $resident = db_one(
-            'SELECT resident_id, contact_number, email_address, notification_preference, archived_at
+            'SELECT resident_id, email_address, archived_at
              FROM residents WHERE resident_id = ?',
             [$residentId]
         );
@@ -73,11 +67,9 @@ function queue_issue_number(
     if ($purpose !== null && !v_len($purpose, 3, 255)) {
         throw new InvalidArgumentException('Enter the reason for visiting (3-255 characters).');
     }
-    $savedPreference = (string) ($resident['notification_preference'] ?? 'email');
-    $preference = queue_resolve_notification_preference($notificationPreference, $savedPreference);
-    $persistPreference = $residentId !== null && $notificationPreference !== null && trim($notificationPreference) !== '';
+    $preference = queue_resolve_notification_preference($notificationPreference);
 
-    $entry = db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference, $persistPreference, $resident): array {
+    $entry = db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference): array {
         $today = date('Y-m-d');
         db_exec('INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)', [$service, $today]);
         $counter = db_one('SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE', [$service, $today]);
@@ -90,18 +82,6 @@ function queue_issue_number(
              VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', ?, ?)',
             [$service, $today, $number, $residentId, ($referenceNo !== '' ? $referenceNo : null), $purpose, $issuedVia, $preference]
         );
-        if ($persistPreference && (string) ($resident['notification_preference'] ?? 'email') !== $preference) {
-            db_exec(
-                'UPDATE residents SET notification_preference = ? WHERE resident_id = ? AND archived_at IS NULL',
-                [$preference, $residentId]
-            );
-            audit_best_effort(
-                'resident_notification_preference_changed',
-                'Notifications',
-                'Success',
-                'Resident #' . $residentId . ' changed their self-service notification preference to ' . $preference . '.'
-            );
-        }
         $id = (int) db()->lastInsertId();
         audit('queue_number_issued', 'Queue', 'Success', $service . ' queue #' . $number . ' issued for ' . $today, 'queue_entry', $id);
         return ['queue_id' => $id, 'service' => $service, 'queue_date' => $today, 'queue_number' => $number];
