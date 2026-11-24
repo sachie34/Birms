@@ -6,9 +6,9 @@
 **Baseline:** current `main` branch
 **Purpose:** Use the revised SRS as the acceptance baseline for all BIRMS changes. This document records the original compliance plan and implementation phases; it is not evidence that every listed feature is already implemented.
 
-> **Current implementation pointer (2026-11-24):** the revised demonstration candidate is `john/phase2-kiosk-no-sms` (draft PR #39), not this plan's original working branch `john/msit-srs-compliance`. The current candidate is email-only (SMS workflows removed), uses Chairman read-only / Secretary requirements review and venue-availability control / Staff final decisions and service operations / Admin technical administration, and passed exact-head CI run [#1277](https://github.com/sachie34/Birms/actions/runs/45373724774). Use [the current quick workflow](QUICK_USER_WORKFLOW.md) and [XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) for current roles and manual acceptance gates.
+> **Current implementation pointer (2026-11-24):** the revised MSIT demonstration build from `john/phase2-kiosk-no-sms` was merged into `main` through PR #39 at commit `735a5404f71f24ca1d697d61919704274d3b1e07`. Post-merge CI run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed 8/8 PHP/MariaDB combinations with 48/48 security and 283/283 module checks per job, zero failures and zero untested checks. The current scope is email-only; SMS workflows are removed. Roles: Chairman read-only, Secretary requirements review and venue-availability control, Staff final decisions and service operations, Admin technical administration. Use [the current quick workflow](QUICK_USER_WORKFLOW.md), [panel guide](PANEL_DEMO_STATUS.md) and [XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) for current roles and local acceptance gates.
 >
-> **Historical phase notes below:** older section updates refer to earlier candidate commits and PR #34. Their test counts, SMS design notes, release decisions and branch instructions are retained as development history only; do not use them to install or sign off the current candidate. For present acceptance, use the PR #39 branch and the runbooks linked above.
+> **Historical phase notes below:** older section updates refer to earlier candidate commits and PR #34. Their test counts, SMS design notes, release decisions and branch instructions are retained as development history only; do not use them to install or sign off the current main release. For present acceptance, use the merged main build and the runbooks linked above.
 
 ## 1. Source-of-truth rule
 
@@ -168,7 +168,7 @@ No phase is complete until:
 5. New functions are exercised end-to-end, not merely rendered.
 6. Known manual acceptance items and limitations are recorded truthfully.
 
-Do not merge this branch to `main` or label the system MSIT-compliant until the traceability matrix has evidence for every applicable SRS requirement and the target deployment UAT has been completed.
+The revised demo candidate has been merged to `main` after hosted CI passed. This merge is for the defense build; it does not by itself prove every SRS requirement or target deployment UAT is complete. Production MSIT compliance still requires a completed traceability matrix and target deployment acceptance.
 
 
 ## 8. Existing unmerged security work that must be preserved
