@@ -153,18 +153,18 @@ Check the test output for both failures and `NOT TESTED` items. The repository c
 Back up the intended working database first. Then run the base seed in read-only mode, inspect the target database name and planned counts, and apply it:
 
 ```bat
-C:\\xampp\\php\\php.exe tools\\seed_msit_demo_data.php
-C:\\xampp\\php\\php.exe tools\\seed_msit_demo_data.php --apply
-C:\\xampp\\php\\php.exe tests\\verify_msit_demo_seed.php
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+C:\xampp\php\php.exe tests\verify_msit_demo_seed.php
 ```
 
 For the fuller presentation dataset, run the optional extended seed only after the base verifier passes:
 
 ```bat
-C:\\xampp\\php\\php.exe tools\\seed_msit_extended_demo_data.php
-C:\\xampp\\php\\php.exe tools\\seed_msit_extended_demo_data.php --apply
-C:\\xampp\\php\\php.exe tests\\verify_msit_extended_demo_seed.php
-C:\\xampp\\php\\php.exe tests\\verify_msit_demo_seed.php
+C:\xampp\php\php.exe tools\seed_msit_extended_demo_data.php
+C:\xampp\php\php.exe tools\seed_msit_extended_demo_data.php --apply
+C:\xampp\php\php.exe tests\verify_msit_extended_demo_seed.php
+C:\xampp\php\php.exe tests\verify_msit_demo_seed.php
 ```
 
 Both seeders are CLI-only, refuse databases not ending in `_work` or `_test`, default to a read-only plan, and are idempotent. The extended seed is additive. Do not use the retired `tools/seed_demo_data.php` household/visitor dataset for the revised MSIT SRS. Never run the module integration suite after applying the presentation seed; use CI or a separate clean test database for module verification. See [docs/DEMO_DATA.md](docs/DEMO_DATA.md) for the full data inventory and what is deliberately not fabricated.
