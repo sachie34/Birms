@@ -1,5 +1,5 @@
 <?php
-/** B4 tests: revised document requests, request tracker, SMS outbox and optional provider. */
+/** B4 tests: revised document requests, request tracker and email-only resident notices. */
 declare(strict_types=1);
 
 function run_b4(array $S, string $base): void
@@ -200,7 +200,7 @@ function run_b4(array $S, string $base): void
     $move($sec, $id2, 'Review'); $completeRequirements($sec, $id2); $move($clk, $id2, 'Ready');
     $noContactNotice = (int) db_val("SELECT COUNT(*) FROM notification_outbox WHERE reference_no = (SELECT reference_no FROM document_requests WHERE request_id = ?)", [$id2]);
     $noContactSms = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
-    record('B4-10', 'When the resident has no saved email or mobile number, the request still advances but no impossible delivery is reported',
+    record('B4-10', 'When the resident has no saved email address, the request still advances but no impossible delivery is reported',
         $status($id2) === 'Ready' && $noContactNotice === 0 && $noContactSms === $outBefore);
 
     $filed('ZZ Test purpose reject', $rita); $id4 = $rid('ZZ Test purpose reject');
