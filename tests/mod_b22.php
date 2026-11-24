@@ -227,7 +227,6 @@ function run_b22(array $S, string $base): void
         $secondPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
             'purpose' => 'Email-only queue ticket test two',
-            'notification_preference' => 'email',
         ]);
         $rows = db_all(
             'SELECT queue_id, queue_number, notification_preference, status
@@ -261,9 +260,7 @@ function run_b22(array $S, string $base): void
             'tickets=' . count($rows) . '; saved=' . $savedPreference . '; SMS outbox=' . $smsIssuedCount . '; email outbox=' . $emailIssuedCount
         );
 
-        // Change the profile preference after issuance. Notifications for existing tickets
-        // must still use the channel each resident selected for that specific queue visit.
-        db_exec("UPDATE residents SET notification_preference = 'email' WHERE resident_id = ?", [$residentId]);
+        // The channel is no longer user-selectable. Every new queue ticket stores email.
         $called = post_as($S['clerk'], '/queue/index.php', '/queue/action.php', [
             'do' => 'call_next',
             'service' => 'Venue',
