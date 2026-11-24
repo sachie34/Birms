@@ -35,6 +35,7 @@ $excludedPrefixes = [
     'storage/logs/',
     'storage/backups/',
     'storage/private_uploads/',
+    'storage/resident_photos/',
 ];
 
 $iterator = new RecursiveIteratorIterator(
@@ -51,7 +52,8 @@ foreach ($iterator as $entry) {
     $absolutePath = $entry->getPathname();
     $relativePath = str_replace('\\', '/', substr($absolutePath, strlen($root) + 1));
 
-    if (in_array($relativePath, $excludedExact, true)) {
+    if (in_array($relativePath, $excludedExact, true)
+        || str_starts_with($relativePath, '.env.')) {
         continue;
     }
 
