@@ -77,7 +77,7 @@ Use separate browser profiles for Admin, Secretary, Staff and Chairman. Use a se
 
 Use the detailed [MSIT XAMPP and Role Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) for the full install and test procedure.
 
-Before replacing the local project, back up the whole existing folder and export the working database. Extract this candidate into a clean folder rather than over the older project so removed files cannot remain behind. Restore only the necessary private local configuration and storage files from the backup. Confirm the private configuration points to `barangay_db_work` (or a separate `*_test` database), never the original `barangay_db`.
+Before replacing the local project, back up the whole existing folder and export the working database. Extract the current `main` ZIP into a clean folder rather than over the older project so removed files cannot remain behind. Restore only the necessary private local configuration and storage files from the backup. Confirm the private configuration points to `barangay_db_work` (or a separate `*_test` database), never the original `barangay_db`.
 
 The sample-data seeder creates fictitious DEMO ONLY residents, document templates/requests, blotter cases, venues and queue tickets. It does not create users or default passwords. Create the four staff-role accounts separately and use separate browser profiles.
 
