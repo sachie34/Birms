@@ -15,7 +15,10 @@ function queue_valid_notification_preference(string $preference): bool
     return strtolower(trim($preference)) === 'email';
 }
 
-/** Accept only the supported email notification preference. */
+/**
+ * Normalize all legacy stored preferences to email. The optional fallback argument is
+ * retained for older internal callers but deliberately ignored; residents cannot choose channels.
+ */
 function queue_resolve_notification_preference(?string $requested, ?string $fallback = 'email'): string
 {
     if ($requested === null || trim($requested) === '') { return 'email'; }
