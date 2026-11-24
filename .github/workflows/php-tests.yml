@@ -267,7 +267,7 @@ jobs:
           wait "$seed_b" || { cat test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log; exit 1; }
           cat test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
           grep -Fq 'Demo dataset created successfully.' test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
-          grep -Fq 'Demo dataset was already present; no changes made.' test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
+          grep -Eq 'Demo dataset was already present; no changes made\.|Status: complete demo dataset already exists\. No changes needed\.' test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
 
           second="$(php tools/seed_msit_demo_data.php --apply)"
           printf '%s\n' "$second"
@@ -294,7 +294,7 @@ jobs:
           wait "$seed_b" || { cat test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log; exit 1; }
           cat test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
           grep -Fq 'Extended MSIT demo data created successfully.' test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
-          grep -Fq 'Extended MSIT demo data was already present; no rows changed.' test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
+          grep -Eq 'Extended MSIT demo data was already present; no rows changed\.|Status: extended MSIT demo set already complete\. No changes needed\.' test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
 
           second="$(php tools/seed_msit_extended_demo_data.php --apply)"
           printf '%s\n' "$second"
