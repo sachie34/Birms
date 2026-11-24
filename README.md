@@ -42,9 +42,10 @@ If it confirms `barangay_db_work`, apply the sample records:
 
 ```bat
 C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+C:\xampp\php\php.exe tests\verify_msit_demo_seed.php
 ```
 
-This adds fictitious residents, demo-only certificate templates and requests, resident blotter intake examples (Pending/Accepted/Rejected), sample blotter cases, a Secretary-managed hearing with demo summons wording, venue reservations and queue tickets with synchronized daily counters. It creates no users or default passwords and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
+The verifier checks demo templates, document states, blotter intake states, the Secretary hearing/summons example, Captain signatory fields and queue counters, then confirms a new Staff-issued number can follow the seeded ticket. The seeder safely upgrades the exact older complete demo dataset; it refuses partial/custom records rather than guessing how to repair them. It creates only fictitious DEMO ONLY records, no users/default passwords, and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme are exercised across 57 role-accessible menu routes in the current main-branch automated UI checks. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 
