@@ -49,7 +49,7 @@ function permission_map(): array
             'requests.view', 'requests.add', 'requests.edit', 'requests.approve', 'requests.tracker',
             'certificates.history', 'certificates.issue', 'certificates.print',
             'blotters.view', 'blotter_requests.view', 'blotter_requests.review', 'hearings.view',
-            'venues.view', 'venues.manage', 'venues.approve',
+            'venues.view', 'venues.manage', 'venues.override', 'venues.approve',
             'queue.view', 'queue.manage',
         ],
     ];
