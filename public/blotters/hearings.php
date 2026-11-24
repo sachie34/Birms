@@ -18,7 +18,9 @@ $rows = db_all("SELECT h.hearing_id, h.scheduled_at, h.venue, h.status, h.status
     FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id WHERE {$cond[$tab]} ORDER BY $order, h.hearing_id LIMIT " . (int) $per . ' OFFSET ' . (int) (($page - 1) * $per));
 
 render_header('Hearings', [['Hearings', null]], 'hearings');
-page_head('Hearings', 'Schedule hearings from a case page. Record each outcome so the case can move on.');
+page_head('Hearings', can('hearings.add')
+    ? 'Schedule hearings from a case page and record the actual outcome after the meeting.'
+    : 'View scheduled hearings and related cases. Scheduling changes and outcomes are handled by the Secretary or Administrator.');
 echo '<ul class="nav nav-pills mb-3">';
 foreach ($tabs as $k => $lab) { echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('blotters/hearings.php?tab=' . $k)) . '">' . e($lab) . ' <span class="badge text-bg-light">' . (int) $counts[$k] . '</span></a></li>'; }
 echo '</ul>';
