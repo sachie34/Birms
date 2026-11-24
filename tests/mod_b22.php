@@ -159,12 +159,12 @@ function run_b22(array $S, string $base): void
                 && $page['status'] === 200
                 && str_contains($page['body'], 'name="notification_preference"')
                 && str_contains($page['body'], 'option value="email"')
-                && str_contains($page['body'], 'option value="sms"')
-                && str_contains($page['body'], 'option value="both"');
+                && !str_contains($page['body'], 'option value="sms"')
+                && !str_contains($page['body'], 'option value="both"');
         }
         record(
             'B22-01',
-            'Resident kiosk queue, document, blotter and venue forms let the resident choose Email, SMS or Both',
+            'Resident kiosk forms offer email-only notifications and no SMS choices',
             $formsOfferChoice,
             $formsOfferChoice ? 'all four resident forms checked' : 'identity or one or more kiosk forms did not expose all three choices'
         );
@@ -201,13 +201,13 @@ function run_b22(array $S, string $base): void
 
         $firstPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
-            'purpose' => 'Test SMS preference for queue ticket',
-            'notification_preference' => 'sms',
+            'purpose' => 'Email-only queue ticket test one',
+            'notification_preference' => 'email',
         ]);
         $secondPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
-            'purpose' => 'Test Both preference for queue ticket',
-            'notification_preference' => 'both',
+            'purpose' => 'Email-only queue ticket test two',
+            'notification_preference' => 'email',
         ]);
         $rows = db_all(
             'SELECT queue_id, queue_number, notification_preference, status
@@ -229,14 +229,14 @@ function run_b22(array $S, string $base): void
         );
         $choiceSaved = $firstPost['status'] === 302 && $secondPost['status'] === 302
             && count($rows) === 2
-            && $rows[0]['notification_preference'] === 'sms'
-            && $rows[1]['notification_preference'] === 'both'
-            && $savedBoth === 'both'
-            && $smsIssuedCount === 2
+            && $rows[0]['notification_preference'] === 'email'
+            && $rows[1]['notification_preference'] === 'email'
+            && $savedBoth === 'email'
+            && $smsIssuedCount === 0
             && $emailIssuedCount === 2;
         record(
             'B22-02',
-            'Kiosk selections are saved on the resident and each ticket; unavailable SMS falls back to email',
+            'Email-only preference is saved on the resident and each queue ticket; no SMS outbox rows are created',
             $choiceSaved,
             'tickets=' . count($rows) . '; saved=' . $savedBoth . '; SMS outbox=' . $smsIssuedCount . '; email outbox=' . $emailIssuedCount
         );
@@ -275,13 +275,13 @@ function run_b22(array $S, string $base): void
             && count($recalledRows) === 2
             && $recalledRows[0]['status'] === 'Called'
             && $recalledRows[1]['status'] === 'Waiting'
-            && $calledSms === 1
-            && $nearSms === 1
-            && $calledFallbackEmail === 1
+            && $calledSms === 0
+            && $nearSms === 0
+            && $calledFallbackEmail === 0
             && $nearEmail === 1;
         record(
             'B22-03',
-            'Called and next-in-line alerts honor each ticket choice even after the resident profile preference changes',
+            'Called and next-in-line alerts use email only and never create SMS records',
             $perTicketApplied,
             'called SMS=' . $calledSms . '; next SMS=' . $nearSms . '; called email fallback=' . $calledFallbackEmail . '; next email=' . $nearEmail
         );
@@ -466,82 +466,44 @@ function run_b22(array $S, string $base): void
             'remaining session keys=' . implode(', ', $remainingKioskKeys)
         );
 
-        $fallbackStatusCases = ['failed', 'refunded', 'not_configured', 'no_number', 'unknown'];
-        $nonFallbackStatusCases = ['queued', 'pending', 'sent', 'sending'];
-        $fallbackDecisionsOk = true;
-        foreach ($fallbackStatusCases as $fallbackStatus) {
-            $fallbackDecisionsOk = $fallbackDecisionsOk && resident_sms_needs_email_fallback($fallbackStatus);
-        }
-        foreach ($nonFallbackStatusCases as $safeStatus) {
-            $fallbackDecisionsOk = $fallbackDecisionsOk && !resident_sms_needs_email_fallback($safeStatus);
-        }
+        $statusReference = 'B22EM-' . strtoupper(bin2hex(random_bytes(3)));
+        $statusNotice = resident_notify_status_change(
+            $residentId, 'Documents', $statusReference, 'Ready',
+            'b22_email_only_test', 'Your document is ready for collection.'
+        );
+        $statusRow = db_one(
+            'SELECT resident_id, channel, recipient, event_type, reference_no, delivery_status
+             FROM notification_outbox WHERE resident_id = ? AND reference_no = ? ORDER BY notification_id DESC LIMIT 1',
+            [$residentId, $statusReference]
+        );
         record(
             'B22-17',
-            'SMS failure and unconfirmed outcomes require email fallback, but accepted/in-progress SMS statuses do not',
-            $fallbackDecisionsOk,
-            'fallback statuses=' . implode(',', $fallbackStatusCases)
-            . '; no-fallback statuses=' . implode(',', $nonFallbackStatusCases)
+            'Document status notifications create a durable email notice and do not invoke SMS delivery',
+            $statusRow !== null
+            && (int) $statusRow['resident_id'] === $residentId
+            && $statusRow['channel'] === 'email'
+            && $statusRow['recipient'] === $email
+            && $statusRow['event_type'] === 'b22_email_only_test'
+            && $statusRow['reference_no'] === $statusReference
+            && $statusNotice['email'] === 'queued'
+            && $statusNotice['sms'] === 'removed',
+            'email=' . $statusNotice['email'] . '; sms=' . $statusNotice['sms']
         );
 
-        $fallbackReference = 'B22FB-' . strtoupper(bin2hex(random_bytes(3)));
-        $fallback = resident_queue_email_fallback(
-            $residentId,
-            $email,
-            'Documents',
-            'Your document request status changed. SMS delivery could not be confirmed; this email is the fallback.',
-            'document_request_status_changed',
-            $fallbackReference,
-            'unknown'
-        );
-        $fallbackRow = db_one(
-            'SELECT resident_id, channel, recipient, event_type, reference_no, delivery_status
-             FROM notification_outbox WHERE notification_id = ?',
-            [(int) $fallback['notification_id']]
-        );
-        record(
-            'B22-18',
-            'An Unknown SMS result queues exactly one durable resident email fallback without retrying SMS',
-            $fallbackRow !== null
-            && (int) $fallbackRow['resident_id'] === $residentId
-            && $fallbackRow['channel'] === 'email'
-            && $fallbackRow['recipient'] === $email
-            && $fallbackRow['event_type'] === 'document_request_status_changed_email_fallback'
-            && $fallbackRow['reference_no'] === $fallbackReference
-            && $fallbackRow['delivery_status'] === 'queued'
-            && $fallback['status'] === 'queued',
-            'fallback ID=' . $fallback['notification_id']
-            . '; delivery=' . (string) ($fallbackRow['delivery_status'] ?? 'missing')
-            . '; event=' . (string) ($fallbackRow['event_type'] ?? 'missing')
-        );
-
-        $otpChannelCases = [
-            ['sms', true, true, 'sms'],
-            ['both', true, true, 'sms'],
-            ['email', true, true, 'email'],
-            ['sms', false, true, 'email'],
-            ['both', false, true, 'email'],
-            ['email', false, true, 'email'],
-            ['sms', true, false, 'sms'],
-            ['both', true, false, 'sms'],
-            ['email', true, false, 'sms'],
-            ['sms', false, false, null],
-            ['both', false, false, null],
-            ['email', false, false, null],
-            ['invalid', true, true, 'email'],
-        ];
-        $otpChannelFailures = [];
-        foreach ($otpChannelCases as [$preference, $smsAvailable, $emailAvailable, $expected]) {
-            $actual = kiosk_verification_channel($preference, $smsAvailable, $emailAvailable);
-            if ($actual !== $expected) {
-                $otpChannelFailures[] = $preference . '/sms=' . (int) $smsAvailable . '/email=' . (int) $emailAvailable
-                    . ': expected=' . var_export($expected, true) . ', actual=' . var_export($actual, true);
-            }
-        }
+        $emailOptions = queue_notification_preference_options('email');
+        $emailOnlyRules = queue_valid_notification_preference('email')
+            && !queue_valid_notification_preference('sms')
+            && !queue_valid_notification_preference('both')
+            && queue_resolve_notification_preference(null, 'email') === 'email'
+            && queue_resolve_notification_preference('email', 'email') === 'email'
+            && str_contains($emailOptions, 'value="email"')
+            && !str_contains($emailOptions, 'value="sms"')
+            && !str_contains($emailOptions, 'value="both"');
         record(
             'B22-11',
-            'OTP delivery honors Email/SMS/Both and falls back to an available registered channel when the preferred gateway is unavailable',
-            !$otpChannelFailures,
-            implode('; ', $otpChannelFailures)
+            'Notification preference validation and rendering are email-only; SMS and Both are rejected',
+            $emailOnlyRules,
+            'email-only option and validator verified'
         );
 
         $challengeFixtures = [];
