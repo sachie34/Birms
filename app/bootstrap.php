@@ -46,7 +46,6 @@ require __DIR__ . '/queue_lib.php';
 require __DIR__ . '/venues_lib.php';
 require __DIR__ . '/kiosk_lib.php';
 require __DIR__ . '/email_provider.php';
-require __DIR__ . '/sms_provider.php';
 require __DIR__ . '/notifications_lib.php';
 require __DIR__ . '/signature_lib.php';
 require __DIR__ . '/certificates_lib.php';
