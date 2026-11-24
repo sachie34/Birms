@@ -264,9 +264,16 @@ function run_b6(array $S, string $base): void
     $cnt = fn(int $h) => (int) db_val('SELECT summons_count FROM hearings WHERE hearing_id = ?', [$h]);
     db_exec("UPDATE hearings SET status = 'Held' WHERE hearing_id = ?", [$C2]);                       // keep C2 out of the way
     $s1 = $sumPage($sec, $C1);
-    $w0 = $saveW($cap, 'ZZ captain try'); $w0c = $saveW($clk, 'ZZ clerk try'); $w1 = $saveW($adm, 'Appear on {{hearing_date}} {{secret_code}}'); $wNow = db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
+    $secSettings = $sec->get('/admin/settings.php?tab=summons');
+    $capSettings = $cap->get('/admin/settings.php?tab=summons');
+    $staffSettings = $clk->get('/admin/settings.php?tab=summons');
+    $w0 = $saveW($cap, 'ZZ captain try');
+    $w0c = $saveW($clk, 'ZZ clerk try');
+    $w1 = $saveW($adm, 'Appear on {{hearing_date}} {{secret_code}}');
+    $wNow = db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'");
     $wording = "You are summoned to appear at {{venue}} on {{hearing_date}} at {{hearing_time}} regarding case {{case_no}}.\nRespondent: {{respondent_names}}.\n<b>Bring a valid ID</b>";
-    $w2 = $saveW($adm, $wording);
+    $w2 = $saveW($sec, $wording);
+    $w3 = $saveW($adm, $wording);
     $sp0 = $audit('summons_printed');   // audit rows persist between runs, so count from here
     $countBeforeViews = $cnt($C1);
     $p1 = $sumPage($sec, $C1); $c1 = $cnt($C1); $p2 = $sumPage($cap, $C1); $p3 = $sumPage($clk, $C1); $c2 = $cnt($C1); $p4 = $sumPage($adm, $C1); $c3 = $cnt($C1);
@@ -279,8 +286,12 @@ function run_b6(array $S, string $base): void
     $sched($sec, $C, $future(8), ''); $C3 = $hid($C); $s3 = $sumPage($sec, $C3);
     $file($sec, ['narrative' => 'ZZ-B6 five: no respondent known', 'r_name' => '', 'r_age' => '', 'r_address' => '', 'r_contact' => '', 'c_name' => 'Zzcomp Kilo']); $E = $cid('five'); $sched($sec, $E, $future(6)); $HE = $hid($E); $s4 = $sumPage($sec, $HE);
     $s5 = $sumPage($sec, $H1); $s6 = $sumPage($sec, 99999999); $s7 = $sec->get('/blotters/summons.php?id[]=1');
-    record('B6-15', 'Summons: blocked until the System Admin sets the official wording; unknown placeholders are refused; only the System Admin saves it; blockers for empty venue, no respondent and a finished hearing',
-        str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set') && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500 && $w2['status'] === 302
+    record('B6-15', 'Summons: Secretary and Admin can maintain official wording; Chairman and Staff cannot; invalid placeholders are rejected; missing venue/respondent and finished-hearing blockers remain enforced',
+        str_contains($s1['body'], 'cannot be printed yet') && str_contains($s1['body'], 'wording is not set')
+        && $secSettings['status'] === 200 && str_contains($secSettings['body'], 'Save summons wording')
+        && $capSettings['status'] === 403 && $staffSettings['status'] === 403
+        && $w0['status'] === 403 && $w0c['status'] === 403 && $wNow === null && $w1['status'] < 500
+        && $w2['status'] === 302 && $w3['status'] === 302
         && db_val("SELECT setting_value FROM settings WHERE setting_key = 'summons_wording'") === $wording
         && str_contains($s3['body'], 'cannot be printed yet') && str_contains($s3['body'], 'venue') && str_contains($s4['body'], 'no respondent') && str_contains($s5['body'], 'still Scheduled') && $s6['status'] === 404 && $s7['status'] < 500);
     record('B6-16', 'Summons views never change print counts; only explicit print actions by authorized roles increment and audit them',

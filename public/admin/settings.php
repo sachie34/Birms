@@ -6,12 +6,15 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 require_login();
 $canEdit = can('settings.edit');
 $canEditDocuments = $canEdit || can('documents.templates.manage');
+$canEditSummons = can('settings.edit') || can('hearings.summons.manage');
 $tabs = ['general' => 'Barangay details', 'puroks' => 'Puroks', 'lists' => 'Other lists', 'documents' => 'Documents and fees', 'fee_matrix' => 'Multi-tier fee matrix', 'summons' => 'Hearing summons', 'notifications' => 'Notifications'];
 $requestedTab = is_post() ? post_str('tab') : get_str('tab');
 $tab = isset($tabs[$requestedTab]) ? $requestedTab : 'general';
-// Secretary's template permission is deliberately isolated from system configuration.
+// Secretary's certificate-template and summons wording permissions are scoped; they do not grant general settings access.
 if ($tab === 'documents') {
     require_permission('documents.templates.manage');
+} elseif ($tab === 'summons') {
+    require_permission('hearings.summons.manage');
 } else {
     require_permission('settings.view');
 }
@@ -22,6 +25,8 @@ if (is_post()) {
     $do = post_str('do');
     if ($do === 'doctype_save') {
         if (!$canEdit) { require_permission('documents.templates.manage'); }
+    } elseif ($do === 'summons_save') {
+        require_permission('hearings.summons.manage');
     } else {
         // Adding document types and changing every other setting remain Admin-only.
         require_permission('settings.edit');
@@ -227,22 +232,22 @@ if (is_post()) {
     }
 }
 
-$pageTitle = $canEdit ? 'Settings' : 'Document Templates';
+$pageTitle = $canEdit ? 'Settings' : ($tab === 'summons' ? 'Hearing Summons' : 'Document Templates');
 $activeMenuKey = $tab === 'documents' ? 'document_templates' : 'settings';
 render_header($pageTitle, [[$pageTitle, null]], $activeMenuKey);
 page_head($pageTitle, $canEdit
-    ? 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.'
-    : 'Maintain certificate wording and placeholders. Admin controls document types, fees, availability and signature requirements.');
+    ? 'Manage system settings and official records. Details not yet confirmed remain blank until approved.'
+    : 'Maintain certificate and summons wording. Admin controls document types, fees, availability, signature requirements and general system settings.');
 if ($canEdit) { echo '<div class="mb-3">' . btn_link('admin/chairman_signature.php', 'Manage Chairman Signature Image', 'btn-light border', 'bi-pen') . '</div>'; }
 echo errors_box($errors);
 echo '<ul class="nav nav-pills mb-3">';
 foreach ($tabs as $k => $lab) {
-    if (!$canEdit && $k !== 'documents') { continue; }
+    if (!$canEdit && $k !== 'documents' && !($k === 'summons' && $canEditSummons)) { continue; }
     echo '<li class="nav-item"><a class="nav-link' . ($k === $tab ? ' active' : '') . '" href="' . e(base_url('admin/settings.php?tab=' . $k)) . '">' . e($lab) . '</a></li>';
 }
 echo '</ul>';
 if (!$canEdit && $canEditDocuments) {
-    echo '<div class="alert alert-info">You can edit document wording only. Fees, availability, signature requirements and system settings are managed by Admin.</div>';
+    echo '<div class="alert alert-info">You can edit certificate and hearing-summons wording only. Fees, availability, signature requirements and general system settings are managed by Admin.</div>';
 } elseif (!$canEdit) {
     echo '<div class="alert alert-info">You can view settings but not change them.</div>';
 }
@@ -371,11 +376,11 @@ if ($tab === 'general') {
         card_end();
     }
 } elseif ($tab === 'summons') {
-    card_start('Hearing summons wording', 'The official text printed on a summons. Nothing is pre-filled; a summons cannot be printed until this is set.');
+    card_start('Hearing summons wording', 'The Secretary maintains the official summons wording; only saved wording can be used for printing. Confirm the final format with the Barangay before production use.');
     echo '<div class="alert alert-secondary">Placeholders: ' . e('{{' . implode('}} {{', SUMMONS_TOKENS) . '}}') . '</div>';
     echo '<form method="post" action="' . e(base_url('admin/settings.php')) . '"><div class="row">' . $hidden('summons_save');
     echo f_textarea('summons_wording', 'Official wording', (string) setting('summons_wording', ''), ['rows' => 7, 'maxlength' => 4000, 'help' => 'Enter the official text. Nothing is pre-filled.']);
-    echo '</div>' . ($canEdit ? '<button class="btn btn-primary" type="submit">Save</button>' : '') . '</form>';
+    echo '</div>' . ($canEditSummons ? '<button class="btn btn-primary" type="submit">Save summons wording</button>' : '') . '</form>';
     card_end();
 } elseif ($tab === 'notifications') {
     $emailStatus = email_provider_config();
