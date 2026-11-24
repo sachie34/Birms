@@ -2,7 +2,7 @@
 
 **Application:** BIRMS — Barangay Information and Records Management System  
 **Repository:** https://github.com/sachie34/Birms  
-**Release branch:** `john/msit-srs-compliance` (PR #34)  
+**Current demonstration candidate:** `john/phase2-kiosk-no-sms` (draft PR #39; not production-approved)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Target:** Windows Server/office PC with Apache, PHP and MariaDB/MySQL on a private barangay LAN
 
@@ -18,7 +18,7 @@ Do not proceed until each prerequisite is evidenced:
 - [ ] Apache serves **only the repository's `public/` directory** as its document root. Do not expose the repository root, `app/`, `database/`, `docs/`, `tests/`, `tools/`, or `storage/` as the web root.
 - [ ] HTTPS is configured with a certificate issued by a CA trusted by every office PC, kiosk and resident device that will access BIRMS. Do not use plain HTTP for credentials or resident records over Wi-Fi/LAN. Do not bypass browser certificate warnings.
 - [ ] The PHP version is a currently supported, security-patched release. Recommended baseline for this release is PHP 8.3.37 or newer in the 8.3 branch; PHP 8.4.28+, 8.5.13+ and 8.6.0+ are accepted by the runtime guard. PHP 8.2.36+ is only temporarily supported through 31 December 2026. Prefer a maintained branch with a longer support window and verify it against CI before upgrading.
-- [ ] Apache PHP and CLI PHP use the same intended PHP build and required extensions: `pdo_mysql`, `fileinfo`, and `zip`. The optional email/SMS integrations also require their documented transport configuration (including cURL where used).
+- [ ] Apache PHP and CLI PHP use the same intended PHP build and required extensions: `pdo_mysql`, `fileinfo`, and `zip`. The current candidate uses email only; SMS sending and SMS administration are not available.
 - [ ] Database engine/version, disk capacity, private-storage capacity, backup location, restore operator and recovery procedure are approved.
 - [ ] All manual gates in `MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md` have recorded evidence, not assumptions.
 
@@ -70,8 +70,8 @@ Use a protected terminal on the server. Clear the environment variable after the
 
 ## 4. Application configuration and services
 
-- Keep email and every SMS provider disabled until the office has approved the sender, message content, budget and consent process.
-- Use a controlled test mailbox/authorized test phone before enabling live notifications. A `Queued` notification is not proof of delivery; verify provider delivery status and failure handling.
+- Keep email delivery disabled until the office has approved the sender, message content and consent process. The current candidate has no SMS provider, SMS sending workflow or SMS administration.
+- Use a controlled test mailbox before enabling live email notifications. A `Queued` notification is not proof of delivery; verify actual mailbox receipt and failure handling.
 - Keep WebDAV/cloud backup credentials in the ignored private configuration, use HTTPS and a dedicated app password. Verify the uploaded archive exists and is downloadable.
 - Keep certificate wording, fee schedules, Chairman signature and effective dates aligned with written office approval. Do not treat the current PDF's draft warning as approval of the official form.
 - Configure actual Purok and reference values only after the office validates the master lists. Do not leave demo/sample residents or demo accounts in production.
@@ -102,7 +102,7 @@ Record a named tester, date/time, build commit and evidence for every test:
 - [ ] Document request, requirements, automatic draft generation, Staff/Admin PDF preview, final release, O.R./cash ledger and resident tracking privacy.
 - [ ] Venue availability, overlapping-booking prevention, staff override and reservation notifications.
 - [ ] Separate queue types, issue/call/serve/skip/cancel, kiosk touch targets, display and QR entry.
-- [ ] Email/SMS controlled delivery, queued-vs-delivered state and failure fallback (if enabled).
+- [ ] Email controlled delivery, queued-vs-delivered state and failure fallback (if enabled). SMS is out of scope for this candidate.
 - [ ] Certificate printed on the actual office printer; wording, signature, margins, QR/reference and paper stock approved.
 - [ ] Full-system backup and scratch restore completed; all private files and DB references verified.
 - [ ] Representative-data performance and concurrent-user test; LAN outage/restart recovery; power-loss recovery.
@@ -123,10 +123,10 @@ A failed critical test blocks go-live. Keep the deployment internal and use synt
 
 At the time this runbook was added:
 
-- Hosted CI run [#1097](https://github.com/sachie34/Birms/actions/runs/45027183539) passed on PHP 8.3, 8.4, 8.5 and 8.6 across MariaDB 10.4 and 10.11: 48/48 security and 283/283 module checks in every combination, zero failures and zero untested checks. The web application ran with a limited DML-only database account; fixture setup/inspection used a separate DBA account. An additional smoke test started the application with HTTPS-required mode enabled and confirmed all eight HTTP requests received 503 without a redirect.
+- The revised MSIT demonstration candidate passed exact-head GitHub Actions run [#1277](https://github.com/sachie34/Birms/actions/runs/45373724774) on commit `ae6864961f0bdaca31c5eabb33465db46bb81c03`: all eight PHP 8.3/8.4/8.5/8.6 × MariaDB 10.4/10.11 jobs succeeded; every job reported 48/48 security checks and 283/283 module checks, with zero failures and zero untested checks. This is hosted CI evidence, not target-PC acceptance.
 - Automated tests do not certify the actual Windows/XAMPP host, TLS trust, office LAN, kiosk hardware, physical printer, live notification provider, representative-data performance or full recovery rehearsal.
 - The original `barangay_db` remains protected and is not a deployment target.
-- PR #34 remains a draft until the go-live acceptance evidence and independent review are complete.
+- PR #39 remains a draft until target-PC acceptance evidence, policy/template approval and independent review are complete. Do not merge or deploy it to production based on hosted CI alone.
 
 
 ## Demo data is never production data
