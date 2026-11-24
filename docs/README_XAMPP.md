@@ -12,7 +12,7 @@ It never touches your original `barangay_db`.
 1. Download the [MSIT branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
-4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–019), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
+4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–020), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
 5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
 6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
@@ -61,7 +61,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   On this branch the migration runner applies the numbered migrations through 019, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, notification outbox and blotter no-delete protections. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
+   On this branch the migration runner applies the numbered migrations through 020, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, email notification outbox, email-only channel normalization and blotter no-delete protections. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
@@ -71,7 +71,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    ```
    Type a password when asked (it is visible on Windows). Minimum 10 characters, with a letter and a number.
 8. Open `http://localhost/Birms-main/public/` and sign in.
-9. Go to **Fees and Puroks** (Settings) and enter the official details **yourself**: Captain and Secretary names, the Purok list, each document's approved wording, and SMS text. They are blank on purpose. For fees, either set the per-document fee or enter formally approved rules under **Multi-tier fee matrix**. No fee rates are preloaded. If an active matrix rule applies to a document type, a new request must select an approved category/tier and valid quantity; the saved quote is carried onto the issuance. Paid certificates still require a receipt/O.R. number at issuance. Certificates cannot be issued until required wording and any referenced official/household details are available.
+9. Go to **Fees and Puroks** (Settings) and enter the official details **yourself**: Captain and Secretary names, the Purok list, each document's approved wording. They are blank on purpose. For fees, either set the per-document fee or enter formally approved rules under **Multi-tier fee matrix**. No fee rates are preloaded. If an active matrix rule applies to a document type, a new request must select an approved category/tier and valid quantity; the saved quote is carried onto the issuance. Paid certificates still require a receipt/O.R. number at issuance. Certificates cannot be issued until required wording and any referenced official/household details are available.
    Hearing summons work the same way: the Secretary enters approved text under **Settings → Hearing summons**; a summons cannot be printed until then.
 
 ## 3. Your existing database (`barangay_db`)
@@ -105,10 +105,10 @@ cd C:\xampp\htdocs\Birms-main
 C:\xampp\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main
 C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 ```
-- `run_tests.php` = security/authentication/audit, four-role access matrix, PHP runtime checks, safe CLI password prompt and failure-reporting checks. `run_modules.php` = all module integration suites B2–B22, including revised resident records, independent queues, kiosk, blotter, venue, notifications, report exports and unified tracker. Disable real SMS and email before testing.
+- `run_tests.php` = security/authentication/audit, four-role access matrix, PHP runtime checks, safe CLI password prompt and failure-reporting checks. `run_modules.php` = all module integration suites B2–B22, including revised resident records, independent queues, kiosk, blotter, venue, notifications, report exports and unified tracker. Keep email notifications disabled while running automated tests.
 - If a run is interrupted it can leave test rows behind (names starting `ZZ`). Rebuild the **test** database
   (drop `barangay_db_work`, run `migrate.php up` again) before re-running.
-- The module runner refuses to run while the selected SMS provider or email notification channel is enabled, because test flows create synthetic notifications. Disable both before testing. Use a separate intentional, authorized live-send test for a real provider.
+- The module runner refuses to run while email delivery is enabled, because test flows create synthetic email notifications. Disable email before testing. The system has no SMS delivery path.
 - Expect `FAIL 0`. `NOT TESTED` means a check could not run. Send me the full output, including any FAIL lines.
 - The `--root` check confirms private folders are not downloadable through Apache. `app`, `storage`, and other project folders use `.htaccess` deny rules; the PHP built-in server ignores `.htaccess`, so run that particular protection check under Apache on XAMPP.
   It depends on Apache's `AllowOverride All` (the XAMPP default). Under Apache, also verify that these URLs return 403/404: `http://localhost/Birms-main/.git/config` (if using a Git clone), `http://localhost/Birms-main/README.md`, `http://localhost/Birms-main/MANIFEST.txt`, `http://localhost/Birms-main/SETUP_XAMPP.bat`, `http://localhost/Birms-main/.gitignore`, and `http://localhost/Birms-main/Api`. The last URL should remain blocked even if the file exists in an older extracted folder.
@@ -121,11 +121,11 @@ mysqldump -u root -p --routines --triggers --events --single-transaction baranga
 Do not add `--databases`. Test the restore into a scratch database. Copy the project folder too.
 
 ## 8. Known limitations
-- **Implemented on the MSIT compliance branch; pending target-PC acceptance:** revised resident/Purok/status/type records; documents and certificates; blotter request and case workflows; venue reservations and overlap protection; kiosk/QR identity and request paths; separate daily queues; email/SMS notification preference/outbox logic; Chairman signature snapshot; reports and the All Services Tracker. The complete checklist is in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
+- **Implemented on the MSIT compliance branch; pending target-PC acceptance:** revised resident/Purok/status/type records; documents and certificates; blotter request and case workflows; venue reservations and overlap protection; kiosk/QR identity and request paths; separate daily queues; email-only notification outbox logic; Chairman signature snapshot; reports and the All Services Tracker. The complete checklist is in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
 - Migrations 007–011 are required for the latest branch. Enter the barangay-approved employment-status and incident-type categories under Settings → Other lists and approved fee rules under Settings → Multi-tier fee matrix. No categories or rates are guessed.
 - Resident identity and voter-list checks can be recorded manually in the resident profile with actor/date/history. The system does not query COMELEC. The separate cash-collection ledger records staff-entered amounts and reconciliation state; this is not a payment gateway and not independent proof of a bank deposit. Issuance history totals use ledger entries and label missing entries.
 - The backup page downloads a local SQL file only. Cloud storage, scheduled backups, automatic restore verification, and a completed restoration test are not included.
-- Email and SMS delivery are disabled unless explicitly configured. The MSIT branch supports the configured email transport and SMS API PH/Semaphore/Infobip adapters. CI checks outbox and mocked logic; actual mailbox/phone delivery must still be tested on the local system.
+- Email delivery is disabled unless explicitly configured. The system supports only the configured email transport; SMS provider adapters and resident SMS choices have been removed. CI checks the email outbox logic; actual mailbox delivery must still be tested on the local system.
 - Blotter look-up shows matching parties' information to roles with blotter lookup access. The role matrix is still provisional and needs approval by the Barangay Secretary / system owner.
 - Visitor and request attachments accept PDF/JPG/PNG up to 10 MB, are stored in `storage/private_uploads` with randomized names (outside `public/`), and are served only through an authenticated, permission-checked download endpoint. Confirm the folder is writable by Apache and not served directly by the web server.
 - Paid certificate issuance records a Pending item in the cash-collection ledger. Ledger management is Administrator-only; reconciled entries should be supported by the office's approved evidence process.
@@ -158,7 +158,7 @@ Confirm that the target is barangay_db_work, then apply:
 C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
 ~~~
 
-The seeder refuses database names that do not end in _work or _test. It does not create users/passwords, send email/SMS, or change official document types/settings. It inserts fictitious residents, three DEMO ONLY certificate templates, request lifecycle examples, blotter cases, venues, reservations and queue tickets. See [DEMO_DATA.md](DEMO_DATA.md) for the full list and presentation checks.
+The seeder refuses database names that do not end in _work or _test. It does not create users/passwords, send email, or change official document types/settings. SMS delivery is not part of this version. It inserts fictitious residents, three DEMO ONLY certificate templates, request lifecycle examples, blotter cases, venues, reservations and queue tickets. See [DEMO_DATA.md](DEMO_DATA.md) for the full list and presentation checks.
 
 ### Edit the demonstration templates
 
