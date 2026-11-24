@@ -4,7 +4,7 @@
  *
  * CLI only. Creates synthetic residents, document templates/requests, a draft and
  * one issued demo certificate, blotter examples, venues, reservations and queue
- * tickets. Never changes real accounts, official document types, fees or settings.
+ * tickets. It never changes real accounts, official document types, approved fees or nonblank Barangay settings.
  *
  * Usage:
  *   php tools/seed_msit_demo_data.php          (read-only plan)
@@ -572,7 +572,7 @@ function msit_demo_apply(): array
         msit_demo_sync_demo_queue_counters();
 
         audit('msit_demo_data_seeded', 'Demo Data', 'Success',
-            'Created clearly labelled fictitious MSIT demonstration records: residents, document templates/requests, certificate draft/history, blotter cases, venues, reservations and queue tickets.');
+            'Created DEMO ONLY residents, certificate requests/templates, draft/issued samples, blotter intake/cases, Secretary hearing/summons, venue reservations and synchronized service queue tickets.');
         return ['already_seeded' => false, 'counts' => msit_demo_marker_counts()];
     });
 }
