@@ -109,4 +109,4 @@ if ($errors) {
 }
 
 echo "PASS: checked {$scanned} PHP files and {$checked} static include path(s); all referenced targets exist.\n";
-echo "PASS: shared bootstrap, PHP core, and Infobip test/provider files are present.\n";
+echo "PASS: shared bootstrap and PHP core are present.\n";
