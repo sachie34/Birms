@@ -1,5 +1,5 @@
 <?php
-/** Status lookup by public reference. Only service status and time are displayed, never resident PII. */
+/** Verified resident status lookup. A reference is visible only to its owning resident session. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
