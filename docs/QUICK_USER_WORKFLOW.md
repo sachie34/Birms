@@ -81,7 +81,7 @@ A queue ticket is not the same as approval of a document, blotter report or venu
 ## 5. Venue reservation lifecycle
 
 1. Resident verifies identity and chooses **Reserve a venue**.
-2. Select the venue, date, start/end time and purpose. Email is the only notification channel.
+2. Select the venue, date, start/end time and purpose. Email updates are automatic when a valid resident email is recorded; no notification-channel selector is shown.
 3. Submit and keep the reservation reference and Venue queue ticket.
 4. Staff/Admin reviews the reservation and approves or rejects it. A pending or approved reservation blocks overlapping requests for the same venue/time. The system rechecks conflicts when approving.
 5. The venue board shows **Available** or **In Use**. The Secretary can change room availability for blotter/hearing arrangements; Staff/Admin handle reservation decisions.
