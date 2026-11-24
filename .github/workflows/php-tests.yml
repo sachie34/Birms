@@ -196,7 +196,8 @@ jobs:
           second="$(php tools/seed_msit_demo_data.php --apply)"
           printf '%s\n' "$second"
           echo "$second" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
-          echo "PASS: demo seed applies to the disposable database and a second apply creates no duplicates."
+          php tests/verify_msit_demo_seed.php 2>&1 | tee test-reports/demo-seed-verification.log
+          echo "PASS: demo seed applies once, is idempotent, and its workflow records/counters are verified."
 
       - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
         if: always() && steps.start-php.outcome == 'success'
