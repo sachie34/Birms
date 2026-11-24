@@ -59,7 +59,7 @@ if (!v_person_name($lastName) || !v_person_name($firstName)) {
     redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
 }
 $matches = db_all(
-    'SELECT resident_id, email_address, contact_number, notification_preference
+    'SELECT resident_id, email_address
      FROM residents WHERE LOWER(last_name) = LOWER(?) AND LOWER(first_name) = LOWER(?)
        AND birthdate = ? AND archived_at IS NULL LIMIT 3',
     [$lastName, $firstName, $birthdate]
