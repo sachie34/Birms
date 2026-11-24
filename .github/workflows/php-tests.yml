@@ -52,7 +52,7 @@ jobs:
           grep -Fxq 'app/smsapiph.local.php' .gitignore
           grep -Fxq '/Api' .gitignore
           grep -Fq '<FilesMatch "^\."' .htaccess
-          grep -Fq 'Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
+          grep -Fq 'Api|MANIFEST\.txt|README\.md|README_XAMPP\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
           grep -Fq 'RewriteRule (^|/)\.git(?:/|$) - [F,L]' .htaccess
           grep -Fq 'Options -Indexes' public/.htaccess
           for private_dir in app database docs storage tests tools; do
