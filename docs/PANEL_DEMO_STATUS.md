@@ -1,18 +1,18 @@
 # BIRMS — Revised MSIT Panel Demonstration Guide
 
-**Current demonstration candidate:** `john/phase2-kiosk-no-sms`  
-**Pull request:** [#39 — QR kiosk and email-only workflow](https://github.com/sachie34/Birms/pull/39)  
-**Candidate ZIP:** [Download the candidate branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip)  
+**Current demonstration build:** `main` (merged from `john/phase2-kiosk-no-sms`)  
+**Merge record:** [PR #39 — merged to main](https://github.com/sachie34/Birms/pull/39) at `735a5404f71f24ca1d697d61919704274d3b1e07`  
+**Demo ZIP:** [Download the current main branch](https://github.com/sachie34/Birms/archive/refs/heads/main.zip)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Defense preparation:** [Timed demo run sheet](PANEL_DEMO_RUNSHEET.md) · [Panel questions and suggested answers](PANEL_DEFENSE_QA.md)
 
-> **Important:** The candidate is automated-test verified, but it is not yet accepted on the target XAMPP PC or approved for production. The default `main` branch is the older B1–B12 application. Do not use the `main` ZIP for the revised MSIT demonstration.
+> **Important:** `main` now contains the revised MSIT demo build. Post-merge CI run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed 8/8 matrix jobs (48/48 security and 283/283 module checks per job). The target XAMPP PC, phone/LAN QR, live email, printer and restore are still separate NOT RUN acceptance items; this is not production approval.
 
 ## 1. What the current candidate demonstrates
 
-BIRMS is a browser-based Barangay Information and Records Management System. The revised candidate provides a resident QR/kiosk entry point and separate service workflows for Documents, Blotter and Venue, supported by individual service queues, staff processing, reports, audit history and protected backup/restore.
+BIRMS is a browser-based Barangay Information and Records Management System. The current main-branch build provides a resident QR/kiosk entry point and separate service workflows for Documents, Blotter and Venue, supported by individual service queues, staff processing, reports, audit history and protected backup/restore.
 
-Resident notifications are **email-only**. Active SMS provider adapters, SMS sending and SMS administration are not available in this candidate. Historical SMS tables/records remain only for compatibility and audit preservation.
+Resident notifications are **email-only**. Active SMS provider adapters, SMS sending and SMS administration are not available in this build. Historical SMS tables/records remain only for compatibility and audit preservation.
 
 ## 2. Current role responsibilities
 
@@ -91,16 +91,16 @@ These localhost URLs work only on the server PC. A phone must use the server's L
 
 ## 6. Automated verification evidence
 
-The latest completed candidate application-code commit is a09e9c2b7725ee6f1c2a9f3f2085fd8ec3128486. GitHub Actions run [#1309](https://github.com/sachie34/Birms/actions/runs/45377461100) completed successfully across all eight PHP/MariaDB combinations:
+The merged main-branch commit is `735a5404f71f24ca1d697d61919704274d3b1e07`. GitHub Actions post-merge run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) completed successfully across all eight PHP/MariaDB combinations:
 
 - PHP 8.3, 8.4, 8.5 and 8.6;
 - MariaDB 10.4 and 10.11;
 - **8/8 jobs succeeded**;
 - every job reported **48/48 security/authentication/audit checks** and **283/283 module integration checks**;
 - every job reported **0 failures** and **0 not-tested checks**;
-- PHP syntax/include checks, XAMPP preflight, migrations, schema verification, demo dataset creation and repeat-seed idempotency all completed successfully.
+- PHP syntax/include checks, XAMPP setup preflight, migrations, schema verification, demo dataset creation and repeat-seed idempotency all passed.
 
-The subsequent commits adding the panel run sheet, guide link and README link are documentation-only; the tested PHP/SQL/test application code is unchanged after commit a09e9c2. This is hosted CI evidence. It does not prove the actual XAMPP PC, phone/LAN QR, physical kiosk, email delivery, printer or restore process works.
+The test logs were inspected for each of the eight jobs. This is hosted CI evidence; it does not prove that the target XAMPP PC, phone/LAN QR, physical kiosk, actual email delivery, office printer or restore process has passed.
 
 ## 7. Items that must not be claimed as passed without local evidence
 
