@@ -1,12 +1,12 @@
 # BIRMS — Revised MSIT Panel Demonstration Guide
 
 **Current demonstration build:** `main` (merged from `john/phase2-kiosk-no-sms`)  
-**Merge record:** [PR #39 — merged to main](https://github.com/sachie34/Birms/pull/39) at `735a5404f71f24ca1d697d61919704274d3b1e07`  
+**Latest workflow fixes:** [PR #41 — complete demo seed and queue counters](https://github.com/sachie34/Birms/pull/41) · [PR #42 — Secretary summons permissions](https://github.com/sachie34/Birms/pull/42) · Main commit `9c01fe27bc76e488c78ec94300bba3a85c245deb`  
 **Demo ZIP:** [Download the current main branch](https://github.com/sachie34/Birms/archive/refs/heads/main.zip)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Defense preparation:** [Timed demo run sheet](PANEL_DEMO_RUNSHEET.md) · [Panel questions and suggested answers](PANEL_DEFENSE_QA.md)
 
-> **Important:** `main` now contains the revised MSIT demo build. Post-merge CI run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed 8/8 matrix jobs (48/48 security and 283/283 module checks per job). The target XAMPP PC, phone/LAN QR, live email, printer and restore are still separate NOT RUN acceptance items; this is not production approval.
+> **Important:** Post-merge CI run [#1355](https://github.com/sachie34/Birms/actions/runs/45392747052) passed 8/8 PHP/MariaDB matrix jobs (48/48 security and 284/284 module checks per job); the demo-seed verifier also passed. The target XAMPP PC, phone/LAN QR, physical kiosk, live email, printer and restore remain separate local acceptance items; this is not production approval.
 
 ## 1. What the current candidate demonstrates
 
@@ -58,7 +58,7 @@ Residents can request a venue through the kiosk. Staff handles reservation decis
 
 ### Service queues
 
-Documents, Blotter and Venue have separate queues. Staff can call the next ticket and process the queue status. The public display shows the service and ticket number, not the resident's personal details.
+Documents, Blotter and Venue have separate queues. Staff can issue a counter ticket when needed, choose the service, click **Call next**, announce the service and number aloud (for example, “Documents number 3”), then mark it Served, Skipped or Cancelled. The public display is optional for a verbal-call demonstration; it shows only service and ticket number, not resident details. Email, phone QR and physical kiosk hardware are not required for Staff to call numbers aloud.
 
 ## 4. Suggested panel demonstration sequence
 
@@ -79,7 +79,7 @@ Use the detailed [MSIT XAMPP and Role Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_
 
 Before replacing the local project, back up the whole existing folder and export the working database. Extract the current `main` ZIP into a clean folder rather than over the older project so removed files cannot remain behind. Restore only the necessary private local configuration and storage files from the backup. Confirm the private configuration points to `barangay_db_work` (or a separate `*_test` database), never the original `barangay_db`.
 
-The sample-data seeder creates fictitious DEMO ONLY residents, document templates/requests, blotter cases, venues and queue tickets. It does not create users or default passwords. Create the four staff-role accounts separately and use separate browser profiles.
+The sample-data seeder creates fictitious DEMO ONLY residents, certificate templates and request states, resident blotter intake states, official demo blotter cases, a Secretary-managed future hearing/summons example, venue reservations and synchronized queue tickets. It does not create users or default passwords. Create the four staff-role accounts separately and use separate browser profiles.
 
 Example local URLs, after a successful XAMPP installation:
 

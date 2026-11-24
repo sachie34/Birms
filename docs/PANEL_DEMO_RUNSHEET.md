@@ -1,7 +1,7 @@
 # BIRMS — Panel Demonstration Run Sheet
 
 **Use this with:** [Panel Demo Status](PANEL_DEMO_STATUS.md) and the [MSIT XAMPP Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md)  
-**Build:** main at commit 735a5404f71f24ca1d697d61919704274d3b1e07  
+**Build:** main at commit `9c01fe27bc76e488c78ec94300bba3a85c245deb` (post-merge CI #1355 passed)  
 **Suggested duration:** 7–8 minutes  
 **Data rule:** Use only fictitious DEMO ONLY records. Never show real resident information.
 
@@ -10,9 +10,9 @@
 - [ ] Start Apache and MySQL in XAMPP; open the BIRMS sign-in page.
 - [ ] Confirm the database is barangay_db_work or another isolated _test database. Never use barangay_db.
 - [ ] Open separate browser profiles for Admin, Secretary, Staff and Chairman. Keep the resident kiosk in a separate browser/device.
-- [ ] Confirm the demo data is present: six DEMO-RES residents, three document templates, four sample requests, three blotter cases, two venues/reservations and three service queues.
+- [ ] Confirm the demo data is present: six DEMO-RES residents, three certificate templates, four document request states, three official blotter cases, three resident blotter intake states, one future hearing/summons example, two venues/reservations and three service-queue tickets.
 - [ ] Keep the Staff, Secretary and Chairman accounts logged in and ready. The seeder creates no accounts or passwords.
-- [ ] Open the public queue display in a clean window. Confirm it displays ticket numbers only.
+- [ ] Optionally open the public queue display and confirm it shows ticket numbers only. A dedicated display is not required when Staff announces the service and number aloud.
 - [ ] Keep the panel guide and this run sheet available offline.
 - [ ] Do not rely on email OTP or SMS: the seeded email addresses end in .invalid, and this build has no SMS sending.
 - [ ] Use the on-screen kiosk URL unless a real phone/LAN QR scan has already passed on the actual network.
@@ -25,9 +25,9 @@
 | 0:40–1:20 | Admin | Dashboard, user/role controls, settings, audit | “Admin is the technical administrator. Account and system settings are separated from operational service processing.” |
 | 1:20–2:25 | Resident kiosk | Shared QR entry, resident identity, service choices, queue ticket and tracker | “Residents choose a service, verify with Resident ID and birthdate, and receive a reference. Tracking is limited to their own records.” |
 | 2:25–3:25 | Secretary | Pending document request, requirements review, certificate-template wording, hearing-summons wording, venue availability | “The Secretary checks requirements, maintains approved document wording and hearing summons, and controls room availability. Final document and venue decisions remain with Staff.” |
-| 3:25–5:15 | Staff | Final approve/reject action, saved certificate draft/PDF preview, release, blotter review, venue reservation, queue controls | “Staff performs the final operational processing. A draft is not an issued certificate; release creates the issuance history.” |
+| 3:25–5:15 | Staff | Final approve/reject action, saved certificate draft/PDF preview, release, blotter review, venue reservation, and queue controls; announce a called number aloud and mark it Served | “Staff performs the final operational processing. For queueing, Staff calls the service and ticket number aloud, then records whether the resident was served or skipped.” |
 | 5:15–6:00 | Chairman | Read-only records, reports and cash-ledger view | “The Chairman has oversight access. Operational changes remain with the assigned staff roles.” |
-| 6:00–7:10 | Queue / history | Documents, Blotter and Venue queues; issuance history; status/audit trail | “Each service has its own queue, while the reference and history make the request traceable.” |
+| 6:00–7:10 | Queue / history | Documents, Blotter and Venue queues; call the next number aloud, mark Served/Skipped; issuance history; status/audit trail | “Each service has its own independent queue. Staff announces the next ticket number; the system records the queue action and request history.” |
 | 7:10–8:00 | Closing | Return to dashboard or panel guide | “The hosted automated suite passes. Local XAMPP, phone/LAN, email delivery, printer and restore checks are reported separately and only marked passed after real testing.” |
 
 ## Recommended seeded examples
@@ -35,8 +35,10 @@
 - **Kiosk identity:** use DEMO-RES-0001 through DEMO-RES-0006. Read the date of birth from the matching seeded resident profile; the safe seeder may reuse an older synthetic profile, so do not assume one universal birthdate.
 - **Document request states:** DEMO-DOC-PENDING-01, DEMO-DOC-READY-01, DEMO-DOC-REJECT-01, and DEMO-DOC-ISSUED-01.
 - **Saved draft:** DEMO-DOC-READY-01 has a saved unissued draft for Staff review.
+- **Resident blotter intake:** `MSIT-DEMO-BLT-PND-01` (Pending), an Accepted submission linked to `MSIT-DEMO-BLT-0001`, and `MSIT-DEMO-BLT-REJ-01` (Rejected).
+- **Hearing/summons:** one future hearing is linked to an open demo case; the Secretary can edit the DEMO ONLY summons wording and preview the prepared sample.
 - **Sample venue reservations:** DEMO-VEN-0001 and DEMO-VEN-0002.
-- **Demo templates:** Barangay Clearance, Certificate of Residency and Certificate of Indigency. Each is clearly labelled DEMO ONLY — NOT AN OFFICIAL DOCUMENT, has a zero demonstration fee and does not require the Chairman's signature.
+- **Demo templates:** Barangay Clearance, Certificate of Residency and Certificate of Indigency. Each is clearly labelled DEMO ONLY — NOT AN OFFICIAL DOCUMENT, has a zero demonstration fee, shows Secretary-prepared/Captain signatory fields, and does not use a fabricated Chairman signature.
 
 ## Recovery plan if something goes wrong
 

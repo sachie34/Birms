@@ -4,7 +4,7 @@ Barangay Information and Records Management System.
 
 This branch implements the revised MSIT SRS for BIRMS, including resident self-service, separate service queues, document requests/certificate generation, blotter, venue reservations, role-based processing, reports, and protected backup/restore. It also includes a safe MSIT demo dataset seeder and a lightweight Word-style certificate-template editor with live preview and formatted print/PDF output. Resident notifications use email only. The QR kiosk supports resident self-service; historical SMS records are retained for audit but no SMS is sent. The PowerPoint is a design reference; its sample content is not live system data.
 
-> **Current demonstration build:** use `main`. The revised MSIT candidate from `john/phase2-kiosk-no-sms` was squash-merged through [PR #39](https://github.com/sachie34/Birms/pull/39) at commit `735a5404f71f24ca1d697d61919704274d3b1e07`. Post-merge GitHub Actions run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed all 8 PHP/MariaDB jobs; each reported 48/48 security and 283/283 module checks, zero failures and zero untested checks. Target-PC XAMPP/kiosk/printer acceptance is still required; the code is prepared for controlled demo use, not production-approved.
+> **Current demonstration build:** use `main`. The current demo build includes the workflow-seed and summons-permission fixes merged through [PR #41](https://github.com/sachie34/Birms/pull/41) and [PR #42](https://github.com/sachie34/Birms/pull/42), at commit `9c01fe27bc76e488c78ec94300bba3a85c245deb`. Post-merge GitHub Actions run [#1355](https://github.com/sachie34/Birms/actions/runs/45392747052) passed all 8 PHP/MariaDB jobs; each reported 48/48 security and 284/284 module checks, plus the demo-seed workflow verifier. Target-PC XAMPP/browser/printer acceptance remains separate; this is a controlled demonstration build, not production approval.
 
 ## Repository layout
 
@@ -42,9 +42,10 @@ If it confirms `barangay_db_work`, apply the sample records:
 
 ```bat
 C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+C:\xampp\php\php.exe tests\verify_msit_demo_seed.php
 ```
 
-This adds fictitious residents, demo-only certificate templates and requests, resident blotter intake examples (Pending/Accepted/Rejected), sample blotter cases, a Secretary-managed hearing with demo summons wording, venue reservations and queue tickets with synchronized daily counters. It creates no users or default passwords and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
+The verifier checks demo templates, document states, blotter intake states, the Secretary hearing/summons example, Captain signatory fields and queue counters, then confirms a new Staff-issued number can follow the seeded ticket. The seeder safely upgrades the exact older complete demo dataset; it refuses partial/custom records rather than guessing how to repair them. It creates only fictitious DEMO ONLY records, no users/default passwords, and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme are exercised across 57 role-accessible menu routes in the current main-branch automated UI checks. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 
