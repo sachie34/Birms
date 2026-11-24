@@ -2193,6 +2193,13 @@
         "columns": [
           "issued_at"
         ]
+      },
+      "idx_queue_date_status": {
+        "unique": false,
+        "columns": [
+          "queue_date",
+          "status"
+        ]
       }
     },
     "fks": {
