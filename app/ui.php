@@ -137,7 +137,7 @@ function current_page_help(): ?array
                 'Refer corrections or official case changes to the Secretary or Administrator.',
             ], $role === 'captain'
                 ? 'Chairman access is view-only. Staff can review new resident reports in Resident Blotter Requests.'
-                : 'Staff can review new resident reports in Resident Blotter Requests; the Secretary/Admin maintain official blotter cases.'),
+                : 'Technical Admin views official case records; the Secretary maintains them and Staff reviews resident-submitted reports.'),
         'blotters/form.php' => $general('Record the incident using the information actually reported.', [
             'Enter the date, place and a clear factual narrative.',
             'Add complainant/respondent details only as known; avoid guessing missing information.',
@@ -168,7 +168,7 @@ function current_page_help(): ?array
                 'Search by reference or resident and use the review/status filters.',
                 'Open the submission details and check whether it has been reviewed.',
                 'Refer a pending report that needs action to Staff or Administrator.',
-            ], 'Chairman and Secretary have view-only access to this review queue.'),
+            ], 'Technical Admin, Chairman and Secretary have view-only access to this review queue.'),
         'queue/index.php' => role_can($role, 'queue.manage')
             ? $general('Issue and manage daily queue tickets for Blotter, Documents and Venue.', [
                 'Issue a number with the correct service and a clear purpose of visit.',
@@ -179,14 +179,20 @@ function current_page_help(): ?array
                 'Check the Now Serving and Waiting counts for Blotter, Documents and Venue.',
                 'Open the public display when you need to show queue numbers to residents.',
                 'Refer issuing, calling or cancelling numbers to Staff or Administrator.',
-            ], 'Chairman and Secretary have view-only access to queue management.'),
-        'venues/index.php' => role_can($role, 'venues.manage')
-            ? $general('Manage resident venue reservations and counter requests.', [
-                'Check the room availability board before recording a reservation.',
-                'Enter the resident, room, purpose, date and time range correctly.',
-                'Approve or reject pending reservations and mark completed bookings after use.',
-            ], 'The Secretary controls manual room availability for blotter/hearing planning; Staff processes reservations.')
-            : (role_can($role, 'venues.availability.manage')
+            ], 'Technical Admin, Chairman and Secretary have view-only access to queue management.'),
+        'venues/index.php' => role_can($role, 'venues.configure')
+            ? $general('Maintain the official venue list as the Technical Administrator.', [
+                'Add or update the room/venue reference names used by the barangay.',
+                'Review current room availability and reservation records.',
+                'Leave room status changes to the Secretary and reservation processing to Staff.',
+            ], 'Technical Admin maintains reference data and system settings, not resident service transactions.')
+            : (role_can($role, 'venues.manage')
+                ? $general('Manage resident venue reservations and counter requests.', [
+                    'Check the room availability board before recording a reservation.',
+                    'Enter the resident, room, purpose, date and time range correctly.',
+                    'Approve or reject pending reservations and mark completed bookings after use.',
+                ], 'The Secretary controls manual room availability for blotter/hearing planning; Staff processes reservations.')
+                : (role_can($role, 'venues.availability.manage')
                 ? $general('Set whether a room is available for blotter and hearing schedules.', [
                     'Open the room availability board and check the current status.',
                     'Choose Automatic, Available or Unavailable for the correct room.',
@@ -196,7 +202,7 @@ function current_page_help(): ?array
                     'Check whether each room is currently marked Available or Unavailable.',
                     'Use the reservation tracker to review submitted and approved bookings.',
                     'Refer reservation changes or room-status updates to the Secretary or Staff.',
-                ], 'Chairman access is read-only for room and reservation information.')),
+                ], 'Chairman access is read-only for room and reservation information.'))),
         'blotters/hearings.php' => $role === 'secretary'
             ? $general('Manage hearing schedules and record outcomes for assigned blotter cases.', [
                 'Open the related case and confirm the parties before scheduling.',
@@ -207,7 +213,7 @@ function current_page_help(): ?array
                 'Check the case reference, scheduled date, time and venue.',
                 'Open the related case if you need more context.',
                 'Refer scheduling changes or hearing outcomes to the Secretary or Administrator.',
-            ], 'Chairman and Staff have view-only access to the hearing list.'),
+            ], 'Technical Admin, Chairman and Staff have view-only access to the hearing list.'),
         'blotters/summons.php' => $general('Review the case and hearing details before preparing a summons.', [
             'Confirm the parties, case reference, hearing date, time and venue.',
             'Review the generated text carefully for missing or incorrect details.',
