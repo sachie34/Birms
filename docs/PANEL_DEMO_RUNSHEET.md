@@ -27,7 +27,7 @@
 | 2:25–3:25 | Secretary | Pending document request, requirements review, certificate-template wording, hearing-summons wording, venue availability | “The Secretary checks requirements, maintains approved document wording and hearing summons, and controls room availability. Final document and venue decisions remain with Staff.” |
 | 3:25–5:15 | Staff | Final approve/reject action, saved certificate draft/PDF preview, release, blotter review, venue reservation, and queue controls; announce a called number aloud and mark it Served | “Staff performs the final operational processing. For queueing, Staff calls the service and ticket number aloud, then records whether the resident was served or skipped.” |
 | 5:15–6:00 | Chairman | Read-only records, reports and cash-ledger view | “The Chairman has oversight access. Operational changes remain with the assigned staff roles.” |
-| 6:00–7:10 | Queue / history | Documents, Blotter and Venue queues; issuance history; status/audit trail | “Each service has its own queue, while the reference and history make the request traceable.” |
+| 6:00–7:10 | Queue / history | Documents, Blotter and Venue queues; call the next number aloud, mark Served/Skipped; issuance history; status/audit trail | “Each service has its own independent queue. Staff announces the next ticket number; the system records the queue action and request history.” |
 | 7:10–8:00 | Closing | Return to dashboard or panel guide | “The hosted automated suite passes. Local XAMPP, phone/LAN, email delivery, printer and restore checks are reported separately and only marked passed after real testing.” |
 
 ## Recommended seeded examples
