@@ -40,12 +40,64 @@ if ($iterations < 1 || $iterations > 50) {
 }
 
 $range = report_period_range('month');
-$emptyFilters = ['q' => $query, 'purok' => '', 'status' => '', 'category' => '', 'show' => ''];
+$emptyFilters = ['q' => $query, 'purok' => '', 'status' => '', 'type' => '', 'show' => ''];
 $checks = [
     'Resident search + first 20 results' => static function () use ($emptyFilters): void {
         [$rows, $total] = resident_search($emptyFilters, 20, 0);
         // Consume only counts; never print resident names or personal information.
         $unused = count($rows) + $total;
+    },
+    'Recent request directory (first 25)' => static function (): void {
+        $rows = db_all(
+            'SELECT dr.request_id, dr.reference_no, dr.requested_at, dr.status, dr.msit_status,
+                    r.last_name, r.first_name, r.middle_name, r.suffix,
+                    dt.name AS type_name, u.full_name AS assigned
+             FROM document_requests dr
+             JOIN residents r ON r.resident_id = dr.resident_id
+             JOIN document_types dt ON dt.type_id = dr.type_id
+             LEFT JOIN users u ON u.user_id = dr.assigned_to
+             ORDER BY dr.requested_at DESC, dr.request_id DESC
+             LIMIT 25'
+        );
+        $unused = count($rows);
+    },
+    'Recent blotter directory (first 25)' => static function (): void {
+        $rows = db_all(
+            "SELECT b.blotter_id, b.case_no, b.incident_date, b.incident_time, b.msit_status,
+                    pk.label AS purok,
+                    (SELECT GROUP_CONCAT(x.full_name ORDER BY x.party_id SEPARATOR ', ')
+                     FROM blotter_parties x WHERE x.blotter_id = b.blotter_id AND x.party_role = 'Complainant') AS complainants,
+                    (SELECT GROUP_CONCAT(y.full_name ORDER BY y.party_id SEPARATOR ', ')
+                     FROM blotter_parties y WHERE y.blotter_id = b.blotter_id AND y.party_role = 'Respondent') AS respondents,
+                    (SELECT MIN(h.scheduled_at) FROM hearings h
+                     WHERE h.blotter_id = b.blotter_id AND h.status = 'Scheduled') AS next_hearing
+             FROM blotters b
+             LEFT JOIN lookups pk ON pk.lookup_id = b.purok_id AND pk.list_key = 'purok'
+             ORDER BY b.incident_date DESC, b.incident_time DESC, b.blotter_id DESC
+             LIMIT 25"
+        );
+        $unused = count($rows);
+    },
+    'Recent venue directory (latest 200)' => static function (): void {
+        $rows = db_all(
+            'SELECT vr.*, v.name AS venue_name, r.resident_no, r.last_name, r.first_name, r.middle_name, r.suffix
+             FROM venue_reservations vr
+             JOIN venues v ON v.venue_id = vr.venue_id
+             JOIN residents r ON r.resident_id = vr.resident_id
+             ORDER BY vr.reservation_date DESC, vr.start_time DESC, vr.reservation_id DESC
+             LIMIT 200'
+        );
+        $unused = count($rows);
+    },
+    'Today queue dashboard totals' => static function (): void {
+        $counts = db_one(
+            "SELECT COUNT(*) AS total_n,
+                    COALESCE(SUM(status = 'Waiting'), 0) AS waiting_n,
+                    COALESCE(SUM(status = 'Called'), 0) AS called_n,
+                    COALESCE(SUM(status = 'Served'), 0) AS served_n
+             FROM queue_entries WHERE queue_date = CURDATE()"
+        ) ?? ['total_n' => 0];
+        $unused = (int) $counts['total_n'];
     },
     'Current resident demographic report' => static function (): void {
         $report = report_demographics();
@@ -55,12 +107,24 @@ $checks = [
         $report = report_issuances($range);
         $unused = (int) $report['summary']['issued_count'];
     },
+    'Monthly cash-collection report' => static function () use ($range): void {
+        $report = report_cash_collections($range);
+        $unused = (int) $report['ledger_entry_count'];
+    },
     'Monthly request-processing report' => static function () use ($range): void {
         $report = report_requests($range);
         $unused = (int) $report['summary']['total'];
     },
     'Monthly blotter report' => static function () use ($range): void {
         $report = report_blotters($range);
+        $unused = (int) $report['summary']['total'];
+    },
+    'Monthly venue-reservation report' => static function () use ($range): void {
+        $report = report_venues($range);
+        $unused = (int) $report['summary']['total'];
+    },
+    'Monthly queueing report' => static function () use ($range): void {
+        $report = report_queueing($range);
         $unused = (int) $report['summary']['total'];
     },
 ];
