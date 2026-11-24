@@ -13,14 +13,14 @@
 
 GitHub Actions validates PHP syntax, include paths, setup preflight, migrations, the schema snapshot, security/authentication/audit tests, and module integration tests across PHP 8.3, 8.4, 8.5 and 8.6 against disposable MariaDB 10.4 and 10.11 databases.
 
-Those hosted tests do **not** prove that Apache's PHP binary on the target XAMPP PC, a physical kiosk/touchscreen, a phone on the barangay LAN, real email/SMS delivery, printer output, or backup restoration works. Record those as **NOT RUN** until actually tested on the target machine. Do not change a NOT RUN result to PASS based only on GitHub Actions.
+Those hosted tests do **not** prove that Apache's PHP binary on the target XAMPP PC, a physical kiosk/touchscreen, a phone on the barangay LAN, real email delivery, printer output, or backup restoration works. Record those as **NOT RUN** until actually tested on the target machine. Do not change a NOT RUN result to PASS based only on GitHub Actions.
 
 ## 2. Safety before using a local working database
 
 1. Back up the current project folder and the **working-copy** database before migration or testing.
 2. Confirm `app/config.local.php` points to a database whose name ends in `_work` or `_test`, normally `barangay_db_work`. Do not run migrations or test suites against the original `barangay_db` or any live/production database.
 3. Keep real resident data out of classroom testing. Use synthetic residents, addresses, email addresses and phone numbers.
-4. Turn off the email notification channel in **Settings → Notifications** and turn off every SMS provider in the private server configuration before running module tests. The module runner now refuses to start when saved email settings or the selected SMS provider are enabled. This avoids accidental messages and paid SMS.
+4. Keep email notification delivery disabled in **Settings → Notifications** and private server configuration before running module tests. The module runner refuses to start when email delivery is enabled. The SMS feature and provider adapters have been removed.
 5. Do not share `app/config.local.php`, API keys, database passwords, private uploads, or SQL backups when sending test reports.
 
 ## 3. Confirm the PHP version used by both CLI and Apache
@@ -47,7 +47,7 @@ cd /d "%PROJECT_ROOT%"
 "%PHP%" -m | findstr /I "pdo_mysql fileinfo zip"
 ```
 
-The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migration 019 is present in the source folder. If this check fails, do not proceed with a mixed or incomplete project copy.
+The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migration 020 is present in the source folder. If this check fails, do not proceed with a mixed or incomplete project copy.
 
 Then verify the ZIP extension needed for complete system backups:
 1. Run the CLI command above and confirm `zip` appears in the module list.
@@ -123,7 +123,7 @@ echo Module test exit code: %MODULE_EXIT%
 
 Expected result: **FAIL 0 and NOT TESTED 0** in both reports. A non-zero exit code is a failed test run. Read the individual failed test IDs and diagnostic messages printed at the end of the report. The test runners now preserve failed assertions, print a separate failure list, report untested checks, and return a failing exit code. If a module throws an exception, the module runner records a module-level FAIL plus a NOT TESTED remainder marker and continues with later modules.
 
-The module runner refuses to start while real SMS or email delivery is enabled. Disable both first; do not bypass this safety check. Do not remove a failing test, change it to SKIP, or lower the expected result to force a green run. Fix the underlying cause, keep the regression test, and rerun both suites.
+The module runner refuses to start while real email delivery is enabled. Disable email first; do not bypass this safety check. Do not remove a failing test, change it to SKIP, or lower the expected result to force a green run. Fix the underlying cause, keep the regression test, and rerun both suites.
 
 The full CI suite uses the same runners and also uploads `security-tests.log` and `module-tests.log` as GitHub Actions artifacts (including when tests fail). Historical failed runs remain visible in the repository's Actions history.
 
@@ -145,13 +145,13 @@ The automated role tests create Admin, Chairman, Secretary and Staff sessions, v
 
 ## 7. Resident kiosk and request journey
 
-Use a synthetic resident with a unique Resident ID, birthdate, email and mobile number. Keep email and SMS delivery disabled while testing.
+Use a synthetic resident with a unique Resident ID, birthdate and email address. Keep email delivery disabled while testing. Mobile numbers remain contact data only.
 
 1. Open the shared document-request QR entry URL from the local server. Do not use a QR that encodes personal resident information.
-2. Verify the resident with Resident ID and birthdate. Test the name-search/one-time-code fallback separately only when a test email/SMS route is configured and explicitly authorized.
-3. Open the queue, document request, blotter report and venue reservation kiosk forms. Confirm each offers Email, SMS or Both and defaults to the resident's saved preference.
+2. Verify the resident with Resident ID and birthdate. Test the name-search/one-time-code fallback only when a test email address and email transport are configured and explicitly authorized.
+3. Open the queue, document request, blotter report and venue reservation kiosk forms. Confirm there is no notification-channel selector and that the forms explain email-only notices.
 4. Submit one test queue ticket and one request of each supported type. Confirm a unique reference and the correct service queue number are shown.
-5. Confirm the selected notification preference is saved to the resident and queue ticket. Change the profile preference and verify existing tickets still use their saved preference for called/near alerts.
+5. Submit a queue ticket, then call it and call the next number. Confirm the queue-issued, called and near alerts create email outbox rows only. Confirm no new rows are written to the legacy SMS outbox.
 6. Confirm the public queue screen shows service and current queue number but no resident-identifying information.
 7. Leave the kiosk untouched and verify it returns to the resident home screen after the inactivity timeout. Confirm that the resident flow cannot access Admin/Staff routes.
 8. Verify timeout submits the CSRF-protected POST logout form, not GET. Confirm it clears the resident identity, OTP token, flash message and all saved queue/request/venue/blotter receipt data, and that a second resident using the same browser cannot see the previous resident's receipt.
@@ -166,7 +166,7 @@ Physical touchscreen sizing, kiosk inactivity behavior, the actual QR scan from 
 - **Documents/certificates:** submit a document request and complete the requirements review as Secretary. Approve it as Staff. Confirm approval automatically creates a saved certificate draft with a reserved certificate reference, resident/document wording, fee snapshot and the required Chairman signature. Open the protected PDF draft as Staff/Admin; confirm it is marked **DRAFT — NOT ISSUED**. Verify Secretary and Chairman receive a denial on the draft-PDF URL. Before Staff releases it, confirm there is no issuance row, O.R. number, cash-ledger entry, print count or Released status. Then release the certificate as Staff and confirm the final issuance reuses the saved reference, wording, fee and signature snapshot, creates the appropriate cash-ledger entry for a paid document, and moves the request to Released. The current layout is still a draft until the barangay approves the official wording, fees and layout.
 - **Reports:** compare resident/Purok/type totals, documents, blotter statuses, venue usage and queue statistics against the same working database. Test PDF/Excel-compatible exports with Chairman and Secretary; confirm Staff access follows the permission map.
 
-Do not describe a draft certificate as an official issued barangay certificate. Do not claim that an SMS/email was delivered because a notification only appears in an outbox or is labelled queued.
+Do not describe a draft certificate as an official issued barangay certificate. Do not claim that an email was delivered because a notification only appears in an outbox or is labelled queued.
 
 ## 9. Network, performance, mail and restore acceptance
 
@@ -175,7 +175,7 @@ These require the actual target PC and/or approved barangay services:
 - **Phone/LAN QR:** connect a phone to the same barangay LAN and open the QR URL using the LAN-reachable server address, not `localhost`. Verify the flow from the phone.
 - **Offline network:** disconnect internet access while keeping the local network/server running. Verify residents and staff can still use the local application and local database functions.
 - **Email:** only after approval, configure the barangay-approved sender/relay and send a controlled test to a test mailbox. Verify actual receipt and delivery status.
-- **SMS:** only if the barangay approves a provider and accepts its charges, configure the private API key and send to an authorized test phone. Verify provider response and actual phone receipt. Never treat `Queued` as `Delivered`.
+
 - **Performance:** use representative synthetic data and `tools/benchmark.php`; record the measured page/operation and time. The 3-second NFR is not verified until measurements are captured.
 - **Full-system backup/restore:** enable ZIP in both CLI PHP and Apache. During a quiet maintenance window, create a complete ZIP backup. Verify its manifest, database SQL, `storage/private_uploads/` attachments and Chairman signature images, and `storage/resident_photos/` resident photos. Restore it only in a separate scratch application folder with its own scratch database and storage directory. Confirm resident photos, request attachments, current Chairman signature and historical issuance signature snapshots are available. Confirm the restored DB has no missing private-file references and inspect the application error log. Never test restoration against the source or original database.
 - **Legacy SQL-only restore:** test only when explicitly needed. It restores database records but not private files; it is not a complete system backup.
@@ -220,7 +220,7 @@ The sample set contains:
 - 4 document requests: Pending, Approved with a saved unissued certificate draft, Rejected and Released with one sample issuance-history record;
 - 3 fictitious blotter cases, 2 demo venues, 2 venue reservations and 3 service-queue tickets.
 
-All generated records and document bodies say **DEMO ONLY**. No official document type, fee, barangay setting, account, password, SMS provider, email setting or real resident is changed. The .invalid email addresses cannot receive mail. The seeder does not send email or SMS.
+All generated records and document bodies say **DEMO ONLY**. No official document type, fee, barangay setting, account, password, email setting or real resident is changed. The .invalid email addresses cannot receive mail. The seeder does not send email. SMS delivery is not implemented.
 
 ### Edit and preview certificate templates
 
