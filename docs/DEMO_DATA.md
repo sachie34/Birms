@@ -7,7 +7,7 @@ Use the MSIT-specific seeder for the revised SRS branch. The older B1–B12 seed
 - CLI only; there is no public route that can seed records.
 - Refuses to run unless the configured database name ends in _work or _test.
 - Never point it at the original barangay_db or a production database.
-- Uses fictitious resident data and .invalid email addresses. It does not create phone numbers or send email/SMS.
+- Uses fictitious resident data and .invalid email addresses. It does not create phone numbers or send email. SMS delivery is not implemented.
 - Does not create accounts or default passwords.
 - Does not change official document types, official wording, fees, barangay settings, existing users or passwords.
 - Reuses only old synthetic residents whose last name starts with DEMO- and whose resident number is blank. It assigns a DEMO resident number and demo-only address/contact settings. It never adopts a normal resident record.
