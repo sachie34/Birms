@@ -23,13 +23,13 @@ function resident_notify_status_change(
         [$residentId]
     );
     if ($resident === null || $resident['archived_at'] !== null) {
-        return ['email' => 'no_resident', 'sms' => 'removed'];
+        return ['email' => 'no_resident'];
     }
     $email = trim((string) ($resident['email_address'] ?? ''));
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         audit_best_effort('resident_notification_unavailable', 'Notifications', 'Failed',
             $service . ' request ' . $referenceNo . ' changed to ' . $status . '; no valid resident email is recorded.');
-        return ['email' => 'no_email', 'sms' => 'removed'];
+        return ['email' => 'no_email'];
     }
     $message = 'Your ' . $service . ' request ' . $referenceNo . ' status is now ' . $status . '.';
     $extraMessage = trim($extraMessage);
@@ -39,11 +39,11 @@ function resident_notify_status_change(
         $message, $eventType, $referenceNo
     );
     if (!email_provider_is_enabled()) {
-        return ['email' => 'queued', 'sms' => 'removed'];
+        return ['email' => 'queued'];
     }
     try {
         $result = email_send_notification($emailId);
-        return ['email' => (string) ($result['status'] ?? 'unknown'), 'sms' => 'removed'];
+        return ['email' => (string) ($result['status'] ?? 'unknown')];
     } catch (Throwable $emailError) {
         error_log('BIRMS resident status email failed for ' . $referenceNo . ': ' . get_class($emailError));
         audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
