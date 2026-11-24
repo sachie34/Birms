@@ -135,7 +135,7 @@ function run_b9(array $S, string $base): void
             '/blotters/index.php' => 'Manage official blotter records using the permissions available to your role.',
             '/blotters/hearings.php' => 'Manage hearing schedules and record outcomes for assigned blotter cases.',
             '/queue/index.php' => 'Monitor current queue numbers and waiting counts for each service.',
-            '/venues/index.php' => 'View venue availability and reservation statuses.',
+            '/venues/index.php' => 'Set each room to Available or In Use for blotter/hearing arrangements; reservation decisions remain with Staff.',
             '/blotter_requests/index.php' => 'View resident-submitted blotter reports and their saved review status.',
         ],
         'clerk' => [
@@ -158,5 +158,26 @@ function run_b9(array $S, string $base): void
     }
     record('B9-8', 'Blotter, hearing, queue, venue and resident-blotter pages explain each role’s actual permitted actions',
         !$roleGuidanceProblems, implode(', ', $roleGuidanceProblems));
+
+    $secretaryVenues = $S['secretary']->get('/venues/index.php');
+    $secretaryCanToggle = $secretaryVenues['status'] === 200
+        && str_contains($secretaryVenues['body'], 'name="do" value="override"')
+        && str_contains($secretaryVenues['body'], 'Save status')
+        && !str_contains($secretaryVenues['body'], 'name="do" value="create_venue"')
+        && !str_contains($secretaryVenues['body'], 'name="do" value="reserve"');
+    $chairmanVenues = $S['captain']->get('/venues/index.php');
+    $chairmanReadOnly = $chairmanVenues['status'] === 200
+        && !str_contains($chairmanVenues['body'], 'name="do" value="override"')
+        && !str_contains($chairmanVenues['body'], 'name="do" value="create_venue"')
+        && !str_contains($chairmanVenues['body'], 'name="do" value="reserve"');
+    record('B9-9', 'Secretary can toggle venue availability only; Chairman remains read-only and Staff retains reservation operations',
+        $secretaryCanToggle && $chairmanReadOnly
+        && role_can('secretary', 'venues.availability.manage')
+        && !role_can('secretary', 'venues.manage')
+        && !role_can('secretary', 'venues.approve')
+        && !role_can('captain', 'venues.availability.manage')
+        && role_can('clerk', 'venues.manage'),
+        'Secretary toggle=' . ($secretaryCanToggle ? 'yes' : 'no')
+        . '; Chairman read-only=' . ($chairmanReadOnly ? 'yes' : 'no'));
 
 }
