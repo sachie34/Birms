@@ -1,5 +1,5 @@
 <?php
-/** B22: resident-facing channel choice is saved and honored across queue notifications. */
+/** B22: kiosk and queue notifications are email-only. */
 declare(strict_types=1);
 require_once __DIR__ . '/../app/queue_lib.php';
 require_once __DIR__ . '/../app/kiosk_lib.php';
