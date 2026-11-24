@@ -47,7 +47,7 @@ All role restrictions must remain enforced server-side; hiding buttons alone is 
 
 ## Resident kiosk and notification status
 
-The resident-facing workflow is being changed to a QR kiosk with email-only verification and status notices. SMS provider code and live-send tools are removed from the application. Existing SMS outbox tables and migration history remain for backward compatibility and audit preservation; no new SMS messages are created. Email delivery still requires a configured server mail transport and a controlled test. Kiosk identity fallback using Resident ID and birthdate remains available when email verification is unavailable.
+The Phase 2 candidate now uses a shared QR kiosk with email-only verification and status notices. SMS provider code and live-send tools are removed from the application. Existing SMS outbox tables and migration history remain for backward compatibility and audit preservation; no new SMS messages are created. Email delivery still requires a configured server mail transport and a controlled test. Kiosk identity fallback using Resident ID and birthdate remains available when email verification is unavailable.
 
 ## Automated verification evidence
 
