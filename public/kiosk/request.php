@@ -12,6 +12,10 @@ if (is_post()) {
         'Too many document requests were submitted from this resident session. Please ask Staff for help.');
     $typeId = post_int('type_id');
     $purpose = post_str('purpose');
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && !queue_valid_notification_preference($legacyPreference)) {
+        $errors[] = 'Notification channels are no longer selectable. BIRMS uses email only.';
+    }
     $type = $typeId ? db_one('SELECT type_id, name FROM document_types WHERE type_id = ? AND is_active = 1', [$typeId]) : null;
     if ($type === null) { $errors[] = 'Choose an available document type.'; }
     if (!v_len($purpose, 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
