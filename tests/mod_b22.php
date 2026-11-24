@@ -154,7 +154,12 @@ function run_b22(array $S, string $base): void
             '/kiosk/blotter.php' => $kiosk->get('/kiosk/blotter.php'),
             '/kiosk/venue.php' => $kiosk->get('/kiosk/venue.php'),
         ];
-        $formsOfferChoice = $verified;
+        $residentProfile = $S['admin']->get('/residents/form.php');
+        $residentProfileEmailOnly = $residentProfile['status'] === 200
+            && str_contains($residentProfile['body'], 'value="email"')
+            && !str_contains($residentProfile['body'], 'value="sms"')
+            && !str_contains($residentProfile['body'], 'value="both"');
+        $formsOfferChoice = $verified && $residentProfileEmailOnly;
         foreach ($forms as $page) {
             $formsOfferChoice = $formsOfferChoice
                 && $page['status'] === 200
@@ -167,7 +172,7 @@ function run_b22(array $S, string $base): void
             'B22-01',
             'Resident kiosk forms offer email-only notifications and no SMS choices',
             $formsOfferChoice,
-            $formsOfferChoice ? 'all four resident forms checked' : 'identity or one or more kiosk forms did not expose all three choices'
+            $formsOfferChoice ? 'all four resident forms checked' : 'resident profile or one or more kiosk forms did not expose the email-only option'
         );
 
         $emailRowsBeforeDispatchGuard = (int) db_val('SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ?', [$residentId]);
@@ -216,7 +221,7 @@ function run_b22(array $S, string $base): void
              ORDER BY queue_id',
             [$residentId, $queueStartId]
         );
-        $savedBoth = (string) db_val('SELECT notification_preference FROM residents WHERE resident_id = ?', [$residentId]);
+        $savedPreference = (string) db_val('SELECT notification_preference FROM residents WHERE resident_id = ?', [$residentId]);
         $smsIssuedCount = (int) db_val(
             "SELECT COUNT(*) FROM sms_outbox WHERE recipient_number = ? AND trigger_event = 'queue_issued'
              AND provider_status = 'not_configured'",
