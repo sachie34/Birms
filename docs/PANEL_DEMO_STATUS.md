@@ -58,7 +58,7 @@ Residents can request a venue through the kiosk. Staff handles reservation decis
 
 ### Service queues
 
-Documents, Blotter and Venue have separate queues. Staff can call the next ticket and process the queue status. The public display shows the service and ticket number, not the resident's personal details.
+Documents, Blotter and Venue have separate queues. Staff can issue a counter ticket when needed, choose the service, click **Call next**, announce the service and number aloud (for example, “Documents number 3”), then mark it Served, Skipped or Cancelled. The public display is optional for a verbal-call demonstration; it shows only service and ticket number, not resident details. Email, phone QR and physical kiosk hardware are not required for Staff to call numbers aloud.
 
 ## 4. Suggested panel demonstration sequence
 
