@@ -89,6 +89,7 @@ function msit_ext_counts(): array
         'historical_queues' => (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE reference_no LIKE 'DEMO-EXT-Q-%'"),
         'private_request_attachments' => (int) db_val("SELECT COUNT(*) FROM document_attachments WHERE original_name LIKE 'DEMO ONLY - Extended support item %'"),
         'status_history' => (int) db_val("SELECT COUNT(*) FROM request_status_history WHERE note LIKE '[DEMO ONLY] EXTENDED MSIT%'"),
+        'audit_examples' => (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'msit_extended_demo_fixture' AND module = 'Demo Data'"),
         'seed_audit_events' => (int) db_val("SELECT COUNT(*) FROM audit_log WHERE action = 'msit_extended_demo_seeded' AND module = 'Demo Data'"),
     ];
 }
@@ -104,6 +105,7 @@ function msit_ext_expected_counts(): array
         'historical_queues' => 4,
         'private_request_attachments' => 2,
         'status_history' => 11,
+        'audit_examples' => 4,
         'seed_audit_events' => 1,
     ];
 }
@@ -481,7 +483,7 @@ function msit_ext_seed_queue_history(array $residentIds): void
     }
 }
 
-function msit_ext_seed_attachments(array $createdFiles): void
+function msit_ext_seed_attachments(array &$createdFiles): void
 {
     $fileRows = [
         ['DEMO ONLY - Extended support item 01.pdf', 'storage/private_uploads/msit-demo-extended/MSIT-DEMO-SUPPORT-01.pdf',
@@ -504,22 +506,58 @@ function msit_ext_seed_attachments(array $createdFiles): void
     }
 }
 
+function msit_ext_private_file(string $relative, string $allowedPrefix): string
+{
+    if (!str_starts_with($relative, $allowedPrefix) || str_contains($relative, "\0")
+        || str_contains($relative, '\\') || preg_match('~^[A-Za-z0-9._/-]+$~D', $relative) !== 1) {
+        throw new RuntimeException('A demo private-file reference is outside its approved storage prefix.');
+    }
+    foreach (explode('/', $relative) as $segment) {
+        if ($segment === '' || $segment === '.' || $segment === '..') {
+            throw new RuntimeException('A demo private-file reference contains an unsafe path segment.');
+        }
+    }
+    $root = realpath(APP_ROOT);
+    if (!is_string($root)) { throw new RuntimeException('Application root is unavailable during private-file verification.'); }
+    $absolute = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+    $parent = realpath(dirname($absolute));
+    if (!is_string($parent) || ($parent !== $root && !str_starts_with($parent, $root . DIRECTORY_SEPARATOR))
+        || is_link($absolute) || !is_file($absolute)) {
+        throw new RuntimeException('A demo private file is missing, linked, or resolves outside the application root.');
+    }
+    return $absolute;
+}
+
+function msit_ext_seed_audit_examples(): void
+{
+    $examples = [
+        ['Residents', '[DEMO ONLY] Extended resident directory examples and generic placeholder photos were inserted by the demo seeder. No real resident was created.'],
+        ['Blotter', '[DEMO ONLY] Two synthetic blotter examples were archived with parties and status history. No real complaint or staff decision is represented.'],
+        ['Venue', '[DEMO ONLY] Two synthetic venue reservation outcomes were inserted with status history. No real booking or approval is represented.'],
+        ['Queue', '[DEMO ONLY] Four synthetic historical queue outcomes were inserted with elapsed-time fields. No real resident service or staff call is represented.'],
+    ];
+    foreach ($examples as [$entityType, $remarks]) {
+        db_exec(
+            "INSERT INTO audit_log
+             (user_id, username_snapshot, action, module, entity_type, entity_id, status, remarks, ip_address)
+             VALUES (NULL, 'DEMO DATA', 'msit_extended_demo_fixture', 'Demo Data', ?, NULL, 'Success', ?, NULL)",
+            [$entityType, $remarks]
+        );
+    }
+}
+
 function msit_ext_assert_files(): void
 {
     $residentRows = db_all(
         "SELECT resident_no, photo_path FROM residents
          WHERE resident_no LIKE 'DEMO-RES-EXT-%' ORDER BY resident_no"
     );
+    if (count($residentRows) !== 12) { throw new RuntimeException('Expected 12 extended synthetic resident photo references.'); }
     foreach ($residentRows as $row) {
-        $relative = (string) $row['photo_path'];
-        $absolute = APP_ROOT . '/' . $relative;
-        if (!is_file($absolute) || is_link($absolute) || !str_starts_with($relative, 'storage/resident_photos/msit-demo-extended/')) {
-            throw new RuntimeException('A synthetic resident photo is missing or outside the private resident-photo directory: ' . $row['resident_no']);
-        }
+        $absolute = msit_ext_private_file((string) $row['photo_path'], 'storage/resident_photos/msit-demo-extended/');
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         if ($finfo === false) { throw new RuntimeException('PHP fileinfo is required to verify demo photo files.'); }
-        $mime = finfo_file($finfo, $absolute);
-        finfo_close($finfo);
+        try { $mime = finfo_file($finfo, $absolute); } finally { finfo_close($finfo); }
         if ($mime !== 'image/png') { throw new RuntimeException('A synthetic resident photo failed MIME validation: ' . $row['resident_no']); }
     }
 
@@ -528,18 +566,14 @@ function msit_ext_assert_files(): void
          FROM document_attachments
          WHERE original_name LIKE 'DEMO ONLY - Extended support item %' ORDER BY original_name"
     );
+    if (count($attachmentRows) !== 2) { throw new RuntimeException('Expected two extended synthetic private request attachments.'); }
     foreach ($attachmentRows as $row) {
-        $relative = (string) $row['storage_path'];
-        $absolute = APP_ROOT . '/' . $relative;
-        if (!is_file($absolute) || is_link($absolute) || !str_starts_with($relative, 'storage/private_uploads/msit-demo-extended/')) {
-            throw new RuntimeException('A private synthetic request attachment is missing or outside private storage.');
-        }
+        $absolute = msit_ext_private_file((string) $row['storage_path'], 'storage/private_uploads/msit-demo-extended/');
         $size = filesize($absolute);
         $hash = hash_file('sha256', $absolute);
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         if ($finfo === false) { throw new RuntimeException('PHP fileinfo is required to verify demo attachment files.'); }
-        $mime = finfo_file($finfo, $absolute);
-        finfo_close($finfo);
+        try { $mime = finfo_file($finfo, $absolute); } finally { finfo_close($finfo); }
         if ($size !== (int) $row['byte_size'] || !is_string($hash) || !hash_equals((string) $row['sha256'], $hash)
             || $mime !== 'application/pdf' || $row['mime_type'] !== 'application/pdf') {
             throw new RuntimeException('A private synthetic request attachment failed size, SHA-256 or MIME verification.');
@@ -570,6 +604,7 @@ function msit_ext_apply(array &$createdFiles): array
         msit_ext_seed_reservations($residentIds);
         msit_ext_seed_queue_history($residentIds);
         msit_ext_seed_attachments($createdFiles);
+        msit_ext_seed_audit_examples();
 
         // All transitions are labelled as fixtures and deliberately have no impersonated actor.
         $documentHistory = [
@@ -592,6 +627,7 @@ function msit_ext_apply(array &$createdFiles): array
         if (!msit_ext_is_complete($after)) {
             throw new RuntimeException('The extended demo seed did not produce the exact expected marker counts. Transaction will be rolled back.');
         }
+        msit_ext_assert_files();
         return ['already_seeded' => false, 'counts' => $after];
     });
 }
@@ -642,7 +678,6 @@ try {
     }
     msit_ext_out($result['already_seeded'] ? 'Extended MSIT demo data was already present; no rows changed.' : 'Extended MSIT demo data created successfully.');
     foreach ($result['counts'] as $name => $count) { msit_ext_out('  ' . str_pad($name, 28) . ': ' . $count); }
-    msit_ext_assert_files();
     msit_ext_out('Private photo and attachment files: integrity checks passed.');
     msit_ext_out('Cash ledger untouched; no paid transaction, approved fee or official receipt was fabricated.');
 } catch (Throwable $e) {
