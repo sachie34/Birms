@@ -2,11 +2,11 @@
 
 **Review date:** 2026-10-29  
 **Repository:** `sachie34/Birms`  
-**Final-audit note (2026-10-29):** Additional checks now cover inline-style/CSP regressions, spreadsheet formula injection in CSV output, page-help rendering for all four roles, request-review invalidation after material edits, and certificate preview/print/PDF permissions. The latest run passed **39 security/authentication/audit checks and 187 module checks** (226 total, zero failures or untested checks): [GitHub Actions run #40817002749](https://github.com/sachie34/Birms/actions/runs/40817002749). Local XAMPP UAT, barangay policy/template approvals, live SMS and live backup/restore remain separate acceptance tasks.
+**Final-audit note (2026-10-29):** Additional checks now cover inline-style/CSP regressions, spreadsheet formula injection in CSV output, page-help rendering for all four roles, request-review invalidation after material edits, and certificate preview/print/PDF permissions. The latest run passed **39 security/authentication/audit checks and 187 module checks** (226 total, zero failures or untested checks): [GitHub Actions run #40817002749](https://github.com/sachie34/Birms/actions/runs/40817002749). Local XAMPP UAT, barangay policy/template approvals, email delivery and live backup/restore remain separate acceptance tasks.
 
 ## How to read this checklist
 
-“Implemented” means there is a corresponding application flow and code/test coverage in the repository; it is not a claim of production acceptance. “Partial” means a core code path exists but an external integration, official document/policy decision, or validation step remains incomplete. CI tests use synthetic data and a disposable database. They do not verify the target office's XAMPP installation, physical printer, official wording, live SMS, or live cloud backup.
+“Implemented” means there is a corresponding application flow and code/test coverage in the repository; it is not a claim of production acceptance. “Partial” means a core code path exists but an external integration, official document/policy decision, or validation step remains incomplete. CI tests use synthetic data and a disposable database. They do not verify the target office's XAMPP installation, physical printer, official wording, live email delivery, or live cloud backup.
 
 ## The 20 functions
 
