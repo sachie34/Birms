@@ -22,6 +22,7 @@ $allowedDestinations = [
     'blotter' => 'kiosk/blotter.php',
     'venue' => 'kiosk/venue.php',
     'queue' => 'kiosk/queue.php',
+    'status' => 'kiosk/status.php',
 ];
 $next = post_str('next');
 if (!isset($allowedDestinations[$next])) { $next = ''; }
