@@ -1,6 +1,6 @@
 # MSIT BIRMS demonstration data
 
-Use the MSIT-specific seeder included in the revised SRS build on [`main`](https://github.com/sachie34/Birms/archive/refs/heads/main.zip). The older B1–B12 seeder is not the right preparation path for this build.
+Use the MSIT-specific seeders included in the combined revised-SRS candidate on [`release/msit-demo-ready`](https://github.com/sachie34/Birms/archive/refs/heads/release/msit-demo-ready.zip) (draft PR #48). The older B1–B12 household/visitor seeder is not the right preparation path for this build.
 
 ## Safety
 
@@ -38,7 +38,7 @@ The first command is a read-only plan. Confirm it reports the isolated working d
 C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
 ~~~
 
-Sign in using an account created by the administrator. The seeder intentionally does not create shared/default accounts. The six synthetic Resident IDs are `DEMO-RES-0001` through `DEMO-RES-0006`; use the birthdate shown on each seeded profile for the kiosk identity step. Their email addresses use `.invalid`, so they cannot receive OTP messages or resident notices. Do not expect live email delivery from the synthetic records.
+Sign in using an account created by the administrator. The seeder intentionally does not create shared/default accounts. The six base synthetic Resident IDs are `DEMO-RES-0001` through `DEMO-RES-0006`; use the birthdate shown on each seeded profile for the kiosk identity step. Their email addresses use `.invalid`, so they cannot receive OTP messages or resident notices. Do not expect live email delivery from the synthetic records. The optional extended seed adds 12 more residents with IDs beginning `DEMO-RES-EXT-`, for 18 synthetic residents total. The base verifier deliberately excludes those 12 and checks only the six base records; the extended verifier checks the 12 additional records separately.
 
 ## What is included
 
@@ -77,7 +77,7 @@ CI does not replace local XAMPP, browser, printer or role acceptance. Never pres
 
 ## Extended presentation data (optional)
 
-After the base MSIT demo seeder and its verifier have passed, the extended seeder adds optional examples for directory filters, private file handling, historical queues, archived blotter cases and audit/history views. It is separate so the original compact demo dataset remains useful for a short presentation.
+After the base MSIT demo seeder and its verifier have passed, the optional extended seeder adds 12 residents plus examples for directory filters, private file handling, historical queues, archived blotter cases and audit/history views. The combined candidate's CI runs base seed → base verifier → extended seed → extended verifier → base verifier again to confirm the two seeders remain compatible and idempotent.
 
 Run the read-only plan first:
 
