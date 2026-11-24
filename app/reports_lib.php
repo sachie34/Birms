@@ -77,8 +77,7 @@ function report_demographics(): array
          LEFT JOIN lookups oldcat ON oldcat.lookup_id = r.category_id AND oldcat.list_key = 'resident_category'
          LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status'
          WHERE r.archived_at IS NULL
-           AND COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) = 'Active'
-         ORDER BY r.resident_id"
+           AND COALESCE(rs.label, CASE WHEN r.residency_status = 'Relocated' THEN 'Transferred' ELSE r.residency_status END) = 'Active'"
     );
     $data = [
         'total' => count($rows), 'age_brackets' => [], 'sex' => [], 'marital_status' => [],
