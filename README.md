@@ -24,7 +24,7 @@ Initial import branch: `integration/import-b6`
 
 Source package: `birms_work_B1-B6.zip` from the uploaded `Claudecodebirms.zip` bundle.
 
-The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files; the B1–B6 package was selected as the initial self-contained import. The additional B7/B8 and presentation-readiness work has now been merged into `main`.
+The outer archive also contained earlier B1 and B1–B5 packages and duplicate SQL files; the B1–B6 package was selected as the initial self-contained import. Legacy B7/B8 work and the earlier presentation-readiness branch were merged into the older `main` baseline. The revised MSIT candidate in `john/phase2-kiosk-no-sms` is separate and intentionally remains in draft PR #39 until target-PC acceptance.
 
 ## Download and run locally (XAMPP)
 
@@ -46,7 +46,7 @@ C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
 
 This adds fictitious residents, demo-only certificate templates and requests, sample blotter cases, venue reservations and queue tickets. It creates no users or default passwords and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
 
-**UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme were tested across 52 role-accessible menu routes. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
+**UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme are exercised across 57 role-accessible menu routes in the current candidate's automated UI checks. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 
 Read [the XAMPP setup guide](docs/README_XAMPP.md), [the MSIT XAMPP acceptance runbook](docs/MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [the panel demo status and sequence](docs/PANEL_DEMO_STATUS.md), [the timed panel demo run sheet](docs/PANEL_DEMO_RUNSHEET.md), [the demo-data seeder guide](docs/DEMO_DATA.md), [the quick user workflow](docs/QUICK_USER_WORKFLOW.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). The [20-function verification file](docs/FINAL_20_FUNCTION_VERIFICATION.md) is a historical audit snapshot, not the current role or acceptance authority. Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
 
