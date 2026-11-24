@@ -44,7 +44,7 @@ else {
     foreach ($venues as $venue) {
         $state = $venue['current_state'];
         echo '<div class="kiosk-venue ' . ($state === 'in_use' ? 'is-busy' : 'is-free') . '"><strong>' . e((string) $venue['name']) . '</strong>'
-            . '<span>' . ($state === 'in_use' ? 'Red · In use now' : 'Green · Available now') . '</span><small>' . e((string) ($venue['description'] ?? '')) . '</small></div>';
+            . '<span>' . ($state === 'in_use' ? 'Red · Unavailable / In use' : 'Green · Available') . '</span><small>' . e((string) ($venue['description'] ?? '')) . '</small></div>';
     }
     echo '</div>';
     echo '<form method="post" action="' . e(base_url('kiosk/venue.php')) . '" class="kiosk-form">' . csrf_field()
