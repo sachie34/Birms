@@ -264,7 +264,7 @@ function run_b7(array $S, string $base): void
     $reportIndexNames = array_column($reportIndexRows, 'INDEX_NAME');
     record('B7-18', 'Request, venue and queue date-range reports have dedicated leading indexes',
         count(array_intersect(
-            ['idx_request_requested_at', 'idx_venue_reservation_date', 'idx_queue_issued_at'],
+            ['idx_request_requested_at', 'idx_venue_reservation_date', 'idx_queue_issued_at', 'idx_queue_date_status'],
             $reportIndexNames
         )) === 4);
 
