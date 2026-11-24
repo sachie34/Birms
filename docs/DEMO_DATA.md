@@ -9,7 +9,7 @@ Use the MSIT-specific seeder included in the revised SRS build on [`main`](https
 - Never point it at the original barangay_db or a production database.
 - Uses fictitious resident data and .invalid email addresses. It does not create phone numbers or send email. Historical SMS tables are not populated.
 - Does not create accounts or default passwords.
-- Does not change official document types, official wording, fees, barangay settings, existing users or passwords.
+- Does not change official document types, approved fees, existing users or passwords. It fills the Captain name, Secretary name and summons wording only when those specific settings are blank; configured values are preserved.
 - Reuses only old synthetic residents whose last name starts with DEMO- and whose resident number is blank. It assigns a DEMO resident number and demo-only address/contact settings. It never adopts a normal resident record.
 - Existing document types are only updated when their exact name begins DEMO ONLY and matches one of the three reserved demo certificate types.
 - A database transaction is used. The script is idempotent; a complete seed is detected and not duplicated. A partial reserved seed is refused for manual inspection.
