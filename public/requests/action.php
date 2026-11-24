@@ -101,8 +101,6 @@ if (!$done) {
                 $flashMessage .= ' An email notice is queued for the resident.';
             } elseif ($notice['email'] === 'sent') {
                 $flashMessage .= ' The email notice was accepted by the configured mail transport.';
-            } elseif ($notice['sms'] === 'queued' || $notice['sms'] === 'pending' || $notice['sms'] === 'sent') {
-                $flashMessage .= ' The resident notification was accepted by the SMS provider.';
             }
         } catch (Throwable $notificationError) {
             error_log('BIRMS document status notification failed for ' . (string) $r['reference_no'] . ': ' . get_class($notificationError) . ': ' . $notificationError->getMessage());
