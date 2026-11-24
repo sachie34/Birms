@@ -2,6 +2,7 @@
 -- Remove only the indexes introduced by migration 020.
 
 ALTER TABLE queue_entries
+    DROP INDEX idx_queue_date_status,
     DROP INDEX idx_queue_issued_at;
 
 ALTER TABLE venue_reservations
