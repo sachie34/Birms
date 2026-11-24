@@ -46,7 +46,9 @@ $rows = db_all(
 $canReview = can('blotter_requests.review');
 
 render_header('Resident Blotter Requests', [['Workspace', null], ['Resident Blotter Requests', null]], 'blotter_requests');
-page_head('Resident Blotter Requests', 'Review reports submitted through the resident kiosk. Accepted reports become official blotter cases; rejected reports remain in the request history.');
+page_head('Resident Blotter Requests', $canReview
+    ? 'Review reports submitted through the resident kiosk. Accepting a report creates one official blotter case; rejection requires a reason and remains in request history.'
+    : 'View reports submitted through the resident kiosk and their saved review status. Staff/Admin perform acceptance or rejection actions.');
 ?>
 <div class="card-b mb-3">
   <form method="get" action="<?= e(base_url('blotter_requests/index.php')) ?>" class="filters">
