@@ -44,7 +44,7 @@ If it confirms `barangay_db_work`, apply the sample records:
 C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
 ```
 
-This adds fictitious residents, demo-only certificate templates and requests, sample blotter cases, venue reservations and queue tickets. It creates no users or default passwords and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
+This adds fictitious residents, demo-only certificate templates and requests, resident blotter intake examples (Pending/Accepted/Rejected), sample blotter cases, a Secretary-managed hearing with demo summons wording, venue reservations and queue tickets with synchronized daily counters. It creates no users or default passwords and sends no email. Then open **System Settings → Documents and fees** as Admin or Secretary to edit the certificate wording with the formatting toolbar and live preview. Secretary can edit wording only; Admin controls fees, availability and signature policy. Read [docs/DEMO_DATA.md](docs/DEMO_DATA.md) before seeding.
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme are exercised across 57 role-accessible menu routes in the current main-branch automated UI checks. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 

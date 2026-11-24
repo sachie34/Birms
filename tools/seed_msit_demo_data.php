@@ -4,7 +4,7 @@
  *
  * CLI only. Creates synthetic residents, document templates/requests, a draft and
  * one issued demo certificate, blotter examples, venues, reservations and queue
- * tickets. Never changes real accounts, official document types, fees or settings.
+ * tickets. It never changes real accounts, official document types, approved fees or nonblank Barangay settings.
  *
  * Usage:
  *   php tools/seed_msit_demo_data.php          (read-only plan)
@@ -18,6 +18,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../app/core.php';
+date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
 require_once __DIR__ . '/../app/lookups.php';
 require_once __DIR__ . '/../app/certificates_lib.php';
 
@@ -34,6 +35,7 @@ function msit_demo_column_exists(string $table, string $column): bool
 function msit_demo_require_schema(): void
 {
     $required = [
+        'settings' => ['setting_key','setting_value'],
         'lookups' => ['lookup_id','list_key','label','is_active'],
         'residents' => ['resident_id','resident_no','first_name','last_name','birthdate','sex','civil_status','marital_status','address','purok_id','resident_status_id','resident_type_id','email_address','contact_number','notification_preference','household_id','is_household_head','created_by','archived_at'],
         'document_types' => ['type_id','name','fee_amount','template_body','is_active','requires_chairman_signature','sort_order'],
@@ -45,6 +47,9 @@ function msit_demo_require_schema(): void
         'venues' => ['venue_id','name','description','availability_override','is_active','created_by'],
         'venue_reservations' => ['reservation_id','reference_no','venue_id','resident_id','purpose','reservation_date','start_time','end_time','status','created_by'],
         'queue_entries' => ['queue_id','service','queue_date','queue_number','resident_id','reference_no','purpose','status','issued_via','notification_preference'],
+        'queue_counters' => ['service','queue_date','last_number'],
+        'resident_blotter_requests' => ['request_id','reference_no','resident_id','incident_date','incident_time','incident_place','purok_id','incident_type_id','narrative','respondent_name','respondent_age','respondent_address','respondent_contact','review_status','msit_status','status_note','blotter_id','reviewed_by','submitted_at','reviewed_at'],
+        'hearings' => ['hearing_id','blotter_id','scheduled_at','venue','notes','status','status_note','summons_count','created_by'],
         'request_status_history' => ['history_id','service','reference_no','previous_status','new_status','changed_by','note','request_id','blotter_id','reservation_id'],
     ];
     foreach ($required as $table => $columns) {
@@ -85,11 +90,13 @@ function msit_demo_marker_counts(): array
         'venues' => (int) db_val("SELECT COUNT(*) FROM venues WHERE name LIKE 'DEMO ONLY - %'"),
         'reservations' => (int) db_val("SELECT COUNT(*) FROM venue_reservations WHERE reference_no LIKE 'DEMO-VEN-%'"),
         'queues' => (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%'"),
+        'blotter_intakes' => (int) db_val("SELECT COUNT(*) FROM resident_blotter_requests WHERE reference_no LIKE 'MSIT-DEMO-BLT-%'"),
+        'hearings' => (int) db_val("SELECT COUNT(*) FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id WHERE b.case_no LIKE 'MSIT-DEMO-BLT-%' AND h.venue LIKE 'DEMO ONLY - %'"),
     ];
 }
 function msit_demo_is_complete(array $c): bool
 {
-    return $c === ['residents'=>6,'document_types'=>3,'requests'=>4,'drafts'=>1,'issuances'=>1,'blotters'=>3,'venues'=>2,'reservations'=>2,'queues'=>3];
+    return $c === ['residents'=>6,'document_types'=>3,'requests'=>4,'drafts'=>1,'issuances'=>1,'blotters'=>3,'venues'=>2,'reservations'=>2,'queues'=>3,'blotter_intakes'=>3,'hearings'=>1];
 }
 function msit_demo_has_markers(array $c): bool
 {
@@ -99,6 +106,56 @@ function msit_demo_has_markers(array $c): bool
     }
     return false;
 }
+
+function msit_demo_legacy_seed_is_complete(array $c): bool
+{
+    return $c === [
+        'residents'=>6,'document_types'=>3,'requests'=>4,'drafts'=>1,'issuances'=>1,
+        'blotters'=>3,'venues'=>2,'reservations'=>2,'queues'=>3,'blotter_intakes'=>0,'hearings'=>0
+    ];
+}
+function msit_demo_upgrade_existing_seed(): array
+{
+    return db_transaction(function (): array {
+        $before = msit_demo_marker_counts();
+        if (msit_demo_is_complete($before)) { return ['already_seeded' => true, 'counts' => $before]; }
+        if (!msit_demo_legacy_seed_is_complete($before)) {
+            throw new RuntimeException('The existing demo set is partial or has additional linked records. No data was changed; inspect it before retrying.');
+        }
+        $residentIds = array_map('intval', array_column(
+            db_all("SELECT resident_id FROM residents WHERE resident_no LIKE 'DEMO-RES-%' ORDER BY resident_no"),
+            'resident_id'
+        ));
+        $caseIds = array_map('intval', array_column(
+            db_all("SELECT blotter_id FROM blotters WHERE case_no LIKE 'MSIT-DEMO-BLT-%' ORDER BY case_no"),
+            'blotter_id'
+        ));
+        $venueId = (int) db_val("SELECT venue_id FROM venues WHERE name = 'DEMO ONLY - Multi-purpose Hall'");
+        if (count($residentIds) !== 6 || count($caseIds) !== 3 || $venueId < 1) {
+            throw new RuntimeException('The existing DEMO seed is missing a resident, case or venue required for the safe upgrade.');
+        }
+
+        // Fill blank official details with unmistakable demo values only; never overwrite configured names/text.
+        msit_demo_seed_default_settings();
+        $definitions = [
+            ['DEMO ONLY - Barangay Clearance', msit_demo_template('BARANGAY CLEARANCE', 'This sample confirms that the named fictitious resident is listed in the sample BIRMS registry.')],
+            ['DEMO ONLY - Certificate of Residency', msit_demo_template('CERTIFICATE OF RESIDENCY', 'This sample states that the named fictitious resident has a sample address in the selected Purok.')],
+            ['DEMO ONLY - Certificate of Indigency', msit_demo_template('CERTIFICATE OF INDIGENCY', 'This sample is a layout demonstration only. It does not determine or certify actual indigency.')],
+        ];
+        foreach ($definitions as $index => [$name, $body]) {
+            db_exec(
+                'UPDATE document_types SET template_body = ?, fee_amount = 0.00, is_active = 1, requires_chairman_signature = 0 WHERE name = ?',
+                [$body, $name]
+            );
+        }
+        msit_demo_seed_blotter_and_hearing($residentIds, $caseIds, $venueId);
+        msit_demo_sync_demo_queue_counters();
+        audit('msit_demo_workflow_seed_upgraded', 'Demo Data', 'Success',
+            'Added DEMO ONLY resident blotter intake and Secretary hearing/summons examples; synchronized demo queue counters.');
+        return ['already_seeded' => false, 'counts' => msit_demo_marker_counts()];
+    });
+}
+
 function msit_demo_unique_certificate_reference(int $start): string
 {
     $year = (int) date('Y');
@@ -122,8 +179,145 @@ function msit_demo_template(string $type, string $body): string
         . "Purpose: {{purpose}}\n"
         . "Date prepared: {{date_issued}}\n"
         . "Reference: {{reference_no}}\n\n"
+        . "Prepared by: DEMO ONLY - Sample Barangay Secretary\n"
+        . "For the Barangay Captain: {{captain_name}}\n"
+        . "Signature status: DEMO ONLY - no official signature is represented.\n\n"
         . "DEMO ONLY — NOT AN OFFICIAL DOCUMENT";
 }
+
+function msit_demo_set_blank_setting(string $key, string $value): void
+{
+    $exists = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$key]);
+    if ($exists === 0) {
+        db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$key, $value]);
+        return;
+    }
+    // Demo defaults fill blanks only. Configured Barangay names and wording are never overwritten.
+    db_exec(
+        "UPDATE settings SET setting_value = ? WHERE setting_key = ? AND (setting_value IS NULL OR TRIM(setting_value) = '')",
+        [$value, $key]
+    );
+}
+function msit_demo_seed_default_settings(): void
+{
+    msit_demo_set_blank_setting('captain_name', 'Demo Captain');
+    msit_demo_set_blank_setting('secretary_name', 'Demo Secretary');
+    msit_demo_set_blank_setting('summons_wording',
+        "DEMO ONLY — NOT AN OFFICIAL SUMMONS\n\n"
+        . "You are requested to appear before the Barangay regarding case {{case_no}}.\n"
+        . "Complainant(s): {{complainant_names}}\n"
+        . "Respondent(s): {{respondent_names}}\n"
+        . "Hearing: {{hearing_date}} at {{hearing_time}}\n"
+        . "Venue: {{venue}}\n\n"
+        . "For the Barangay Captain: {{captain_name}}\n"
+        . "Prepared by the Barangay Secretary: {{secretary_name}}\n"
+        . "Date prepared: {{date_issued}}\n\n"
+        . "DEMO ONLY — This sample has no legal effect and is not an official summons."
+    );
+}
+function msit_demo_seed_blotter_and_hearing(array $residentIds, array $caseIds, int $venueId): void
+{
+    if (count($residentIds) !== 6 || count($caseIds) !== 3 || $venueId < 1) {
+        throw new RuntimeException('The workflow demo set needs six residents, three blotter cases and the demo hall.');
+    }
+
+    $intakeCount = (int) db_val("SELECT COUNT(*) FROM resident_blotter_requests WHERE reference_no LIKE 'MSIT-DEMO-BLT-%'");
+    if ($intakeCount === 0) {
+        $caseReference = (string) db_val('SELECT case_no FROM blotters WHERE blotter_id = ?', [$caseIds[0]]);
+        if ($caseReference === '') { throw new RuntimeException('The accepted demo blotter case is missing.'); }
+        $purok = static function (int $residentId): ?int {
+            $value = db_val('SELECT purok_id FROM residents WHERE resident_id = ?', [$residentId]);
+            return $value === null ? null : (int) $value;
+        };
+        $rows = [
+            [
+                'MSIT-DEMO-BLT-PND-01', $residentIds[4], date('Y-m-d', strtotime('-1 day')),
+                '10:15:00', 'DEMO ONLY - Sample Community Road', $purok((int) $residentIds[4]),
+                '[DEMO ONLY] Fictitious resident-submitted report awaiting Staff review.',
+                'DemoRespondentPending', 'Pending', 'Ongoing',
+                '[DEMO ONLY] Waiting for Staff review.', null, null,
+            ],
+            [
+                $caseReference, $residentIds[0], date('Y-m-d', strtotime('-2 days')),
+                '09:30:00', 'DEMO ONLY - Sample Community Road', $purok((int) $residentIds[0]),
+                '[DEMO ONLY] Fictitious report accepted by Staff and linked to its official demo case.',
+                'DemoRespondentOne', 'Accepted', 'Ongoing',
+                '[DEMO ONLY] Accepted for the sample workflow.', (int) $caseIds[0], date('Y-m-d H:i:s'),
+            ],
+            [
+                'MSIT-DEMO-BLT-REJ-01', $residentIds[5], date('Y-m-d', strtotime('-3 days')),
+                '14:20:00', 'DEMO ONLY - Sample Community Road', $purok((int) $residentIds[5]),
+                '[DEMO ONLY] Fictitious report rejected because the sample needs more details.',
+                'DemoRespondentRejected', 'Rejected', 'Dismissed',
+                '[DEMO ONLY] Sample rejection reason; no official case was created.', null, date('Y-m-d H:i:s'),
+            ],
+        ];
+        foreach ($rows as $row) {
+            [$reference, $residentId, $incidentDate, $incidentTime, $place, $purokId, $narrative,
+                $respondent, $reviewStatus, $msitStatus, $note, $blotterId, $reviewedAt] = $row;
+            db_exec(
+                'INSERT INTO resident_blotter_requests
+                 (reference_no, resident_id, incident_date, incident_time, incident_place, purok_id, incident_type_id,
+                  narrative, respondent_name, respondent_age, respondent_address, respondent_contact,
+                  review_status, msit_status, status_note, blotter_id, reviewed_by, submitted_at, reviewed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 30, ?, NULL, ?, ?, ?, ?, NULL, NOW(), ?)',
+                [$reference, $residentId, $incidentDate, $incidentTime, $place, $purokId, $narrative,
+                 $respondent, 'DEMO ONLY - Sample Respondent Address', $reviewStatus, $msitStatus, $note, $blotterId, $reviewedAt]
+            );
+            db_exec(
+                "INSERT INTO request_status_history
+                 (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
+                 VALUES ('Blotter', ?, NULL, ?, NULL, ?, ?)",
+                [$reference, $msitStatus, '[DEMO ONLY] Resident blotter intake example.', $blotterId]
+            );
+        }
+    } elseif ($intakeCount !== 3) {
+        throw new RuntimeException('A partial demo resident-blotter intake set exists. No examples were changed.');
+    }
+
+    $hearingCount = (int) db_val(
+        "SELECT COUNT(*) FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id
+         WHERE b.case_no LIKE 'MSIT-DEMO-BLT-%' AND h.venue LIKE 'DEMO ONLY - %'"
+    );
+    if ($hearingCount === 0) {
+        $scheduledAt = (new DateTimeImmutable('+5 days'))->setTime(10, 0)->format('Y-m-d H:i:s');
+        $venueName = (string) db_val('SELECT name FROM venues WHERE venue_id = ?', [$venueId]);
+        db_exec(
+            'INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, status, created_by)
+             VALUES (?, ?, ?, ?, ?, NULL)',
+            [(int) $caseIds[1], $scheduledAt, $venueName, '[DEMO ONLY] Sample hearing prepared by the Secretary.', 'Scheduled']
+        );
+    } elseif ($hearingCount !== 1) {
+        throw new RuntimeException('The demo blotter cases have an unexpected hearing count. No hearing was added or removed.');
+    }
+}
+function msit_demo_sync_demo_queue_counters(): void
+{
+    $groups = db_all("SELECT DISTINCT service, queue_date FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%'");
+    foreach ($groups as $group) {
+        $service = (string) $group['service'];
+        $queueDate = (string) $group['queue_date'];
+        db_exec(
+            'INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)',
+            [$service, $queueDate]
+        );
+        $maxEntry = (int) db_val(
+            'SELECT COALESCE(MAX(queue_number), 0) FROM queue_entries WHERE service = ? AND queue_date = ?',
+            [$service, $queueDate]
+        );
+        $counter = (int) (db_val(
+            'SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ?',
+            [$service, $queueDate]
+        ) ?? 0);
+        if ($counter < $maxEntry) {
+            db_exec(
+                'UPDATE queue_counters SET last_number = ? WHERE service = ? AND queue_date = ?',
+                [$maxEntry, $service, $queueDate]
+            );
+        }
+    }
+}
+
 function msit_demo_apply(): array
 {
     return db_transaction(function (): array {
@@ -140,6 +334,7 @@ function msit_demo_apply(): array
         }
         $noneType = msit_demo_lookup_id('resident_type', 'None', 1);
         $incidentType = msit_demo_lookup_id('incident_type', 'DEMO ONLY - Community concern', 9900);
+        msit_demo_seed_default_settings();
 
         $typeDefinitions = [
             ['DEMO ONLY - Barangay Clearance', msit_demo_template('BARANGAY CLEARANCE', 'This sample confirms that the named fictitious resident is listed in the sample BIRMS registry.')],
@@ -250,7 +445,7 @@ function msit_demo_apply(): array
             'purpose' => '[DEMO ONLY] Software demonstration', 'date_issued' => date('j F Y'),
             'barangay' => setting('barangay_name', 'Wawa'), 'municipality' => setting('municipality', 'Balagtas'),
             'province' => setting('province', 'Bulacan'), 'reference_no' => $draftReference,
-            'captain_name' => '', 'document_name' => 'DEMO ONLY - Certificate of Residency',
+            'captain_name' => (string) setting('captain_name', 'Demo Captain'), 'document_name' => 'DEMO ONLY - Certificate of Residency',
             'day_ordinal' => date('jS'), 'month_year' => date('F Y'),
         ]);
         db_exec(
@@ -258,10 +453,10 @@ function msit_demo_apply(): array
              (request_id, resident_id, type_id, request_reference_no, certificate_reference_no, resident_name, type_name,
               purpose, fee_amount, body_text, captain_name, signature_text, chairman_signature_path, generated_by,
               generated_by_name, generated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, NULL, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, ?, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
             [$requestIds[1], $residents[1], $typeIds[1], 'DEMO-DOC-READY-01', $draftReference,
              $firstNames[1] . ' ' . $lastNames[1], 'DEMO ONLY - Certificate of Residency',
-             '[DEMO ONLY] Software demonstration', $draftBody]
+             '[DEMO ONLY] Software demonstration', $draftBody, (string) setting('captain_name', 'Demo Captain')]
         );
 
         $issuedReference = msit_demo_unique_certificate_reference((int) substr($draftReference, strrpos($draftReference, '-') + 1) + 1);
@@ -271,17 +466,17 @@ function msit_demo_apply(): array
             'purpose' => '[DEMO ONLY] Previously issued sample', 'date_issued' => date('j F Y'),
             'barangay' => setting('barangay_name', 'Wawa'), 'municipality' => setting('municipality', 'Balagtas'),
             'province' => setting('province', 'Bulacan'), 'reference_no' => $issuedReference,
-            'captain_name' => '', 'document_name' => 'DEMO ONLY - Barangay Clearance',
+            'captain_name' => (string) setting('captain_name', 'Demo Captain'), 'document_name' => 'DEMO ONLY - Barangay Clearance',
             'day_ordinal' => date('jS'), 'month_year' => date('F Y'),
         ]);
         db_exec(
             'INSERT INTO issuances
              (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number,
               body_text, captain_name, signature_text, chairman_signature_path, issued_by, issued_by_name, issued_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, NULL, ?, NULL, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, NULL, ?, ?, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
             [$issuedReference, $requestIds[3], $residents[3], $typeIds[0],
              $firstNames[3] . ' ' . $lastNames[3], 'DEMO ONLY - Barangay Clearance',
-             '[DEMO ONLY] Previously issued sample', $issuedBody]
+             '[DEMO ONLY] Previously issued sample', $issuedBody, (string) setting('captain_name', 'Demo Captain')]
         );
 
         $venues = [];
@@ -312,6 +507,7 @@ function msit_demo_apply(): array
 
         $caseRefs = ['MSIT-DEMO-BLT-0001','MSIT-DEMO-BLT-0002','MSIT-DEMO-BLT-0003'];
         $caseStatuses = ['ongoing','unresolved','resolved'];
+        $caseIds = [];
         foreach ($caseRefs as $i => $caseRef) {
             db_exec(
                 'INSERT INTO blotters
@@ -326,6 +522,7 @@ function msit_demo_apply(): array
                  $i === 2 ? date('Y-m-d H:i:s') : null]
             );
             $caseId = (int) db()->lastInsertId();
+            $caseIds[] = $caseId;
             db_exec(
                 'INSERT INTO blotter_parties (blotter_id, party_role, full_name, age, address, contact_number)
                  VALUES (?, \'complainant\', ?, 30, ?, NULL), (?, \'respondent\', ?, 31, ?, NULL)',
@@ -339,23 +536,44 @@ function msit_demo_apply(): array
             );
         }
 
+        msit_demo_seed_blotter_and_hearing($residents, $caseIds, (int) $venues[1]);
+
         $queueItems = [
-            ['documents', $residents[0], 'DEMO-DOC-PENDING-01', '[DEMO ONLY] Documents service queue sample'],
-            ['blotter', $residents[1], 'DEMO-BLT-0001', '[DEMO ONLY] Blotter service queue sample'],
-            ['venue', $residents[2], 'DEMO-VEN-0001', '[DEMO ONLY] Venue service queue sample'],
+            ['Documents', $residents[0], 'DEMO-DOC-PENDING-01', '[DEMO ONLY] Documents service queue sample'],
+            ['Blotter', $residents[1], 'MSIT-DEMO-BLT-0001', '[DEMO ONLY] Blotter service queue sample'],
+            ['Venue', $residents[2], 'DEMO-VEN-0001', '[DEMO ONLY] Venue service queue sample'],
         ];
+        $queueDate = date('Y-m-d');
         foreach ($queueItems as [$service, $residentId, $reference, $purpose]) {
-            $next = (int) db_val('SELECT COALESCE(MAX(queue_number), 0) + 1 FROM queue_entries WHERE service = ? AND queue_date = CURDATE()', [$service]);
+            db_exec(
+                'INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)',
+                [$service, $queueDate]
+            );
+            $counter = (int) (db_val(
+                'SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE',
+                [$service, $queueDate]
+            ) ?? 0);
+            $maxEntry = (int) db_val(
+                'SELECT COALESCE(MAX(queue_number), 0) FROM queue_entries WHERE service = ? AND queue_date = ?',
+                [$service, $queueDate]
+            );
+            $next = max($counter, $maxEntry) + 1;
             db_exec(
                 'INSERT INTO queue_entries
                  (service, queue_date, queue_number, resident_id, reference_no, purpose, status, issued_via, notification_preference)
-                 VALUES (?, CURDATE(), ?, ?, ?, ?, \'waiting\', \'staff\', \'email\')',
-                [$service, $next, $residentId, $reference, $purpose]
+                 VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', \'staff\', \'email\')',
+                [$service, $queueDate, $next, $residentId, $reference, $purpose]
+            );
+            db_exec(
+                'UPDATE queue_counters SET last_number = ? WHERE service = ? AND queue_date = ?',
+                [$next, $service, $queueDate]
             );
         }
 
+        msit_demo_sync_demo_queue_counters();
+
         audit('msit_demo_data_seeded', 'Demo Data', 'Success',
-            'Created clearly labelled fictitious MSIT demonstration records: residents, document templates/requests, certificate draft/history, blotter cases, venues, reservations and queue tickets.');
+            'Created DEMO ONLY residents, certificate requests/templates, draft/issued samples, blotter intake/cases, Secretary hearing/summons, venue reservations and synchronized service queue tickets.');
         return ['already_seeded' => false, 'counts' => msit_demo_marker_counts()];
     });
 }
@@ -374,10 +592,22 @@ try {
         msit_demo_out('Status: complete demo dataset already exists. No changes needed.');
         exit(0);
     }
+    if (msit_demo_legacy_seed_is_complete($counts)) {
+        msit_demo_out('Status: the earlier complete demo dataset exists; a safe workflow upgrade can add the missing resident blotter intake, Secretary hearing/summons example and queue-counter synchronization.');
+        if (!in_array('--apply', $argv, true)) {
+            msit_demo_out('Read-only plan: add 3 DEMO ONLY resident blotter intake states (Pending, Accepted, Rejected), 1 scheduled Secretary hearing with DEMO ONLY summons text, fill only blank demo-name settings, refresh only the exact DEMO ONLY certificate templates, and synchronize queue counters.');
+            msit_demo_out('Nothing was changed. Re-run with --apply to apply this safe upgrade.');
+            exit(0);
+        }
+        $upgrade = msit_demo_upgrade_existing_seed();
+        msit_demo_out($upgrade['already_seeded'] ? 'Workflow demo examples already exist; no changes made.' : 'Demo workflow upgrade applied successfully.');
+        foreach ($upgrade['counts'] as $name => $count) { msit_demo_out('  ' . str_pad($name, 16) . ': ' . $count); }
+        exit(0);
+    }
     if (msit_demo_has_markers($counts)) {
         msit_demo_fail('partial reserved DEMO records exist. No rows were changed; inspect the working database before retrying.');
     }
-    msit_demo_out('Read-only plan: add 6 fictitious residents, 3 DEMO ONLY certificate templates, 4 document requests (including one releasable draft and one issued history item), 3 blotter cases, 2 demo venues, 2 reservations and 3 queue tickets.');
+    msit_demo_out('Read-only plan: add 6 fictitious residents, 3 DEMO ONLY certificate templates, 4 document requests (including one releasable draft and one issued history item), 3 official demo blotter cases, 3 resident blotter intake states, 1 Secretary-managed hearing and DEMO ONLY summons wording, 2 demo venues, 2 reservations and 3 queue tickets with synchronized counters.');
     if (!in_array('--apply', $argv, true)) {
         msit_demo_out('Nothing was inserted. Re-run with --apply to create the demo data.');
         exit(0);

@@ -9,10 +9,19 @@ Use the MSIT-specific seeder included in the revised SRS build on [`main`](https
 - Never point it at the original barangay_db or a production database.
 - Uses fictitious resident data and .invalid email addresses. It does not create phone numbers or send email. Historical SMS tables are not populated.
 - Does not create accounts or default passwords.
-- Does not change official document types, official wording, fees, barangay settings, existing users or passwords.
+- Does not change official document types, approved fees, existing users or passwords. It fills the Captain name, Secretary name and summons wording only when those specific settings are blank; configured values are preserved.
 - Reuses only old synthetic residents whose last name starts with DEMO- and whose resident number is blank. It assigns a DEMO resident number and demo-only address/contact settings. It never adopts a normal resident record.
 - Existing document types are only updated when their exact name begins DEMO ONLY and matches one of the three reserved demo certificate types.
 - A database transaction is used. The script is idempotent; a complete seed is detected and not duplicated. A partial reserved seed is refused for manual inspection.
+
+## Role workflow represented by the seed
+
+- **Secretary:** owns the wording for certificate templates and the hearing summons, checks document requirements in the live workflow, maintains permitted blotter/hearing records, and controls room availability. The demo certificate template includes a conspicuous “Prepared by” label and a Captain name field.
+- **Staff:** makes final document decisions after requirements are complete, releases the sample draft, reviews resident blotter submissions, handles venue reservations and calls queue numbers aloud.
+- **Chairman / Captain:** is read-only under the revised SRS. The Chairman does not create, edit, approve or issue documents in the application. The Captain name is represented as the signatory field on watermarked examples; the seed does not invent or upload a real signature image.
+- **Admin:** manages technical settings, accounts, and the stored signature asset. The seed deliberately creates no shared/default accounts or passwords.
+
+The Secretary-maintained summons wording and hearing row are marked DEMO ONLY and have no legal effect. The seeder fills Captain/Secretary name and summons settings only when those values are blank; it never overwrites names or wording already configured by the Barangay.
 
 ## Run on XAMPP
 
@@ -36,9 +45,11 @@ Sign in using an account created by the administrator. The seeder intentionally 
 - 6 fictitious resident records with DEMO-RES identifiers;
 - 3 DEMO ONLY certificate templates: Barangay Clearance, Certificate of Residency and Certificate of Indigency;
 - 4 document requests covering Pending, Approved (with a saved unissued certificate draft), Rejected and Released (with one issuance-history record);
-- 3 fictitious blotter cases;
+- 3 fictitious official blotter cases;
+- 3 resident-submitted blotter intake examples: Pending, Accepted (linked to the official demo case) and Rejected;
+- 1 upcoming hearing linked to an open demo case, plus DEMO ONLY summons wording with Captain and Secretary placeholders;
 - 2 sample venues and 2 reservations;
-- 3 queue tickets: Documents, Blotter and Venue.
+- 3 queue tickets: Documents, Blotter and Venue. Each ticket updates the matching daily counter so Staff can issue the next number without duplicate-key errors.
 
 Every sample document prominently says DEMO ONLY — NOT AN OFFICIAL DOCUMENT. Demo templates use a zero demonstration fee and do not require the Chairman's signature image. This is not an approved fee schedule or official certificate wording.
 
