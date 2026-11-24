@@ -33,7 +33,8 @@ A hidden button is not sufficient protection. For a role-denial demonstration, u
 
 1. The resident scans the shared QR or opens the kiosk. The QR is a shared entry point and must not contain resident personal information.
 2. The resident chooses a service, then verifies identity using Resident ID and birthdate.
-3. The name-and-birthdate fallback can send a one-time code to the resident's registered email address. If email verification is unavailable, use Resident ID/birthdate or ask Staff for counter assistance.
+3. The seeded resident records use reserved `.invalid` email addresses. For the standard seeded demo, use Resident ID (`DEMO-RES-0001` through `DEMO-RES-0006`) and the birthdate shown on that resident's profile. The synthetic email addresses cannot receive OTP messages or resident notices.
+4. The name-and-birthdate fallback can send a one-time code to a real resident's registered email address when a mail transport is configured and tested. Use it only with a controlled test mailbox during acceptance; otherwise use Resident ID/birthdate or ask Staff for counter assistance.
 4. The kiosk session is short-lived and resets after inactivity. A later resident must not see the previous resident's identity, receipt, ticket or request details.
 5. The public queue display must not expose resident-identifying information. Request tracking is restricted to the verified resident's own records.
 
