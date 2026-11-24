@@ -129,14 +129,14 @@ function run_b9(array $S, string $base): void
             '/blotters/hearings.php' => 'View hearing schedules and related cases without changing hearing records.',
             '/queue/index.php' => 'Monitor current queue numbers and waiting counts for each service.',
             '/venues/index.php' => 'View venue availability and reservation statuses.',
-            '/blotter_requests/index.php' => 'View reports submitted through the resident kiosk and their saved review status.',
+            '/blotter_requests/index.php' => 'View resident-submitted blotter reports and their saved review status.',
         ],
         'secretary' => [
             '/blotters/index.php' => 'Manage official blotter records using the permissions available to your role.',
             '/blotters/hearings.php' => 'Manage hearing schedules and record outcomes for assigned blotter cases.',
             '/queue/index.php' => 'Monitor current queue numbers and waiting counts for each service.',
             '/venues/index.php' => 'View venue availability and reservation statuses.',
-            '/blotter_requests/index.php' => 'View reports submitted through the resident kiosk and their saved review status.',
+            '/blotter_requests/index.php' => 'View resident-submitted blotter reports and their saved review status.',
         ],
         'clerk' => [
             '/blotters/index.php' => 'View official blotter cases without changing them.',
