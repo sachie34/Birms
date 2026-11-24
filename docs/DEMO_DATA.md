@@ -73,3 +73,43 @@ Before presenting, verify the following in the browser on the actual XAMPP machi
 8. The print/PDF output visibly retains the DEMO ONLY warning.
 
 CI does not replace local XAMPP, browser, printer or role acceptance. Never present a demo-only document as a valid barangay certificate.
+
+
+## Extended presentation data (optional)
+
+After the base MSIT demo seeder and its verifier have passed, the extended seeder adds optional examples for directory filters, private file handling, historical queues, archived blotter cases and audit/history views. It is separate so the original compact demo dataset remains useful for a short presentation.
+
+Run the read-only plan first:
+
+~~~bat
+C:\xampp837\php\php.exe tools\seed_msit_extended_demo_data.php
+~~~
+
+Confirm the target is barangay_db_work (or another isolated *_work / *_test database). Then apply the extended dataset:
+
+~~~bat
+C:\xampp837\php\php.exe tools\seed_msit_extended_demo_data.php --apply
+C:\xampp837\php\php.exe tests\verify_msit_extended_demo_seed.php
+~~~
+
+The extended seed adds:
+
+- **12 synthetic residents** with individual addresses and Purok assignments; collectively they cover all four SRS resident statuses and all six SRS resident types. Every email uses example.invalid, no mobile number is set, and each resident receives the same generic silhouette placeholder stored privately under storage/resident_photos/.
+- **2 archived blotter cases**, one resolved and one dismissed, with complainant/respondent party rows and explicit status-history records. Both remain in Archived; no case is deleted.
+- **2 further venue outcomes:** one Rejected and one Completed, with their status history.
+- **4 historical queue tickets** across the three services, covering Called, Served, Skipped and Cancelled with example timestamps. They use the previous day's queue date so they do not clutter today's waiting display.
+- **2 private PDF request attachments**, each visibly marked DEMO ONLY and linked to the existing pending/approved sample document requests. Their size, MIME type and SHA-256 are verified.
+- **4 audit examples** attributed to DEMO DATA, plus the actual seed-operation audit event. These records do not pretend that a real Secretary, Staff member or Chairman performed the seeded actions.
+- **11 request-status history rows** to provide additional Documents, Venue and Blotter examples.
+
+The extended seeder is additive, CLI-only, restricted to *_work / *_test, uses a database lock and transaction, refuses partial marker sets, and is idempotent. Private files are written without overwriting an existing different file. On database failure, files newly created by that run are removed.
+
+### Items deliberately not fabricated
+
+- The revised SRS removes the Visitor Logbook and replaces it with the three service queues. No visitor-logbook entries are added.
+- The seeder does not create user accounts or passwords. Use Admin → User Accounts to create separate Chairman, Secretary and Staff accounts. This follows the application's account-creation and password policy rather than adding shared demo credentials.
+- No cash-ledger transaction, O.R. number, payment method, collection amount or paid certificate is invented. The seeded certificate history remains zero-fee demonstration data. To demonstrate a real ledger entry, the barangay must approve a fee and payment/receipt procedure first; do not invent these values for a panel presentation.
+- No Chairman signature image is created or substituted. Upload only the authorized signature image after approval.
+- No real contact information or email delivery is used. The placeholder email domains cannot receive messages.
+
+The verifier is read-only. A successful automated verification does not replace opening the resident profile/photo, request attachment, audit history, archived blotter, reservation, queue history and reports in the local XAMPP browser.
