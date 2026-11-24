@@ -11,7 +11,8 @@ function run_b2(array $S, string $base): void
     $adminTabsOk = true;
     foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'summons', 'notifications', 'sms'] as $tab) {
         $response = $S['admin']->get('/admin/settings.php?tab=' . $tab);
-        if ($response['status'] !== 200) { $adminTabsOk = false; }
+        $activeTabLink = 'class="nav-link active" href="' . e(base_url('admin/settings.php?tab=' . $tab)) . '"';
+        if ($response['status'] !== 200 || !str_contains($response['body'], $activeTabLink)) { $adminTabsOk = false; }
     }
     $secretaryDocuments = $S['secretary']->get('/admin/settings.php?tab=documents');
     $secretaryDashboard = $S['secretary']->get('/dashboard.php');
@@ -24,6 +25,7 @@ function run_b2(array $S, string $base): void
         && $secretaryDocuments['status'] === 200
         && str_contains($secretaryDocuments['body'], 'Document Templates')
         && str_contains($secretaryDocuments['body'], 'You can edit document wording only')
+        && str_contains($secretaryDocuments['body'], 'class="nav-link active" href="' . e(base_url('admin/settings.php?tab=documents')) . '"')
         && str_contains($secretaryDashboard['body'], 'Document Templates')
         && !str_contains($secretaryDashboard['body'], 'System Settings')
         && $secretaryGeneral['status'] === 403
