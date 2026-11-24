@@ -45,6 +45,9 @@ function msit_demo_require_schema(): void
         'venues' => ['venue_id','name','description','availability_override','is_active','created_by'],
         'venue_reservations' => ['reservation_id','reference_no','venue_id','resident_id','purpose','reservation_date','start_time','end_time','status','created_by'],
         'queue_entries' => ['queue_id','service','queue_date','queue_number','resident_id','reference_no','purpose','status','issued_via','notification_preference'],
+        'queue_counters' => ['service','queue_date','last_number'],
+        'resident_blotter_requests' => ['request_id','reference_no','resident_id','incident_date','incident_time','incident_place','purok_id','incident_type_id','narrative','respondent_name','respondent_age','respondent_address','respondent_contact','review_status','msit_status','status_note','blotter_id','reviewed_by','submitted_at','reviewed_at'],
+        'hearings' => ['hearing_id','blotter_id','scheduled_at','venue','notes','status','status_note','summons_count','created_by'],
         'request_status_history' => ['history_id','service','reference_no','previous_status','new_status','changed_by','note','request_id','blotter_id','reservation_id'],
     ];
     foreach ($required as $table => $columns) {
@@ -85,11 +88,13 @@ function msit_demo_marker_counts(): array
         'venues' => (int) db_val("SELECT COUNT(*) FROM venues WHERE name LIKE 'DEMO ONLY - %'"),
         'reservations' => (int) db_val("SELECT COUNT(*) FROM venue_reservations WHERE reference_no LIKE 'DEMO-VEN-%'"),
         'queues' => (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%'"),
+        'blotter_intakes' => (int) db_val("SELECT COUNT(*) FROM resident_blotter_requests WHERE reference_no LIKE 'MSIT-DEMO-BLT-%'"),
+        'hearings' => (int) db_val("SELECT COUNT(*) FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id WHERE b.case_no LIKE 'MSIT-DEMO-BLT-%' AND h.venue LIKE 'DEMO ONLY - %'"),
     ];
 }
 function msit_demo_is_complete(array $c): bool
 {
-    return $c === ['residents'=>6,'document_types'=>3,'requests'=>4,'drafts'=>1,'issuances'=>1,'blotters'=>3,'venues'=>2,'reservations'=>2,'queues'=>3];
+    return $c === ['residents'=>6,'document_types'=>3,'requests'=>4,'drafts'=>1,'issuances'=>1,'blotters'=>3,'venues'=>2,'reservations'=>2,'queues'=>3,'blotter_intakes'=>3,'hearings'=>1];
 }
 function msit_demo_has_markers(array $c): bool
 {
@@ -122,6 +127,9 @@ function msit_demo_template(string $type, string $body): string
         . "Purpose: {{purpose}}\n"
         . "Date prepared: {{date_issued}}\n"
         . "Reference: {{reference_no}}\n\n"
+        . "Prepared by: DEMO ONLY - Sample Barangay Secretary\n"
+        . "For the Barangay Captain: {{captain_name}}\n"
+        . "Signature status: DEMO ONLY - no official signature is represented.\n\n"
         . "DEMO ONLY — NOT AN OFFICIAL DOCUMENT";
 }
 function msit_demo_apply(): array
