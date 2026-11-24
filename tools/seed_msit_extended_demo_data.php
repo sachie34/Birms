@@ -320,7 +320,7 @@ function msit_ext_insert_history(
     );
 }
 
-function msit_ext_seed_residents(array $purokIds, array $photoPng, array &$createdFiles): array
+function msit_ext_seed_residents(array $purokIds, string $photoPng, array &$createdFiles): array
 {
     $statusLabels = ['Active', 'Transferred', 'Deceased', 'Non-resident'];
     $typeLabels = ['PWD', 'Senior Citizen', 'Solo Parent', '4Ps Beneficiary', 'Indigent', 'None'];
