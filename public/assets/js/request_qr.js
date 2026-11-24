@@ -58,7 +58,7 @@
 
                 var anchor = document.createElement('a');
                 anchor.href = dataUrl;
-                anchor.download = 'birms-resident-document-request-qr.png';
+                anchor.download = 'birms-resident-self-service-qr.png';
                 document.body.appendChild(anchor);
                 anchor.click();
                 anchor.remove();
