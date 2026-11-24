@@ -12,31 +12,23 @@ function queue_valid_service(string $service): bool
 
 function queue_valid_notification_preference(string $preference): bool
 {
-    return in_array($preference, ['email', 'sms', 'both'], true);
+    return strtolower(trim($preference)) === 'email';
 }
 
-/** Resolve a kiosk choice, or retain the resident's saved preference when older callers omit it. */
+/** Resolve legacy resident preference values to the only supported channel: email. */
 function queue_resolve_notification_preference(?string $requested, ?string $fallback = 'email'): string
 {
-    $fallback = is_string($fallback) && queue_valid_notification_preference($fallback) ? $fallback : 'email';
-    if ($requested === null || trim($requested) === '') { return $fallback; }
-    $requested = trim($requested);
+    if ($requested === null || trim($requested) === '') { return 'email'; }
     if (!queue_valid_notification_preference($requested)) {
-        throw new InvalidArgumentException('Choose Email, SMS or Both for queue notifications.');
+        throw new InvalidArgumentException('BIRMS supports email notifications only.');
     }
-    return $requested;
+    return 'email';
 }
 
-/** Render the same safe option list on every resident-facing kiosk form. */
+/** Render the only supported resident notification channel for compatibility with legacy forms. */
 function queue_notification_preference_options(?string $selected = 'email'): string
 {
-    $selected = is_string($selected) && queue_valid_notification_preference($selected) ? $selected : 'email';
-    $labels = ['email' => 'Email', 'sms' => 'SMS', 'both' => 'Both'];
-    $html = '';
-    foreach ($labels as $value => $label) {
-        $html .= '<option value="' . e($value) . '"' . ($selected === $value ? ' selected' : '') . '>' . e($label) . '</option>';
-    }
-    return $html;
+    return '<option value="email" selected>Email</option>';
 }
 
 /**
@@ -180,7 +172,7 @@ function queue_dispatch_resident_notification(
     }
 }
 
-/** Put channel notices in the outbox atomically, then contact providers only after that transaction commits. */
+/** Queue email-only notices atomically, then contact the mail transport after commit. */
 function queue_enqueue_notifications(
     int $residentId,
     string $service,
@@ -190,76 +182,51 @@ function queue_enqueue_notifications(
     ?string $preferenceOverride = null
 ): void {
     if (db()->inTransaction()) {
-        throw new LogicException('Queue notification outbox rows and provider calls must be created after the service transaction commits.');
+        throw new LogicException('Queue email outbox rows and mail transport calls must be created after the service transaction commits.');
     }
-    $resident = db_one('SELECT email_address, contact_number, notification_preference FROM residents WHERE resident_id = ?', [$residentId]);
-    if ($resident === null) { return; }
-    $preference = queue_resolve_notification_preference($preferenceOverride, (string) ($resident['notification_preference'] ?? 'email'));
+    if (!queue_valid_service($service) || $residentId < 1 || $number < 1
+        || preg_match('/^[a-z0-9_]{3,60}$/', $event) !== 1
+        || str_len($message) < 1 || str_len($message) > 1000) {
+        throw new InvalidArgumentException('The queue email notification details are invalid.');
+    }
+
+    // Reject legacy SMS/Both overrides rather than silently creating a second channel.
+    queue_resolve_notification_preference($preferenceOverride, 'email');
+
+    $resident = db_one(
+        'SELECT email_address, archived_at FROM residents WHERE resident_id = ?',
+        [$residentId]
+    );
+    if ($resident === null || $resident['archived_at'] !== null) { return; }
+
     $email = trim((string) ($resident['email_address'] ?? ''));
-    $mobile = trim((string) ($resident['contact_number'] ?? ''));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        audit_best_effort('resident_notification_unavailable', 'Notifications', 'Failed',
+            $service . ' queue #' . $number . ' was issued/updated; no valid resident email address is on record.');
+        return;
+    }
+
     $reference = $service . '-' . date('Ymd') . '-' . $number;
-    $wantsEmail = in_array($preference, ['email', 'both'], true);
-    $wantsSms = in_array($preference, ['sms', 'both'], true);
-    $smsEnabled = $wantsSms && $mobile !== '' && sms_provider_is_enabled();
-
-    // SMS-only choices fall back to email when SMS is unavailable.
-    $emailFallback = $wantsSms && !$smsEnabled && !$wantsEmail;
-    if ($wantsSms && !$smsEnabled) { $wantsEmail = true; }
-
-    $emailId = null;
-    $smsId = null;
-    $emailQueued = false;
-    db_transaction(function () use (
-        $residentId, $email, $mobile, $message, $event, $reference,
-        $wantsEmail, $wantsSms, $smsEnabled, $emailFallback, &$emailId, &$smsId, &$emailQueued
-    ): void {
-        if ($wantsEmail && $email !== '') {
-            $emailEvent = $emailFallback ? $event . '_email_fallback' : $event;
-            $emailId = email_queue_notification($residentId, $email, 'Barangay queue update', $message, $emailEvent, $reference);
-            $emailQueued = true;
-        }
-        if ($wantsSms && $mobile !== '') {
-            db_exec(
-                'INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status)
-                 VALUES (?, ?, ?, NULL, ?, ?, ?)',
-                [
-                    $mobile,
-                    mb_substr_safe($message, 480),
-                    $event,
-                    $smsEnabled ? 'Waiting to send' : 'Logged only',
-                    $smsEnabled ? sms_provider_selected_name() : null,
-                    $smsEnabled ? 'not_attempted' : 'not_configured',
-                ]
-            );
-            $smsId = (int) db()->lastInsertId();
-        }
+    $notificationId = null;
+    db_transaction(function () use ($residentId, $email, $message, $event, $reference, &$notificationId): void {
+        $notificationId = email_queue_notification(
+            $residentId,
+            $email,
+            'Barangay queue update',
+            $message,
+            $event,
+            $reference
+        );
     });
 
-    // All outbox rows are committed before any external provider call.
-    if ($emailId !== null && email_provider_is_enabled()) {
-        try {
-            email_send_notification((int) $emailId);
-        } catch (Throwable $emailError) {
-            error_log('BIRMS queue email send failed for outbox #' . (int) $emailId . ': ' . get_class($emailError));
-        }
-    }
+    if ($notificationId === null || !email_provider_is_enabled()) { return; }
 
-    if ($smsId !== null && $smsEnabled) {
-        $status = 'unknown';
-        try {
-            $result = sms_send_outbox((int) $smsId, false);
-            $status = (string) ($result['status'] ?? 'unknown');
-        } catch (Throwable $smsError) {
-            // Preserve the SMS row as an uncertain attempt; never resend it automatically.
-            error_log('BIRMS queue SMS send failed for outbox #' . (int) $smsId . ': ' . get_class($smsError));
-            audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
-                $service . ' queue #' . $number . ' SMS result could not be confirmed.');
-        }
-        if (!$emailQueued && $email !== '' && resident_sms_needs_email_fallback($status)) {
-            resident_queue_email_fallback(
-                $residentId, $email, $service, $message, $event, $reference, $status
-            );
-        }
+    try {
+        email_send_notification((int) $notificationId);
+    } catch (Throwable $emailError) {
+        error_log('BIRMS queue email send failed for outbox #' . (int) $notificationId . ': ' . get_class($emailError));
+        audit_best_effort('resident_notification_failed', 'Notifications', 'Failed',
+            $service . ' queue #' . $number . ' was committed but its email remains in the outbox for review.');
     }
 }
 
