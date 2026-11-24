@@ -15,6 +15,8 @@ date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
 require_once __DIR__ . '/../app/lookups.php';
 require_once __DIR__ . '/../app/queue_lib.php';
 require_once __DIR__ . '/../app/permissions.php';
+require_once __DIR__ . '/../app/certificates_lib.php';
+require_once __DIR__ . '/../app/blotters_lib.php';
 
 $dbName = (string) config('db.name');
 if (!preg_match('/(_work|_test)$/', $dbName)) {
@@ -93,6 +95,9 @@ seed_check('released request has a clearly watermarked issuance-history record',
     && (float) $issuance['fee_amount'] === 0.0
     && str_contains((string) $issuance['body_text'], 'DEMO ONLY')
     && trim((string) $issuance['captain_name']) !== '');
+$issuable = $draft !== null ? issuable_request((int) $draft['request_id']) : null;
+$certificateBlockers = $issuable !== null ? certificate_blockers($issuable, certificate_vars($issuable)) : ['the demo request/draft is missing'];
+seed_check('demo certificate draft has no generation blockers', $certificateBlockers === [], implode('; ', $certificateBlockers));
 
 seed_check('three official demo blotter cases exist', count($cases) === 3, 'found ' . count($cases));
 $intakeMap = [];
@@ -122,6 +127,10 @@ seed_check('Secretary-managed summons template has all required role and hearing
     && str_contains($summonsWording, '{{hearing_date}}')
     && str_contains($summonsWording, '{{captain_name}}')
     && str_contains($summonsWording, '{{secretary_name}}'));
+$summonsParties = $hearing !== null ? case_parties((int) $hearing['blotter_id']) : [];
+$summonsVars = $hearing !== null ? summons_vars(['case_no' => (string) $hearing['case_no']], $hearing, $summonsParties) : [];
+$summonsBlockers = $hearing !== null ? summons_blockers($summonsWording, $summonsVars, $summonsParties, $hearing) : ['the demo hearing is missing'];
+seed_check('demo summons can be opened by authorized preview roles without missing-data blockers', $summonsBlockers === [], implode('; ', $summonsBlockers));
 
 seed_check('two demo venues and two reservation states exist', count($venues) === 2 && count($reservations) === 2);
 $queueServices = array_map(static fn(array $q): string => (string) $q['service'], $queues);
