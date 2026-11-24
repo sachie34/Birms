@@ -2,7 +2,7 @@
 
 **Application:** BIRMS — Barangay Information and Records Management System  
 **Repository:** https://github.com/sachie34/Birms  
-**Current release candidate:** `release/deploy-ready` (draft PR #46; not production-approved)  
+**Current combined release candidate:** `release/msit-demo-ready` (draft PR #48; not production-approved)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Target:** Windows Server/office PC with Apache, PHP and MariaDB/MySQL on a private barangay LAN
 
@@ -121,14 +121,13 @@ A failed critical test blocks go-live. Keep the deployment internal and use synt
 
 ## 8. Current release status
 
-The current candidate is `release/deploy-ready`, reviewed through draft [PR #46](https://github.com/sachie34/Birms/pull/46). The exact candidate commit verified on 24 November 2026 was `fea286b1a4714fb0d6060c821782ce93a09c3113`.
+The current combined candidate is `release/msit-demo-ready`, reviewed through draft [PR #48](https://github.com/sachie34/Birms/pull/48). Its exact commit `34dc0c73930a4017ba8e8ca86808fbda8059fc95` passed [GitHub Actions run 45489464306](https://github.com/sachie34/Birms/actions/runs/45489464306) on 24 November 2026; all eight PHP 8.3/8.4/8.5/8.6 × MariaDB 10.4/10.11 jobs succeeded.
 
-- Exact-head GitHub Actions run [45433785734](https://github.com/sachie34/Birms/actions/runs/45433785734) completed successfully across all eight PHP 8.3/8.4/8.5/8.6 × MariaDB 10.4/10.11 combinations.
-- Each environment reported 48/48 security/authentication checks and 284/284 module checks, with zero failures and zero `NOT TESTED` assertions. Each job also passed full PHP syntax lint, include-path checks, setup preflight, migration apply/rollback/reapply, schema comparison, HTTPS-required and Secure-cookie checks, public-route and signed-out access smoke tests, manifest exclusions, and isolated demo-data verification.
-- These results are hosted CI evidence against disposable Linux/MariaDB databases using PHP's built-in development server. They do not prove Apache `.htaccess` enforcement, the actual Windows/XAMPP setup, office TLS trust, printer output, LAN behavior, real SMTP delivery, representative-data performance or a successful full-system restore.
-- The candidate does not include `tests/queue_cli.php`; queue lifecycle and public display privacy are tested in the module integration suite.
+- The integrated exact-head workflow passed PHP syntax lint, include-path checks, XAMPP setup preflight, migration apply/rollback/reapply, schema comparison, least-privilege database-account setup, public-route and signed-out protection smoke tests, HTTPS-required and Secure-cookie checks, manifest exclusions, security/authentication/audit tests, module integration tests, and base plus extended MSIT demo seed apply/verification/idempotency checks.
+- These are hosted CI results against disposable Linux/MariaDB databases using PHP's built-in development server. They do not prove Apache `.htaccess` enforcement, the actual Windows/XAMPP setup, office TLS trust, printer output, LAN behavior, real SMTP delivery, representative-data performance or a successful full-system restore.
+- The candidate does not include `tests/queue_cli.php`; queue lifecycle and public display privacy are covered by the module integration suite.
 - The original `barangay_db` remains protected and is not a deployment target.
-- PR #46 must remain a draft and must not be merged or deployed to production until the manual acceptance gates in this runbook and `MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md` are completed and signed off.
+- PR #48 must remain a draft and must not be merged or deployed to production until the manual acceptance gates in this runbook and `MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md` are completed and signed off.
 
 
 ## Demo data is never production data
