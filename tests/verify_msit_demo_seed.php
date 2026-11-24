@@ -36,7 +36,11 @@ $intakes = db_all("SELECT reference_no, review_status, msit_status, blotter_id, 
 $hearing = db_one("SELECT h.*, b.case_no, b.msit_status AS case_status FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id WHERE b.case_no LIKE 'MSIT-DEMO-BLT-%' AND h.venue LIKE 'DEMO ONLY - %'");
 $venues = db_all("SELECT venue_id, name, availability_override FROM venues WHERE name LIKE 'DEMO ONLY - %' ORDER BY name");
 $reservations = db_all("SELECT reference_no, status FROM venue_reservations WHERE reference_no LIKE 'DEMO-VEN-%' ORDER BY reference_no");
-$queues = db_all("SELECT queue_id, service, queue_date, queue_number, status, reference_no, purpose FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%' ORDER BY service");
+$queues = db_all("SELECT queue_id, service, queue_date, queue_number, status, reference_no, purpose
+    FROM queue_entries
+    WHERE purpose LIKE '[DEMO ONLY]%'
+      AND reference_no IN ('DEMO-DOC-PENDING-01', 'MSIT-DEMO-BLT-0001', 'DEMO-VEN-0001')
+    ORDER BY service");
 
 seed_check('six synthetic residents exist', count($residents) === 6, 'found ' . count($residents));
 seed_check('Secretary can maintain certificate wording and hearings but cannot issue certificates or manage queues',
