@@ -2,7 +2,7 @@
 
 **Application:** BIRMS — Barangay Information and Records Management System  
 **Repository:** https://github.com/sachie34/Birms  
-**Current demonstration candidate:** `john/phase2-kiosk-no-sms` (draft PR #39; not production-approved)  
+**Current demonstration build:** `main` (merged via PR #39; not production-approved)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Target:** Windows Server/office PC with Apache, PHP and MariaDB/MySQL on a private barangay LAN
 
