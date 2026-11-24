@@ -1,7 +1,7 @@
 # BIRMS — Panel Demonstration Run Sheet
 
 **Use this with:** [Panel Demo Status](PANEL_DEMO_STATUS.md) and the [MSIT XAMPP Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md)  
-**Build:** main at commit 735a5404f71f24ca1d697d61919704274d3b1e07  
+**Build:** main at commit `9c01fe27bc76e488c78ec94300bba3a85c245deb` (post-merge CI #1355 passed)  
 **Suggested duration:** 7–8 minutes  
 **Data rule:** Use only fictitious DEMO ONLY records. Never show real resident information.
 
