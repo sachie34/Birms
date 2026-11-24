@@ -61,7 +61,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    C:\xampp\php\php.exe tools\migrate.php status
    C:\xampp\php\php.exe tools\migrate.php up
    ```
-   On this candidate the migration runner applies the numbered migrations through 021, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, notification outbox, blotter no-delete protections and reporting/directory indexes. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
+   On this candidate the migration runner applies the numbered migrations through 022, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, email-only resident preference, notification outbox, blotter no-delete protections and reporting/directory indexes. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
    with `root` by setting `BIRMS_DB_USER=root` for that command (`set BIRMS_DB_USER=root` then the command), then give
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
