@@ -14,6 +14,15 @@ Use the MSIT-specific seeder included in the revised SRS build on [`main`](https
 - Existing document types are only updated when their exact name begins DEMO ONLY and matches one of the three reserved demo certificate types.
 - A database transaction is used. The script is idempotent; a complete seed is detected and not duplicated. A partial reserved seed is refused for manual inspection.
 
+## Role workflow represented by the seed
+
+- **Secretary:** owns the wording for certificate templates and the hearing summons, checks document requirements in the live workflow, maintains permitted blotter/hearing records, and controls room availability. The demo certificate template includes a conspicuous “Prepared by” label and a Captain name field.
+- **Staff:** makes final document decisions after requirements are complete, releases the sample draft, reviews resident blotter submissions, handles venue reservations and calls queue numbers aloud.
+- **Chairman / Captain:** is read-only under the revised SRS. The Chairman does not create, edit, approve or issue documents in the application. The Captain name is represented as the signatory field on watermarked examples; the seed does not invent or upload a real signature image.
+- **Admin:** manages technical settings, accounts, and the stored signature asset. The seed deliberately creates no shared/default accounts or passwords.
+
+The Secretary-maintained summons wording and hearing row are marked DEMO ONLY and have no legal effect. The seeder fills Captain/Secretary name and summons settings only when those values are blank; it never overwrites names or wording already configured by the Barangay.
+
 ## Run on XAMPP
 
 Open Command Prompt and change into the MSIT BIRMS project folder:
