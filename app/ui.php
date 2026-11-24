@@ -239,7 +239,7 @@ function current_page_help(): ?array
                 'Enter approved values exactly; leave unknown values unset rather than guessing.',
                 'Save changes and revisit the related page to confirm each setting is applied.',
             ], 'The fee schedule, certificate wording and signatory policy must be approved by the barangay.'),
-        'admin/ledger.php' => $role === 'captain'
+        'admin/ledger.php' => !role_can($role, 'cash_ledger.manage')
             ? $general('Use this page to review recorded cash-ledger entries.', [
                 'Check the amount, date, receipt reference and reconciliation state.',
                 'Compare entries with the office’s actual receipt and cash records.',
