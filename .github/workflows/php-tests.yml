@@ -2,9 +2,9 @@ name: BIRMS PHP and MySQL checks
 
 on:
   pull_request:
-    branches: [main, john/msit-srs-compliance]
+    branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness]
   push:
-    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr]
+    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, john/phase2-kiosk-no-sms]
 
 permissions:
   contents: read
