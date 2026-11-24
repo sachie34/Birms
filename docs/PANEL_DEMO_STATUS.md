@@ -6,7 +6,7 @@
 **Controlling requirements:** `BRMS_SRS_Revised.docx`  
 **Defense preparation:** [Timed demo run sheet](PANEL_DEMO_RUNSHEET.md) · [Panel questions and suggested answers](PANEL_DEFENSE_QA.md)
 
-> **Important:** `main` now contains the revised MSIT demo build. Post-merge CI run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed 8/8 matrix jobs (48/48 security and 283/283 module checks per job). The target XAMPP PC, phone/LAN QR, live email, printer and restore are still separate NOT RUN acceptance items; this is not production approval.
+> **Important:** Post-merge CI run [#1355](https://github.com/sachie34/Birms/actions/runs/45392747052) passed 8/8 PHP/MariaDB matrix jobs (48/48 security and 284/284 module checks per job); the demo-seed verifier also passed. The target XAMPP PC, phone/LAN QR, physical kiosk, live email, printer and restore remain separate local acceptance items; this is not production approval.
 
 ## 1. What the current candidate demonstrates
 
