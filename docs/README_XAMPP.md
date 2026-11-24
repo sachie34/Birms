@@ -14,7 +14,7 @@ It never touches your original `barangay_db`.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
 4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–021), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
 5. Open the localhost URL printed by the installer; it will reflect the folder name you extracted. Sign in with the administrator you created.
-6. Before presenting, follow [PRESENTATION_RUNBOOK.md](PRESENTATION_RUNBOOK.md). The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
+6. Before presenting, follow the [current MSIT Panel Demo Guide](PANEL_DEMO_STATUS.md), rehearse with the [7–8 minute Panel Demo Run Sheet](PANEL_DEMO_RUNSHEET.md), and review the [Panel Defense Q&A](PANEL_DEFENSE_QA.md). `PRESENTATION_RUNBOOK.md` is for the older B1–B12 build. The installer is a setup helper, not proof that the target browser/printer works. Complete the automated and manual checks below.
 
 The wizard refuses a pre-existing non-empty `barangay_db_work` without migration history. It will not overwrite a manually created `app/config.local.php`; if its own generated config exists after an interrupted setup, it can resume using that local configuration.
 
