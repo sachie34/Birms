@@ -245,12 +245,28 @@ function run_b7(array $S, string $base): void
     $benchmarkOut = []; $benchmarkCode = 0;
     exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(APP_ROOT . '/tools/benchmark.php') . ' --iterations=1 --query=ZZ 2>&1', $benchmarkOut, $benchmarkCode);
     $benchmarkText = implode("\n", $benchmarkOut);
-    record('B7-13', 'The read-only performance benchmark runs on the working database and reports timings without resident details',
+    record('B7-13', 'The read-only performance benchmark covers resident search and every monthly report without exposing resident details or PHP warnings',
         $benchmarkCode === 0
         && str_contains($benchmarkText, 'BIRMS read-only performance check')
         && str_contains($benchmarkText, 'Resident search + first 20 results')
+        && str_contains($benchmarkText, 'Monthly cash-collection report')
         && str_contains($benchmarkText, 'Monthly request-processing report')
+        && str_contains($benchmarkText, 'Monthly venue-reservation report')
+        && str_contains($benchmarkText, 'Monthly queueing report')
+        && !str_contains($benchmarkText, 'Undefined array key')
         && str_contains($benchmarkText, 'No data was created, updated, or deleted'));
+
+    $reportIndexRows = db_all(
+        "SELECT DISTINCT INDEX_NAME FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND INDEX_NAME IN ('idx_request_requested_at', 'idx_venue_reservation_date', 'idx_queue_issued_at')"
+    );
+    $reportIndexNames = array_column($reportIndexRows, 'INDEX_NAME');
+    record('B7-18', 'Request, venue and queue date-range reports have dedicated leading indexes',
+        count(array_intersect(
+            ['idx_request_requested_at', 'idx_venue_reservation_date', 'idx_queue_issued_at'],
+            $reportIndexNames
+        )) === 3);
 
     $backupAdmin = $adm->get('/admin/backup.php');
     record('B7-8', 'SQL backup page is reachable for the Administrator only and explains local-download limits', $backupAdmin['status'] === 200 && str_contains($backupAdmin['body'], 'Download SQL backup') && $clk->get('/admin/backup.php')['status'] === 403 && $sec->get('/admin/backup.php')['status'] === 403);
