@@ -20,6 +20,7 @@ if (is_post()) {
             'blotter' => 'kiosk/blotter.php',
             'venue' => 'kiosk/venue.php',
             'queue' => 'kiosk/queue.php',
+            'status' => 'kiosk/status.php',
         ];
         unset($_SESSION['kiosk_after_verify']);
         redirect($allowedDestinations[$destination] ?? 'kiosk/index.php');
