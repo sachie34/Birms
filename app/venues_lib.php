@@ -54,6 +54,47 @@ function venue_reservation_validate(int $venueId, int $residentId, string $purpo
     return [$errors, $venue, $resident];
 }
 
+/**
+ * Return a blocking reason when a hearing selects a registered room that is unavailable.
+ * Free-text external venues that are not configured in BIRMS remain valid.
+ * When $lock is true, call this inside the hearing transaction to serialize against
+ * Secretary availability changes and Staff reservation writes.
+ */
+function venue_hearing_block_reason(string $venueName, string $scheduledAt, bool $lock = false): ?string
+{
+    $venueName = trim($venueName);
+    if ($venueName === '') { return null; }
+    $sql = 'SELECT venue_id, name, is_active, availability_override FROM venues WHERE LOWER(name) = LOWER(?) LIMIT 1';
+    if ($lock) { $sql .= ' FOR UPDATE'; }
+    $venue = db_one($sql, [$venueName]);
+    if ($venue === null) { return null; }
+
+    if ((int) $venue['is_active'] !== 1) {
+        return 'The selected room is inactive. Ask the Secretary to confirm its availability or choose another venue.';
+    }
+    if ((string) $venue['availability_override'] === 'in_use') {
+        return 'The selected room is marked Unavailable by the Secretary. Choose another venue or ask the Secretary to update its status.';
+    }
+
+    $timeValue = strtotime($scheduledAt);
+    if ($timeValue === false) {
+        return 'The hearing date and time is invalid.';
+    }
+    $date = date('Y-m-d', $timeValue);
+    $time = date('H:i:s', $timeValue);
+    $overlap = (int) db_val(
+        "SELECT COUNT(*) FROM venue_reservations
+         WHERE venue_id = ? AND reservation_date = ?
+           AND status IN ('Pending', 'Approved')
+           AND start_time <= ? AND end_time > ?",
+        [(int) $venue['venue_id'], $date, $time, $time]
+    );
+    if ($overlap > 0) {
+        return 'The selected room already has a Pending or Approved reservation at that hearing time. Choose another room or time.';
+    }
+    return null;
+}
+
 /** Create a Pending reservation after locking the venue row to prevent concurrent overlaps. */
 function venue_create_reservation(int $venueId, int $residentId, string $purpose, string $date, string $start, string $end, ?int $createdBy = null): array
 {
