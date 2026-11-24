@@ -66,7 +66,7 @@ Start Apache and MySQL first. These commands are for the example XAMPP folder ab
 
 ## Security note
 
-The current code does not read a root-level file named `Api`; it was removed because it contained an unexplained credential-looking value and had no application use. If that value was a real API key or token, revoke it and create a replacement: removing a file in a later commit does not remove its earlier copies from Git history. Use only ignored local configuration (`app/config.local.php`, `private server mail transport configuration) or protected server environment variables for credentials. If you are extracting over an older folder instead of using a clean folder, manually delete the old `Api` file.
+The current code does not read a root-level file named `Api`; it was removed because it contained an unexplained credential-looking value and had no application use. If that value was a real API key or token, revoke it and create a replacement: removing a file in a later commit does not remove its earlier copies from Git history. Use only ignored local configuration (`app/config.local.php`) for application settings and the server's private mail transport configuration or protected server environment variables for credentials. If you are extracting over an older folder instead of using a clean folder, manually delete the old `Api` file.
 
 After extracting the repository, refresh the local SHA-256 manifest with `C:\\xampp\\php\\php.exe tools\\generate_manifest.php` if you need a checksum snapshot of that working copy.
 
