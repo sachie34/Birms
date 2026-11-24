@@ -2,7 +2,7 @@
 
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
 **Email-only follow-up review branch:** `codex/email-only-failure-safety` (based on `john/phase2-kiosk-no-sms`; use only after exact-head CI passes)  
-**Pull request:** [#39 — QR kiosk and email-only workflow](https://github.com/sachie34/Birms/pull/39)  
+**Pull requests:** [#39 — base QR kiosk/email-only candidate](https://github.com/sachie34/Birms/pull/39) · [#45 — email-only migration and failure-safety follow-up (draft)](https://github.com/sachie34/Birms/pull/45)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
 > This runbook describes the revised MSIT candidate, not the older B1–B12 `main` build. Download the [email-only follow-up ZIP](https://github.com/sachie34/Birms/archive/refs/heads/codex/email-only-failure-safety.zip) only after its exact-head CI passes; do not use the older base ZIP because it does not contain migration 022.
