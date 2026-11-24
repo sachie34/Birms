@@ -79,7 +79,7 @@ Use the detailed [MSIT XAMPP and Role Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_
 
 Before replacing the local project, back up the whole existing folder and export the working database. Extract the current `main` ZIP into a clean folder rather than over the older project so removed files cannot remain behind. Restore only the necessary private local configuration and storage files from the backup. Confirm the private configuration points to `barangay_db_work` (or a separate `*_test` database), never the original `barangay_db`.
 
-The sample-data seeder creates fictitious DEMO ONLY residents, document templates/requests, blotter cases, venues and queue tickets. It does not create users or default passwords. Create the four staff-role accounts separately and use separate browser profiles.
+The sample-data seeder creates fictitious DEMO ONLY residents, certificate templates and request states, resident blotter intake states, official demo blotter cases, a Secretary-managed future hearing/summons example, venue reservations and synchronized queue tickets. It does not create users or default passwords. Create the four staff-role accounts separately and use separate browser profiles.
 
 Example local URLs, after a successful XAMPP installation:
 
