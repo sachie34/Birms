@@ -10,13 +10,7 @@ if (PHP_SAPI !== 'cli') {
     exit("Not found.\n");
 }
 
-require_once __DIR__ . '/../app/core.php';
-date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
-require_once __DIR__ . '/../app/lookups.php';
-require_once __DIR__ . '/../app/queue_lib.php';
-require_once __DIR__ . '/../app/permissions.php';
-require_once __DIR__ . '/../app/certificates_lib.php';
-require_once __DIR__ . '/../app/blotters_lib.php';
+require_once __DIR__ . '/../app/bootstrap.php';
 
 $dbName = (string) config('db.name');
 if (!preg_match('/(_work|_test)$/', $dbName)) {
