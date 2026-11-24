@@ -159,17 +159,28 @@ function run_b9(array $S, string $base): void
     record('B9-8', 'Blotter, hearing, queue, venue and resident-blotter pages explain each role’s actual permitted actions',
         !$roleGuidanceProblems, implode(', ', $roleGuidanceProblems));
 
-    $secretaryVenues = $S['secretary']->get('/venues/index.php');
-    $secretaryCanToggle = $secretaryVenues['status'] === 200
-        && str_contains($secretaryVenues['body'], 'name="do" value="override"')
-        && str_contains($secretaryVenues['body'], 'Save status')
-        && !str_contains($secretaryVenues['body'], 'name="do" value="create_venue"')
-        && !str_contains($secretaryVenues['body'], 'name="do" value="reserve"');
-    $chairmanVenues = $S['captain']->get('/venues/index.php');
-    $chairmanReadOnly = $chairmanVenues['status'] === 200
-        && !str_contains($chairmanVenues['body'], 'name="do" value="override"')
-        && !str_contains($chairmanVenues['body'], 'name="do" value="create_venue"')
-        && !str_contains($chairmanVenues['body'], 'name="do" value="reserve"');
+    // Seed one isolated venue so the availability control is actually rendered.
+    // An empty venue table must not make the role-control test pass or fail vacuously.
+    $venueFixtureName = 'ZZ B9 Availability ' . strtoupper(bin2hex(random_bytes(4)));
+    db_exec(
+        'INSERT INTO venues (name, description, availability_override, is_active) VALUES (?, ?, ?, 1)',
+        [$venueFixtureName, 'Temporary B9 role-permission fixture', 'automatic']
+    );
+    try {
+        $secretaryVenues = $S['secretary']->get('/venues/index.php');
+        $secretaryCanToggle = $secretaryVenues['status'] === 200
+            && str_contains($secretaryVenues['body'], 'name="do" value="override"')
+            && str_contains($secretaryVenues['body'], 'Save status')
+            && !str_contains($secretaryVenues['body'], 'name="do" value="create_venue"')
+            && !str_contains($secretaryVenues['body'], 'name="do" value="reserve"');
+        $chairmanVenues = $S['captain']->get('/venues/index.php');
+        $chairmanReadOnly = $chairmanVenues['status'] === 200
+            && !str_contains($chairmanVenues['body'], 'name="do" value="override"')
+            && !str_contains($chairmanVenues['body'], 'name="do" value="create_venue"')
+            && !str_contains($chairmanVenues['body'], 'name="do" value="reserve"');
+    } finally {
+        db_exec('DELETE FROM venues WHERE name = ?', [$venueFixtureName]);
+    }
     record('B9-9', 'Secretary can toggle venue availability only; Chairman remains read-only and Staff retains reservation operations',
         $secretaryCanToggle && $chairmanReadOnly
         && role_can('secretary', 'venues.availability.manage')
