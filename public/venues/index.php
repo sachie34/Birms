@@ -29,7 +29,7 @@ $reservations = db_all(
 
 render_header('Venue Reservations', [['Workspace', null], ['Venue Reservations', null]], 'venues');
 page_head('Venue and Room Availability', 'Check shared rooms and venues. The Secretary controls the manual Available / Unavailable setting for blotter and hearing rooms. Staff processes resident reservations.');
-if (can('venues.manage')) {
+if (can('venues.configure')) {
     card_start('Add a venue', 'Configure the names of spaces that residents can reserve.');
     echo '<form method="post" action="' . e(base_url('venues/action.php')) . '" class="row g-3 align-items-end">' . csrf_field()
         . '<input type="hidden" name="do" value="create_venue">'
