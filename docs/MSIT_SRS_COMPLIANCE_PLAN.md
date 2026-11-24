@@ -1,5 +1,8 @@
 # MSIT Revised SRS Compliance Plan
 
+> **Current product scope update (24 November 2026):** Earlier sections below describe the optional SMS implementation that existed during the initial SRS build. The project owner subsequently directed that SMS be removed because the resident service workflow is now kiosk/QR-based. The current implementation supports **email-only notifications** plus the live queue display. SMS provider adapters, settings, test utilities, and resident SMS choices have been removed. Migration 020 normalizes stored preferences to email, invalidates outstanding OTP challenges, and preserves historical SMS outbox rows for audit. Historical implementation notes and old test totals are retained as history, not as a statement of current behavior. Actual XAMPP/browser, QR/LAN, physical kiosk, email delivery, backup/restore, performance and office UAT remain separate release gates.
+
+
 **Controlling requirement source:** `BRMS_SRS_Revised.docx` (user-provided, revised from the MSIT adviser's recommendations and system process diagram)
 **Repository:** `sachie34/Birms`
 **Working branch:** `john/msit-srs-compliance`
@@ -133,11 +136,11 @@ Do not assume the old Captain/Clerk roles have identical permissions to Chairman
 - Audit status changes, approvals/rejections, releases, queue actions, reservations, signature use, resident record changes and administrative actions.
 - Test direct URL, forged POST, CSRF, session and cross-resident access for every role.
 
-### Phase 7 — Signatures and notifications
+### Phase 7 — Signatures and email notifications
 - Allow Admin to upload/manage the Chairman's signature image securely.
 - Apply the stored signature only to certificate types requiring it; validate image type, size, path, access and PDF rendering.
-- Email is the default notification channel; SMS remains optional.
-- Implement resident choice of SMS/email/both for queue messages, SMS-to-email fallback, and visible queue display as the final fallback.
+- Email is the only configured notification channel. The public queue display remains the on-site source of truth when the mail transport is unavailable.
+- Send resident status and queue updates by email only when a valid address and approved mail transport are configured; keep the live queue display available as the on-site source of truth.
 - Queue notifications safely when the local network/internet/provider is unavailable; do not claim delivery merely because a message was queued.
 
 ### Phase 8 — Reports, backup/restore and UI quality
@@ -151,7 +154,7 @@ Do not assume the old Captain/Clerk roles have identical permissions to Chairman
 - Run PHP syntax/static checks, migration tests, security/authentication/audit tests and all module integration tests after each phase.
 - Add requirement-specific tests before marking a requirement complete.
 - Test Admin, Chairman, Secretary, Staff and Resident journeys using separate demo accounts.
-- Perform browser, touchscreen-size, PDF, image-upload, printer, email and optional SMS acceptance tests on the actual XAMPP/local-network setup.
+- Perform browser, touchscreen-size, PDF, image-upload, printer and email acceptance tests on the actual XAMPP/local-network setup.
 - Record failures, fixes and retest evidence. Automated CI does not replace local UAT.
 
 ## 7. Release gates
