@@ -1,4 +1,6 @@
 # BIRMS Final 20-Function Verification Checklist
+> **Current scope note (24 November 2026):** This document is a historical audit of an earlier BIRMS build. SMS sections, adapter references and test totals describe that older implementation only. The current MSIT branch has removed SMS adapters, settings, send utilities and resident SMS/Both selectors. Resident notifications are email-only; the live queue display remains the on-site fallback. This file does not certify the current branch's CI or local XAMPP acceptance.
+
 
 **Review date:** 2026-10-29  
 **Repository:** `sachie34/Birms`  
