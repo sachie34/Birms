@@ -38,7 +38,7 @@ if (can('venues.manage')) {
         . '<div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Add venue</button></div></form>';
     card_end();
 }
-card_start('Availability board', 'Availability is calculated from approved reservations unless staff set a manual override.');
+card_start('Availability board', 'The Secretary can set a room to Available or In Use for blotter/hearing arrangements. Automatic mode follows approved reservations.');
 if (!$venues) {
     echo empty_state('bi-building', 'No venues have been configured yet.');
 } else {
@@ -51,7 +51,7 @@ if (!$venues) {
             . '<div class="d-flex align-items-center justify-content-between gap-2"><h2 class="h5 mb-0">' . e((string) $venue['name']) . '</h2>'
             . '<span class="badge ' . ($state === 'in_use' ? 'text-bg-danger' : 'text-bg-success') . '">' . e($label) . '</span></div>'
             . '<p class="text-muted mt-2 mb-3">' . e((string) ($venue['description'] ?? '')) . '</p>';
-        if (can('venues.manage')) {
+        if (can('venues.availability.manage') || can('venues.manage')) {
             echo '<form method="post" action="' . e(base_url('venues/action.php')) . '" class="d-flex flex-wrap gap-2">' . csrf_field()
                 . '<input type="hidden" name="do" value="override"><input type="hidden" name="venue_id" value="' . (int) $venue['venue_id'] . '">'
                 . '<select class="form-select form-select-sm flex-grow-1" name="override" aria-label="Venue availability override">'
