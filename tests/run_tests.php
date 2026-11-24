@@ -168,6 +168,17 @@ record('U15', 'Production can fail closed on plain HTTP without redirecting to a
     && str_contains((string) file_get_contents(APP_ROOT . '/app/core.php'), "'BIRMS_REQUIRE_HTTPS' => ['security', 'require_https']")
     && str_contains((string) file_get_contents(APP_ROOT . '/app/config.local.php.example'), "'require_https' => false"));
 
+$xamppGuideSource = (string) file_get_contents(APP_ROOT . '/README_XAMPP.md');
+$legacyXamppGuideSource = (string) file_get_contents(APP_ROOT . '/docs/README_XAMPP.md');
+record('U16', 'XAMPP setup messages and documentation direct operators to the reviewed release guide instead of stale branch instructions',
+    str_contains($setupPromptSource, 'exact BIRMS release branch or approved tag')
+    && !str_contains($setupPromptSource, 'john/phase2-kiosk-no-sms')
+    && !str_contains($setupPromptSource, 'current main branch')
+    && str_contains($setupPromptSource, 'repository-root README_XAMPP.md')
+    && str_contains($xamppGuideSource, 'fresh Windows/XAMPP installation')
+    && str_contains($legacyXamppGuideSource, '../README_XAMPP.md')
+    && !str_contains($legacyXamppGuideSource, 'current main-branch ZIP'));
+
 $resultsBeforeReporterProbe = $results;
 $results = [];
 ob_start();
