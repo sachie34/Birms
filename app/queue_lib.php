@@ -155,7 +155,7 @@ function queue_dispatch_resident_notification(
     }
 }
 
-/** Put channel notices in the outbox atomically, then contact providers only after that transaction commits. */
+/** Put email-only notices in the outbox after the service transaction commits. Legacy channel overrides are ignored. */
 function queue_enqueue_notifications(
     int $residentId,
     string $service,
