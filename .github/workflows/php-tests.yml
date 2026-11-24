@@ -251,14 +251,29 @@ jobs:
         run: |
           set -euo pipefail
           php tools/seed_msit_demo_data.php
-          first="$(php tools/seed_msit_demo_data.php --apply)"
-          printf '%s\n' "$first"
-          echo "$first" | grep -Fq 'Demo dataset created successfully.'
+          if php tools/seed_msit_demo_data.php --unknown-option > test-reports/base-seed-invalid-option.log 2>&1; then
+            echo "ERROR: base seed accepted an unsupported command-line option."
+            exit 1
+          fi
+          grep -Fq 'Usage: php tools/seed_msit_demo_data.php [--apply]' test-reports/base-seed-invalid-option.log
+
+          # Start two seed processes together. One creates the records; the other
+          # must wait for the database lock and then report an already-complete seed.
+          php tools/seed_msit_demo_data.php --apply > test-reports/base-seed-concurrent-a.log 2>&1 &
+          seed_a=$!
+          php tools/seed_msit_demo_data.php --apply > test-reports/base-seed-concurrent-b.log 2>&1 &
+          seed_b=$!
+          wait "$seed_a" || { cat test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log; exit 1; }
+          wait "$seed_b" || { cat test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log; exit 1; }
+          cat test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
+          grep -Fq 'Demo dataset created successfully.' test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
+          grep -Fq 'Demo dataset was already present; no changes made.' test-reports/base-seed-concurrent-a.log test-reports/base-seed-concurrent-b.log
+
           second="$(php tools/seed_msit_demo_data.php --apply)"
           printf '%s\n' "$second"
           echo "$second" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
           php tests/verify_msit_demo_seed.php 2>&1 | tee test-reports/demo-seed-verification.log
-          echo "PASS: demo seed applies once, is idempotent, and its workflow records/counters are verified."
+          echo "PASS: base seed rejects invalid options, serializes concurrent applies, is idempotent, and verifies all workflow records/counters."
 
       - name: Seed and verify extended MSIT presentation dataset
         if: always() && steps.start-php.outcome == 'success'
@@ -271,14 +286,21 @@ jobs:
         run: |
           set -euo pipefail
           php tools/seed_msit_extended_demo_data.php
-          first="$(php tools/seed_msit_extended_demo_data.php --apply)"
-          printf '%s\n' "$first"
-          echo "$first" | grep -Fq 'Extended MSIT demo data created successfully.'
+          php tools/seed_msit_extended_demo_data.php --apply > test-reports/extended-seed-concurrent-a.log 2>&1 &
+          seed_a=$!
+          php tools/seed_msit_extended_demo_data.php --apply > test-reports/extended-seed-concurrent-b.log 2>&1 &
+          seed_b=$!
+          wait "$seed_a" || { cat test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log; exit 1; }
+          wait "$seed_b" || { cat test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log; exit 1; }
+          cat test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
+          grep -Fq 'Extended MSIT demo data created successfully.' test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
+          grep -Fq 'Extended MSIT demo data was already present; no rows changed.' test-reports/extended-seed-concurrent-a.log test-reports/extended-seed-concurrent-b.log
+
           second="$(php tools/seed_msit_extended_demo_data.php --apply)"
           printf '%s\n' "$second"
           echo "$second" | grep -Fq 'Status: extended MSIT demo set already complete. No changes needed.'
           php tests/verify_msit_extended_demo_seed.php 2>&1 | tee test-reports/extended-demo-seed-verification.log
-          echo "PASS: extended MSIT seed applies once, is idempotent, and private assets/history are verified."
+          echo "PASS: extended MSIT seed serializes concurrent applies, is idempotent, and verifies private assets/history."
           base_again="$(php tools/seed_msit_demo_data.php --apply)"
           printf '%s\n' "$base_again"
           echo "$base_again" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
