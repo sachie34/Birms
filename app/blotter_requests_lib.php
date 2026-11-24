@@ -32,7 +32,7 @@ function resident_blotter_request_submit(int $residentId, array $input, array &$
     $respondentContact = input_str($input, 'respondent_contact');
     $notificationPreference = input_str($input, 'notification_preference');
     if ($notificationPreference !== '' && !queue_valid_notification_preference($notificationPreference)) {
-        $errors[] = 'Choose Email, SMS or Both for queue notifications.';
+        $errors[] = 'Choose Email notifications only.';
     }
 
     $oldest = date('Y-m-d', strtotime('-10 years'));
