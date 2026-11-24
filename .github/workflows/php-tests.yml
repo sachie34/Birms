@@ -257,8 +257,8 @@ jobs:
           fi
           grep -Fq 'Usage: php tools/seed_msit_demo_data.php [--apply]' test-reports/base-seed-invalid-option.log
 
-          # Start two seed processes together. One creates the records; the other
-          # must wait for the database lock and then report an already-complete seed.
+          # Start two seed processes together. The lock or the early complete check
+          # must prevent duplicate inserts regardless of which process reaches apply first.
           php tools/seed_msit_demo_data.php --apply > test-reports/base-seed-concurrent-a.log 2>&1 &
           seed_a=$!
           php tools/seed_msit_demo_data.php --apply > test-reports/base-seed-concurrent-b.log 2>&1 &
