@@ -4,6 +4,7 @@
 
 For the current MSIT branch, use:
 
+- [Panel Demo Status and Sequence](PANEL_DEMO_STATUS.md)
 - [MSIT XAMPP and Role Acceptance Runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md)
 - [MSIT SRS Compliance Plan](MSIT_SRS_COMPLIANCE_PLAN.md)
 - [Pull request #39 — QR kiosk and email-only demonstration candidate](https://github.com/sachie34/Birms/pull/39)
