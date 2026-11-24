@@ -141,6 +141,34 @@ C:\\xampp\\php\\php.exe tests\\run_modules.php http://localhost/Birms-main/publi
 
 Check the test output for both failures and `NOT TESTED` items. The repository currently does not contain `tests/queue_cli.php`; queue behavior is covered by the module integration suite. Do not report that missing script as passed.
 
+**Important test-order and database safety rules:**
+
+- The test runners now check that the web application URL responds before creating test users. If no URL argument is supplied, they use `BIRMS_TEST_BASE_URL` or the CI default `http://127.0.0.1:8080`.
+- For XAMPP, pass the actual public URL, for example `http://localhost/BIRMS-main/public`; do not omit it and accidentally test port 8080.
+- Run the full module integration suite only against a clean, isolated migrated `*_test` database. It creates/removes test fixtures and must not be run against a presentation database after demo data has been applied. The runner refuses to proceed when it detects reserved demo records.
+- Do not run the legacy household seeder. Use only the MSIT seeders documented below.
+
+### Apply the MSIT presentation dataset (after tests)
+
+Back up the intended working database first. Then run the base seed in read-only mode, inspect the target database name and planned counts, and apply it:
+
+```bat
+C:\\xampp\\php\\php.exe tools\\seed_msit_demo_data.php
+C:\\xampp\\php\\php.exe tools\\seed_msit_demo_data.php --apply
+C:\\xampp\\php\\php.exe tests\\verify_msit_demo_seed.php
+```
+
+For the fuller presentation dataset, run the optional extended seed only after the base verifier passes:
+
+```bat
+C:\\xampp\\php\\php.exe tools\\seed_msit_extended_demo_data.php
+C:\\xampp\\php\\php.exe tools\\seed_msit_extended_demo_data.php --apply
+C:\\xampp\\php\\php.exe tests\\verify_msit_extended_demo_seed.php
+C:\\xampp\\php\\php.exe tests\\verify_msit_demo_seed.php
+```
+
+Both seeders are CLI-only, refuse databases not ending in `_work` or `_test`, default to a read-only plan, and are idempotent. The extended seed is additive. Do not use the retired `tools/seed_demo_data.php` household/visitor dataset for the revised MSIT SRS. Never run the module integration suite after applying the presentation seed; use CI or a separate clean test database for module verification. See [docs/DEMO_DATA.md](docs/DEMO_DATA.md) for the full data inventory and what is deliberately not fabricated.
+
 Under Apache, verify that direct requests to `/app/`, `/database/`, `/storage/`, `/tools/`, `/tests/` and `/docs/` are denied, and that private files cannot be downloaded. Confirm that `storage/` is writable by the Apache account without making it publicly accessible.
 
 The PHP built-in server ignores `.htaccess`; use Apache/XAMPP for directory-protection acceptance.
