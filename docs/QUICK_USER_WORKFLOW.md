@@ -1,6 +1,6 @@
 # BIRMS Quick User Workflow
 
-This guide follows the validated demonstration candidate `john/phase2-kiosk-no-sms` (draft PR #39). The revised MSIT SRS is the controlling requirements baseline. The candidate uses the four operational roles Admin, Chairman, Secretary and Staff; older Captain/Clerk labels are retained only as internal legacy role IDs. The role mapping and official office procedures still require barangay/adviser approval before production use.
+This guide follows the revised MSIT build merged into `main` through PR #39. The revised MSIT SRS is the controlling requirements baseline. The current main build uses the four operational roles Admin, Chairman, Secretary and Staff; older Captain/Clerk labels are retained only as internal legacy role IDs. The role mapping and official office procedures still require barangay/adviser approval before production use.
 
 ## 1. Resident self-service: start here
 
@@ -106,7 +106,7 @@ Resident records are grouped directly by **Purok** and each resident has their o
 
 ## 7. Current role access in the code
 
-These are the permissions currently enforced by the branch, not a substitute for the final signed role matrix.
+These are the permissions currently enforced by the main-branch build, not a substitute for the final signed role matrix.
 
 | SRS role | Current access summary |
 |---|---|
