@@ -1,15 +1,15 @@
 # BIRMS working copy: install and run on XAMPP
 
-This runbook points to the validated revised-MSIT demonstration candidate **`john/phase2-kiosk-no-sms`** (draft PR #39). For the revised resident, blotter, documents, venue, queue and kiosk workflows, use this branch and [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), not the older B1–B12 `main` presentation build or the earlier MSIT baseline branch. Setup and test tools target a separate `barangay_db_work` or `_test` database. Never point them at the original `barangay_db`.
+This runbook points to the revised MSIT demonstration build now merged into **`main`** through PR #39. The main branch contains the resident, blotter, documents, venue, queue and kiosk workflows. Use [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) for role acceptance and release checks. Setup and test tools target a separate `barangay_db_work` or `_test` database. Never point them at the original `barangay_db`.
 It never touches your original `barangay_db`.
 
 **Important:** this wizard provisions the isolated `barangay_db_work` working/demo database. It is not the production database procedure. For a real office deployment, follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md), which provisions a separate production database and requires HTTPS, least-privilege access and go-live evidence.
 
-> **MSIT acceptance status:** the revised candidate's exact-head CI evidence is linked from [PR #39](https://github.com/sachie34/Birms/pull/39) and [panel demo status](PANEL_DEMO_STATUS.md). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
+> **MSIT acceptance status:** the merged main release's post-merge CI evidence is recorded in [panel demo status](PANEL_DEMO_STATUS.md) and [PR #39](https://github.com/sachie34/Birms/pull/39). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
 
 ## Quick install (recommended)
 
-1. Download the [validated revised-MSIT candidate ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
+1. Download the [current main-branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/main.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
 4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–021), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
@@ -20,10 +20,10 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
 
 ## Repair an incomplete or outdated local project folder
 
-If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The `john/phase2-kiosk-no-sms` candidate branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
+If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The current `main` branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
 
 1. Back up the current project folder. Keep your MySQL database as it is.
-2. Download a fresh ZIP from the [validated MSIT candidate branch](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip) and extract it into a **new folder**, for example `C:\xampp\htdocs\Birms-main-fixed`. Do not extract over the old folder.
+2. Download a fresh ZIP from the [current main branch](https://github.com/sachie34/Birms/archive/refs/heads/main.zip) and extract it into a **new folder**, for example `C:\xampp\htdocs\Birms-main-fixed`. Do not extract over the old folder.
 3. From the old project, copy only the private local configuration `app\config.local.php` into the matching `app` folder in the new copy. Do **not** copy the old `app` folder over the new one. Preserve the required private data from the backup, including `storage\private_uploads`, `storage\resident_photos` and Chairman signature assets where present. Do not copy obsolete SMS-provider configuration or the old root-level `Api` file.
 4. Open Command Prompt and run these checks from the **new** project path:
    ```bat
