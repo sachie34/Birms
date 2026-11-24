@@ -5,7 +5,7 @@ It never touches your original `barangay_db`.
 
 **Important:** this wizard provisions the isolated `barangay_db_work` working/demo database. It is not the production database procedure. For a real office deployment, follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md), which provisions a separate production database and requires HTTPS, least-privilege access and go-live evidence.
 
-> **MSIT acceptance status:** the revised candidate's exact-head CI evidence is linked from [PR #39](https://github.com/sachie34/Birms/pull/39) and [panel demo status](PANEL_DEMO_STATUS.md). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
+> **MSIT acceptance status:** the revised candidate's exact-head CI evidence is linked from [PR #39](https://github.com/sachie34/Birms/pull/39), [email-only follow-up PR #45 (draft)](https://github.com/sachie34/Birms/pull/45), and [panel demo status](PANEL_DEMO_STATUS.md). Automated CI is not target-PC XAMPP/browser UAT. Follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) and mark manual steps PASS only after testing them on the actual office PC/device.
 
 ## Quick install (recommended)
 
