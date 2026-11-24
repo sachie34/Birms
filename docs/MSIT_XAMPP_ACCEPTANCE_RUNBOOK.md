@@ -1,13 +1,13 @@
 # MSIT Branch — XAMPP and Role Acceptance Runbook
 
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
-**Validated demonstration branch:** `main`  
-**Merge record:** [PR #39 — merged to main](https://github.com/sachie34/Birms/pull/39)  
+**Release candidate:** `release/deploy-ready` (draft PR #46; not merged)  
+**Merge record:** None yet; [PR #46 — deployment-readiness review](https://github.com/sachie34/Birms/pull/46) is open as a draft  
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
-> This runbook describes the revised MSIT build now merged into `main`. Download the [current main-branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/main.zip). PR #39 records the merge from the development branch.
+> This runbook describes the release candidate on `release/deploy-ready`, not the current `main` branch. Download the [release/deploy-ready ZIP](https://github.com/sachie34/Birms/archive/refs/heads/release/deploy-ready.zip) if you are preparing to test this candidate. Do not assume the changes are present on `main` until PR #46 is reviewed and merged.
 >
-> Merged main commit: `735a5404f71f24ca1d697d61919704274d3b1e07`. Post-merge GitHub Actions run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed all 8 PHP/MariaDB matrix jobs (PHP 8.3–8.6 × MariaDB 10.4 and 10.11). Each job reported 48/48 security/authentication/audit checks and 283/283 module checks, with 0 failures and 0 not-tested checks. PHP syntax/includes, XAMPP setup preflight, migrations/schema checks and demo seed/reseed idempotency also passed. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
+> Hosted CI is required on the exact commit being accepted. The earlier candidate commit `fea286b1a4714fb0d6060c821782ce93a09c3113` passed all 8 PHP/MariaDB matrix jobs in [run 45433785734](https://github.com/sachie34/Birms/actions/runs/45433785734), with 48/48 security/authentication checks and 284/284 module checks per job. Later commits must also pass their own exact-head CI run; do not treat this earlier result as proof for a newer commit. Hosted CI is not target-PC XAMPP/browser UAT.
 >
 > For a real office installation, also follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md). The XAMPP setup wizard provisions only the isolated working/demo database; it is not the production database procedure.
 
