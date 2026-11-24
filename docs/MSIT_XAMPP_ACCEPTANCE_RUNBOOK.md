@@ -1,7 +1,7 @@
 # MSIT Branch — XAMPP and Role Acceptance Runbook
 
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
-**Validated demonstration candidate branch:** `john/phase2-kiosk-no-sms`  
+**Email-only follow-up review branch:** `codex/email-only-failure-safety` (based on `john/phase2-kiosk-no-sms`; use only after exact-head CI passes)  
 **Pull request:** [#39 — QR kiosk and email-only workflow](https://github.com/sachie34/Birms/pull/39)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
