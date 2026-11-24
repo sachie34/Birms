@@ -1,5 +1,5 @@
 <?php
-/** Settings: barangay details, Puroks and lists, document types with fees and wording, SMS text. */
+/** Settings: barangay details, Puroks and lists, document types with fees and wording, and email notifications. */
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
