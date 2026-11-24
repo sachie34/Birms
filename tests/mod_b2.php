@@ -21,28 +21,33 @@ function run_b2(array $S, string $base): void
         if ($response['status'] !== 200 || !$activeTabMatches) { $adminTabsOk = false; }
     }
     $secretaryDocuments = $S['secretary']->get('/admin/settings.php?tab=documents');
+    $secretarySummons = $S['secretary']->get('/admin/settings.php?tab=summons');
     $secretaryDashboard = $S['secretary']->get('/dashboard.php');
     $secretaryGeneral = $S['secretary']->get('/admin/settings.php?tab=general');
     $secretaryNotifications = $S['secretary']->get('/admin/settings.php?tab=notifications');
     $chairmanDocuments = $S['captain']->get('/admin/settings.php?tab=documents');
+    $chairmanSummons = $S['captain']->get('/admin/settings.php?tab=summons');
     $staffDocuments = $S['clerk']->get('/admin/settings.php?tab=documents');
-    record('B2-1', 'Admin manages system settings; Secretary accesses document wording only; Chairman and Staff cannot access template administration',
+    $staffSummons = $S['clerk']->get('/admin/settings.php?tab=summons');
+    record('B2-1', 'Admin manages system settings; Secretary accesses only certificate and summons wording; Chairman and Staff remain denied',
         $adminTabsOk
         && $secretaryDocuments['status'] === 200
         && str_contains($secretaryDocuments['body'], 'Document Templates')
-        && str_contains($secretaryDocuments['body'], 'You can edit document wording only')
+        && str_contains($secretaryDocuments['body'], 'You can edit certificate and hearing-summons wording only')
+        && str_contains($secretaryDocuments['body'], 'tab=summons')
         && preg_match('/<a class="nav-link active" href="([^"]+)"/', $secretaryDocuments['body'], $secretaryActiveMatch) === 1
         && str_ends_with((string) (parse_url(html_entity_decode($secretaryActiveMatch[1], ENT_QUOTES, 'UTF-8'), PHP_URL_PATH) ?? ''), '/admin/settings.php')
         && (string) (parse_url(html_entity_decode($secretaryActiveMatch[1], ENT_QUOTES, 'UTF-8'), PHP_URL_QUERY) ?? '') === 'tab=documents'
+        && $secretarySummons['status'] === 200 && str_contains($secretarySummons['body'], 'Save summons wording')
         && str_contains($secretaryDashboard['body'], 'Document Templates')
         && !str_contains($secretaryDashboard['body'], 'System Settings')
         && $secretaryGeneral['status'] === 403
         && $secretaryNotifications['status'] === 403
-        && $chairmanDocuments['status'] === 403
-        && $staffDocuments['status'] === 403,
-        'secretary-documents=' . $secretaryDocuments['status'] . '; secretary-general=' . $secretaryGeneral['status']
-        . '; secretary-notifications=' . $secretaryNotifications['status'] . '; chairman-documents=' . $chairmanDocuments['status']
-        . '; staff-documents=' . $staffDocuments['status']);
+        && $chairmanDocuments['status'] === 403 && $chairmanSummons['status'] === 403
+        && $staffDocuments['status'] === 403 && $staffSummons['status'] === 403,
+        'secretary-documents=' . $secretaryDocuments['status'] . '; secretary-summons=' . $secretarySummons['status']
+        . '; secretary-general=' . $secretaryGeneral['status'] . '; secretary-notifications=' . $secretaryNotifications['status']
+        . '; chairman-summons=' . $chairmanSummons['status'] . '; staff-summons=' . $staffSummons['status']);
 
     $sec = $S['secretary']; $adm = $S['admin']; $cap = $S['captain'];
     $r = post_as($cap, '/admin/settings.php', '/admin/settings.php', ['do' => 'general_save', 'tab' => 'general', 'barangay_name' => 'Hacked', 'municipality' => 'X1', 'province' => 'Y1', 'age_brackets' => '0-17']);
