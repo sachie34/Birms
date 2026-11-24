@@ -1,6 +1,6 @@
 # MSIT BIRMS demonstration data
 
-Use the MSIT-specific seeder for the revised SRS candidate [`john/phase2-kiosk-no-sms`](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip). The older B1–B12 seeder is not the right preparation path for this build.
+Use the MSIT-specific seeder included in the revised SRS build on [`main`](https://github.com/sachie34/Birms/archive/refs/heads/main.zip). The older B1–B12 seeder is not the right preparation path for this build.
 
 ## Safety
 
