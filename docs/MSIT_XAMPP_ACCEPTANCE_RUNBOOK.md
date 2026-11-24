@@ -7,7 +7,7 @@
 
 > This runbook describes the revised MSIT candidate, not the older B1–B12 `main` build. Download the [validated candidate ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip), not the `main` ZIP or the earlier `john/msit-srs-compliance` snapshot.
 >
-> Candidate commit: `6ab22365912262e3714f6504e8d93c274ff48da6`. GitHub Actions run `45368674668` passed all 8 PHP/MariaDB matrix jobs; each job reported 48/48 security checks and 283/283 module checks. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
+> Latest verified application-code commit: a09e9c2b7725ee6f1c2a9f3f2085fd8ec3128486. GitHub Actions run [#1309](https://github.com/sachie34/Birms/actions/runs/45377461100) passed all 8 PHP/MariaDB matrix jobs (PHP 8.3–8.6 × MariaDB 10.4 and 10.11). Each job reported 48/48 security/authentication/audit checks and 283/283 module checks, with 0 failures and 0 not-tested checks. PHP syntax/includes, XAMPP preflight, migrations/schema checks and demo seed/reseed idempotency also passed. Later candidate commits add documentation only; the application code is unchanged after this verified commit. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
 >
 > For a real office installation, also follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md). The XAMPP setup wizard provisions only the isolated working/demo database; it is not the production database procedure.
 
