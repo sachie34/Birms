@@ -57,5 +57,3 @@ function new_request_reference(): string
     $y = (int) date('Y');
     return sprintf('REQ-%d-%04d', $y, next_counter('request', $y));
 }
-
-}
