@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 function run_b2(array $S, string $base): void
 {
-    $snapKeys = ['barangay_name', 'municipality', 'province', 'captain_name', 'secretary_name', 'age_brackets', 'sms_ready_text'];
+    $snapKeys = ['barangay_name', 'municipality', 'province', 'captain_name', 'secretary_name', 'age_brackets'];
     $snap = []; foreach ($snapKeys as $k) { $snap[$k] = db_val('SELECT setting_value FROM settings WHERE setting_key = ?', [$k]); }
     $types = db_all('SELECT type_id, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types');
 
     $adminTabsOk = true;
-    foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'summons', 'notifications', 'sms'] as $tab) {
+    foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'summons', 'notifications'] as $tab) {
         $response = $S['admin']->get('/admin/settings.php?tab=' . $tab);
         if ($response['status'] !== 200) { $adminTabsOk = false; }
     }
@@ -76,9 +76,13 @@ function run_b2(array $S, string $base): void
     record('B2-12', 'Blank fee and wording go back to "not set" (NULL), not zero', $row['fee_amount'] === null && $row['template_body'] === null);
     $r = $post($adm, ['do' => 'doctype_add', 'tab' => 'documents', 'name' => 'Barangay Clearance']);
     record('B2-13', 'Adding a duplicate document type is refused', str_contains($r['body'], 'already exists'));
-    $r = $post($adm, ['do' => 'sms_save', 'tab' => 'sms', 'sms_ready_text' => 'Hi {{bogus}}']);
-    $ok2 = $post($adm, ['do' => 'sms_save', 'tab' => 'sms', 'sms_ready_text' => 'Ready: {{reference_no}}']);
-    record('B2-14', 'SMS text: unknown placeholder refused, valid text saved', str_contains($r['body'], 'Unknown placeholder') && $ok2['status'] === 302 && db_val("SELECT setting_value FROM settings WHERE setting_key = 'sms_ready_text'") === 'Ready: {{reference_no}}');
+    $removedSmsTab = $adm->get('/admin/settings.php?tab=sms');
+    $removedSmsAction = $post($adm, ['do' => 'sms_save', 'tab' => 'sms', 'sms_ready_text' => 'must not be saved']);
+    record('B2-14', 'Legacy SMS settings tab and save action are unavailable',
+        $removedSmsTab['status'] === 200
+        && stripos($removedSmsTab['body'], 'SMS') === false
+        && $removedSmsAction['status'] === 200
+        && str_contains($removedSmsAction['body'], 'Unknown action.'));
 
     // Multi-tier fee matrix: rules are configured only by the Administrator; no rates are seeded.
     $ruleStart = date('Y-m-d');
