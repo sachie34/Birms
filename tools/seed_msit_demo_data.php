@@ -89,7 +89,7 @@ function msit_demo_marker_counts(): array
         'blotters' => (int) db_val("SELECT COUNT(*) FROM blotters WHERE case_no LIKE 'MSIT-DEMO-BLT-%'"),
         'venues' => (int) db_val("SELECT COUNT(*) FROM venues WHERE name LIKE 'DEMO ONLY - %'"),
         'reservations' => (int) db_val("SELECT COUNT(*) FROM venue_reservations WHERE reference_no LIKE 'DEMO-VEN-%'"),
-        'queues' => (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%'"),
+        'queues' => (int) db_val("SELECT COUNT(*) FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%' AND reference_no IN ('DEMO-DOC-PENDING-01', 'MSIT-DEMO-BLT-0001', 'DEMO-VEN-0001')"),
         'blotter_intakes' => (int) db_val("SELECT COUNT(*) FROM resident_blotter_requests WHERE reference_no LIKE 'MSIT-DEMO-BLT-%'"),
         'hearings' => (int) db_val("SELECT COUNT(*) FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id WHERE b.case_no LIKE 'MSIT-DEMO-BLT-%' AND h.venue LIKE 'DEMO ONLY - %'"),
     ];
@@ -123,7 +123,7 @@ function msit_demo_upgrade_existing_seed(): array
             throw new RuntimeException('The existing demo set is partial or has additional linked records. No data was changed; inspect it before retrying.');
         }
         $residentIds = array_map('intval', array_column(
-            db_all("SELECT resident_id FROM residents WHERE resident_no LIKE 'DEMO-RES-%' ORDER BY resident_no"),
+            db_all("SELECT resident_id FROM residents WHERE resident_no LIKE 'DEMO-RES-%' AND resident_no NOT LIKE 'DEMO-RES-EXT-%' ORDER BY resident_no"),
             'resident_id'
         ));
         $caseIds = array_map('intval', array_column(
