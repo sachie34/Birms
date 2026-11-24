@@ -51,7 +51,7 @@
                     dataUrl = image.src;
                 }
 
-                if (!dataUrl || !/^data:image\\/(png|gif);base64,/.test(dataUrl)) {
+                if (!dataUrl || !/^data:image\/(png|gif);base64,/.test(dataUrl)) {
                     message.textContent = 'The browser could not export the QR image. Use the browser print command instead.';
                     return;
                 }
