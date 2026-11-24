@@ -260,11 +260,6 @@ function current_page_help(): ?array
             'Check the timestamp, result, target record and details together.',
             'Export only when authorized and keep the file confidential.',
         ]),
-        'admin/sms.php' => $general('Review the notification queue and delivery results.', [
-            'Check the provider, recipient and recorded message status.',
-            'Treat Queued/Pending as accepted for processing, not proof of delivery to a phone.',
-            'Retry only when the provider status and office policy allow it.',
-        ], 'SMS is disabled until an administrator configures a provider and credentials. Keep API keys private.'),
         'search.php' => $general('Use global search to find records your role may view.', [
             'Enter a name, request reference, certificate/O.R. number or case detail.',
             'Open the matching result and confirm its details before acting.',
