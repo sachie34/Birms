@@ -18,6 +18,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../app/core.php';
+date_default_timezone_set((string) config('timezone', 'Asia/Manila'));
 require_once __DIR__ . '/../app/lookups.php';
 require_once __DIR__ . '/../app/certificates_lib.php';
 
