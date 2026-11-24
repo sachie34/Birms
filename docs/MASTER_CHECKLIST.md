@@ -12,7 +12,7 @@ Barangay Wawa, Balagtas, Bulacan. Original baseline: 17 Oct 2026.
 | B1 | Accounts, sign-in lockout, roles (provisional), audit trail, user management, layout | Built. Sandbox-verified. XAMPP retest pending |
 | B2 | Settings: barangay details, Puroks and lists, document types with fee and wording, age brackets, and email notification settings | Built. Sandbox-verified. XAMPP retest pending |
 | B3 | Residents and households: register, edit, search, archive/restore, household head, CSV export | Built. Sandbox-verified. XAMPP retest pending |
-| B4 | Visitor log, document requests, request tracker and email-only resident notifications and legacy SMS outbox retention | Built and mocked-provider tested. Real XAMPP/email delivery check pending |
+| B4 | Visitor log, document requests, request tracker and email-only resident notifications; legacy SMS outbox records retained | Automated outbox coverage updated. Real XAMPP/email delivery check pending |
 | B5 | Certificate issue, print, issuance history and export, unique O.R. numbers | Built. Sandbox-verified. XAMPP retest pending |
 | B6 | Blotter: cases, parties, status, hearings with printable summons, case look-up, clearance background check | Built. Sandbox-verified. XAMPP retest pending |
 | B7 | Reports (monthly, quarterly), real dashboard figures, incident counts by Purok, demographic breakdown | NOT STARTED |
