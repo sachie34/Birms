@@ -495,7 +495,13 @@ function msit_ext_seed_attachments(array &$createdFiles): void
         $asset = msit_ext_write_asset($relative, $bytes, $createdFiles);
         $requestId = db_val('SELECT request_id FROM document_requests WHERE reference_no = ?', [$requestRef]);
         if ($requestId === null) { throw new RuntimeException("Base demo request {$requestRef} is missing."); }
-        $mime = finfo_file(finfo_open(FILEINFO_MIME_TYPE), $asset['absolute']);
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo === false) { throw new RuntimeException('PHP fileinfo is required to validate demo request attachments.'); }
+        try {
+            $mime = finfo_file($finfo, $asset['absolute']);
+        } finally {
+            finfo_close($finfo);
+        }
         if ($mime !== 'application/pdf') { throw new RuntimeException('A demo request attachment did not validate as application/pdf.'); }
         db_exec(
             'INSERT INTO document_attachments
