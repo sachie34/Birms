@@ -5,7 +5,7 @@ Options -Indexes
     <FilesMatch "^\.">
         Require all denied
     </FilesMatch>
-    <FilesMatch "^(Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore)$">
+    <FilesMatch "^(Api|MANIFEST\.txt|README\.md|README_XAMPP\.md|SETUP_XAMPP\.bat|\.gitignore)$">
         Require all denied
     </FilesMatch>
 </IfModule>
@@ -14,7 +14,7 @@ Options -Indexes
         Order allow,deny
         Deny from all
     </FilesMatch>
-    <FilesMatch "^(Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore)$">
+    <FilesMatch "^(Api|MANIFEST\.txt|README\.md|README_XAMPP\.md|SETUP_XAMPP\.bat|\.gitignore)$">
         Order allow,deny
         Deny from all
     </FilesMatch>

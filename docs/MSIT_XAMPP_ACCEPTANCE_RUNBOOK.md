@@ -1,13 +1,14 @@
 # MSIT Branch — XAMPP and Role Acceptance Runbook
 
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
-**Validated demonstration branch:** `main`  
-**Merge record:** [PR #39 — merged to main](https://github.com/sachie34/Birms/pull/39)  
+**Release candidate:** `release/msit-demo-ready` (draft PR #48; not merged)  
+**Review record:** [PR #48 — combined deployment and MSIT demo release](https://github.com/sachie34/Birms/pull/48) is open as a draft  
+**Validated application-code commit:** `34dc0c73930a4017ba8e8ca86808fbda8059fc95`  
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
-> This runbook describes the revised MSIT build now merged into `main`. Download the [current main-branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/main.zip). PR #39 records the merge from the development branch.
+> This runbook describes the combined candidate on `release/msit-demo-ready`, not the current `main` branch. Download the [release/msit-demo-ready ZIP](https://github.com/sachie34/Birms/archive/refs/heads/release/msit-demo-ready.zip) when preparing to test this candidate. PR #48 remains a draft; the candidate is not merged into `main`.
 >
-> Merged main commit: `735a5404f71f24ca1d697d61919704274d3b1e07`. Post-merge GitHub Actions run [#1332](https://github.com/sachie34/Birms/actions/runs/45382522696) passed all 8 PHP/MariaDB matrix jobs (PHP 8.3–8.6 × MariaDB 10.4 and 10.11). Each job reported 48/48 security/authentication/audit checks and 283/283 module checks, with 0 failures and 0 not-tested checks. PHP syntax/includes, XAMPP setup preflight, migrations/schema checks and demo seed/reseed idempotency also passed. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
+> The combined application-code commit `34dc0c73930a4017ba8e8ca86808fbda8059fc95` passed hosted CI run [45489464306](https://github.com/sachie34/Birms/actions/runs/45489464306): all 8 PHP 8.3–8.6 / MariaDB 10.4 and 10.11 matrix jobs passed. The integrated workflow applies and verifies migrations, runs security and module suites, applies the base and extended demo seeders, verifies both, checks idempotency, and re-runs the base verifier after extension. Documentation-only corrections have since been committed; verify that the latest PR #48 Actions run passes on the current branch head before installing. Hosted CI is not target-PC XAMPP/browser UAT.
 >
 > For a real office installation, also follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md). The XAMPP setup wizard provisions only the isolated working/demo database; it is not the production database procedure.
 

@@ -2,9 +2,9 @@ name: BIRMS PHP and MySQL checks
 
 on:
   pull_request:
-    branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness]
+    branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness, release/deploy-ready]
   push:
-    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, codex/presentation-role-ui-readiness, john/phase2-kiosk-no-sms]
+    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, codex/presentation-role-ui-readiness, john/phase2-kiosk-no-sms, release/deploy-ready]
 
 permissions:
   contents: read
@@ -37,18 +37,22 @@ jobs:
 
       - name: Verify local credentials are not tracked
         run: |
-          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php app/smsapiph.local.php Api)"
+          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php app/smsapiph.local.php Api .env .env.* storage/private_uploads storage/resident_photos)"
           if [ -n "$tracked_private" ]; then
             echo "ERROR: private local configuration or the removed legacy Api file is tracked:"
             printf '%s\n' "$tracked_private"
             exit 1
           fi
           grep -Fxq 'app/config.local.php' .gitignore
+          grep -Fxq '.env' .gitignore
+          grep -Fxq '.env.*' .gitignore
+          grep -Fxq '! .env.example' .gitignore || grep -Fxq '!.env.example' .gitignore
+          grep -Fxq 'storage/resident_photos/' .gitignore
           grep -Fxq 'app/infobip.local.php' .gitignore
           grep -Fxq 'app/smsapiph.local.php' .gitignore
           grep -Fxq '/Api' .gitignore
           grep -Fq '<FilesMatch "^\."' .htaccess
-          grep -Fq 'Api|MANIFEST\.txt|README\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
+          grep -Fq 'Api|MANIFEST\.txt|README\.md|README_XAMPP\.md|SETUP_XAMPP\.bat|\.gitignore' .htaccess
           grep -Fq 'RewriteRule (^|/)\.git(?:/|$) - [F,L]' .htaccess
           grep -Fq 'Options -Indexes' public/.htaccess
           for private_dir in app database docs storage tests tools; do
@@ -66,7 +70,7 @@ jobs:
 
       - name: Validate PHP syntax
         run: |
-          find app public tests tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          find . -type f -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
 
       - name: Check repository-wide PHP include paths
         run: php tools/check_php_includes.php
@@ -77,8 +81,21 @@ jobs:
       - name: Prepare local config
         run: cp app/config.local.php.example app/config.local.php
 
+      - name: Verify production PHP errors are hidden from visitors
+        run: |
+          php -r 'require "app/bootstrap.php"; if (ini_get("display_errors") !== "0") { fwrite(STDERR, "display_errors must be disabled in production.\\n"); exit(1); } echo "PASS: display_errors=0 in production configuration.\\n";'
+
       - name: Generate checksum manifest while excluding local secrets/runtime data
-        run: php tools/generate_manifest.php
+        run: |
+          set -euo pipefail
+          trap 'rm -f .env.production storage/resident_photos/zz-manifest-test.jpg' EXIT
+          mkdir -p storage/resident_photos
+          printf 'synthetic test secret\n' > .env.production
+          printf 'synthetic private photo placeholder\n' > storage/resident_photos/zz-manifest-test.jpg
+          php tools/generate_manifest.php
+          ! grep -Fq 'app/config.local.php' MANIFEST.txt
+          ! grep -Fq '.env.production' MANIFEST.txt
+          ! grep -Fq 'storage/resident_photos/' MANIFEST.txt
 
       - name: Apply migrations to the disposable CI database
         env:
@@ -97,6 +114,25 @@ jobs:
           BIRMS_DB_USER: root
           BIRMS_DB_PASS: ci-root-pass
         run: php tools/schema_check.php
+
+      - name: Verify migration rollback and re-apply on the disposable database
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: |
+          set -euo pipefail
+          migration_count="$(find database/migrations -maxdepth 1 -type f -name '*.sql' ! -name '*.down.sql' | wc -l)"
+          test "$migration_count" -eq 22
+          for _ in $(seq 1 "$migration_count"); do
+            php tools/migrate.php down
+          done
+          php tools/migrate.php status
+          php tools/migrate.php up
+          php tools/schema_check.php
+          echo "PASS: all $migration_count migrations rolled back in reverse order and reapplied; schema matches."
 
       - name: Create least-privilege application database account
         env:
@@ -137,6 +173,20 @@ jobs:
           cat /tmp/birms-php-server.log
           exit 1
 
+      - name: Smoke-test public routes and signed-out protection
+        run: |
+          set -euo pipefail
+          for path in /index.php /queue/display.php /queue/board.php; do
+            status="$(curl --silent --output /tmp/birms-route-body --write-out '%{http_code}' "http://127.0.0.1:8080$path")"
+            test "$status" = "200"
+            echo "PASS: $path returned HTTP $status"
+          done
+          status="$(curl --silent --output /tmp/birms-protected-body --write-out '%{http_code}' "http://127.0.0.1:8080/dashboard.php")"
+          location="$(curl --silent --output /dev/null --dump-header - "http://127.0.0.1:8080/dashboard.php" | awk 'BEGIN{IGNORECASE=1} /^Location:/{print $2}' | tr -d '\\r')"
+          test "$status" = "302"
+          echo "$location" | grep -Fq 'index.php'
+          echo "PASS: /dashboard.php redirected signed-out visitor to login (HTTP 302)."
+
       - name: Verify HTTPS-required mode rejects plain HTTP
         run: |
           BIRMS_REQUIRE_HTTPS=1 php -S 127.0.0.1:8081 -t "$GITHUB_WORKSPACE/public" "$GITHUB_WORKSPACE/tests/php_server_router.php" > /tmp/birms-https-guard.log 2>&1 &
@@ -150,6 +200,17 @@ jobs:
           test "$status" = "503"
           grep -Fq 'BIRMS requires HTTPS for this deployment' /tmp/birms-https-guard-body
           echo "PASS: HTTPS-required mode returns 503 for plain HTTP without redirecting to a Host header."
+
+      - name: Verify HTTPS session cookies include the Secure flag
+        run: |
+          php -S 127.0.0.1:8082 -t "$GITHUB_WORKSPACE/public" "$GITHUB_WORKSPACE/tests/php_server_https_router.php" > /tmp/birms-https-cookie.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:8082/index.php; then break; fi
+            sleep 1
+          done
+          curl --silent --dump-header /tmp/birms-https-cookie-headers --output /dev/null http://127.0.0.1:8082/index.php
+          grep -Eiq '^Set-Cookie: BIRMSSESS=.*;.*secure' /tmp/birms-https-cookie-headers
+          echo "PASS: HTTPS requests set the Secure flag on the BIRMS session cookie."
 
       - name: Prepare test report directory
         if: always() && steps.start-php.outcome == 'success'
@@ -199,6 +260,30 @@ jobs:
           php tests/verify_msit_demo_seed.php 2>&1 | tee test-reports/demo-seed-verification.log
           echo "PASS: demo seed applies once, is idempotent, and its workflow records/counters are verified."
 
+      - name: Seed and verify extended MSIT presentation dataset
+        if: always() && steps.start-php.outcome == 'success'
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: |
+          set -euo pipefail
+          php tools/seed_msit_extended_demo_data.php
+          first="$(php tools/seed_msit_extended_demo_data.php --apply)"
+          printf '%s\n' "$first"
+          echo "$first" | grep -Fq 'Extended MSIT demo data created successfully.'
+          second="$(php tools/seed_msit_extended_demo_data.php --apply)"
+          printf '%s\n' "$second"
+          echo "$second" | grep -Fq 'Status: extended MSIT demo set already complete. No changes needed.'
+          php tests/verify_msit_extended_demo_seed.php 2>&1 | tee test-reports/extended-demo-seed-verification.log
+          echo "PASS: extended MSIT seed applies once, is idempotent, and private assets/history are verified."
+          base_again="$(php tools/seed_msit_demo_data.php --apply)"
+          printf '%s\n' "$base_again"
+          echo "$base_again" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
+          php tests/verify_msit_demo_seed.php
+
       - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
         if: always() && steps.start-php.outcome == 'success'
         run: |
@@ -215,6 +300,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: birms-test-reports-mariadb-${{ matrix.mariadb-version }}
-          path: test-reports/*.log
+          path: |
+            test-reports/*.log
+            MANIFEST.txt
           if-no-files-found: warn
           retention-days: 30

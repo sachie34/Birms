@@ -17,11 +17,45 @@ if (!function_exists('curl_init')) { fwrite(STDERR, "The PHP curl extension is r
 $dbName = (string) config('db.name');
 if (!preg_match('/(_work|_test)$/', $dbName)) { fwrite(STDERR, "REFUSED: database '{$dbName}' does not end in _work or _test. Tests only run on a working copy.\n"); exit(2); }
 
-$base = rtrim('http://127.0.0.1:8080', '/'); $root = null;
-foreach (array_slice($argv, 1) as $a) { if (str_starts_with($a, '--root=')) { $root = rtrim(substr($a, 7), '/'); } elseif (!str_starts_with($a, '--')) { $base = rtrim($a, '/'); } }
-$basePath = (string) parse_url($base, PHP_URL_PATH);
+$base = trim((string) (getenv('BIRMS_TEST_BASE_URL') ?: 'http://127.0.0.1:8080')); $root = null;
+foreach (array_slice($argv, 1) as $a) {
+    if (str_starts_with($a, '--root=')) {
+        $root = rtrim(substr($a, 7), '/');
+    } elseif (str_starts_with($a, '--base=')) {
+        $base = substr($a, 7);
+    } elseif (!str_starts_with($a, '--')) {
+        $base = $a;
+    }
+}
+$base = rtrim($base, '/');
+$baseParts = parse_url($base);
+if (!is_array($baseParts) || !in_array(strtolower((string) ($baseParts['scheme'] ?? '')), ['http', 'https'], true)
+    || empty($baseParts['host'])) {
+    fwrite(STDERR, "REFUSED: invalid test base URL. Pass http://localhost/<project>/public or set BIRMS_TEST_BASE_URL.\n");
+    exit(2);
+}
+$basePath = (string) ($baseParts['path'] ?? '');
 
 require __DIR__ . '/lib.php';
+
+// Fail before creating test accounts if the configured application URL is unavailable.
+$probe = curl_init($base . '/index.php');
+curl_setopt_array($probe, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_TIMEOUT => 8,
+    CURLOPT_NOBODY => true,
+]);
+$probeResult = curl_exec($probe);
+$probeStatus = (int) curl_getinfo($probe, CURLINFO_RESPONSE_CODE);
+$probeError = curl_error($probe);
+curl_close($probe);
+if ($probeResult === false || $probeStatus < 200 || $probeStatus >= 400) {
+    fwrite(STDERR, "REFUSED: BIRMS test server did not return a successful response from {$base}/index.php (HTTP {$probeStatus}). {$probeError}\n");
+    fwrite(STDERR, "Start Apache or the CI PHP server, then pass the correct public base URL, for example: php tests/run_tests.php http://localhost/<project>/public --root=http://localhost/<project>\n");
+    exit(2);
+}
 
 echo "BIRMS test run  base={$base}  db={$dbName}\n" . str_repeat('-', 78) . "\n";
 
@@ -168,6 +202,17 @@ record('U15', 'Production can fail closed on plain HTTP without redirecting to a
     && str_contains((string) file_get_contents(APP_ROOT . '/app/core.php'), "'BIRMS_REQUIRE_HTTPS' => ['security', 'require_https']")
     && str_contains((string) file_get_contents(APP_ROOT . '/app/config.local.php.example'), "'require_https' => false"));
 
+$xamppGuideSource = (string) file_get_contents(APP_ROOT . '/README_XAMPP.md');
+$legacyXamppGuideSource = (string) file_get_contents(APP_ROOT . '/docs/README_XAMPP.md');
+record('U16', 'XAMPP setup messages and documentation direct operators to the reviewed release guide instead of stale branch instructions',
+    str_contains($setupPromptSource, 'exact BIRMS release branch or approved tag')
+    && !str_contains($setupPromptSource, 'john/phase2-kiosk-no-sms')
+    && !str_contains($setupPromptSource, 'current main branch')
+    && str_contains($setupPromptSource, 'repository-root README_XAMPP.md')
+    && str_contains($xamppGuideSource, 'fresh Windows/XAMPP installation')
+    && str_contains($legacyXamppGuideSource, '../README_XAMPP.md')
+    && !str_contains($legacyXamppGuideSource, 'current main-branch ZIP'));
+
 $resultsBeforeReporterProbe = $results;
 $results = [];
 ob_start();
@@ -212,7 +257,7 @@ if ($emailGuardScript !== false) {
         }
     }
 }
-$emailGuardText = implode("\\n", $emailGuardOutput);
+$emailGuardText = implode("\n", $emailGuardOutput);
 record('U13', 'Module tests refuse to run when the saved email setting is enabled, preventing delivery to real residents',
     $emailGuardExit === 2
     && str_contains($emailGuardText, 'REFUSED: real email notifications are enabled.')

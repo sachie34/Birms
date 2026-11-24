@@ -5,9 +5,10 @@ DROP TABLE IF EXISTS notification_outbox;
 DROP TABLE IF EXISTS resident_verification_challenges;
 DROP TABLE IF EXISTS queue_entries;
 DROP TABLE IF EXISTS queue_counters;
+-- This history table has a foreign key to venue_reservations, so drop it first.
+DROP TABLE IF EXISTS request_status_history;
 DROP TABLE IF EXISTS venue_reservations;
 DROP TABLE IF EXISTS venues;
-DROP TABLE IF EXISTS request_status_history;
 
 ALTER TABLE issuances DROP COLUMN chairman_signature_path;
 DELETE FROM settings WHERE setting_key = 'chairman_signature_path';
