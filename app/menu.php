@@ -23,7 +23,7 @@ function menu_definition(): array
         ['group' => 'Workspace', 'key' => 'lookup',    'label' => 'Case Look-up',         'icon' => 'bi-search',       'path' => 'blotters/lookup.php',   'perm' => 'blotters.view',  'built' => true],
         ['group' => 'Workspace', 'key' => 'reports',   'label' => 'Reports',              'icon' => 'bi-bar-chart-line','path' => 'reports/index.php',  'perm' => 'reports.view',   'built' => true],
         ['group' => 'Administration', 'key' => 'users',    'label' => 'User Accounts',    'icon' => 'bi-people',       'path' => 'admin/users.php',     'perm' => 'users.manage',   'built' => true],
-        ['group' => 'Administration', 'key' => 'request_qr', 'label' => 'Resident Request QR', 'icon' => 'bi-qr-code', 'path' => 'admin/request_qr.php', 'perm' => 'settings.view', 'built' => true],
+        ['group' => 'Administration', 'key' => 'request_qr', 'label' => 'Resident Services QR', 'icon' => 'bi-qr-code', 'path' => 'admin/request_qr.php', 'perm' => 'settings.view', 'built' => true],
         ['group' => 'Administration', 'key' => 'settings', 'label' => 'System Settings',  'icon' => 'bi-sliders',      'path' => 'admin/settings.php',  'perm' => 'settings.view',  'built' => true],
         ['group' => 'Administration', 'key' => 'document_templates', 'label' => 'Document Templates', 'icon' => 'bi-file-earmark-richtext', 'path' => 'admin/settings.php?tab=documents', 'perm' => 'documents.templates.manage', 'built' => true],
         ['group' => 'Administration', 'key' => 'chairman_signature', 'label' => 'Chairman Signature', 'icon' => 'bi-pen', 'path' => 'admin/chairman_signature.php', 'perm' => 'settings.edit', 'built' => true],
