@@ -37,13 +37,17 @@ jobs:
 
       - name: Verify local credentials are not tracked
         run: |
-          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php app/smsapiph.local.php Api)"
+          tracked_private="$(git ls-files -- app/config.local.php app/infobip.local.php app/smsapiph.local.php Api .env .env.* storage/private_uploads storage/resident_photos)"
           if [ -n "$tracked_private" ]; then
             echo "ERROR: private local configuration or the removed legacy Api file is tracked:"
             printf '%s\n' "$tracked_private"
             exit 1
           fi
           grep -Fxq 'app/config.local.php' .gitignore
+          grep -Fxq '.env' .gitignore
+          grep -Fxq '.env.*' .gitignore
+          grep -Fxq '! .env.example' .gitignore || grep -Fxq '!.env.example' .gitignore
+          grep -Fxq 'storage/resident_photos/' .gitignore
           grep -Fxq 'app/infobip.local.php' .gitignore
           grep -Fxq 'app/smsapiph.local.php' .gitignore
           grep -Fxq '/Api' .gitignore
@@ -136,6 +140,20 @@ jobs:
           done
           cat /tmp/birms-php-server.log
           exit 1
+
+      - name: Smoke-test public routes and signed-out protection
+        run: |
+          set -euo pipefail
+          for path in /index.php /queue/display.php /queue/board.php; do
+            status="$(curl --silent --output /tmp/birms-route-body --write-out '%{http_code}' "http://127.0.0.1:8080$path")"
+            test "$status" = "200"
+            echo "PASS: $path returned HTTP $status"
+          done
+          status="$(curl --silent --output /tmp/birms-protected-body --write-out '%{http_code}' "http://127.0.0.1:8080/dashboard.php")"
+          location="$(curl --silent --output /dev/null --dump-header - "http://127.0.0.1:8080/dashboard.php" | awk 'BEGIN{IGNORECASE=1} /^Location:/{print $2}' | tr -d '\\r')"
+          test "$status" = "302"
+          echo "$location" | grep -Fq 'index.php'
+          echo "PASS: /dashboard.php redirected signed-out visitor to login (HTTP 302)."
 
       - name: Verify HTTPS-required mode rejects plain HTTP
         run: |
