@@ -49,7 +49,9 @@ $checks = [
     },
     'Recent request directory (first 25)' => static function (): void {
         $rows = db_all(
-            'SELECT dr.request_id
+            'SELECT dr.request_id, dr.reference_no, dr.requested_at, dr.status, dr.msit_status,
+                    r.last_name, r.first_name, r.middle_name, r.suffix,
+                    dt.name AS type_name, u.full_name AS assigned
              FROM document_requests dr
              JOIN residents r ON r.resident_id = dr.resident_id
              JOIN document_types dt ON dt.type_id = dr.type_id
@@ -61,7 +63,8 @@ $checks = [
     },
     'Recent blotter directory (first 25)' => static function (): void {
         $rows = db_all(
-            "SELECT b.blotter_id,
+            "SELECT b.blotter_id, b.case_no, b.incident_date, b.incident_time, b.msit_status,
+                    pk.label AS purok,
                     (SELECT GROUP_CONCAT(x.full_name ORDER BY x.party_id SEPARATOR ', ')
                      FROM blotter_parties x WHERE x.blotter_id = b.blotter_id AND x.party_role = 'Complainant') AS complainants,
                     (SELECT GROUP_CONCAT(y.full_name ORDER BY y.party_id SEPARATOR ', ')
@@ -77,7 +80,7 @@ $checks = [
     },
     'Recent venue directory (latest 200)' => static function (): void {
         $rows = db_all(
-            'SELECT vr.reservation_id
+            'SELECT vr.*, v.name AS venue_name, r.resident_no, r.last_name, r.first_name, r.middle_name, r.suffix
              FROM venue_reservations vr
              JOIN venues v ON v.venue_id = vr.venue_id
              JOIN residents r ON r.resident_id = vr.resident_id
