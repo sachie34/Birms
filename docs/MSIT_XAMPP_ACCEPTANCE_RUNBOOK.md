@@ -46,7 +46,7 @@ C:\xampp\php\php.exe tools\setup_xampp.php --check
 C:\xampp\php\php.exe -m | findstr /I "zip"
 ```
 
-The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migration 019 is present in the source folder. If this check fails, do not proceed with a mixed or incomplete project copy.
+The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migrations 019, 020 and 021 are present in the source folder; migration 021 is the current candidate's latest migration sentinel. If this check fails, do not proceed with a mixed or incomplete project copy.
 
 Then verify the ZIP extension needed for complete system backups:
 1. Run the CLI command above and confirm `zip` appears in the module list.
