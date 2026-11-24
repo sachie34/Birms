@@ -9,7 +9,7 @@ It never touches your original `barangay_db`.
 
 ## Quick install (recommended)
 
-1. Download the [MSIT branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract the whole folder under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
+1. Download the [MSIT branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract the whole folder under `C:\xampp837\htdocs\`, and rename the extracted folder to `Birms-main` (or use your own folder name consistently). Do not move only the `public` folder; the app, migrations, tests and private storage folders are needed.
 2. Start Apache in the XAMPP Control Panel. Start the MySQL/MariaDB server you intend to use. The installer defaults to `127.0.0.1:3306`; use only one server on that port. If MySQL Community Server is already listening on port 3306, do not try to start XAMPP's MySQL service on the same port.
 3. Double-click `SETUP_XAMPP.bat` in the extracted project folder. Enter the local MySQL root password when asked (a fresh XAMPP MySQL installation commonly has a blank password). Then choose a local administrator username, name and password.
 4. The setup wizard creates `barangay_db_work`, creates/updates the limited `birms_app` account for that database, applies the available migrations (001–020), writes the private `app/config.local.php`, and asks you to create the first administrator. It does not import the original `barangay_db` or invent official Puroks, fees, certificate wording or signatories.
@@ -23,17 +23,17 @@ The wizard refuses a pre-existing non-empty `barangay_db_work` without migration
 If every module displays a PHP error saying `app/bootstrap.php`, `app/core.php`, or another required include cannot be found, the local folder is incomplete or contains files from different repository versions. The `john/msit-srs-compliance` branch includes these files. Do not try to fix every page separately; they share the same bootstrap and application libraries.
 
 1. Back up the current project folder. Keep your MySQL database as it is.
-2. Download a fresh ZIP from the [MSIT compliance branch](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip) and extract it into a **new folder**, for example `C:\xampp\htdocs\Birms-main-fixed`. Do not extract over the old folder.
-3. From the old project, copy only the private local files that exist: `app\config.local.php` and `app\infobip.local.php`, placing each into the matching `app` folder in the new copy. Do **not** copy the old `app` folder over the new one. Preserve `storage\private_uploads` and any backups you need. Never copy or restore the old root-level `Api` file.
+2. Download a fresh ZIP from the [MSIT compliance branch](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip) and extract it into a **new folder**, for example `C:\xampp837\htdocs\Birms-main-fixed`. Do not extract over the old folder.
+3. From the old project, copy only the private local files that exist: `app\config.local.php`, placing each into the matching `app` folder in the new copy. Do **not** copy the old `app` folder over the new one. Preserve `storage\private_uploads` and any backups you need. Never copy or restore the old root-level `Api` file.
 4. Open Command Prompt and run these checks from the **new** project path:
    ```bat
-   cd /d C:\xampp\htdocs\Birms-main-fixed
-   C:\xampp\php\php.exe tools\check_php_includes.php
-   C:\xampp\php\php.exe tools\setup_xampp.php --check
+   cd /d C:\xampp837\htdocs\Birms-main-fixed
+   C:\xampp837\php\php.exe tools\check_php_includes.php
+   C:\xampp837\php\php.exe tools\setup_xampp.php --check
    ```
    Both should finish successfully. The include check is read-only: it checks that required source files exist and that statically referenced local include paths resolve.
 5. Open `http://localhost/Birms-main-fixed/public/`. Use your existing Administrator account if `app\config.local.php` still points to the same `barangay_db_work` database. Do not run `SETUP_XAMPP.bat` again just to replace missing source files, and do not drop/recreate the database.
-6. If the local config has a manually set `base_url` pointing to the old folder, update it to `/Birms-main-fixed/public`; otherwise leave an auto-detected/null base URL unchanged. Keep the Infobip key only in the private `app\infobip.local.php` file.
+6. If the local config has a manually set `base_url` pointing to the old folder, update it to `/Birms-main-fixed/public`; otherwise leave an auto-detected/null base URL unchanged. This release uses email notifications only; do not copy retired SMS provider configuration.
 
 This process fixes a missing/mixed local source tree without replacing your database. It does not prove that all interactive flows work; complete the browser/print tests and automated test suite below.
 
@@ -47,7 +47,7 @@ This process fixes a missing/mixed local source tree without replacing your data
 
 ## 2. Install manually (advanced)
 1. **Back up first** (see section 7). Never skip this.
-2. Copy this folder to `C:\xampp\htdocs\Birms-main`.
+2. Copy this folder to `C:\xampp837\htdocs\Birms-main`.
 3. Start **Apache** and **MySQL** in the XAMPP Control Panel.
 4. Create a limited database user (phpMyAdmin → SQL tab). Choose your own password:
    ```sql
@@ -57,9 +57,9 @@ This process fixes a missing/mixed local source tree without replacing your data
 5. Copy `app\config.local.php.example` to `app\config.local.php` and put the same password in it.
 6. Open **XAMPP Shell** (or Command Prompt) and run:
    ```
-   cd C:\xampp\htdocs\Birms-main
-   C:\xampp\php\php.exe tools\migrate.php status
-   C:\xampp\php\php.exe tools\migrate.php up
+   cd C:\xampp837\htdocs\Birms-main
+   C:\xampp837\php\php.exe tools\migrate.php status
+   C:\xampp837\php\php.exe tools\migrate.php up
    ```
    On this branch the migration runner applies the numbered migrations through 020, including the MSIT resident/Purok foundation, queue/kiosk, venue/reservation, request history, email notification outbox, email-only channel normalization and blotter no-delete protections. Back up the working database first. Before migration 013, inspect duplicate hearing slots as shown in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md).
    The migration tool needs permission to create the database and tables. If `birms_app` is refused, run this one step
@@ -67,7 +67,7 @@ This process fixes a missing/mixed local source tree without replacing your data
    `birms_app` only the SELECT/INSERT/UPDATE/DELETE rights above.
 7. Create the first administrator (there is **no default account or password**):
    ```
-   C:\xampp\php\php.exe tools\create_admin.php --username=admin --name="Your Full Name"
+   C:\xampp837\php\php.exe tools\create_admin.php --username=admin --name="Your Full Name"
    ```
    Type a password when asked (it is visible on Windows). Minimum 10 characters, with a letter and a number.
 8. Open `http://localhost/Birms-main/public/` and sign in.
@@ -79,7 +79,7 @@ This process fixes a missing/mixed local source tree without replacing your data
   and on any name not ending `_work` or `_test` unless you add `--i-have-a-backup`. This protects your data.
 - **Compare your real database safely (read-only, it never writes and reads no resident data):**
   ```
-  C:\xampp\php\php.exe tools\schema_check.php --db=barangay_db
+  C:\xampp837\php\php.exe tools\schema_check.php --db=barangay_db
   ```
   It lists missing tables, missing or different columns, indexes and foreign keys. Send me the output. In my test against a
   database shaped like your pasted script it reported 59 differences and changed nothing.
@@ -90,7 +90,7 @@ Four roles: Administrator, Barangay Captain, Barangay Secretary, Barangay Staff/
 In the merged presentation build, the Administrator has all currently defined module permissions plus account, settings, audit and backup access, matching the intended highest-privilege role. Captain, Secretary and Clerk use the existing **PROVISIONAL** role map until the Barangay Secretary/system owner approves the final matrix. The map must still be validated against the approved paper and office responsibilities.
 - New users get a temporary password and must change it at first sign-in.
 - Forgot password: the Administrator sets a new temporary password (User Accounts → Manage).
-- If the Administrator is locked out: `C:\xampp\php\php.exe tools\create_admin.php --reset=username`.
+- If the Administrator is locked out: `C:\xampp837\php\php.exe tools\create_admin.php --reset=username`.
 - Five wrong passwords lock that account for about 15 minutes. The Administrator can unlock it.
 - Sessions end after 30 idle minutes (setting `session.idle_minutes`).
 
@@ -101,9 +101,9 @@ automatically. Keep the firewall limited to your office network and do not forwa
 
 ## 6. Run the tests on YOUR XAMPP
 ```
-cd C:\xampp\htdocs\Birms-main
-C:\xampp\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main
-C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
+cd C:\xampp837\htdocs\Birms-main
+C:\xampp837\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main
+C:\xampp837\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 ```
 - `run_tests.php` = security/authentication/audit, four-role access matrix, PHP runtime checks, safe CLI password prompt and failure-reporting checks. `run_modules.php` = all module integration suites B2–B22, including revised resident records, independent queues, kiosk, blotter, venue, notifications, report exports and unified tracker. Keep email notifications disabled while running automated tests.
 - If a run is interrupted it can leave test rows behind (names starting `ZZ`). Rebuild the **test** database
@@ -115,7 +115,7 @@ C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public
 
 ## 7. Backup before any change
 ```
-cd C:\xampp\mysql\bin
+cd C:\xampp837\mysql\bin
 mysqldump -u root -p --routines --triggers --events --single-transaction barangay_db_work > D:\BIRMS_BACKUP\barangay_db_work_FULL.sql
 ```
 Do not add `--databases`. Test the restore into a scratch database. Copy the project folder too.
@@ -149,13 +149,13 @@ The official document types remain blank until the barangay approves their wordi
 From the project folder, review the read-only plan:
 
 ~~~bat
-C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+C:\xampp837\php\php.exe tools\seed_msit_demo_data.php
 ~~~
 
 Confirm that the target is barangay_db_work, then apply:
 
 ~~~bat
-C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+C:\xampp837\php\php.exe tools\seed_msit_demo_data.php --apply
 ~~~
 
 The seeder refuses database names that do not end in _work or _test. It does not create users/passwords, send email, or change official document types/settings. SMS delivery is not part of this version. It inserts fictitious residents, three DEMO ONLY certificate templates, request lifecycle examples, blotter cases, venues, reservations and queue tickets. See [DEMO_DATA.md](DEMO_DATA.md) for the full list and presentation checks.
