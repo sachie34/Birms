@@ -1,4 +1,6 @@
-# BIRMS Final 20-Function Verification Checklist
+# BIRMS 20-Function Verification — Historical Snapshot
+
+> **Do not use this file as the current role matrix, implementation status or panel acceptance checklist.** It preserves an earlier 2026-10-29 audit and older B1–B12 role assumptions. In particular, its Captain-final-approval and Secretary-certificate-issuance statements are obsolete for the revised MSIT candidate. The current branch is `john/phase2-kiosk-no-sms`; its authoritative role/workflow guidance is [QUICK_USER_WORKFLOW.md](QUICK_USER_WORKFLOW.md), its target-PC acceptance steps are in [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), and its panel sequence is in [PANEL_DEMO_STATUS.md](PANEL_DEMO_STATUS.md). Do not use the historical CI totals below to describe the current candidate.
 
 **Review date:** 2026-10-29  
 **Repository:** `sachie34/Birms`  
