@@ -79,17 +79,38 @@ Keep `app/config.local.php` private. It is excluded by `.gitignore` and blocked 
 
 Use the PHP executable belonging to the XAMPP installation:
 
+First check the working database and source files:
+
 ```bat
 C:\\xampp\\php\\php.exe tools\\setup_xampp.php --check
 C:\\xampp\\php\\php.exe tools\\migrate.php status
-C:\\xampp\\php\\php.exe tools\\migrate.php up
+```
+
+The `birms_app` account created above has CRUD-only permissions and **cannot apply schema migrations**. Apply migrations with a separate authorized DBA/migration account. The following PowerShell example securely prompts for the local MySQL root password without echoing it, uses it only for the migration command, and clears the temporary environment variables afterward:
+
+```powershell
+$secure = Read-Host "MySQL migration account password" -AsSecureString
+$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+try {
+    $env:BIRMS_DB_USER = "root"
+    $env:BIRMS_DB_PASS = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+    & C:\\xampp\\php\\php.exe tools\\migrate.php up
+    if ($LASTEXITCODE -ne 0) { throw "BIRMS migration failed; stop and review the error." }
+}
+finally {
+    Remove-Item Env:BIRMS_DB_USER, Env:BIRMS_DB_PASS -ErrorAction SilentlyContinue
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+}
+```
+
+Then verify the schema and create the first administrator using the limited application account:
+
+```bat
 C:\\xampp\\php\\php.exe tools\\schema_check.php
 C:\\xampp\\php\\php.exe tools\\create_admin.php --username=admin --name="Barangay Administrator"
 ```
 
-If the migration account lacks DDL privileges, temporarily supply an authorized migration-only account through environment variables for the migration command. Restore the limited application account in `app/config.local.php` afterward. Do not grant DDL rights permanently to `birms_app`.
-
-There is no default administrator password. Follow the CLI prompts and choose a unique password that meets the password policy.
+Do not grant DDL or global privileges permanently to `birms_app`. There is no default administrator password; follow the CLI prompt and choose a unique password that meets the password policy.
 
 ## 7. Open the application
 
