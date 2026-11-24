@@ -40,7 +40,7 @@ function permission_map(): array
             'blotters.view', 'blotters.add', 'blotters.edit', 'blotters.archive',
             'blotter_requests.view',
             'hearings.view', 'hearings.add', 'hearings.edit',
-            'venues.view', 'queue.view',
+            'venues.view', 'venues.availability.manage', 'queue.view',
             'reports.view', 'reports.export',
         ],
         // Staff handles resident-facing services, final request decisions, certificate generation, venues and queues.
