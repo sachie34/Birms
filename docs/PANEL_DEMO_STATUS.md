@@ -3,7 +3,8 @@
 **Current demonstration candidate:** `john/phase2-kiosk-no-sms`  
 **Pull request:** [#39 — QR kiosk and email-only workflow](https://github.com/sachie34/Birms/pull/39)  
 **Candidate ZIP:** [Download the candidate branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip)  
-**Controlling requirements:** `BRMS_SRS_Revised.docx`
+**Controlling requirements:** `BRMS_SRS_Revised.docx`  
+**Defense preparation:** [Timed demo run sheet](PANEL_DEMO_RUNSHEET.md) · [Panel questions and suggested answers](PANEL_DEFENSE_QA.md)
 
 > **Important:** The candidate is automated-test verified, but it is not yet accepted on the target XAMPP PC or approved for production. The default `main` branch is the older B1–B12 application. Do not use the `main` ZIP for the revised MSIT demonstration.
 
