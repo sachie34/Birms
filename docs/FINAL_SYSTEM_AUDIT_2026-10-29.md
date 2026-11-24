@@ -46,7 +46,7 @@ Key limitations that must stay visible in presentations and documentation:
 
 Do these using a separate working database and fictitious records; do not run tests against the original `barangay_db`.
 
-1. **Local XAMPP:** pull the latest `main`, use `barangay_db_work`, run both test runners with all real SMS providers disabled, and retain the complete output.
+1. **Historical instruction — superseded:** do not pull `main` for the revised MSIT demonstration. Use `john/phase2-kiosk-no-sms` and follow [MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md). Use `barangay_db_work` and email disabled during the test suites.
 2. **Four roles:** sign in as Administrator, Captain, Secretary and Clerk. Check menu visibility, direct-page denials, page-help instructions, request queues, edit permissions, preview/print behavior and audit entries.
 3. **Request lifecycle:** create a request; verify intake starts with requirements Not checked; start review; edit a material field/attachment and confirm the checklist resets; recheck requirements; approve/reject; verify issue and history.
 4. **Artifacts:** test private upload/download, resident and history CSV exports, report CSVs, certificate PDF, print preview and the physical printer.
