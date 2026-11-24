@@ -24,6 +24,25 @@ require_once __DIR__ . '/../app/certificates_lib.php';
 
 function msit_demo_out(string $message): void { echo $message . PHP_EOL; }
 function msit_demo_fail(string $message): never { fwrite(STDERR, 'REFUSED: ' . $message . PHP_EOL); exit(2); }
+
+/**
+ * Serialize base-seed operations across PHP processes. The lock is session-scoped,
+ * so it remains held across the transaction and is always released in finally.
+ */
+function msit_demo_with_lock(callable $operation): mixed
+{
+    $lockName = 'birms_msit_demo_seed';
+    $lock = (int) db_val('SELECT GET_LOCK(?, 15)', [$lockName]);
+    if ($lock !== 1) {
+        throw new RuntimeException('Another base demo seed operation is running, or the database lock could not be acquired. Retry after it finishes.');
+    }
+
+    try {
+        return $operation();
+    } finally {
+        db_val('SELECT RELEASE_LOCK(?)', [$lockName]);
+    }
+}
 function msit_demo_table_exists(string $table): bool
 {
     return (int) db_val('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table]) > 0;
@@ -152,7 +171,11 @@ function msit_demo_upgrade_existing_seed(): array
         msit_demo_sync_demo_queue_counters();
         audit('msit_demo_workflow_seed_upgraded', 'Demo Data', 'Success',
             'Added DEMO ONLY resident blotter intake and Secretary hearing/summons examples; synchronized demo queue counters.');
-        return ['already_seeded' => false, 'counts' => msit_demo_marker_counts()];
+        $after = msit_demo_marker_counts();
+        if (!msit_demo_is_complete($after)) {
+            throw new RuntimeException('The upgraded demo dataset failed its completeness check: ' . json_encode($after, JSON_UNESCAPED_SLASHES));
+        }
+        return ['already_seeded' => false, 'counts' => $after];
     });
 }
 
@@ -574,7 +597,11 @@ function msit_demo_apply(): array
 
         audit('msit_demo_data_seeded', 'Demo Data', 'Success',
             'Created DEMO ONLY residents, certificate requests/templates, draft/issued samples, blotter intake/cases, Secretary hearing/summons, venue reservations and synchronized service queue tickets.');
-        return ['already_seeded' => false, 'counts' => msit_demo_marker_counts()];
+        $after = msit_demo_marker_counts();
+        if (!msit_demo_is_complete($after)) {
+            throw new RuntimeException('The base demo dataset failed its completeness check: ' . json_encode($after, JSON_UNESCAPED_SLASHES));
+        }
+        return ['already_seeded' => false, 'counts' => $after];
     });
 }
 
@@ -582,6 +609,13 @@ $dbName = (string) config('db.name');
 if (!preg_match('/(_work|_test)$/', $dbName)) {
     msit_demo_fail("database '{$dbName}' does not end in _work or _test. The original barangay_db and every production database are refused.");
 }
+$arguments = array_slice($argv, 1);
+foreach ($arguments as $argument) {
+    if ($argument !== '--apply') { msit_demo_fail('Usage: php tools/seed_msit_demo_data.php [--apply]'); }
+}
+if (count($arguments) > 1) { msit_demo_fail('Use --apply at most once.'); }
+$applyRequested = in_array('--apply', $arguments, true);
+
 try {
     msit_demo_require_schema();
     $counts = msit_demo_marker_counts();
@@ -594,12 +628,12 @@ try {
     }
     if (msit_demo_legacy_seed_is_complete($counts)) {
         msit_demo_out('Status: the earlier complete demo dataset exists; a safe workflow upgrade can add the missing resident blotter intake, Secretary hearing/summons example and queue-counter synchronization.');
-        if (!in_array('--apply', $argv, true)) {
+        if (!$applyRequested) {
             msit_demo_out('Read-only plan: add 3 DEMO ONLY resident blotter intake states (Pending, Accepted, Rejected), 1 scheduled Secretary hearing with DEMO ONLY summons text, fill only blank demo-name settings, refresh only the exact DEMO ONLY certificate templates, and synchronize queue counters.');
             msit_demo_out('Nothing was changed. Re-run with --apply to apply this safe upgrade.');
             exit(0);
         }
-        $upgrade = msit_demo_upgrade_existing_seed();
+        $upgrade = msit_demo_with_lock(static fn(): array => msit_demo_upgrade_existing_seed());
         msit_demo_out($upgrade['already_seeded'] ? 'Workflow demo examples already exist; no changes made.' : 'Demo workflow upgrade applied successfully.');
         foreach ($upgrade['counts'] as $name => $count) { msit_demo_out('  ' . str_pad($name, 16) . ': ' . $count); }
         exit(0);
@@ -608,11 +642,11 @@ try {
         msit_demo_fail('partial reserved DEMO records exist. No rows were changed; inspect the working database before retrying.');
     }
     msit_demo_out('Read-only plan: add 6 fictitious residents, 3 DEMO ONLY certificate templates, 4 document requests (including one releasable draft and one issued history item), 3 official demo blotter cases, 3 resident blotter intake states, 1 Secretary-managed hearing and DEMO ONLY summons wording, 2 demo venues, 2 reservations and 3 queue tickets with synchronized counters.');
-    if (!in_array('--apply', $argv, true)) {
+    if (!$applyRequested) {
         msit_demo_out('Nothing was inserted. Re-run with --apply to create the demo data.');
         exit(0);
     }
-    $result = msit_demo_apply();
+    $result = msit_demo_with_lock(static fn(): array => msit_demo_apply());
     msit_demo_out($result['already_seeded'] ? 'Demo dataset was already present; no changes made.' : 'Demo dataset created successfully.');
     foreach ($result['counts'] as $name => $count) { msit_demo_out('  ' . str_pad($name, 16) . ': ' . $count); }
 } catch (Throwable $e) {
