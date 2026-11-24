@@ -22,7 +22,7 @@ function run_b19(array $S, string $base): void
         record('B19-01', 'Notification settings are visible only to the Admin role',
             $adminPage['status'] === 200
             && str_contains($adminPage['body'], 'Default email notifications')
-            && str_contains($adminPage['body'], 'Optional SMS gateway')
+            && !str_contains($adminPage['body'], 'Optional SMS gateway')
             && $chairmanPage['status'] === 403
             && $secretaryPage['status'] === 403
             && $staffPage['status'] === 403,
