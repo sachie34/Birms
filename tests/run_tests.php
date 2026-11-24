@@ -31,7 +31,7 @@ $base = rtrim($base, '/');
 $baseParts = parse_url($base);
 if (!is_array($baseParts) || !in_array(strtolower((string) ($baseParts['scheme'] ?? '')), ['http', 'https'], true)
     || empty($baseParts['host'])) {
-    fwrite(STDERR, "REFUSED: invalid test base URL. Pass http://localhost/<project>/public or set BIRMS_TEST_BASE_URL.\\n");
+    fwrite(STDERR, "REFUSED: invalid test base URL. Pass http://localhost/<project>/public or set BIRMS_TEST_BASE_URL.\n");
     exit(2);
 }
 $basePath = (string) ($baseParts['path'] ?? '');
@@ -52,8 +52,8 @@ $probeStatus = (int) curl_getinfo($probe, CURLINFO_RESPONSE_CODE);
 $probeError = curl_error($probe);
 curl_close($probe);
 if ($probeResult === false || $probeStatus < 200 || $probeStatus >= 400) {
-    fwrite(STDERR, "REFUSED: BIRMS test server did not return a successful response from {$base}/index.php (HTTP {$probeStatus}). {$probeError}\\n");
-    fwrite(STDERR, "Start Apache or the CI PHP server, then pass the correct public base URL, for example: php tests/run_tests.php http://localhost/<project>/public --root=http://localhost/<project>\\n");
+    fwrite(STDERR, "REFUSED: BIRMS test server did not return a successful response from {$base}/index.php (HTTP {$probeStatus}). {$probeError}\n");
+    fwrite(STDERR, "Start Apache or the CI PHP server, then pass the correct public base URL, for example: php tests/run_tests.php http://localhost/<project>/public --root=http://localhost/<project>\n");
     exit(2);
 }
 
@@ -257,7 +257,7 @@ if ($emailGuardScript !== false) {
         }
     }
 }
-$emailGuardText = implode("\\n", $emailGuardOutput);
+$emailGuardText = implode("\n", $emailGuardOutput);
 record('U13', 'Module tests refuse to run when the saved email setting is enabled, preventing delivery to real residents',
     $emailGuardExit === 2
     && str_contains($emailGuardText, 'REFUSED: real email notifications are enabled.')
