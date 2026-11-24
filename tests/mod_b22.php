@@ -495,6 +495,22 @@ function run_b22(array $S, string $base): void
             'email=' . $statusNotice['email']
         );
 
+        $otpNotificationId = email_queue_notification(
+            $residentId, $email, 'B22 verification test',
+            'Temporary verification code: 123456', 'resident_verification', null
+        );
+        kiosk_redact_verification_notification($otpNotificationId);
+        $redactedOtpMessage = (string) db_val(
+            'SELECT message FROM notification_outbox WHERE notification_id = ?',
+            [$otpNotificationId]
+        );
+        record(
+            'B22-18',
+            'Kiosk verification email outbox redacts the one-time code after the send attempt',
+            !str_contains($redactedOtpMessage, '123456')
+            && str_contains($redactedOtpMessage, 'redacted')
+        );
+
         $emailOptions = queue_notification_preference_options('email');
         $emailOnlyRules = queue_valid_notification_preference('email')
             && !queue_valid_notification_preference('sms')
