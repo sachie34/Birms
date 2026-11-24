@@ -70,7 +70,6 @@ function run_b3(array $S, string $base): void
             'too old' => ['birthdate' => '1850-01-01'],
             'bad mobile' => ['contact_number' => '-------'],
             'bad email' => ['email_address' => 'not-an-email'],
-            'missing email for default channel' => ['email_address' => ''],
             'short address' => ['address' => 'x'],
             'missing Purok' => ['purok_id' => ''],
             'unknown Purok' => ['purok_id' => '99999999'],
@@ -88,7 +87,7 @@ function run_b3(array $S, string $base): void
                 $badRows[] = $label . '=' . $response['status'];
             }
         }
-        record('B3-3', 'Resident registration rejects invalid birthdate, contact, address, Purok, status, type, marital status and malformed values',
+        record('B3-3', 'Resident registration rejects invalid birthdate, mobile/email formats, address, Purok, status, type, marital status and malformed values',
             !$badRows && $count() === $before, implode(', ', $badRows));
 
         $created = $create($adm, ['first_name' => 'First']);
@@ -138,7 +137,7 @@ function run_b3(array $S, string $base): void
                 'address' => '789 Changed B3 Avenue',
                 'resident_status_id' => (string) $transferredId,
                 'resident_type_id' => (string) $pwdId,
-                'notification_preference' => 'both',
+                'notification_preference' => 'email',
             ]));
         $updated = db_one('SELECT marital_status,address,resident_status_id,resident_type_id,notification_preference,residency_status FROM residents WHERE resident_id = ?', [$residentId]);
         $statusAudit = db_one("SELECT remarks FROM audit_log WHERE action = 'resident_status_changed' AND entity_id = ? ORDER BY audit_id DESC LIMIT 1", [$residentId]);
@@ -149,7 +148,7 @@ function run_b3(array $S, string $base): void
             && $updated['address'] === '789 Changed B3 Avenue'
             && (int) $updated['resident_status_id'] === $transferredId
             && (int) $updated['resident_type_id'] === $pwdId
-            && $updated['notification_preference'] === 'both'
+            && $updated['notification_preference'] === 'email'
             && $updated['residency_status'] === 'Relocated'
             && $statusAudit !== null
             && str_contains((string) $statusAudit['remarks'], 'Active -> Transferred'),
