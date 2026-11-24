@@ -18,7 +18,6 @@ $values = [
     'respondent_age' => '',
     'respondent_address' => '',
     'respondent_contact' => '',
-    'notification_preference' => (string) ($resident['notification_preference'] ?? 'email'),
 ];
 
 if (is_post()) {
@@ -64,9 +63,7 @@ echo '<div class="kiosk-field"><label for="narrative">What happened?</label><tex
     . '<div class="kiosk-grid kiosk-time-grid"><div class="kiosk-field"><label for="respondent_age">Respondent age</label><input id="respondent_age" name="respondent_age" type="number" min="0" max="120" value="' . e($values['respondent_age']) . '"></div>'
     . '<div class="kiosk-field"><label for="respondent_contact">Respondent contact</label><input id="respondent_contact" name="respondent_contact" maxlength="20" value="' . e($values['respondent_contact']) . '"></div></div>'
     . '<div class="kiosk-field"><label for="respondent_address">Respondent address</label><input id="respondent_address" name="respondent_address" maxlength="255" value="' . e($values['respondent_address']) . '"></div>'
-    . '<div class="kiosk-field"><label for="notification_preference">How should we notify you?</label><select id="notification_preference" name="notification_preference" required>'
-    . queue_notification_preference_options($values['notification_preference'])
-    . '</select><p class="kiosk-helper">Email is the default. If SMS is unavailable, BIRMS will use your registered email when available. Watch the queue display too.</p></div>'
+    . '<p class="kiosk-helper">Blotter updates are sent to your registered email address when email delivery is configured. Keep your reference number and watch the queue display.</p>'
     . '<button class="kiosk-primary" type="submit">Submit blotter report</button></form>'
     . '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';
 kiosk_page_end();
