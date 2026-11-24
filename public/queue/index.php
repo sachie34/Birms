@@ -11,7 +11,9 @@ $canManage = can('queue.manage');
 $services = QUEUE_SERVICES;
 
 render_header('Service Queue', [['Workspace', null], ['Service Queue', null]], 'queue');
-page_head('Service Queue', 'Manage separate daily numbers for Blotter, Documents and Venue. The public display shows queue numbers only.');
+page_head('Service Queue', $canManage
+    ? 'Issue and manage separate daily numbers for Blotter, Documents and Venue. The public display shows queue numbers only.'
+    : 'Monitor separate Blotter, Documents and Venue queue numbers. This role has read-only access; the public display shows numbers only.');
 
 if ($canManage) {
     card_start('Issue a queue number', 'For a resident at the counter. Residents will also be able to get numbers from the kiosk when the kiosk workflow is enabled.');

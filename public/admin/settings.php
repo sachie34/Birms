@@ -237,7 +237,8 @@ if (is_post()) {
 }
 
 $pageTitle = $canEdit ? 'Settings' : 'Document Templates';
-render_header($pageTitle, [[$pageTitle, null]], $canEdit ? 'settings' : 'document_templates');
+$activeMenuKey = $tab === 'documents' ? 'document_templates' : 'settings';
+render_header($pageTitle, [[$pageTitle, null]], $activeMenuKey);
 page_head($pageTitle, $canEdit
     ? 'Official details are entered by the Barangay Secretary. Anything not set stays blank and blocks the feature that needs it.'
     : 'Maintain certificate wording and placeholders. Admin controls document types, fees, availability and signature requirements.');

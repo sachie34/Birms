@@ -28,7 +28,7 @@ if (is_post()) {
                 throw $e;
             }
             flash_add('success', 'Chairman signature image saved. New certificates will use this version automatically.');
-            redirect('admin/settings.php', ['tab' => 'chairman_signature']);
+            redirect('admin/chairman_signature.php');
         }
         if ($action === 'remove') {
             db_transaction(function (): void {
@@ -39,7 +39,7 @@ if (is_post()) {
                 audit('chairman_signature_removed', 'Settings', 'Success', 'Admin disabled the Chairman signature for future certificate issuance.', 'settings', null);
             });
             flash_add('success', 'The current Chairman signature has been disabled for future issuances. Existing certificates retain their original signature snapshot.');
-            redirect('admin/settings.php', ['tab' => 'chairman_signature']);
+            redirect('admin/chairman_signature.php');
         }
         abort(400, 'Unknown signature action.');
     } catch (InvalidArgumentException $e) {
@@ -52,7 +52,7 @@ if (is_post()) {
 
 $currentPath = chairman_signature_current_relative();
 $currentImage = $currentPath !== null ? chairman_signature_path_to_absolute($currentPath) : null;
-render_header('Chairman Signature', [['Administration', null], ['Settings', 'admin/settings.php?tab=chairman_signature'], ['Chairman Signature', null]], 'settings');
+render_header('Chairman Signature', [['Administration', null], ['Settings', 'admin/settings.php?tab=general'], ['Chairman Signature', null]], 'chairman_signature');
 page_head('Chairman / Punong Barangay Signature', 'Admin uploads the official signature image. The system snapshots it automatically when an eligible certificate is issued.');
 echo errors_box($errors);
 if ($currentImage !== null) {
