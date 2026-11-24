@@ -41,7 +41,7 @@ echo '</select></div>'
     . '<div class="kiosk-field"><label for="purpose">Purpose of visit</label><input type="text" id="purpose" name="purpose" maxlength="255" required></div>'
     . '<div class="kiosk-field"><label for="notification_preference">How should we notify you?</label><select id="notification_preference" name="notification_preference" required>'
     . queue_notification_preference_options($selectedNotificationPreference)
-    . '</select><p class="kiosk-helper">Email is the default. If SMS is unavailable, BIRMS will use your registered email when available. Watch the queue display too.</p></div>'
+    . '</select><p class="kiosk-helper">Email is the only notification option. You can also check your request status at the barangay office.</p></div>'
     . '<button class="kiosk-primary" type="submit">Get queue number</button></form>'
     . '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';
 kiosk_page_end();
