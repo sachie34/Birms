@@ -10,6 +10,11 @@ if (is_post()) {
         'You have requested several queue tickets. Please wait before trying again.');
     $service = post_str('service');
     $purpose = post_str('purpose');
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && !queue_valid_notification_preference($legacyPreference)) {
+        kiosk_flash('Notification channels are no longer selectable. BIRMS uses email only.', 'error');
+        redirect('kiosk/queue.php');
+    }
     if (!queue_valid_service($service)) {
         kiosk_flash('Choose Blotter, Documents or Venue.', 'error');
         redirect('kiosk/queue.php');
