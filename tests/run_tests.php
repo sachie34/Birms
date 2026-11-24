@@ -48,7 +48,9 @@ $rolePolicyOk = array_keys($map) === ['admin', 'captain', 'secretary', 'clerk']
     && role_can('admin', 'backup.run') && role_can('admin', 'audit.export')
     && role_can('captain', 'reports.view') && role_can('captain', 'cash_ledger.view') && !$chairmanWrites
     && role_can('secretary', 'documents.templates.manage') && role_can('secretary', 'requests.review')
-    && role_can('secretary', 'blotters.edit') && !role_can('secretary', 'requests.approve')
+    && role_can('secretary', 'blotters.edit') && role_can('secretary', 'venues.availability.manage')
+    && !role_can('captain', 'venues.availability.manage') && !role_can('clerk', 'venues.availability.manage')
+    && !role_can('secretary', 'requests.approve')
     && !role_can('secretary', 'settings.view') && !role_can('secretary', 'settings.edit') && !role_can('secretary', 'users.manage')
     && role_can('clerk', 'requests.approve') && role_can('clerk', 'certificates.issue')
     && role_can('clerk', 'queue.manage') && role_can('clerk', 'requests.tracker')
