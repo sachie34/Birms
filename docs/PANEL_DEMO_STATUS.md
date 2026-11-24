@@ -90,14 +90,16 @@ These localhost URLs work only on the server PC. A phone must use the server's L
 
 ## 6. Automated verification evidence
 
-The candidate application code commit `6ab22365912262e3714f6504e8d93c274ff48da6` passed [GitHub Actions run #1269](https://github.com/sachie34/Birms/actions/runs/45368674668). All eight combinations of PHP 8.3/8.4/8.5/8.6 and MariaDB 10.4/10.11 succeeded. Each job reported:
+The latest completed candidate application-code commit is a09e9c2b7725ee6f1c2a9f3f2085fd8ec3128486. GitHub Actions run [#1309](https://github.com/sachie34/Birms/actions/runs/45377461100) completed successfully across all eight PHP/MariaDB combinations:
 
-- **48/48** security/authentication/audit checks passed;
-- **283/283** module integration checks passed;
-- **0 failures** and **0 not-tested checks**;
-- PHP syntax/include checks, XAMPP preflight, migrations, schema verification and isolated demo-data seed/reseed checks completed.
+- PHP 8.3, 8.4, 8.5 and 8.6;
+- MariaDB 10.4 and 10.11;
+- **8/8 jobs succeeded**;
+- every job reported **48/48 security/authentication/audit checks** and **283/283 module integration checks**;
+- every job reported **0 failures** and **0 not-tested checks**;
+- PHP syntax/include checks, XAMPP preflight, migrations, schema verification, demo dataset creation and repeat-seed idempotency all completed successfully.
 
-The documentation follow-up at commit `ae6864961f0bdaca31c5eabb33465db46bb81c03` also passed exact-head [workflow run #1277](https://github.com/sachie34/Birms/actions/runs/45373724774) across all eight matrix jobs with the same results. This is hosted CI evidence; it does not test the actual school/office PC.
+The subsequent commits adding the panel run sheet, guide link and README link are documentation-only; the tested PHP/SQL/test application code is unchanged after commit a09e9c2. This is hosted CI evidence. It does not prove the actual XAMPP PC, phone/LAN QR, physical kiosk, email delivery, printer or restore process works.
 
 ## 7. Items that must not be claimed as passed without local evidence
 
