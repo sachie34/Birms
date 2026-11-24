@@ -301,12 +301,6 @@
           "recorded_by"
         ]
       },
-      "idx_blotter_incident": {
-        "unique": false,
-        "columns": [
-          "incident_date"
-        ]
-      },
       "idx_blotter_purok": {
         "unique": false,
         "columns": [
@@ -343,6 +337,14 @@
         "columns": [
           "msit_status",
           "incident_date"
+        ]
+      },
+      "idx_blotter_incident_order": {
+        "unique": false,
+        "columns": [
+          "incident_date",
+          "incident_time",
+          "blotter_id"
         ]
       }
     },
@@ -3520,10 +3522,12 @@
           "created_at"
         ]
       },
-      "idx_venue_reservation_date": {
+      "idx_venue_reservation_order": {
         "unique": false,
         "columns": [
-          "reservation_date"
+          "reservation_date",
+          "start_time",
+          "reservation_id"
         ]
       }
     },
