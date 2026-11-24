@@ -438,7 +438,7 @@ function run_b22(array $S, string $base): void
         // Tracking must therefore require an authenticated kiosk resident and enforce ownership.
         $statusTypeId = (int) db_val('SELECT type_id FROM document_types WHERE is_active = 1 ORDER BY sort_order, type_id LIMIT 1');
         foreach ([$residentId, $secondResidentId] as $ownerId) {
-            $reference = 'B22-STATUS-' . ($ownerId === $residentId ? 'OWN-' : 'OTHER-') . strtoupper(bin2hex(random_bytes(3)));
+            $reference = ($ownerId === $residentId ? 'B22OWN-' : 'B22OTH-') . strtoupper(bin2hex(random_bytes(3)));
             db_exec(
                 "INSERT INTO document_requests
                  (reference_no, resident_id, type_id, purpose, assigned_to, requirements_status, requirements_note,
