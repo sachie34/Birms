@@ -119,7 +119,7 @@ foreach ($queues as $queue) {
 }
 seed_check('queue counters are synchronized with the seeded tickets', $counterOkay, implode('; ', $counterDetails));
 
-$probeReference = 'SEEDCHECK-' . date('ymdHis') . '-' . bin2hex(random_bytes(2));
+$probeReference = 'SC-' . date('ymdHis') . '-' . bin2hex(random_bytes(2));
 $probe = null;
 try {
     $before = (int) db_val(
