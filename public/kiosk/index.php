@@ -3,6 +3,9 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 
+$resident = kiosk_current_resident();
+$documentTypes = $resident !== null ? db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name') : [];
+
 kiosk_page_start('Welcome to Barangay Services', 'Verify your identity, then choose the service you need: Blotter, Documents, Venue, Queue or Request Status.');
 
 if ($resident !== null) {
