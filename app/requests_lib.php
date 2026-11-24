@@ -58,13 +58,3 @@ function new_request_reference(): string
     return sprintf('REQ-%d-%04d', $y, next_counter('request', $y));
 }
 
-    $msg = render_template((string) setting('sms_ready_text', $default), ['reference_no' => $req['reference_no'], 'document_name' => $req['type_name']]);
-    $number = trim((string) ($req['contact_number'] ?? ''));
-    $delivery = $number === '' ? 'No number' : 'Logged only'; // preserve legacy display behavior
-    $enabled = sms_provider_is_enabled();
-    $providerStatus = $number === '' ? 'no_number' : ($enabled ? 'not_attempted' : 'not_configured');
-    $providerName = ($number !== '' && $enabled) ? sms_provider_selected_name() : null;
-    db_exec('INSERT INTO sms_outbox (recipient_number, message, trigger_event, request_id, delivery, provider_name, provider_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [$number === '' ? null : $number, mb_substr_safe($msg, 480), 'request_ready', (int) $req['request_id'], $delivery, $providerName, $providerStatus]);
-    return (int) db()->lastInsertId();
-}
