@@ -134,6 +134,25 @@ $summonsBlockers = $hearing !== null ? summons_blockers($summonsWording, $summon
 seed_check('demo summons can be opened by authorized preview roles without missing-data blockers', $summonsBlockers === [], implode('; ', $summonsBlockers));
 
 seed_check('two demo venues and two reservation states exist', count($venues) === 2 && count($reservations) === 2);
+
+$baseHistoryRows = db_all(
+    "SELECT service, reference_no, new_status FROM request_status_history
+     WHERE note = '[DEMO ONLY] Seeded presentation example.'
+       AND (reference_no LIKE 'DEMO-DOC-%'
+            OR reference_no LIKE 'DEMO-VEN-%'
+            OR reference_no IN ('MSIT-DEMO-BLT-0001', 'MSIT-DEMO-BLT-0002', 'MSIT-DEMO-BLT-0003'))
+     ORDER BY service, reference_no"
+);
+$baseHistoryCounts = [];
+foreach ($baseHistoryRows as $historyRow) {
+    $service = (string) $historyRow['service'];
+    $baseHistoryCounts[$service] = ($baseHistoryCounts[$service] ?? 0) + 1;
+}
+ksort($baseHistoryCounts);
+$expectedBaseHistoryCounts = ['Blotter' => 3, 'Documents' => 4, 'Venue' => 2];
+seed_check('nine base status-history rows use the exact SRS service labels',
+    count($baseHistoryRows) === 9 && $baseHistoryCounts === $expectedBaseHistoryCounts,
+    json_encode($baseHistoryCounts, JSON_UNESCAPED_SLASHES));
 $queueServices = array_map(static fn(array $q): string => (string) $q['service'], $queues);
 sort($queueServices);
 $expectedServices = ['Blotter','Documents','Venue'];
