@@ -35,8 +35,10 @@
 - **Kiosk identity:** use DEMO-RES-0001 through DEMO-RES-0006. Read the date of birth from the matching seeded resident profile; the safe seeder may reuse an older synthetic profile, so do not assume one universal birthdate.
 - **Document request states:** DEMO-DOC-PENDING-01, DEMO-DOC-READY-01, DEMO-DOC-REJECT-01, and DEMO-DOC-ISSUED-01.
 - **Saved draft:** DEMO-DOC-READY-01 has a saved unissued draft for Staff review.
+- **Resident blotter intake:** `MSIT-DEMO-BLT-PND-01` (Pending), an Accepted submission linked to `MSIT-DEMO-BLT-0001`, and `MSIT-DEMO-BLT-REJ-01` (Rejected).
+- **Hearing/summons:** one future hearing is linked to an open demo case; the Secretary can edit the DEMO ONLY summons wording and preview the prepared sample.
 - **Sample venue reservations:** DEMO-VEN-0001 and DEMO-VEN-0002.
-- **Demo templates:** Barangay Clearance, Certificate of Residency and Certificate of Indigency. Each is clearly labelled DEMO ONLY — NOT AN OFFICIAL DOCUMENT, has a zero demonstration fee and does not require the Chairman's signature.
+- **Demo templates:** Barangay Clearance, Certificate of Residency and Certificate of Indigency. Each is clearly labelled DEMO ONLY — NOT AN OFFICIAL DOCUMENT, has a zero demonstration fee, shows Secretary-prepared/Captain signatory fields, and does not use a fabricated Chairman signature.
 
 ## Recovery plan if something goes wrong
 
