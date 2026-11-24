@@ -4,6 +4,8 @@ Barangay Information and Records Management System.
 
 This branch implements the revised MSIT SRS for BIRMS, including resident self-service, separate service queues, document requests/certificate generation, blotter, venue reservations, role-based processing, reports, and protected backup/restore. It also includes a safe MSIT demo dataset seeder and a lightweight Word-style certificate-template editor with live preview and formatted print/PDF output. Resident notifications use email only. The QR kiosk supports resident self-service; historical SMS records are retained for audit but no SMS is sent. The PowerPoint is a design reference; its sample content is not live system data.
 
+> **Current demonstration build:** use `john/phase2-kiosk-no-sms` (draft PR #39), not `main` or the earlier `john/msit-srs-compliance` snapshot. The `main` branch is the older B1–B12 application. The candidate is CI-verified but still requires target-PC XAMPP/kiosk/printer acceptance; it is not production-approved.
+
 ## Repository layout
 
 - `app/` — shared PHP bootstrap, authentication, permissions, database helpers, layout, and module libraries.
@@ -26,7 +28,7 @@ The outer archive also contained earlier B1 and B1–B5 packages and duplicate S
 
 ## Download and run locally (XAMPP)
 
-For the revised MSIT demo build, download the [MSIT SRS branch ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/msit-srs-compliance.zip), extract it under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` if you want to use the paths in the runbook. Start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes the separate `barangay_db_work` database, applies the current migrations, writes private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
+For the revised MSIT demo build, download the [validated QR kiosk/email-only candidate ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip), extract it under `C:\xampp\htdocs\`, and rename the extracted folder to `Birms-main` if you want to use the paths in the runbook. Start Apache and the intended local MySQL/MariaDB server, then run `SETUP_XAMPP.bat`. The wizard initializes the separate `barangay_db_work` database, applies the current migrations, writes private local configuration, and guides you through creating the first administrator. It does not import or modify the original `barangay_db`.
 
 ### Load the ready-made demo records
 
@@ -46,7 +48,7 @@ This adds fictitious residents, demo-only certificate templates and requests, sa
 
 **UI/UX status: consistent across all interactive tabs.** The same sidebar, top bar, global search, page container and shared theme were tested across 52 role-accessible menu routes. See the [UI/UX consistency audit](docs/UI_UX_CONSISTENCY_AUDIT.md). Page content varies by module, and the live pages are not claimed to be pixel-identical to the PowerPoint mockups.
 
-Read [the XAMPP setup guide](docs/README_XAMPP.md), [the demo-data seeder guide](docs/DEMO_DATA.md), [the resident CSV import guide](docs/RESIDENT_CSV_IMPORT.md), [the external-guidance scope review](docs/EXTERNAL_GUIDANCE_REVIEW.md), [the paper-to-code alignment matrix](docs/PAPER_CODE_ALIGNMENT.md), [the final 20-function verification checklist](docs/FINAL_20_FUNCTION_VERIFICATION.md), [the quick user workflow](docs/QUICK_USER_WORKFLOW.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
+Read [the XAMPP setup guide](docs/README_XAMPP.md), [the MSIT XAMPP acceptance runbook](docs/MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md), [the panel demo status and sequence](docs/PANEL_DEMO_STATUS.md), [the demo-data seeder guide](docs/DEMO_DATA.md), [the quick user workflow](docs/QUICK_USER_WORKFLOW.md), and [the presentation runbook](docs/PRESENTATION_RUNBOOK.md). The [20-function verification file](docs/FINAL_20_FUNCTION_VERIFICATION.md) is a historical audit snapshot, not the current role or acceptance authority. Configure only fictitious demo records and confirm the official settings with the system owner. Automated CI passing does not mean target-PC browser/printer UAT has passed.
 
 ## Local setup
 
@@ -72,7 +74,7 @@ After extracting the repository, refresh the local SHA-256 manifest with `C:\\xa
 
 ## Scope boundary
 
-The current `main` branch is the one-click presentation build. It includes the paper-aligned additions and a shared UI shell across role-accessible tabs. The uploaded PowerPoint, BPMN and ERD remain separate reference/design artifacts; the live app uses its own data-backed pages. Run the complete test suite on a disposable `_work` or `_test` database before presenting.
+The default `main` branch is the older B1–B12 application and is not the revised MSIT demonstration build. Use only the `john/phase2-kiosk-no-sms` candidate ZIP linked above for the revised MSIT demo. The uploaded PowerPoint, BPMN and ERD remain separate reference/design artifacts; the live app uses its own data-backed pages. Run the complete test suite on a disposable `_work` or `_test` database before presenting.
 
 Read the workflow run attached to the exact commit or pull request you are reviewing. Results from an older branch do not certify newer changes. The CI workflow checks PHP syntax, include paths, XAMPP preflight, migrations, authentication/security/audit behavior, and module integration on a disposable MariaDB database. Historical SMS provider tests have been removed; no SMS integration is active. Browser/UAT on the target office PC, official template approval, live email delivery, and live cloud backup/restore are separate acceptance checks. See [the paper-to-code audit](docs/PAPER_CODE_COMPLIANCE_AUDIT.md), [the UAT/performance worksheet](docs/UAT_PERFORMANCE_EVALUATION.md), and [the Lab Activity 1 remediation status and UAT record](docs/BIRMS_LAB_ACTIVITY1_REMEDIATION_STATUS.md).
 
