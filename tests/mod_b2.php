@@ -11,8 +11,13 @@ function run_b2(array $S, string $base): void
     $adminTabsOk = true;
     foreach (['general', 'puroks', 'lists', 'documents', 'fee_matrix', 'summons', 'notifications', 'sms'] as $tab) {
         $response = $S['admin']->get('/admin/settings.php?tab=' . $tab);
-        $activeTabLink = 'class="nav-link active" href="' . e(base_url('admin/settings.php?tab=' . $tab)) . '"';
-        if ($response['status'] !== 200 || !str_contains($response['body'], $activeTabLink)) { $adminTabsOk = false; }
+        $activeTabMatches = preg_match('/<a class="nav-link active" href="([^"]+)"/', $response['body'], $activeTabMatch) === 1;
+        if ($activeTabMatches) {
+            $activeTabHref = html_entity_decode($activeTabMatch[1], ENT_QUOTES, 'UTF-8');
+            $activeTabMatches = str_ends_with((string) (parse_url($activeTabHref, PHP_URL_PATH) ?? ''), '/admin/settings.php')
+                && (string) (parse_url($activeTabHref, PHP_URL_QUERY) ?? '') === 'tab=' . $tab;
+        }
+        if ($response['status'] !== 200 || !$activeTabMatches) { $adminTabsOk = false; }
     }
     $secretaryDocuments = $S['secretary']->get('/admin/settings.php?tab=documents');
     $secretaryDashboard = $S['secretary']->get('/dashboard.php');
@@ -25,7 +30,9 @@ function run_b2(array $S, string $base): void
         && $secretaryDocuments['status'] === 200
         && str_contains($secretaryDocuments['body'], 'Document Templates')
         && str_contains($secretaryDocuments['body'], 'You can edit document wording only')
-        && str_contains($secretaryDocuments['body'], 'class="nav-link active" href="' . e(base_url('admin/settings.php?tab=documents')) . '"')
+        && preg_match('/<a class="nav-link active" href="([^"]+)"/', $secretaryDocuments['body'], $secretaryActiveMatch) === 1
+        && str_ends_with((string) (parse_url(html_entity_decode($secretaryActiveMatch[1], ENT_QUOTES, 'UTF-8'), PHP_URL_PATH) ?? ''), '/admin/settings.php')
+        && (string) (parse_url(html_entity_decode($secretaryActiveMatch[1], ENT_QUOTES, 'UTF-8'), PHP_URL_QUERY) ?? '') === 'tab=documents'
         && str_contains($secretaryDashboard['body'], 'Document Templates')
         && !str_contains($secretaryDashboard['body'], 'System Settings')
         && $secretaryGeneral['status'] === 403
