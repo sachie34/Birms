@@ -199,6 +199,26 @@ jobs:
           php tests/verify_msit_demo_seed.php 2>&1 | tee test-reports/demo-seed-verification.log
           echo "PASS: demo seed applies once, is idempotent, and its workflow records/counters are verified."
 
+      - name: Seed and verify extended MSIT presentation dataset
+        if: always() && steps.start-php.outcome == 'success'
+        env:
+          BIRMS_DB_HOST: 127.0.0.1
+          BIRMS_DB_PORT: 3306
+          BIRMS_DB_NAME: barangay_db_work
+          BIRMS_DB_USER: root
+          BIRMS_DB_PASS: ci-root-pass
+        run: |
+          set -euo pipefail
+          php tools/seed_msit_extended_demo_data.php
+          first="$(php tools/seed_msit_extended_demo_data.php --apply)"
+          printf '%s\n' "$first"
+          echo "$first" | grep -Fq 'Extended MSIT demo data created successfully.'
+          second="$(php tools/seed_msit_extended_demo_data.php --apply)"
+          printf '%s\n' "$second"
+          echo "$second" | grep -Fq 'Status: extended MSIT demo set already complete. No changes needed.'
+          php tests/verify_msit_extended_demo_seed.php 2>&1 | tee test-reports/extended-demo-seed-verification.log
+          echo "PASS: extended MSIT seed applies once, is idempotent, and private assets/history are verified."
+
       - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
         if: always() && steps.start-php.outcome == 'success'
         run: |
