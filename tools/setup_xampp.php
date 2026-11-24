@@ -24,7 +24,7 @@ if (PHP_SAPI !== 'cli') {
 // loading application code so a missing bootstrap/core/provider file gets a clear message.
 $includeChecker = __DIR__ . '/check_php_includes.php';
 if (!is_file($includeChecker)) {
-    fwrite(STDERR, "ERROR: tools/check_php_includes.php is missing. Download a fresh ZIP of the current MSIT demo branch (john/phase2-kiosk-no-sms) before running setup.\n");
+    fwrite(STDERR, "ERROR: tools/check_php_includes.php is missing. Download a fresh ZIP of the current main branch before running setup.\n");
     exit(2);
 }
 $includeCheckCommand = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($includeChecker);
