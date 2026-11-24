@@ -11,6 +11,7 @@ if ($b === null) { abort(404, 'That case was not found.'); }
 $open = case_is_open($b);
 $parties = case_parties((int) $id);
 $hearings = can('hearings.view') ? db_all('SELECT hearing_id, scheduled_at, venue, notes, status, status_note, summons_count FROM hearings WHERE blotter_id = ? ORDER BY scheduled_at DESC, hearing_id DESC', [$id]) : [];
+$hearingVenues = can('hearings.add') ? venue_list(true) : [];
 $srsMoves = blotter_srs_allowed_moves((string) ($b['msit_status'] ?? 'Ongoing'));
 $history = db_all("SELECT occurred_at, username_snapshot, action, remarks FROM audit_log WHERE entity_type = 'blotter' AND entity_id = ? ORDER BY audit_id DESC LIMIT 25", [$id]);
 
@@ -57,7 +58,7 @@ $row = fn(string $k, string $v) => '<tr><th class="text-muted fw-normal w-25">' 
       <?php if ($open && can('hearings.add')): ?>
         <form method="post" action="<?= e(base_url('blotters/hearing_action.php')) ?>" class="needs-validation mt-3" novalidate><?= csrf_field() ?><input type="hidden" name="do" value="schedule"><input type="hidden" name="id" value="<?= (int) $id ?>"><div class="row">
           <?= f_text('scheduled_at', 'New hearing: date and time', '', ['type' => 'datetime-local', 'required' => true, 'col' => 'col-md-4']) ?>
-          <?= f_text('venue', 'Venue', '', ['maxlength' => 150, 'col' => 'col-md-4']) ?><?= f_text('notes', 'Notes', '', ['maxlength' => 500, 'col' => 'col-md-4']) ?></div>
+          <div class="col-md-4"><label class="form-label" for="venue">Venue / Room</label><input class="form-control" id="venue" name="venue" maxlength="150" list="hearing-venue-options" autocomplete="off"><datalist id="hearing-venue-options"><?php foreach ($hearingVenues as $room): ?><option value="<?= e((string) $room['name']) ?>" label="<?= e($room['current_state'] === 'in_use' ? 'Unavailable' : 'Available') ?>"></option><?php endforeach; ?></datalist><div class="form-text">Registered rooms marked Unavailable cannot be scheduled. Ask the Secretary to update the room status.</div></div><?= f_text('notes', 'Notes', '', ['maxlength' => 500, 'col' => 'col-md-4']) ?></div>
           <button class="btn btn-primary btn-sm" type="submit">Schedule hearing</button></form>
       <?php endif; ?>
     </div></div>
