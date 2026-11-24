@@ -24,10 +24,10 @@ if (is_post()) {
         unset($_SESSION['kiosk_after_verify']);
         redirect($allowedDestinations[$destination] ?? 'kiosk/index.php');
     }
-    kiosk_flash('The code is incorrect, expired or already used. Check the message and try again, or ask Staff for help.', 'error');
+    kiosk_flash('The code is incorrect, expired or already used. Check your email and try again, or ask Staff for help.', 'error');
     redirect('kiosk/verify.php');
 }
-kiosk_page_start('Enter your verification code', 'Enter the six-digit code sent to your registered contact. The code can be used once and expires in five minutes.');
+kiosk_page_start('Enter your verification code', 'Enter the six-digit code sent to your registered email address. The code can be used once and expires in five minutes.');
 echo '<section class="kiosk-card"><form method="post" action="' . e(base_url('kiosk/verify.php')) . '" class="kiosk-form">'
     . csrf_field()
     . '<div class="kiosk-field"><label for="code">Six-digit verification code</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" minlength="6" required autofocus></div>'
