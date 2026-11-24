@@ -40,7 +40,7 @@ if ($iterations < 1 || $iterations > 50) {
 }
 
 $range = report_period_range('month');
-$emptyFilters = ['q' => $query, 'purok' => '', 'status' => '', 'category' => '', 'show' => ''];
+$emptyFilters = ['q' => $query, 'purok' => '', 'status' => '', 'type' => '', 'show' => ''];
 $checks = [
     'Resident search + first 20 results' => static function () use ($emptyFilters): void {
         [$rows, $total] = resident_search($emptyFilters, 20, 0);
@@ -55,12 +55,24 @@ $checks = [
         $report = report_issuances($range);
         $unused = (int) $report['summary']['issued_count'];
     },
+    'Monthly cash-collection report' => static function () use ($range): void {
+        $report = report_cash_collections($range);
+        $unused = (int) $report['ledger_entry_count'];
+    },
     'Monthly request-processing report' => static function () use ($range): void {
         $report = report_requests($range);
         $unused = (int) $report['summary']['total'];
     },
     'Monthly blotter report' => static function () use ($range): void {
         $report = report_blotters($range);
+        $unused = (int) $report['summary']['total'];
+    },
+    'Monthly venue-reservation report' => static function () use ($range): void {
+        $report = report_venues($range);
+        $unused = (int) $report['summary']['total'];
+    },
+    'Monthly queueing report' => static function () use ($range): void {
+        $report = report_queueing($range);
         $unused = (int) $report['summary']['total'];
     },
 ];
