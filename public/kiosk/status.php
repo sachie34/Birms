@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 rate_limit_require('kiosk_status_ip', client_ip(), 20, 600,
     'Too many status lookups from this device. Please wait 10 minutes.');
-$resident = kiosk_current_resident(false);
+$resident = kiosk_require_resident();
 $reference = strtoupper(get_str('ref'));
 $result = null;
 $history = [];
@@ -13,24 +13,21 @@ if ($reference !== '') {
     if (preg_match('/^[A-Z0-9-]{4,32}$/', $reference) !== 1) {
         $reference = '';
     } else {
-        $doc = db_one('SELECT reference_no, msit_status AS status, requested_at AS created_at FROM document_requests WHERE reference_no = ?', [$reference]);
+        $doc = db_one('SELECT reference_no, msit_status AS status, requested_at AS created_at FROM document_requests WHERE reference_no = ? AND resident_id = ?', [$reference, (int) $resident['resident_id']]);
         if ($doc !== null) {
             $result = ['service' => 'Documents', 'reference_no' => $doc['reference_no'], 'status' => $doc['status'], 'created_at' => $doc['created_at']];
         } else {
-            $venue = db_one('SELECT reference_no, status, created_at FROM venue_reservations WHERE reference_no = ?', [$reference]);
+            $venue = db_one('SELECT reference_no, status, created_at FROM venue_reservations WHERE reference_no = ? AND resident_id = ?', [$reference, (int) $resident['resident_id']]);
             if ($venue !== null) {
                 $result = ['service' => 'Venue', 'reference_no' => $venue['reference_no'], 'status' => $venue['status'], 'created_at' => $venue['created_at']];
             } else {
                 $blotterRequest = db_one(
                     'SELECT reference_no, msit_status AS status, submitted_at AS created_at
-                     FROM resident_blotter_requests WHERE reference_no = ?',
-                    [$reference]
+                     FROM resident_blotter_requests WHERE reference_no = ? AND resident_id = ?',
+                    [$reference, (int) $resident['resident_id']]
                 );
                 if ($blotterRequest !== null) {
                     $result = ['service' => 'Blotter', 'reference_no' => $blotterRequest['reference_no'], 'status' => $blotterRequest['status'], 'created_at' => $blotterRequest['created_at']];
-                } else {
-                    $blotter = db_one('SELECT case_no AS reference_no, msit_status AS status, recorded_at AS created_at FROM blotters WHERE case_no = ?', [$reference]);
-                    if ($blotter !== null) { $result = ['service' => 'Blotter', 'reference_no' => $blotter['reference_no'], 'status' => $blotter['status'], 'created_at' => $blotter['created_at']]; }
                 }
             }
         }
@@ -47,7 +44,7 @@ if ($reference !== '') {
         }
     }
 }
-kiosk_page_start('Check request status', 'Enter the reference number printed on your receipt. Only the service and status are shown.');
+kiosk_page_start('Check request status', 'Verify your identity first, then enter the reference number printed on your receipt. Only your own service status is shown.');
 echo '<section class="kiosk-card"><form method="get" action="' . e(base_url('kiosk/status.php')) . '" class="kiosk-form">'
     . '<div class="kiosk-field"><label for="ref">Reference number</label><input id="ref" name="ref" value="' . e($reference) . '" maxlength="32" required></div>'
     . '<button class="kiosk-primary" type="submit">Check status</button></form>';
