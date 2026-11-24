@@ -3,7 +3,6 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 $resident = kiosk_require_resident();
-$selectedNotificationPreference = queue_resolve_notification_preference(null, (string) ($resident['notification_preference'] ?? 'email'));
 
 if (is_post()) {
     require_csrf();
@@ -11,9 +10,10 @@ if (is_post()) {
         'You have requested several queue tickets. Please wait before trying again.');
     $service = post_str('service');
     $purpose = post_str('purpose');
-    $requestedPreference = post_str('notification_preference');
-    if ($requestedPreference !== '' && queue_valid_notification_preference($requestedPreference)) {
-        $selectedNotificationPreference = $requestedPreference;
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && !queue_valid_notification_preference($legacyPreference)) {
+        kiosk_flash('Notification channels are no longer selectable. BIRMS uses email only.', 'error');
+        redirect('kiosk/queue.php');
     }
     if (!queue_valid_service($service)) {
         kiosk_flash('Choose Blotter, Documents or Venue.', 'error');
@@ -21,7 +21,7 @@ if (is_post()) {
     }
     try {
         $ticket = queue_issue_number($service, (int) $resident['resident_id'], null, 'kiosk', $purpose,
-            $requestedPreference !== '' ? $requestedPreference : null);
+            null);
         $_SESSION['kiosk_last_queue_ticket'] = $ticket;
         kiosk_flash('Your ' . $service . ' queue number is ' . (int) $ticket['queue_number'] . '. Please watch the public queue display.', 'success');
         redirect('kiosk/ticket.php');
@@ -39,9 +39,6 @@ foreach (QUEUE_SERVICES as $service) {
 }
 echo '</select></div>'
     . '<div class="kiosk-field"><label for="purpose">Purpose of visit</label><input type="text" id="purpose" name="purpose" maxlength="255" required></div>'
-    . '<div class="kiosk-field"><label for="notification_preference">How should we notify you?</label><select id="notification_preference" name="notification_preference" required>'
-    . queue_notification_preference_options($selectedNotificationPreference)
-    . '</select><p class="kiosk-helper">Email is the only notification option. You can also check your request status at the barangay office.</p></div>'
     . '<button class="kiosk-primary" type="submit">Get queue number</button></form>'
     . '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';
 kiosk_page_end();

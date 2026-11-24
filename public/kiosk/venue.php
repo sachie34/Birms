@@ -5,7 +5,6 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 $resident = kiosk_require_resident();
 $venues = venue_list(true);
 $errors = [];
-$selectedNotificationPreference = queue_resolve_notification_preference(null, (string) ($resident['notification_preference'] ?? 'email'));
 
 if (is_post()) {
     require_csrf();
@@ -13,20 +12,20 @@ if (is_post()) {
         'Too many venue requests were submitted. Please ask Staff for help.');
     $venueId = post_int('venue_id');
     $purpose = post_str('purpose');
-    $requestedPreference = post_str('notification_preference');
-    if ($requestedPreference !== '' && queue_valid_notification_preference($requestedPreference)) {
-        $selectedNotificationPreference = $requestedPreference;
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && !queue_valid_notification_preference($legacyPreference)) {
+        $errors[] = 'Notification channels are no longer selectable. BIRMS uses email only.';
     }
     if ($venueId === null) { $errors[] = 'Choose a venue.'; }
     if (!$errors) {
         try {
-            $result = db_transaction(function () use ($resident, $venueId, $purpose, $requestedPreference): array {
+            $result = db_transaction(function () use ($resident, $venueId, $purpose): array {
                 $reservation = venue_create_reservation(
                     (int) $venueId, (int) $resident['resident_id'], $purpose,
                     post_str('reservation_date'), post_str('start_time'), post_str('end_time'), null
                 );
                 $ticket = queue_issue_number('Venue', (int) $resident['resident_id'], $reservation['reference_no'], 'kiosk', $purpose,
-                    $requestedPreference !== '' ? $requestedPreference : null, true);
+                    null, true);
                 return ['reservation' => $reservation, 'ticket' => $ticket];
             });
             queue_notify_ticket_issued((int) $result['ticket']['queue_id']);
@@ -60,9 +59,6 @@ else {
         . '<div class="kiosk-grid kiosk-time-grid"><div class="kiosk-field"><label for="reservation_date">Date</label><input type="date" name="reservation_date" id="reservation_date" min="' . e(date('Y-m-d')) . '" required></div>'
         . '<div class="kiosk-field"><label for="start_time">Start time</label><input type="time" name="start_time" id="start_time" required></div>'
         . '<div class="kiosk-field"><label for="end_time">End time</label><input type="time" name="end_time" id="end_time" required></div></div>'
-        . '<div class="kiosk-field"><label for="notification_preference">How should we notify you?</label><select id="notification_preference" name="notification_preference" required>'
-        . queue_notification_preference_options($selectedNotificationPreference)
-        . '</select><p class="kiosk-helper">Email is the only notification option. You can also check your request status at the barangay office.</p></div>'
         . '<button class="kiosk-primary" type="submit">Submit reservation request</button></form>';
 }
 echo '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';

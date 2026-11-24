@@ -12,7 +12,7 @@ function run_b22(array $S, string $base): void
     $purokLabel = 'ZZ B22 Notification Purok';
     $venueName = 'ZZ B22 Notification Venue';
     $email = 'b22-queue-choice@example.test';
-    $phone = '09179992222';
+    $phone = sprintf('0917%07d', random_int(0, 9999999));
     $residentId = null;
     $secondResidentId = null;
     $secondResidentNo = $residentNo . '-NEXT';
@@ -160,24 +160,34 @@ function run_b22(array $S, string $base): void
             '/kiosk/venue.php' => $kiosk->get('/kiosk/venue.php'),
         ];
         $residentProfile = $S['admin']->get('/residents/form.php');
-        $residentProfileEmailOnly = $residentProfile['status'] === 200
-            && str_contains($residentProfile['body'], 'value="email"')
-            && !str_contains($residentProfile['body'], 'value="sms"')
-            && !str_contains($residentProfile['body'], 'value="both"');
-        $formsOfferChoice = $verified && $residentProfileEmailOnly;
+        $residentProfileHasNoChannelControl = $residentProfile['status'] === 200
+            && !str_contains($residentProfile['body'], 'name="notification_preference"')
+            && !str_contains($residentProfile['body'], 'Notification channel');
+        $formsHaveNoChannelControls = $verified && $residentProfileHasNoChannelControl;
         foreach ($forms as $page) {
-            $formsOfferChoice = $formsOfferChoice
+            $formsHaveNoChannelControls = $formsHaveNoChannelControls
                 && $page['status'] === 200
-                && str_contains($page['body'], 'name="notification_preference"')
-                && str_contains($page['body'], 'option value="email"')
-                && !str_contains($page['body'], 'option value="sms"')
-                && !str_contains($page['body'], 'option value="both"');
+                && !str_contains($page['body'], 'name="notification_preference"')
+                && !str_contains($page['body'], 'How should we notify you?')
+                && !str_contains($page['body'], 'value="sms"')
+                && !str_contains($page['body'], 'value="both"');
         }
+        $residentPreferenceType = (string) db_val(
+            "SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'residents' AND COLUMN_NAME = 'notification_preference'"
+        );
+        record(
+            'B22-22',
+            'The active resident notification preference is restricted to email at the database level',
+            strtolower($residentPreferenceType) === "enum('email')",
+            'resident notification_preference column=' . $residentPreferenceType
+        );
+
         record(
             'B22-01',
-            'Resident kiosk forms offer email-only notifications and no SMS choices',
-            $formsOfferChoice,
-            $formsOfferChoice ? 'all four resident forms checked' : 'resident profile or one or more kiosk forms did not expose the email-only option'
+            'Resident profile and all kiosk forms have no notification-channel selector',
+            $formsHaveNoChannelControls,
+            $formsHaveNoChannelControls ? 'resident profile and all four kiosk forms checked' : 'a resident form still exposes a notification-channel control'
         );
 
         $emailRowsBeforeDispatchGuard = (int) db_val('SELECT COUNT(*) FROM notification_outbox WHERE resident_id = ?', [$residentId]);
@@ -213,12 +223,10 @@ function run_b22(array $S, string $base): void
         $firstPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
             'purpose' => 'Email-only queue ticket test one',
-            'notification_preference' => 'email',
         ]);
         $secondPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
             'purpose' => 'Email-only queue ticket test two',
-            'notification_preference' => 'email',
         ]);
         $rows = db_all(
             'SELECT queue_id, queue_number, notification_preference, status
@@ -252,9 +260,7 @@ function run_b22(array $S, string $base): void
             'tickets=' . count($rows) . '; saved=' . $savedPreference . '; SMS outbox=' . $smsIssuedCount . '; email outbox=' . $emailIssuedCount
         );
 
-        // Change the profile preference after issuance. Notifications for existing tickets
-        // must still use the channel each resident selected for that specific queue visit.
-        db_exec("UPDATE residents SET notification_preference = 'email' WHERE resident_id = ?", [$residentId]);
+        // The channel is no longer user-selectable. Every new queue ticket stores email.
         $called = post_as($S['clerk'], '/queue/index.php', '/queue/action.php', [
             'do' => 'call_next',
             'service' => 'Venue',
@@ -299,8 +305,8 @@ function run_b22(array $S, string $base): void
 
         $invalidPost = post_as($kiosk, '/kiosk/queue.php', '/kiosk/queue.php', [
             'service' => 'Venue',
-            'purpose' => 'Invalid preference must not issue ticket',
-            'notification_preference' => 'push',
+            'purpose' => 'Forged SMS preference must not issue ticket',
+            'notification_preference' => 'sms',
         ]);
         $afterInvalidCount = (int) db_val(
             'SELECT COUNT(*) FROM queue_entries WHERE resident_id = ? AND queue_id > ?',
@@ -312,7 +318,7 @@ function run_b22(array $S, string $base): void
         );
         record(
             'B22-04',
-            'An invalid notification choice is rejected without issuing a ticket or changing the saved preference',
+            'A forged SMS notification choice is rejected without issuing a ticket or changing the saved preference',
             $invalidPost['status'] === 302 && $afterInvalidCount === 2 && $profileAfterInvalid === 'email'
         );
 
@@ -552,20 +558,20 @@ function run_b22(array $S, string $base): void
             && str_contains($redactedOtpMessage, 'redacted')
         );
 
-        $emailOptions = queue_notification_preference_options('email');
+        $smsRejected = false;
+        try { queue_resolve_notification_preference('sms'); }
+        catch (InvalidArgumentException) { $smsRejected = true; }
         $emailOnlyRules = queue_valid_notification_preference('email')
             && !queue_valid_notification_preference('sms')
             && !queue_valid_notification_preference('both')
-            && queue_resolve_notification_preference(null, 'email') === 'email'
-            && queue_resolve_notification_preference('email', 'email') === 'email'
-            && str_contains($emailOptions, 'value="email"')
-            && !str_contains($emailOptions, 'value="sms"')
-            && !str_contains($emailOptions, 'value="both"');
+            && queue_resolve_notification_preference(null, 'sms') === 'email'
+            && queue_resolve_notification_preference('email', 'sms') === 'email'
+            && $smsRejected;
         record(
             'B22-11',
-            'Notification preference validation and rendering are email-only; SMS and Both are rejected',
+            'Email is the only accepted notification preference; legacy SMS and Both are rejected',
             $emailOnlyRules,
-            'email-only option and validator verified'
+            'email-only default and server-side SMS rejection verified'
         );
 
         $challengeFixtures = [];
@@ -700,10 +706,7 @@ function run_b22(array $S, string $base): void
             db_exec('DELETE FROM notification_outbox WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
             db_exec('DELETE FROM resident_verification_challenges WHERE resident_id IN (' . $marks . ')', $cleanupResidentIds);
         }
-        db_exec(
-            "DELETE FROM sms_outbox WHERE recipient_number = ? AND trigger_event IN ('queue_issued','queue_called','queue_near')",
-            [$phone]
-        );
+        // Legacy SMS history is intentionally not deleted by this test.
         if ($venueId !== null) {
             db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id = ?)', [$venueId]);
             db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$venueId]);

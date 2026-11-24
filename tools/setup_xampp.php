@@ -86,6 +86,7 @@ function setup_check(): int
         '/database/migrations/019_certificate_draft_generation.sql',
         '/database/migrations/020_reporting_date_indexes.sql',
         '/database/migrations/021_directory_order_indexes.sql',
+        '/database/migrations/022_email_only_resident_preference.sql',
         '/app/bootstrap.php',
         '/app/core.php',
         '/app/config.local.php.example',

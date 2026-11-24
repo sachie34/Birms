@@ -61,17 +61,20 @@ $v = [
     'contact_number' => $ex['contact_number'] ?? '',
     'email_address' => $ex['email_address'] ?? '',
     'photo_path' => $ex['photo_path'] ?? null,
-    'notification_preference' => 'email',
     'confirm_dup' => false,
 ];
 
 if (is_post()) {
     require_csrf();
     foreach (['last_name','first_name','middle_name','suffix','birthdate','sex','marital_status','address','purok_id',
-              'resident_status_id','resident_type_id','contact_number','email_address','notification_preference'] as $k) {
+              'resident_status_id','resident_type_id','contact_number','email_address'] as $k) {
         $v[$k] = post_str($k);
     }
     $v['confirm_dup'] = post_str('confirm_dup') === '1';
+    $legacyPreference = post_str('notification_preference');
+    if ($legacyPreference !== '' && $legacyPreference !== 'email') {
+        $errors[] = 'Notification channels are no longer selectable. BIRMS uses email only.';
+    }
 
     if (!v_person_name($v['last_name'])) { $errors[] = 'Last name is required (letters, spaces, . \' - only).'; }
     if (!v_person_name($v['first_name'])) { $errors[] = 'First name is required (letters, spaces, . \' - only).'; }
@@ -91,7 +94,6 @@ if (is_post()) {
     $photoFile = $_FILES['photo'] ?? null;
     $photoError = resident_photo_upload_error(is_array($photoFile) ? $photoFile : null);
     if ($photoError !== null) { $errors[] = $photoError; }
-    if ($v['notification_preference'] !== 'email') { $errors[] = 'Only email notifications are supported.'; }
 
     $identityChanged = $ex === null
         || $ex['first_name'] !== $v['first_name']
@@ -139,7 +141,7 @@ if (is_post()) {
             $common = [
                 $residentNo, $v['address'], (int) $v['purok_id'], $statusId, $v['marital_status'], $typeId,
                 $v['contact_number'] !== '' ? preg_replace('/[\s-]/', '', $v['contact_number']) : null,
-                $v['email_address'] !== '' ? strtolower($v['email_address']) : null, $photoPath, $v['notification_preference'],
+                $v['email_address'] !== '' ? strtolower($v['email_address']) : null, $photoPath, 'email',
                 $v['last_name'], $v['first_name'], $v['middle_name'] !== '' ? $v['middle_name'] : null,
                 $v['suffix'] !== '' ? $v['suffix'] : null, $v['birthdate'], $v['sex'], $v['marital_status'],
                 $legacyCategory ? (int) $legacyCategory : null, $employmentId, $legacyVoter, $legacyStatus,
@@ -166,7 +168,7 @@ if (is_post()) {
                 array_merge($common, [$rid]));
 
             $changes = [];
-            foreach (['last_name','first_name','middle_name','suffix','birthdate','sex','marital_status','address','contact_number','email_address','notification_preference'] as $key) {
+            foreach (['last_name','first_name','middle_name','suffix','birthdate','sex','marital_status','address','contact_number','email_address'] as $key) {
                 if ((string) ($ex[$key] ?? '') !== (string) ($v[$key] ?? '')) { $changes[] = $key . ' changed'; }
             }
             foreach (['purok_id','resident_status_id','resident_type_id'] as $key) {
@@ -217,7 +219,7 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
     <?= f_select('resident_status_id', 'Resident status', $statuses, (string) $v['resident_status_id'], ['required' => true, 'blank' => 'Select status', 'col' => 'col-12']) ?>
     <?= f_select('resident_type_id', 'Resident type', $types, (string) $v['resident_type_id'], ['required' => true, 'blank' => 'Select type', 'col' => 'col-12']) ?>
   </div></div></div></div>
-  <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Contact and notifications</h2></div><div class="card-body-b"><div class="row">
+  <div class="col-lg-4"><div class="card-b h-100"><div class="card-h"><h2>Contact information</h2></div><div class="card-body-b"><div class="row">
     <?= f_text('contact_number', 'Mobile number', (string) $v['contact_number'], ['maxlength' => 20, 'placeholder' => '09171234567', 'col' => 'col-12']) ?>
     <?= f_text('email_address', 'Email address', (string) $v['email_address'], ['type' => 'email', 'maxlength' => 100, 'placeholder' => 'resident@example.com', 'col' => 'col-12']) ?>
     <div class="col-12">
@@ -225,7 +227,6 @@ $action = base_url('residents/form.php' . ($ex ? '?id=' . (int) $ex['resident_id
       <input class="form-control" type="file" id="photo" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
       <?php if ($ex && !empty($ex['photo_path'])): ?><div class="mt-2"><img src="<?= e(base_url('residents/photo.php?id=' . (int) $ex['resident_id'])) ?>" alt="Current resident photo" width="112" height="112" class="img-thumbnail"><div class="form-text">Choose a new image to replace the current photo.</div></div><?php endif; ?>
     </div>
-    <?= f_select('notification_preference', 'Notification channel', ['email'=>'Email'], 'email', ['required' => true, 'col' => 'col-12', 'help' => 'Email is the only supported resident notification channel.']) ?>
   </div></div></div></div>
 </div>
 <?php if ($dupFound): ?><div class="card-b mt-3"><div class="card-body-b pt-3"><?= f_check('confirm_dup', 'This is a different person with the same name and birthdate', false) ?></div></div><?php endif; ?>

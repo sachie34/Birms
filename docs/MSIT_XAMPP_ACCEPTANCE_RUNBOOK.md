@@ -1,13 +1,13 @@
 # MSIT Branch — XAMPP and Role Acceptance Runbook
 
 **Repository:** [sachie34/Birms](https://github.com/sachie34/Birms)  
-**Validated demonstration candidate branch:** `john/phase2-kiosk-no-sms`  
-**Pull request:** [#39 — QR kiosk and email-only workflow](https://github.com/sachie34/Birms/pull/39)  
+**Email-only follow-up review branch:** `codex/email-only-failure-safety` (based on `john/phase2-kiosk-no-sms`; use only after exact-head CI passes)  
+**Pull requests:** [#39 — base QR kiosk/email-only candidate](https://github.com/sachie34/Birms/pull/39) · [#45 — email-only migration and failure-safety follow-up (draft)](https://github.com/sachie34/Birms/pull/45)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
-> This runbook describes the revised MSIT candidate, not the older B1–B12 `main` build. Download the [validated candidate ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip), not the `main` ZIP or the earlier `john/msit-srs-compliance` snapshot.
+> This runbook describes the revised MSIT candidate, not the older B1–B12 `main` build. Download the [email-only follow-up ZIP](https://github.com/sachie34/Birms/archive/refs/heads/codex/email-only-failure-safety.zip) only after its exact-head CI passes; do not use the older base ZIP because it does not contain migration 022.
 >
-> Latest verified application-code commit: a09e9c2b7725ee6f1c2a9f3f2085fd8ec3128486. GitHub Actions run [#1309](https://github.com/sachie34/Birms/actions/runs/45377461100) passed all 8 PHP/MariaDB matrix jobs (PHP 8.3–8.6 × MariaDB 10.4 and 10.11). Each job reported 48/48 security/authentication/audit checks and 283/283 module checks, with 0 failures and 0 not-tested checks. PHP syntax/includes, XAMPP preflight, migrations/schema checks and demo seed/reseed idempotency also passed. Later candidate commits add documentation only; the application code is unchanged after this verified commit. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
+> Baseline candidate commit a09e9c2b7725ee6f1c2a9f3f2085fd8ec3128486 was covered by GitHub Actions run [#1309](https://github.com/sachie34/Birms/actions/runs/45377461100): 8 PHP/MariaDB jobs passed, each with 48/48 security checks and 283/283 module checks. The follow-up branch `codex/email-only-failure-safety` adds email-only preference migration 022, removes channel selectors, and hardens email/OTP failure handling. Those follow-up changes are **NOT VERIFIED until their own exact-head CI run passes**. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
 >
 > For a real office installation, also follow [PRODUCTION_DEPLOYMENT_RUNBOOK.md](PRODUCTION_DEPLOYMENT_RUNBOOK.md). The XAMPP setup wizard provisions only the isolated working/demo database; it is not the production database procedure.
 
@@ -46,7 +46,7 @@ C:\xampp\php\php.exe tools\setup_xampp.php --check
 C:\xampp\php\php.exe -m | findstr /I "zip"
 ```
 
-The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migrations 019, 020 and 021 are present in the source folder; migration 021 is the current candidate's latest migration sentinel. If this check fails, do not proceed with a mixed or incomplete project copy.
+The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migrations 019, 020, 021 and 022 are present in the source folder; migration 022 is the current candidate's latest migration sentinel. If this check fails, do not proceed with a mixed or incomplete project copy.
 
 Then verify the ZIP extension needed for complete system backups:
 1. Run the CLI command above and confirm `zip` appears in the module list.
@@ -73,6 +73,8 @@ C:\xampp\php\php.exe tools\schema_check.php
 ```
 
 The status command is read-only. If there are pending migrations, back up `barangay_db_work` and restore that backup to a separate scratch database before rehearsing the upgrade.
+
+**Migration 022 data note:** it changes any existing resident preference of `sms` or `both` to `email`, then restricts the active resident preference column to `ENUM('email')`. It does not delete historical SMS outbox rows or old queue-ticket preference snapshots. The down script widens the column again but cannot reconstruct the former resident preferences; take and retain a working-database backup before applying it.
 
 **Important migration 013 pre-check:** before applying the hearing uniqueness guard to an existing working database, run this query in phpMyAdmin against the working copy:
 
@@ -148,7 +150,7 @@ Use a synthetic resident with a unique Resident ID, birthdate and reserved `.inv
 
 1. Open the shared document-request QR entry URL from the local server. Do not use a QR that encodes personal resident information.
 2. Verify the resident with Resident ID and birthdate. Test the name-and-birthdate fallback only with a controlled test email account; the one-time code is sent to the registered email address. There is no SMS fallback.
-3. Open the queue, document request, blotter report and venue reservation kiosk forms. Confirm the notification choice is Email only and that no SMS or Both option is offered.
+3. Open the queue, document request, blotter report and venue reservation kiosk forms. Confirm there is no notification-channel selector; email is used automatically when a valid registered address is available.
 4. Submit one test queue ticket and one request of each supported type. Confirm a unique reference and the correct service queue number are shown.
 5. Confirm the Email preference is saved to the resident and queue ticket. Verify that called and next-in-line alerts use email only when a valid registered address exists; an outbox/queued status is not proof of delivery.
 6. Confirm the public queue screen shows service and current queue number but no resident-identifying information.

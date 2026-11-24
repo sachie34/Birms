@@ -42,7 +42,7 @@ The document workflow has visible handoffs. The resident keeps the reference num
 1. Tap **Request a document**.
 2. Choose the document type.
 3. Enter the purpose clearly.
-4. Confirm the email-only notification option.
+4. No notification-channel choice is shown; email notifications are automatic when a valid address is recorded.
 5. Submit once. Wait for the receipt; do not submit repeatedly if the page takes time.
 6. Keep the reference number and Documents queue ticket.
 7. Use **Check request status** to see the latest public status. If the office needs more information, follow the instruction given by Staff.
@@ -81,7 +81,7 @@ A queue ticket is not the same as approval of a document, blotter report or venu
 ## 5. Venue reservation lifecycle
 
 1. Resident verifies identity and chooses **Reserve a venue**.
-2. Select the venue, date, start/end time and purpose. Email is the only notification channel.
+2. Select the venue, date, start/end time and purpose. Email updates are automatic when a valid resident email is recorded; no notification-channel selector is shown.
 3. Submit and keep the reservation reference and Venue queue ticket.
 4. Staff/Admin reviews the reservation and approves or rejects it. A pending or approved reservation blocks overlapping requests for the same venue/time. The system rechecks conflicts when approving.
 5. The venue board shows **Available** or **In Use**. The Secretary can change room availability for blotter/hearing arrangements; Staff/Admin handle reservation decisions.

@@ -15,7 +15,10 @@ function queue_valid_notification_preference(string $preference): bool
     return strtolower(trim($preference)) === 'email';
 }
 
-/** Accept only the supported email notification preference. */
+/**
+ * Normalize all legacy stored preferences to email. The optional fallback argument is
+ * retained for older internal callers but deliberately ignored; residents cannot choose channels.
+ */
 function queue_resolve_notification_preference(?string $requested, ?string $fallback = 'email'): string
 {
     if ($requested === null || trim($requested) === '') { return 'email'; }
@@ -23,12 +26,6 @@ function queue_resolve_notification_preference(?string $requested, ?string $fall
         throw new InvalidArgumentException('Only Email notifications are available.');
     }
     return 'email';
-}
-
-/** Render the sole supported resident notification choice. */
-function queue_notification_preference_options(?string $selected = 'email'): string
-{
-    return '<option value="email" selected>Email</option>';
 }
 
 /**
@@ -57,7 +54,7 @@ function queue_issue_number(
     $resident = null;
     if ($residentId !== null) {
         $resident = db_one(
-            'SELECT resident_id, contact_number, email_address, notification_preference, archived_at
+            'SELECT resident_id, email_address, archived_at
              FROM residents WHERE resident_id = ?',
             [$residentId]
         );
@@ -73,11 +70,9 @@ function queue_issue_number(
     if ($purpose !== null && !v_len($purpose, 3, 255)) {
         throw new InvalidArgumentException('Enter the reason for visiting (3-255 characters).');
     }
-    $savedPreference = (string) ($resident['notification_preference'] ?? 'email');
-    $preference = queue_resolve_notification_preference($notificationPreference, $savedPreference);
-    $persistPreference = $residentId !== null && $notificationPreference !== null && trim($notificationPreference) !== '';
+    $preference = queue_resolve_notification_preference($notificationPreference);
 
-    $entry = db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference, $persistPreference, $resident): array {
+    $entry = db_transaction(function () use ($service, $residentId, $referenceNo, $issuedVia, $purpose, $preference): array {
         $today = date('Y-m-d');
         db_exec('INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)', [$service, $today]);
         $counter = db_one('SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE', [$service, $today]);
@@ -90,18 +85,6 @@ function queue_issue_number(
              VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', ?, ?)',
             [$service, $today, $number, $residentId, ($referenceNo !== '' ? $referenceNo : null), $purpose, $issuedVia, $preference]
         );
-        if ($persistPreference && (string) ($resident['notification_preference'] ?? 'email') !== $preference) {
-            db_exec(
-                'UPDATE residents SET notification_preference = ? WHERE resident_id = ? AND archived_at IS NULL',
-                [$preference, $residentId]
-            );
-            audit_best_effort(
-                'resident_notification_preference_changed',
-                'Notifications',
-                'Success',
-                'Resident #' . $residentId . ' changed their self-service notification preference to ' . $preference . '.'
-            );
-        }
         $id = (int) db()->lastInsertId();
         audit('queue_number_issued', 'Queue', 'Success', $service . ' queue #' . $number . ' issued for ' . $today, 'queue_entry', $id);
         return ['queue_id' => $id, 'service' => $service, 'queue_date' => $today, 'queue_number' => $number];
@@ -172,7 +155,7 @@ function queue_dispatch_resident_notification(
     }
 }
 
-/** Put channel notices in the outbox atomically, then contact providers only after that transaction commits. */
+/** Put email-only notices in the outbox after the service transaction commits. Legacy channel overrides are ignored. */
 function queue_enqueue_notifications(
     int $residentId,
     string $service,

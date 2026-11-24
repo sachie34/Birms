@@ -2986,7 +2986,7 @@
         "extra": ""
       },
       "notification_preference": {
-        "type": "enum('email','sms','both')",
+        "type": "enum('email')",
         "nullable": false,
         "default": "email",
         "extra": ""

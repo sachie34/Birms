@@ -136,18 +136,29 @@ function kiosk_send_verification_code(array $resident): array
     $code = (string) random_int(100000, 999999);
     $tokenHash = hash('sha256', $token);
     $codeHash = hash('sha256', $token . ':' . $code);
-    db_exec(
-        "INSERT INTO resident_verification_challenges
-         (challenge_token_hash, code_hash, resident_id, channel, destination_snapshot, expires_at, attempt_count)
-         VALUES (?, ?, ?, 'email', ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 0)",
-        [$tokenHash, $codeHash, $residentId, $email, KIOSK_CODE_TTL_SECONDS]
-    );
-    $challengeId = (int) db()->lastInsertId();
-    $notificationId = email_queue_notification(
-        $residentId, $email, 'Barangay kiosk verification code',
-        'Your Barangay service kiosk verification code is ' . $code . '. It expires in 5 minutes. Do not share this code.',
-        'resident_verification', null
-    );
+    try {
+        [$challengeId, $notificationId] = db_transaction(function () use ($tokenHash, $codeHash, $residentId, $email, $code): array {
+            db_exec(
+                "INSERT INTO resident_verification_challenges
+                 (challenge_token_hash, code_hash, resident_id, channel, destination_snapshot, expires_at, attempt_count)
+                 VALUES (?, ?, ?, 'email', ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 0)",
+                [$tokenHash, $codeHash, $residentId, $email, KIOSK_CODE_TTL_SECONDS]
+            );
+            $challengeId = (int) db()->lastInsertId();
+            $notificationId = email_queue_notification(
+                $residentId, $email, 'Barangay kiosk verification code',
+                'Your Barangay service kiosk verification code is ' . $code . '. It expires in 5 minutes. Do not share this code.',
+                'resident_verification', null
+            );
+            return [$challengeId, $notificationId];
+        });
+    } catch (Throwable $queueError) {
+        error_log('BIRMS kiosk verification email could not be queued for resident #' . $residentId . ': ' . get_class($queueError));
+        audit_best_effort('resident_verification_queue_failed', 'Security', 'Failed',
+            'A kiosk verification email could not be prepared for resident #' . $residentId . '.');
+        return ['ok' => false, 'message' => 'The verification email could not be prepared. Use your Resident ID and birthdate, or ask Staff for help.'];
+    }
+
     $delivery = ['ok' => false];
     $redacted = false;
     try {
@@ -164,11 +175,18 @@ function kiosk_send_verification_code(array $resident): array
                 'A kiosk verification email outbox message could not be redacted after its delivery attempt.');
         }
     }
+
     if (!empty($delivery['ok']) && $redacted) {
         $_SESSION['kiosk_challenge_token'] = $token;
         return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination($email)];
     }
-    db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
+    try {
+        db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
+    } catch (Throwable $consumeError) {
+        error_log('BIRMS kiosk verification challenge cleanup failed for resident #' . $residentId . ': ' . get_class($consumeError));
+        audit_best_effort('resident_verification_cleanup_failed', 'Security', 'Failed',
+            'A failed kiosk verification challenge could not be marked consumed; it remains inaccessible and will expire automatically.');
+    }
     return ['ok' => false, 'message' => 'The verification email could not be sent. Use your Resident ID and birthdate, or ask Staff for help.'];
 }
 
