@@ -17,9 +17,15 @@ function run_b22(array $S, string $base): void
     $secondResidentNo = $residentNo . '-NEXT';
     $venueId = null;
     $queueStartId = (int) (db_val('SELECT COALESCE(MAX(queue_id), 0) FROM queue_entries') ?? 0);
+    $resetKioskIdentityRateLimit = static function (): void {
+        $bucketHash = hash('sha256', 'kiosk_identity_ip' . chr(0) . '127.0.0.1');
+        db_exec('DELETE FROM rate_limit_buckets WHERE bucket_hash = ?', [$bucketHash]);
+    };
 
     db_exec("DELETE FROM residents WHERE resident_no = ?", [$residentNo]);
     db_exec("DELETE FROM lookups WHERE list_key = 'purok' AND label = ?", [$purokLabel]);
+    db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id IN (SELECT venue_id FROM venues WHERE name = ?))', [$venueName]);
+    db_exec('DELETE FROM venue_reservations WHERE venue_id IN (SELECT venue_id FROM venues WHERE name = ?)', [$venueName]);
     db_exec("DELETE FROM venues WHERE name = ?", [$venueName]);
 
     try {
@@ -46,8 +52,59 @@ function run_b22(array $S, string $base): void
         );
         $venueId = (int) db()->lastInsertId();
 
+        // Secretary may manually override availability, but cannot approve reservations or manage venue setup.
+        $secretaryReservation = venue_create_reservation(
+            $venueId, $residentId, 'B22 Secretary override permission test',
+            date('Y-m-d', strtotime('+1 day')), '10:00', '11:00', null
+        );
+        $secretaryVenuePage = $S['secretary']->get('/venues/index.php');
+        $secretaryOverride = post_as($S['secretary'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'in_use',
+        ]);
+        $secretaryApprove = post_as($S['secretary'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'approve', 'reservation_id' => (string) $secretaryReservation['reservation_id'],
+        ]);
+        $chairmanOverride = post_as($S['captain'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'available',
+        ]);
+        $secretaryOverrideOk = $secretaryVenuePage['status'] === 200
+            && str_contains($secretaryVenuePage['body'], 'name="do" value="override"')
+            && !str_contains($secretaryVenuePage['body'], 'Add a venue')
+            && !str_contains($secretaryVenuePage['body'], 'name="do" value="approve"')
+            && $secretaryOverride['status'] === 302
+            && db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]) === 'in_use'
+            && $secretaryApprove['status'] === 403
+            && $chairmanOverride['status'] === 403
+            && db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]) === 'in_use'
+            && db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']]) === 'Pending';
+        record(
+            'B22-20',
+            'Secretary can toggle venue availability without receiving venue setup or reservation-approval permissions',
+            $secretaryOverrideOk,
+            'page=' . $secretaryVenuePage['status'] . '; override=' . $secretaryOverride['status']
+            . '; approval=' . $secretaryApprove['status']
+            . '; chairman-override=' . $chairmanOverride['status']
+            . '; override-state=' . (string) db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId])
+            . '; reservation=' . (string) db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']])
+        );
+
+        // The shared QR must show the service menu before identity verification.
+        $publicKiosk = new Http($base);
+        $publicHome = $publicKiosk->get('/kiosk/index.php');
+        $selectedBlotter = $publicKiosk->get('/kiosk/index.php?next=blotter');
+        $publicMenuReady = $publicHome['status'] === 200
+            && str_contains($publicHome['body'], 'Document Request')
+            && str_contains($publicHome['body'], 'Indigency')
+            && str_contains($publicHome['body'], 'Blotter / Complaint')
+            && str_contains($publicHome['body'], 'Venue Reservation')
+            && str_contains($publicHome['body'], 'Get a Queue Number')
+            && str_contains($publicHome['body'], 'walk-in visit without submitting a request online')
+            && str_contains($publicHome['body'], 'Track My Request')
+            && str_contains($selectedBlotter['body'], 'name="next" value="blotter"');
+
         // Verify through the same public Resident ID + birthdate flow used at the kiosk.
         $kiosk = new Http($base);
+        $resetKioskIdentityRateLimit();
         $identify = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
             'resident_no' => $residentNo,
@@ -57,6 +114,38 @@ function run_b22(array $S, string $base): void
         $verified = $identify['status'] === 302
             && $home['status'] === 200
             && str_contains($home['body'], 'IDENTITY VERIFIED');
+
+        $serviceDestinations = [
+            'request' => '/kiosk/request.php',
+            'blotter' => '/kiosk/blotter.php',
+            'venue' => '/kiosk/venue.php',
+            'queue' => '/kiosk/queue.php',
+        ];
+        $selectedRoutes = [];
+        foreach ($serviceDestinations as $serviceKey => $expectedPath) {
+            $routeKiosk = new Http($base);
+            $resetKioskIdentityRateLimit();
+            $selectedRoutes[$serviceKey] = $routeKiosk->post('/kiosk/identify.php', [
+                '_csrf' => $routeKiosk->token('/kiosk/index.php'),
+                'resident_no' => $residentNo,
+                'birthdate' => '1991-04-18',
+                'next' => $serviceKey,
+            ]);
+        }
+        $allServiceRoutesOk = true;
+        $serviceRouteDetails = [];
+        foreach ($serviceDestinations as $serviceKey => $expectedPath) {
+            $response = $selectedRoutes[$serviceKey];
+            $matched = $response['status'] === 302 && str_contains((string) loc($response), $expectedPath);
+            $allServiceRoutesOk = $allServiceRoutesOk && $matched;
+            $serviceRouteDetails[] = $serviceKey . '=' . (string) loc($response);
+        }
+        record(
+            'B22-19',
+            'Selecting any service before identity verification preserves the selection after Resident ID verification',
+            $allServiceRoutesOk,
+            implode('; ', $serviceRouteDetails)
+        );
 
         $forms = [
             '/kiosk/queue.php' => $kiosk->get('/kiosk/queue.php'),
@@ -282,19 +371,29 @@ function run_b22(array $S, string $base): void
         $qrParts = $sharedQrUrl !== '' ? parse_url($sharedQrUrl) : false;
         $qrQuery = [];
         if (is_array($qrParts) && isset($qrParts['query'])) { parse_str($qrParts['query'], $qrQuery); }
+        $kioskMenuReady = $publicMenuReady
+            && $verified
+            && str_contains($home['body'], 'Document Request')
+            && str_contains($home['body'], 'Blotter / Complaint')
+            && str_contains($home['body'], 'Venue Reservation')
+            && str_contains($home['body'], 'Get a Queue Number')
+            && str_contains($home['body'], 'Track My Request');
         $qrPrivacyOk = $adminQrPage['status'] === 200
             && $chairmanQrPage['status'] === 403
             && is_array($qrParts)
             && str_contains((string) ($qrParts['path'] ?? ''), '/kiosk/index.php')
-            && $qrQuery === ['next' => 'request']
-            && !preg_match('/resident_id|resident_no|birthdate|first_name|last_name|email|mobile|phone/i', $sharedQrUrl);
+            && $qrQuery === []
+            && !preg_match('/resident_id|resident_no|birthdate|first_name|last_name|email|mobile|phone/i', $sharedQrUrl)
+            && str_contains($adminQrPage['body'], 'One QR code for all resident services')
+            && $kioskMenuReady;
         record(
             'B22-14',
-            'Shared document request QR contains only the public kiosk entry and exposes no resident identity data',
+            'Shared QR opens the universal self-service kiosk menu for verified residents and exposes no resident identity data',
             $qrPrivacyOk,
             'Admin=' . $adminQrPage['status'] . '; Chairman=' . $chairmanQrPage['status']
             . '; URL=' . ($sharedQrUrl !== '' ? $sharedQrUrl : '[missing]')
             . '; query=' . json_encode($qrQuery)
+            . '; verified menu=' . ($kioskMenuReady ? 'all five service options present' : 'missing service option')
         );
 
         $webCss = (string) file_get_contents(APP_ROOT . '/public/assets/css/birms.css');
@@ -519,6 +618,7 @@ function run_b22(array $S, string $base): void
             . '; resident session retained=' . (str_contains($stillFirstResident['body'], 'IDENTITY VERIFIED') ? 'yes' : 'no')
         );
         $endSession = $kiosk->post('/kiosk/end.php', ['_csrf' => $kiosk->token('/kiosk/index.php')]);
+        $resetKioskIdentityRateLimit();
         $secondIdentity = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
             'resident_no' => $secondResidentNo,
@@ -537,6 +637,7 @@ function run_b22(array $S, string $base): void
             . '; old ticket=' . $oldTicket['status'] . '; redirect=' . (string) loc($oldTicket)
         );
 
+        $resetKioskIdentityRateLimit();
         $failedResidentSwitch = $kiosk->post('/kiosk/identify.php', [
             '_csrf' => $kiosk->token('/kiosk/index.php'),
             'resident_no' => 'RES-B22-NOT-FOUND',
@@ -575,6 +676,7 @@ function run_b22(array $S, string $base): void
             [$phone]
         );
         if ($venueId !== null) {
+            db_exec('DELETE FROM request_status_history WHERE reservation_id IN (SELECT reservation_id FROM venue_reservations WHERE venue_id = ?)', [$venueId]);
             db_exec('DELETE FROM venue_reservations WHERE venue_id = ?', [$venueId]);
             db_exec('DELETE FROM venues WHERE venue_id = ?', [$venueId]);
         }
