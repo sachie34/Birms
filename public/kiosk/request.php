@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
 $resident = kiosk_require_resident();
 $types = db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name');
+$selectedTypeId = get_int('type_id') ?? 0;
+if (!in_array($selectedTypeId, array_map(static fn(array $item): int => (int) $item['type_id'], $types), true)) { $selectedTypeId = 0; }
 $errors = [];
 
 if (is_post()) {
@@ -11,6 +13,7 @@ if (is_post()) {
     rate_limit_require('kiosk_document_request', (string) $resident['resident_id'], 5, 3600,
         'Too many document requests were submitted from this resident session. Please ask Staff for help.');
     $typeId = post_int('type_id');
+    $selectedTypeId = $typeId ?? 0;
     $purpose = post_str('purpose');
     $type = $typeId ? db_one('SELECT type_id, name FROM document_types WHERE type_id = ? AND is_active = 1', [$typeId]) : null;
     if ($type === null) { $errors[] = 'Choose an available document type.'; }
@@ -51,7 +54,7 @@ kiosk_page_start('Request a document', 'Choose a document, state its purpose and
 if ($errors) { echo '<div class="kiosk-alert kiosk-alert-error">' . e(implode(' ', $errors)) . '</div>'; }
 echo '<section class="kiosk-card"><form method="post" action="' . e(base_url('kiosk/request.php')) . '" class="kiosk-form">' . csrf_field()
     . '<div class="kiosk-field"><label for="type_id">Document type</label><select id="type_id" name="type_id" required><option value="">Choose a document</option>';
-foreach ($types as $type) { echo '<option value="' . (int) $type['type_id'] . '">' . e((string) $type['name']) . '</option>'; }
+foreach ($types as $type) { echo '<option value="' . (int) $type['type_id'] . '"' . ($selectedTypeId === (int) $type['type_id'] ? ' selected' : '') . '>' . e((string) $type['name']) . '</option>'; }
 echo '</select></div><div class="kiosk-field"><label for="purpose">Purpose</label><textarea id="purpose" name="purpose" maxlength="255" rows="3" required></textarea></div>'
     . '<button class="kiosk-primary" type="submit">Submit document request</button></form>'
     . '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';
