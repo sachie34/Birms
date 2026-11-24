@@ -148,7 +148,7 @@ Use a synthetic resident with a unique Resident ID, birthdate and reserved `.inv
 
 1. Open the shared document-request QR entry URL from the local server. Do not use a QR that encodes personal resident information.
 2. Verify the resident with Resident ID and birthdate. Test the name-and-birthdate fallback only with a controlled test email account; the one-time code is sent to the registered email address. There is no SMS fallback.
-3. Open the queue, document request, blotter report and venue reservation kiosk forms. Confirm the notification choice is Email only and that no SMS or Both option is offered.
+3. Open the queue, document request, blotter report and venue reservation kiosk forms. Confirm there is no notification-channel selector; email is used automatically when a valid registered address is available.
 4. Submit one test queue ticket and one request of each supported type. Confirm a unique reference and the correct service queue number are shown.
 5. Confirm the Email preference is saved to the resident and queue ticket. Verify that called and next-in-line alerts use email only when a valid registered address exists; an outbox/queued status is not proof of delivery.
 6. Confirm the public queue screen shows service and current queue number but no resident-identifying information.
