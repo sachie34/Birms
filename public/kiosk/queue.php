@@ -31,7 +31,7 @@ if (is_post()) {
         redirect('kiosk/queue.php');
     }
 }
-kiosk_page_start('Get a queue number', 'Choose which office service you are visiting. Each service has its own daily queue.');
+kiosk_page_start('Get a queue number', 'Use this for a walk-in service visit when you are not submitting a request online. Document, blotter and venue request forms issue their matching queue ticket automatically.');
 echo '<section class="kiosk-card"><form method="post" action="' . e(base_url('kiosk/queue.php')) . '" class="kiosk-form">' . csrf_field()
     . '<div class="kiosk-field"><label for="service">Service</label><select id="service" name="service" required><option value="">Choose a service</option>';
 foreach (QUEUE_SERVICES as $service) {
