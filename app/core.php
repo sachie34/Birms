@@ -83,7 +83,6 @@ function config(?string $path = null, mixed $default = null): mixed
             $o = require $local;
             if (is_array($o)) { $cfg = array_replace_recursive($cfg, $o); }
         }
-        }
 
         $envMap = [
             'BIRMS_DB_HOST' => ['db', 'host'],
