@@ -92,7 +92,6 @@ if (is_post()) {
     $photoError = resident_photo_upload_error(is_array($photoFile) ? $photoFile : null);
     if ($photoError !== null) { $errors[] = $photoError; }
     if ($v['notification_preference'] !== 'email') { $errors[] = 'Only email notifications are supported.'; }
-    if ($v['email_address'] === '') { $errors[] = 'Enter an email address for resident notifications.'; }
 
     $identityChanged = $ex === null
         || $ex['first_name'] !== $v['first_name']
