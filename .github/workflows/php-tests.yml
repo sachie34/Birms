@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main, john/msit-srs-compliance, codex/presentation-role-ui-readiness]
   push:
-    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, john/phase2-kiosk-no-sms]
+    branches: [main, john/paper-code-compliance, john/msit-srs-compliance, john/unified-resident-service-qr, codex/presentation-role-ui-readiness, john/phase2-kiosk-no-sms]
 
 permissions:
   contents: read
