@@ -42,7 +42,7 @@ The document workflow has visible handoffs. The resident keeps the reference num
 1. Tap **Request a document**.
 2. Choose the document type.
 3. Enter the purpose clearly.
-4. Confirm the email-only notification option.
+4. No notification-channel choice is shown; email notifications are automatic when a valid address is recorded.
 5. Submit once. Wait for the receipt; do not submit repeatedly if the page takes time.
 6. Keep the reference number and Documents queue ticket.
 7. Use **Check request status** to see the latest public status. If the office needs more information, follow the instruction given by Staff.
