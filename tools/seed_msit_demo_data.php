@@ -132,6 +132,140 @@ function msit_demo_template(string $type, string $body): string
         . "Signature status: DEMO ONLY - no official signature is represented.\n\n"
         . "DEMO ONLY — NOT AN OFFICIAL DOCUMENT";
 }
+
+function msit_demo_set_blank_setting(string $key, string $value): void
+{
+    $exists = (int) db_val('SELECT COUNT(*) FROM settings WHERE setting_key = ?', [$key]);
+    if ($exists === 0) {
+        db_exec('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', [$key, $value]);
+        return;
+    }
+    // Demo defaults fill blanks only. Configured Barangay names and wording are never overwritten.
+    db_exec(
+        "UPDATE settings SET setting_value = ? WHERE setting_key = ? AND (setting_value IS NULL OR TRIM(setting_value) = '')",
+        [$value, $key]
+    );
+}
+function msit_demo_seed_default_settings(): void
+{
+    msit_demo_set_blank_setting('captain_name', 'Demo Captain');
+    msit_demo_set_blank_setting('secretary_name', 'Demo Secretary');
+    msit_demo_set_blank_setting('summons_wording',
+        "DEMO ONLY — NOT AN OFFICIAL SUMMONS\n\n"
+        . "You are requested to appear before the Barangay regarding case {{case_no}}.\n"
+        . "Complainant(s): {{complainant_names}}\n"
+        . "Respondent(s): {{respondent_names}}\n"
+        . "Hearing: {{hearing_date}} at {{hearing_time}}\n"
+        . "Venue: {{venue}}\n\n"
+        . "For the Barangay Captain: {{captain_name}}\n"
+        . "Prepared by the Barangay Secretary: {{secretary_name}}\n"
+        . "Date prepared: {{date_issued}}\n\n"
+        . "DEMO ONLY — This sample has no legal effect and is not an official summons."
+    );
+}
+function msit_demo_seed_blotter_and_hearing(array $residentIds, array $caseIds, int $venueId): void
+{
+    if (count($residentIds) !== 6 || count($caseIds) !== 3 || $venueId < 1) {
+        throw new RuntimeException('The workflow demo set needs six residents, three blotter cases and the demo hall.');
+    }
+
+    $intakeCount = (int) db_val("SELECT COUNT(*) FROM resident_blotter_requests WHERE reference_no LIKE 'MSIT-DEMO-BLT-%'");
+    if ($intakeCount === 0) {
+        $caseReference = (string) db_val('SELECT case_no FROM blotters WHERE blotter_id = ?', [$caseIds[0]]);
+        if ($caseReference === '') { throw new RuntimeException('The accepted demo blotter case is missing.'); }
+        $purok = static function (int $residentId): ?int {
+            $value = db_val('SELECT purok_id FROM residents WHERE resident_id = ?', [$residentId]);
+            return $value === null ? null : (int) $value;
+        };
+        $rows = [
+            [
+                'MSIT-DEMO-BLT-PND-01', $residentIds[4], date('Y-m-d', strtotime('-1 day')),
+                '10:15:00', 'DEMO ONLY - Sample Community Road', $purok((int) $residentIds[4]),
+                '[DEMO ONLY] Fictitious resident-submitted report awaiting Staff review.',
+                'DemoRespondentPending', 'Pending', 'Ongoing',
+                '[DEMO ONLY] Waiting for Staff review.', null, null,
+            ],
+            [
+                $caseReference, $residentIds[0], date('Y-m-d', strtotime('-2 days')),
+                '09:30:00', 'DEMO ONLY - Sample Community Road', $purok((int) $residentIds[0]),
+                '[DEMO ONLY] Fictitious report accepted by Staff and linked to its official demo case.',
+                'DemoRespondentOne', 'Accepted', 'Ongoing',
+                '[DEMO ONLY] Accepted for the sample workflow.', (int) $caseIds[0], date('Y-m-d H:i:s'),
+            ],
+            [
+                'MSIT-DEMO-BLT-REJ-01', $residentIds[5], date('Y-m-d', strtotime('-3 days')),
+                '14:20:00', 'DEMO ONLY - Sample Community Road', $purok((int) $residentIds[5]),
+                '[DEMO ONLY] Fictitious report rejected because the sample needs more details.',
+                'DemoRespondentRejected', 'Rejected', 'Dismissed',
+                '[DEMO ONLY] Sample rejection reason; no official case was created.', null, date('Y-m-d H:i:s'),
+            ],
+        ];
+        foreach ($rows as $row) {
+            [$reference, $residentId, $incidentDate, $incidentTime, $place, $purokId, $narrative,
+                $respondent, $reviewStatus, $msitStatus, $note, $blotterId, $reviewedAt] = $row;
+            db_exec(
+                'INSERT INTO resident_blotter_requests
+                 (reference_no, resident_id, incident_date, incident_time, incident_place, purok_id, incident_type_id,
+                  narrative, respondent_name, respondent_age, respondent_address, respondent_contact,
+                  review_status, msit_status, status_note, blotter_id, reviewed_by, submitted_at, reviewed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 30, ?, NULL, ?, ?, ?, ?, NULL, NOW(), ?)',
+                [$reference, $residentId, $incidentDate, $incidentTime, $place, $purokId, $narrative,
+                 $respondent, 'DEMO ONLY - Sample Respondent Address', $reviewStatus, $msitStatus, $note, $blotterId, $reviewedAt]
+            );
+            db_exec(
+                "INSERT INTO request_status_history
+                 (service, reference_no, previous_status, new_status, changed_by, note, blotter_id)
+                 VALUES ('Blotter', ?, NULL, ?, NULL, ?, ?)",
+                [$reference, $msitStatus, '[DEMO ONLY] Resident blotter intake example.', $blotterId]
+            );
+        }
+    } elseif ($intakeCount !== 3) {
+        throw new RuntimeException('A partial demo resident-blotter intake set exists. No examples were changed.');
+    }
+
+    $hearingCount = (int) db_val(
+        "SELECT COUNT(*) FROM hearings h JOIN blotters b ON b.blotter_id = h.blotter_id
+         WHERE b.case_no LIKE 'MSIT-DEMO-BLT-%' AND h.venue LIKE 'DEMO ONLY - %'"
+    );
+    if ($hearingCount === 0) {
+        $scheduledAt = (new DateTimeImmutable('+5 days'))->setTime(10, 0)->format('Y-m-d H:i:s');
+        $venueName = (string) db_val('SELECT name FROM venues WHERE venue_id = ?', [$venueId]);
+        db_exec(
+            'INSERT INTO hearings (blotter_id, scheduled_at, venue, notes, status, created_by)
+             VALUES (?, ?, ?, ?, ?, NULL)',
+            [(int) $caseIds[1], $scheduledAt, $venueName, '[DEMO ONLY] Sample hearing prepared by the Secretary.', 'Scheduled']
+        );
+    } elseif ($hearingCount !== 1) {
+        throw new RuntimeException('The demo blotter cases have an unexpected hearing count. No hearing was added or removed.');
+    }
+}
+function msit_demo_sync_demo_queue_counters(): void
+{
+    $groups = db_all("SELECT DISTINCT service, queue_date FROM queue_entries WHERE purpose LIKE '[DEMO ONLY]%'");
+    foreach ($groups as $group) {
+        $service = (string) $group['service'];
+        $queueDate = (string) $group['queue_date'];
+        db_exec(
+            'INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)',
+            [$service, $queueDate]
+        );
+        $maxEntry = (int) db_val(
+            'SELECT COALESCE(MAX(queue_number), 0) FROM queue_entries WHERE service = ? AND queue_date = ?',
+            [$service, $queueDate]
+        );
+        $counter = (int) (db_val(
+            'SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ?',
+            [$service, $queueDate]
+        ) ?? 0);
+        if ($counter < $maxEntry) {
+            db_exec(
+                'UPDATE queue_counters SET last_number = ? WHERE service = ? AND queue_date = ?',
+                [$maxEntry, $service, $queueDate]
+            );
+        }
+    }
+}
+
 function msit_demo_apply(): array
 {
     return db_transaction(function (): array {
