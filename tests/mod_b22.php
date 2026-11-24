@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../app/queue_lib.php';
 require_once __DIR__ . '/../app/kiosk_lib.php';
+require_once __DIR__ . '/../app/notifications_lib.php';
 require_once __DIR__ . '/../app/reports_lib.php';
 
 function run_b22(array $S, string $base): void
