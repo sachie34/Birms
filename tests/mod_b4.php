@@ -142,6 +142,7 @@ function run_b4(array $S, string $base): void
         && $clerkForeignCancel['status'] === 404
         && $status($foreignId) === 'Pending');
     // Legacy SMS rows are retained for audit compatibility; this workflow must not add any.
+    $legacySmsBefore = (int) db_val('SELECT COUNT(*) FROM sms_outbox');
     $incompleteNoNote = post_as($sec, '/requests/form.php?id=' . $id1, '/requests/form.php?id=' . $id1, [
         'resident_id' => (string) $rita, 'type_id' => (string) $typeId, 'purpose' => 'ZZ Test purpose 1',
         'assigned_to' => '', 'requirements_status' => 'Incomplete', 'requirements_note' => '',
