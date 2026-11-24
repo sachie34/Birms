@@ -31,7 +31,7 @@ function seed_check(string $label, bool $ok, string $detail = ''): void
 }
 
 $residents = db_all("SELECT resident_id, resident_no FROM residents WHERE resident_no LIKE 'DEMO-RES-%' ORDER BY resident_no");
-$types = db_all("SELECT type_id, name, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types WHERE name LIKE 'DEMO ONLY - %' ORDER BY name");
+$types = db_all("SELECT type_id, name, fee_amount, template_body, is_active, requires_chairman_signature FROM document_types WHERE name IN ('DEMO ONLY - Barangay Clearance', 'DEMO ONLY - Certificate of Residency', 'DEMO ONLY - Certificate of Indigency') ORDER BY name");
 $requests = db_all("SELECT request_id, reference_no, msit_status, requirements_status FROM document_requests WHERE reference_no LIKE 'DEMO-DOC-%' ORDER BY reference_no");
 $draft = db_one("SELECT d.*, r.reference_no AS request_ref FROM certificate_drafts d JOIN document_requests r ON r.request_id = d.request_id WHERE r.reference_no = 'DEMO-DOC-READY-01'");
 $issuance = db_one("SELECT i.*, r.reference_no AS request_ref FROM issuances i JOIN document_requests r ON r.request_id = i.request_id WHERE r.reference_no = 'DEMO-DOC-ISSUED-01'");
@@ -146,10 +146,15 @@ seed_check('queue counters are synchronized with the seeded tickets', $counterOk
 
 $probeReference = 'SC-' . date('ymdHis') . '-' . bin2hex(random_bytes(2));
 $probe = null;
+$queueDate = date('Y-m-d');
+$counterBeforeProbe = (int) (db_val(
+    "SELECT last_number FROM queue_counters WHERE service = 'Documents' AND queue_date = ?",
+    [$queueDate]
+) ?? 0);
 try {
     $before = (int) db_val(
         "SELECT COALESCE(MAX(queue_number), 0) FROM queue_entries WHERE service = 'Documents' AND queue_date = ?",
-        [date('Y-m-d')]
+        [$queueDate]
     );
     $probe = queue_issue_number('Documents', null, $probeReference, 'staff', '[CI ONLY] Seed counter continuation check');
     seed_check('Staff can issue the next Documents number immediately after demo seeding',
@@ -158,8 +163,12 @@ try {
 } catch (Throwable $e) {
     seed_check('Staff can issue the next Documents number immediately after demo seeding', false, get_class($e) . ': ' . $e->getMessage());
 } finally {
-    if (is_array($probe) && isset($probe['queue_id'])) {
+    if (is_array($probe) && isset($probe['queue_id'], $probe['queue_number'])) {
         db_exec('DELETE FROM queue_entries WHERE queue_id = ?', [(int) $probe['queue_id']]);
+        db_exec(
+            "UPDATE queue_counters SET last_number = ? WHERE service = 'Documents' AND queue_date = ? AND last_number = ?",
+            [$counterBeforeProbe, $queueDate, (int) $probe['queue_number']]
+        );
     }
 }
 
