@@ -134,7 +134,7 @@ Create separate accounts in the MSIT working database for Admin, Chairman, Secre
 |---|---|---|
 | **Admin** | Manage accounts/roles, reference data, Puroks, residents, venues, signature asset, system settings, backups, reports and full records | None of the in-scope administrative functions |
 | **Chairman / Punong Barangay** | View resident/request/blotter/hearing/venue/queue records, view/export reports, view the cash ledger; the stored signature is applied automatically to eligible certificates | Approve/reject requests, edit residents or blotters, manage queues/venues/settings/users, issue/print certificates as an operational action |
-| **Secretary** | Maintain/review document records, maintain resident/blotter/hearing records according to the permission map, view reports | Final document approval, final certificate issuance, queue management, account/settings administration |
+| **Secretary** | View residents; intake/edit document requests and complete requirements review; maintain permitted blotter/hearing records; edit certificate wording; toggle room/venue availability; view reports | Final document approval, final certificate issuance, venue-reservation approval, queue management, account/general-settings administration |
 | **Staff** | Process and approve/reject document requests, review automatically generated certificate drafts/PDF previews and release eligible certificates, review resident blotter submissions, manage venue reservations and queues, use the All Services Tracker | User/account administration, system settings, unrestricted audit administration, backup configuration |
 | **Resident** | Use the shared kiosk/QR; verify identity with Resident ID and birthdate (or the registered-email one-time-code fallback); request a document, file/follow up a blotter report, request a venue, get a queue number and track only their own requests; receive email notices only when an address is registered | Reach staff/admin pages or view another resident's private record |
 
@@ -154,7 +154,7 @@ Use a synthetic resident with a unique Resident ID, birthdate and reserved `.inv
 6. Confirm the public queue screen shows service and current queue number but no resident-identifying information.
 7. Leave the kiosk untouched and verify it returns to the resident home screen after the inactivity timeout. Confirm that the resident flow cannot access Admin/Staff routes.
 8. Verify timeout submits the CSRF-protected POST logout form, not GET. Confirm it clears the resident identity, OTP token, flash message and all saved queue/request/venue/blotter receipt data, and that a second resident using the same browser cannot see the previous resident's receipt.
-8. Test the request tracker using the reference number. Confirm document, blotter and venue statuses are shown according to their respective workflows.
+9. Test the request tracker using the reference number. Confirm document, blotter and venue statuses are shown according to their respective workflows.
 
 Physical touchscreen sizing, kiosk inactivity behavior, the actual QR scan from a phone, and local-network access are **NOT RUN** until tested on the target equipment.
 
@@ -195,7 +195,7 @@ For every FAIL, preserve the test ID, complete output line, diagnostic, role, UR
 Never report this system as flawless based on CI alone. Release acceptance requires zero failed tests, no unexplained NOT TESTED checks, and completed manual evidence for the target XAMPP, roles, kiosk, LAN, delivery providers, PDF/print and restore.
 
 
-## 12. Prepare the MSIT demonstration dataset and document templates
+## 11. Prepare the MSIT demonstration dataset and document templates
 
 Use the isolated working database only. The seeder refuses database names that do not end in _work or _test; never point it at the original barangay_db or a production database.
 
@@ -235,6 +235,6 @@ The editor intentionally supports a small, safe formatting set rather than attem
 
 ### Demo accounts and role journey
 
-The seeder deliberately creates **no accounts and no default passwords**. Create separate Admin, Chairman, Secretary and Staff accounts through the User Accounts page and use separate browser profiles when presenting. The Secretary can edit document wording but cannot change fees, template availability, signature requirements or general system settings; the Chairman remains read-only. Follow the role restrictions in section 6; the Chairman remains read-only. Residents use the shared kiosk/request QR flow.
+The seeder deliberately creates **no accounts and no default passwords**. Create separate Admin, Chairman, Secretary and Staff accounts through the User Accounts page and use separate browser profiles when presenting. The Secretary can edit document wording but cannot change fees, template availability, signature requirements or general system settings. The Chairman remains read-only. Residents use the shared kiosk/request QR flow.
 
 Before the presentation, confirm the demo dashboard, request tracker, certificate preview, print/PDF, blotter, venue availability and service queues on the actual XAMPP browser. Automated CI is not a substitute for this local check.
