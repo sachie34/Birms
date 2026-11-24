@@ -36,9 +36,11 @@ Sign in using an account created by the administrator. The seeder intentionally 
 - 6 fictitious resident records with DEMO-RES identifiers;
 - 3 DEMO ONLY certificate templates: Barangay Clearance, Certificate of Residency and Certificate of Indigency;
 - 4 document requests covering Pending, Approved (with a saved unissued certificate draft), Rejected and Released (with one issuance-history record);
-- 3 fictitious blotter cases;
+- 3 fictitious official blotter cases;
+- 3 resident-submitted blotter intake examples: Pending, Accepted (linked to the official demo case) and Rejected;
+- 1 upcoming hearing linked to an open demo case, plus DEMO ONLY summons wording with Captain and Secretary placeholders;
 - 2 sample venues and 2 reservations;
-- 3 queue tickets: Documents, Blotter and Venue.
+- 3 queue tickets: Documents, Blotter and Venue. Each ticket updates the matching daily counter so Staff can issue the next number without duplicate-key errors.
 
 Every sample document prominently says DEMO ONLY — NOT AN OFFICIAL DOCUMENT. Demo templates use a zero demonstration fee and do not require the Chairman's signature image. This is not an approved fee schedule or official certificate wording.
 
