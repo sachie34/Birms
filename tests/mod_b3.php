@@ -138,18 +138,18 @@ function run_b3(array $S, string $base): void
                 'address' => '789 Changed B3 Avenue',
                 'resident_status_id' => (string) $transferredId,
                 'resident_type_id' => (string) $pwdId,
-                'notification_preference' => 'both',
+                'notification_preference' => 'sms',
             ]));
         $updated = db_one('SELECT marital_status,address,resident_status_id,resident_type_id,notification_preference,residency_status FROM residents WHERE resident_id = ?', [$residentId]);
         $statusAudit = db_one("SELECT remarks FROM audit_log WHERE action = 'resident_status_changed' AND entity_id = ? ORDER BY audit_id DESC LIMIT 1", [$residentId]);
-        record('B3-6', 'Resident edits save marital status, address, resident status/type and notification preference, with status-change audit history',
+        record('B3-6', 'Resident edits save profile fields but reject a forged SMS preference and keep the notification channel email-only',
             $edit['status'] === 302
             && $updated !== null
             && $updated['marital_status'] === 'Married'
             && $updated['address'] === '789 Changed B3 Avenue'
             && (int) $updated['resident_status_id'] === $transferredId
             && (int) $updated['resident_type_id'] === $pwdId
-            && $updated['notification_preference'] === 'both'
+            && $updated['notification_preference'] === 'email'
             && $updated['residency_status'] === 'Relocated'
             && $statusAudit !== null
             && str_contains((string) $statusAudit['remarks'], 'Active -> Transferred'),
