@@ -8,13 +8,13 @@ require_permission('requests.view');
 
 $role = (string) $me['role'];
 $myLabel = match ($role) {
-    'admin' => 'Needs Action',
+    'admin' => 'View All',
     'captain' => 'View Only',
     'secretary' => 'Needs Review',
     default => 'Needs Final Decision',
 };
 $myHint = match ($role) {
-    'admin' => 'Oversee request records and assist with administrative corrections.',
+    'admin' => 'Technical Admin access is read-only for resident service requests. Review status and progress; Staff processes requests and the Secretary reviews requirements.',
     'captain' => 'Chairman access is read-only. You may view request progress but cannot edit, approve, reject or release documents.',
     'secretary' => 'Review submitted requests and record whether required documents are complete. Staff makes the final approval or rejection.',
     default => 'Process requests whose requirements are complete, make the final decision, and generate the approved document.',
@@ -36,11 +36,8 @@ foreach (db_all('SELECT msit_status AS status, COUNT(*) AS n FROM document_reque
     
 }
 $myParams = [];
-if ($role === 'admin') {
-    // Admin can do both the Secretary's requirements review and final-decision work.
-    $myCondition = "dr.status IN ('Pending', 'Review')";
-} elseif ($role === 'captain') {
-    // Chairman sees a read-only view of all requests.
+if ($role === 'admin' || $role === 'captain') {
+    // Technical Admin and Chairman can view every request but cannot process service requests.
     $myCondition = '1 = 1';
 } elseif ($role === 'secretary') {
     $myCondition = "(dr.status = 'Pending' OR (dr.status = 'Review' AND dr.requirements_status <> 'Complete'))";
