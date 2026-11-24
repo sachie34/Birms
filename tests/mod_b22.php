@@ -17,6 +17,7 @@ function run_b22(array $S, string $base): void
     $secondResidentId = null;
     $secondResidentNo = $residentNo . '-NEXT';
     $venueId = null;
+    $statusRequestIds = [];
     $queueStartId = (int) (db_val('SELECT COALESCE(MAX(queue_id), 0) FROM queue_entries') ?? 0);
     $resetKioskIdentityRateLimit = static function (): void {
         $bucketHash = hash('sha256', 'kiosk_identity_ip' . chr(0) . '127.0.0.1');
@@ -93,6 +94,7 @@ function run_b22(array $S, string $base): void
         $publicKiosk = new Http($base);
         $publicHome = $publicKiosk->get('/kiosk/index.php');
         $selectedBlotter = $publicKiosk->get('/kiosk/index.php?next=blotter');
+        $selectedStatus = $publicKiosk->get('/kiosk/index.php?next=status');
         $publicMenuReady = $publicHome['status'] === 200
             && str_contains($publicHome['body'], 'Document Request')
             && str_contains($publicHome['body'], 'Indigency')
@@ -101,7 +103,9 @@ function run_b22(array $S, string $base): void
             && str_contains($publicHome['body'], 'Get a Queue Number')
             && str_contains($publicHome['body'], 'walk-in visit without submitting a request online')
             && str_contains($publicHome['body'], 'Track My Request')
-            && str_contains($selectedBlotter['body'], 'name="next" value="blotter"');
+            && str_contains($publicHome['body'], 'kiosk/index.php?next=status')
+            && str_contains($selectedBlotter['body'], 'name="next" value="blotter"')
+            && str_contains($selectedStatus['body'], 'name="next" value="status"');
 
         // Verify through the same public Resident ID + birthdate flow used at the kiosk.
         $kiosk = new Http($base);
@@ -121,6 +125,7 @@ function run_b22(array $S, string $base): void
             'blotter' => '/kiosk/blotter.php',
             'venue' => '/kiosk/venue.php',
             'queue' => '/kiosk/queue.php',
+            'status' => '/kiosk/status.php',
         ];
         $selectedRoutes = [];
         foreach ($serviceDestinations as $serviceKey => $expectedPath) {
@@ -428,6 +433,42 @@ function run_b22(array $S, string $base): void
             [$secondResidentNo, $purokId, $statusId ?: null, $typeId ?: null]
         );
         $secondResidentId = (int) db()->lastInsertId();
+
+        // Public request references are sequential/predictable in some workflows.
+        // Tracking must therefore require an authenticated kiosk resident and enforce ownership.
+        $statusTypeId = (int) db_val('SELECT type_id FROM document_types WHERE is_active = 1 ORDER BY sort_order, type_id LIMIT 1');
+        foreach ([$residentId, $secondResidentId] as $ownerId) {
+            $reference = 'B22-STATUS-' . ($ownerId === $residentId ? 'OWN-' : 'OTHER-') . strtoupper(bin2hex(random_bytes(3)));
+            db_exec(
+                "INSERT INTO document_requests
+                 (reference_no, resident_id, type_id, purpose, assigned_to, requirements_status, requirements_note,
+                  requested_at, created_by, status, msit_status)
+                 VALUES (?, ?, ?, 'B22 status privacy regression', NULL, 'Not checked', NULL, NOW(), NULL, 'Pending', 'Pending')",
+                [$reference, $ownerId, $statusTypeId]
+            );
+            $statusRequestIds[] = (int) db()->lastInsertId();
+            if ($ownerId === $residentId) { $ownStatusReference = $reference; }
+            else { $otherStatusReference = $reference; }
+        }
+        $ownStatusPage = $kiosk->get('/kiosk/status.php?ref=' . rawurlencode($ownStatusReference));
+        $otherStatusPage = $kiosk->get('/kiosk/status.php?ref=' . rawurlencode($otherStatusReference));
+        $anonymousStatusBrowser = new Http($base);
+        $anonymousStatusPage = $anonymousStatusBrowser->get('/kiosk/status.php?ref=' . rawurlencode($otherStatusReference));
+        record(
+            'B22-21',
+            'Request tracking requires a verified resident and only returns that resident’s own request status',
+            $ownStatusPage['status'] === 200
+            && str_contains($ownStatusPage['body'], $ownStatusReference)
+            && str_contains($ownStatusPage['body'], 'Pending')
+            && $otherStatusPage['status'] === 200
+            && !str_contains($otherStatusPage['body'], $otherStatusReference)
+            && str_contains($otherStatusPage['body'], 'No request was found')
+            && $anonymousStatusPage['status'] === 302
+            && str_contains((string) loc($anonymousStatusPage), 'kiosk/index.php'),
+            'own=' . $ownStatusPage['status'] . '; other-hidden=' . (!str_contains($otherStatusPage['body'], $otherStatusReference) ? 'yes' : 'no')
+            . '; anonymous=' . $anonymousStatusPage['status'] . '; redirect=' . (string) loc($anonymousStatusPage)
+        );
+
         $kioskHomeForTimer = $kiosk->get('/kiosk/index.php');
         $kioskJs = (string) file_get_contents(APP_ROOT . '/public/assets/js/kiosk.js');
         $timeoutFormReady = $kioskHomeForTimer['status'] === 200
@@ -647,6 +688,11 @@ function run_b22(array $S, string $base): void
             $queueIds = array_map(static fn(array $row): int => (int) $row['queue_id'], $ids);
             $marks = implode(',', array_fill(0, count($queueIds), '?'));
             db_exec('DELETE FROM queue_entries WHERE queue_id IN (' . $marks . ')', $queueIds);
+        }
+        if ($statusRequestIds) {
+            $marks = implode(',', array_fill(0, count($statusRequestIds), '?'));
+            db_exec('DELETE FROM request_status_history WHERE request_id IN (' . $marks . ')', $statusRequestIds);
+            db_exec('DELETE FROM document_requests WHERE request_id IN (' . $marks . ')', $statusRequestIds);
         }
         if ($residentId !== null || $secondResidentId !== null) {
             $cleanupResidentIds = array_values(array_filter([$residentId, $secondResidentId], static fn($id) => $id !== null));
