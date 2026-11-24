@@ -12,7 +12,7 @@
 - [ ] Open separate browser profiles for Admin, Secretary, Staff and Chairman. Keep the resident kiosk in a separate browser/device.
 - [ ] Confirm the demo data is present: six DEMO-RES residents, three certificate templates, four document request states, three official blotter cases, three resident blotter intake states, one future hearing/summons example, two venues/reservations and three service-queue tickets.
 - [ ] Keep the Staff, Secretary and Chairman accounts logged in and ready. The seeder creates no accounts or passwords.
-- [ ] Open the public queue display in a clean window. Confirm it displays ticket numbers only.
+- [ ] Optionally open the public queue display and confirm it shows ticket numbers only. A dedicated display is not required when Staff announces the service and number aloud.
 - [ ] Keep the panel guide and this run sheet available offline.
 - [ ] Do not rely on email OTP or SMS: the seeded email addresses end in .invalid, and this build has no SMS sending.
 - [ ] Use the on-screen kiosk URL unless a real phone/LAN QR scan has already passed on the actual network.
