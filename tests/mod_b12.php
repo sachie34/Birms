@@ -2,6 +2,8 @@
 /** B12 regression checks: SMS delivery has been removed from this release. */
 declare(strict_types=1);
 
+require_once __DIR__ . '/../app/notifications_lib.php';
+
 function run_b12(array $S, string $base): void
 {
     $providersAbsent = !function_exists('sms_send_outbox')

@@ -5,6 +5,11 @@ declare(strict_types=1);
 function run_b4(array $S, string $base): void
 {
     $clk = $S['clerk']; $sec = $S['secretary']; $cap = $S['captain']; $adm = $S['admin'];
+    $signatureFixture = fx_upload_chairman_signature($adm);
+    record('B4-0', 'The request workflow test has a valid temporary Chairman signature for certificate-draft approval',
+        $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '',
+        'upload=' . $signatureFixture['response']['status']);
+    try {
     $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'");
     db_exec("INSERT IGNORE INTO document_types (name, is_active, sort_order) VALUES ('ZZ Test Inactive Doc', 0, 9990)");
     $inactive = (int) db_val("SELECT type_id FROM document_types WHERE name = 'ZZ Test Inactive Doc'");
@@ -318,4 +323,7 @@ function run_b4(array $S, string $base): void
     db_exec("DELETE FROM residents WHERE last_name LIKE 'ZZTest%'");
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'");
+    } finally {
+        fx_restore_chairman_signature($signatureFixture);
+    }
 }
