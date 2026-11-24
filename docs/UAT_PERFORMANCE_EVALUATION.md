@@ -22,7 +22,7 @@ Use this sheet for the research paper's functional usability, data accuracy, and
 
 ## Retrieval-speed measurement
 
-The script below measures system-side read operations on the configured working database and reports median, mean, and maximum milliseconds. It prints no resident names or personal details.
+The script below measures system-side read operations on the configured working database and reports median, mean, and maximum milliseconds. It covers resident search, demographic totals, issuance and cash-collection reports, request processing, blotter, venue reservations, and queue statistics. It prints no resident names or personal details. These timings are database-operation timings, not full browser page-load measurements.
 
 ```text
 C:\xampp\php\php.exe tools\benchmark.php --iterations=10
