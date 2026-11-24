@@ -77,47 +77,11 @@ function config(?string $path = null, mixed $default = null): mixed
             'backup' => [
                 'webdav_url' => '', 'webdav_username' => '', 'webdav_password' => '',
             ],
-            // Outbound notifications remain disabled until an operator explicitly configures a provider.
-            'sms' => [
-                'provider' => 'smsapiph',
-                'smsapiph_enabled' => false, 'smsapiph_api_key' => '',
-                'semaphore_enabled' => false, 'semaphore_api_key' => '', 'semaphore_sendername' => '',
-                'infobip_enabled' => false, 'infobip_api_key' => '', 'infobip_base_url' => '', 'infobip_sender' => 'ServiceSMS',
-                'connect_timeout' => 4, 'timeout' => 12,
-            ],
         ];
         $local = __DIR__ . '/config.local.php';
         if (is_file($local)) {
             $o = require $local;
             if (is_array($o)) { $cfg = array_replace_recursive($cfg, $o); }
-        }
-        // Optional dedicated, Git-ignored Infobip credentials file. This file stays outside
-        // the public web root and only provides the key, Base URL, and sender value.
-        $infobipLocal = __DIR__ . '/infobip.local.php';
-        if (is_file($infobipLocal)) {
-            $infobip = require $infobipLocal;
-            if (is_array($infobip)) {
-                if (array_key_exists('api_key', $infobip)) {
-                    $cfg['sms']['infobip_api_key'] = is_string($infobip['api_key']) ? trim($infobip['api_key']) : '';
-                }
-                if (array_key_exists('base_url', $infobip)) {
-                    $cfg['sms']['infobip_base_url'] = is_string($infobip['base_url']) ? trim($infobip['base_url']) : '';
-                }
-                if (array_key_exists('sender', $infobip)) {
-                    $cfg['sms']['infobip_sender'] = is_string($infobip['sender']) ? trim($infobip['sender']) : '';
-                }
-            }
-        }
-
-        // Optional dedicated, Git-ignored SMS API PH credentials file. A blank example key
-        // must not erase a key explicitly entered in config.local.php.
-        $smsapiphLocal = __DIR__ . '/smsapiph.local.php';
-        if (is_file($smsapiphLocal)) {
-            $smsapiph = require $smsapiphLocal;
-            if (is_array($smsapiph) && isset($smsapiph['api_key']) && is_string($smsapiph['api_key'])
-                && trim($smsapiph['api_key']) !== '') {
-                $cfg['sms']['smsapiph_api_key'] = trim($smsapiph['api_key']);
-            }
         }
 
         $envMap = [
@@ -131,16 +95,6 @@ function config(?string $path = null, mixed $default = null): mixed
             'BIRMS_BACKUP_WEBDAV_URL' => ['backup', 'webdav_url'],
             'BIRMS_BACKUP_WEBDAV_USERNAME' => ['backup', 'webdav_username'],
             'BIRMS_BACKUP_WEBDAV_PASSWORD' => ['backup', 'webdav_password'],
-            'BIRMS_SEMAPHORE_ENABLED' => ['sms', 'semaphore_enabled'],
-            'BIRMS_SEMAPHORE_API_KEY' => ['sms', 'semaphore_api_key'],
-            'BIRMS_SEMAPHORE_SENDERNAME' => ['sms', 'semaphore_sendername'],
-            'BIRMS_SMS_PROVIDER' => ['sms', 'provider'],
-            'BIRMS_SMSAPIPH_ENABLED' => ['sms', 'smsapiph_enabled'],
-            'BIRMS_SMSAPIPH_API_KEY' => ['sms', 'smsapiph_api_key'],
-            'BIRMS_INFOBIP_ENABLED' => ['sms', 'infobip_enabled'],
-            'BIRMS_INFOBIP_API_KEY' => ['sms', 'infobip_api_key'],
-            'BIRMS_INFOBIP_BASE_URL' => ['sms', 'infobip_base_url'],
-            'BIRMS_INFOBIP_SENDER' => ['sms', 'infobip_sender'],
         ];
         foreach ($envMap as $name => [$a, $b]) {
             $v = getenv($name);
