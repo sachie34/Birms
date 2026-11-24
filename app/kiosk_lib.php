@@ -149,6 +149,7 @@ function kiosk_send_verification_code(array $resident): array
         'resident_verification', null
     );
     $delivery = ['ok' => false];
+    $redacted = false;
     try {
         $delivery = email_send_notification($notificationId);
     } catch (Throwable $emailError) {
@@ -156,13 +157,14 @@ function kiosk_send_verification_code(array $resident): array
     } finally {
         try {
             kiosk_redact_verification_notification($notificationId);
+            $redacted = true;
         } catch (Throwable $redactionError) {
             error_log('BIRMS kiosk verification outbox redaction failed for notification #' . $notificationId . ': ' . get_class($redactionError));
             audit_best_effort('resident_verification_redaction_failed', 'Security', 'Failed',
                 'A kiosk verification email outbox message could not be redacted after its delivery attempt.');
         }
     }
-    if (!empty($delivery['ok'])) {
+    if (!empty($delivery['ok']) && $redacted) {
         $_SESSION['kiosk_challenge_token'] = $token;
         return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination($email)];
     }
