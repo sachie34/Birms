@@ -340,17 +340,34 @@ function msit_demo_apply(): array
         }
 
         $queueItems = [
-            ['documents', $residents[0], 'DEMO-DOC-PENDING-01', '[DEMO ONLY] Documents service queue sample'],
-            ['blotter', $residents[1], 'DEMO-BLT-0001', '[DEMO ONLY] Blotter service queue sample'],
-            ['venue', $residents[2], 'DEMO-VEN-0001', '[DEMO ONLY] Venue service queue sample'],
+            ['Documents', $residents[0], 'DEMO-DOC-PENDING-01', '[DEMO ONLY] Documents service queue sample'],
+            ['Blotter', $residents[1], 'MSIT-DEMO-BLT-0001', '[DEMO ONLY] Blotter service queue sample'],
+            ['Venue', $residents[2], 'DEMO-VEN-0001', '[DEMO ONLY] Venue service queue sample'],
         ];
+        $queueDate = date('Y-m-d');
         foreach ($queueItems as [$service, $residentId, $reference, $purpose]) {
-            $next = (int) db_val('SELECT COALESCE(MAX(queue_number), 0) + 1 FROM queue_entries WHERE service = ? AND queue_date = CURDATE()', [$service]);
+            db_exec(
+                'INSERT IGNORE INTO queue_counters (service, queue_date, last_number) VALUES (?, ?, 0)',
+                [$service, $queueDate]
+            );
+            $counter = (int) (db_val(
+                'SELECT last_number FROM queue_counters WHERE service = ? AND queue_date = ? FOR UPDATE',
+                [$service, $queueDate]
+            ) ?? 0);
+            $maxEntry = (int) db_val(
+                'SELECT COALESCE(MAX(queue_number), 0) FROM queue_entries WHERE service = ? AND queue_date = ?',
+                [$service, $queueDate]
+            );
+            $next = max($counter, $maxEntry) + 1;
             db_exec(
                 'INSERT INTO queue_entries
                  (service, queue_date, queue_number, resident_id, reference_no, purpose, status, issued_via, notification_preference)
-                 VALUES (?, CURDATE(), ?, ?, ?, ?, \'waiting\', \'staff\', \'email\')',
-                [$service, $next, $residentId, $reference, $purpose]
+                 VALUES (?, ?, ?, ?, ?, ?, \'Waiting\', \'staff\', \'email\')',
+                [$service, $queueDate, $next, $residentId, $reference, $purpose]
+            );
+            db_exec(
+                'UPDATE queue_counters SET last_number = ? WHERE service = ? AND queue_date = ?',
+                [$next, $service, $queueDate]
             );
         }
 
