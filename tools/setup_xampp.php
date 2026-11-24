@@ -24,13 +24,13 @@ if (PHP_SAPI !== 'cli') {
 // loading application code so a missing bootstrap/core/provider file gets a clear message.
 $includeChecker = __DIR__ . '/check_php_includes.php';
 if (!is_file($includeChecker)) {
-    fwrite(STDERR, "ERROR: tools/check_php_includes.php is missing. Download a fresh ZIP of the current main branch before running setup.\n");
+    fwrite(STDERR, "ERROR: tools/check_php_includes.php is missing. Download a fresh ZIP of the current MSIT demo branch (john/phase2-kiosk-no-sms) before running setup.\n");
     exit(2);
 }
 $includeCheckCommand = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($includeChecker);
 passthru($includeCheckCommand, $includeCheckExit);
 if ($includeCheckExit !== 0) {
-    fwrite(STDERR, "ERROR: This BIRMS folder failed its PHP include-path integrity check. Do not continue setup with an incomplete copy. Download a fresh ZIP of the current main branch, preserve private local configuration, and retry.\n");
+    fwrite(STDERR, "ERROR: This BIRMS folder failed its PHP include-path integrity check. Do not continue setup with an incomplete copy. Download a fresh ZIP of the current MSIT demo branch (john/phase2-kiosk-no-sms), preserve private local configuration, and retry.\n");
     exit(2);
 }
 
@@ -84,6 +84,8 @@ function setup_check(): int
     $requiredFiles = [
         '/database/migrations/001_core.sql',
         '/database/migrations/019_certificate_draft_generation.sql',
+        '/database/migrations/020_reporting_date_indexes.sql',
+        '/database/migrations/021_directory_order_indexes.sql',
         '/app/bootstrap.php',
         '/app/core.php',
         '/app/config.local.php.example',
@@ -348,4 +350,4 @@ if ($htdocs !== false && $project !== false) {
 } else {
     setup_out('http://localhost/birms_work/public/ (if you placed this folder at C:\xampp\htdocs\birms_work)');
 }
-setup_out('Before presenting: configure test/demo data and complete docs/PRESENTATION_RUNBOOK.md.');
+setup_out('Before presenting: review docs/PANEL_DEMO_STATUS.md and complete the target-PC checks in docs/MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md.');
