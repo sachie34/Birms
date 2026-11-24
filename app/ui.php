@@ -181,16 +181,22 @@ function current_page_help(): ?array
                 'Refer issuing, calling or cancelling numbers to Staff or Administrator.',
             ], 'Chairman and Secretary have view-only access to queue management.'),
         'venues/index.php' => role_can($role, 'venues.manage')
-            ? $general('Manage venue availability and process counter reservation requests.', [
-                'Check the availability board before recording a new reservation.',
-                'Enter the correct resident, venue, purpose, date and time range.',
-                'Review pending reservations and approve or reject them when authorized.',
-            ], 'Approved reservations prevent overlapping bookings; check the saved status after each action.')
-            : $general('View venue availability and reservation statuses.', [
-                'Use the green/red availability board to check whether a venue is available.',
-                'Filter the reservation tracker by status or date.',
-                'Refer reservation changes or decisions to Staff or Administrator.',
-            ], 'Chairman and Secretary have view-only access to the venue tracker.'),
+            ? $general('Manage resident venue reservations and counter requests.', [
+                'Check the room availability board before recording a reservation.',
+                'Enter the resident, room, purpose, date and time range correctly.',
+                'Approve or reject pending reservations and mark completed bookings after use.',
+            ], 'The Secretary controls manual room availability for blotter/hearing planning; Staff processes reservations.')
+            : (role_can($role, 'venues.availability.manage')
+                ? $general('Set whether a room is available for blotter and hearing schedules.', [
+                    'Open the room availability board and check the current status.',
+                    'Choose Automatic, Available or Unavailable for the correct room.',
+                    'Save the status and check the updated green/red indicator.',
+                ], 'This permission changes room availability only. Staff handles resident reservations and booking decisions.')
+                : $general('View room availability and reservation statuses without changing them.', [
+                    'Check whether each room is currently marked Available or Unavailable.',
+                    'Use the reservation tracker to review submitted and approved bookings.',
+                    'Refer reservation changes or room-status updates to the Secretary or Staff.',
+                ], 'Chairman access is read-only for room and reservation information.')),
         'blotters/hearings.php' => in_array($role, ['admin', 'secretary'], true)
             ? $general('Manage hearing schedules and record outcomes for assigned blotter cases.', [
                 'Open the related case and confirm the parties before scheduling.',
