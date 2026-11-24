@@ -99,26 +99,10 @@ $csvGuardOk = csv_safe_cell('=1+1') === "'=1+1"
     && csv_safe_cell('ordinary text') === 'ordinary text'
     && csv_safe_cell(42) === 42;
 record('U7', 'CSV formula guard neutralizes leading whitespace/control characters and preserves ordinary values', $csvGuardOk);
-$guardScript = tempnam(sys_get_temp_dir(), 'birms-sms-guard-');
-$guardOutput = []; $guardExit = 99;
-if ($guardScript !== false) {
-    try {
-        $guardProbe = "<?php\n"
-            . "putenv('BIRMS_SMS_PROVIDER=smsapiph');\n"
-            . "putenv('BIRMS_SMSAPIPH_ENABLED=true');\n"
-            . "putenv('BIRMS_DB_NAME=barangay_db_work');\n"
-            . "require " . var_export(APP_ROOT . '/tests/run_modules.php', true) . ";\n";
-        if (file_put_contents($guardScript, $guardProbe) !== false) {
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($guardScript) . ' 2>&1', $guardOutput, $guardExit);
-        } else {
-            $guardOutput[] = 'Unable to write the SMS-preflight probe.';
-        }
-    } finally {
-        @unlink($guardScript);
-    }
-}
-$guardText = implode("\n", $guardOutput);
-record('U8', 'Module test runner refuses before tests when a real SMS provider is enabled', $guardExit === 2 && str_contains($guardText, 'REFUSED: the selected SMS provider is enabled.') && !str_contains($guardText, 'BIRMS module tests  base='));
+putenv('BIRMS_SMS_PROVIDER=smsapiph');
+putenv('BIRMS_SMSAPIPH_ENABLED=true');
+record('U8', 'Legacy SMS environment variables do not activate an SMS provider or add SMS runtime functions',
+    config('sms') === null && !function_exists('sms_provider_is_enabled'));
 
 record('U9', 'Database-backed rate limiter enforces a fixed window, separates identities and resets at the next window', (function (): bool {
     $scope = 'unit-test-' . bin2hex(random_bytes(4));
