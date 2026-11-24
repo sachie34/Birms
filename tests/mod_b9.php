@@ -57,10 +57,10 @@ function run_b9(array $S, string $base): void
     }
 
     $expectedHelp = [
-        'admin' => 'Use the queue that matches the task you need to complete.',
-        'captain' => 'Your main task here is the final decision on eligible requests.',
-        'secretary' => 'Your main task here is to check request requirements.',
-        'clerk' => 'Use My Requests to follow requests you filed or are assigned to.',
+        'admin' => 'Administrator can oversee document request processing and perform authorized corrections.',
+        'captain' => 'Chairman access is read-only.',
+        'secretary' => 'Your task is to review request details and supporting requirements.',
+        'clerk' => 'Process requests that have completed the Secretary requirements review.',
     ];
     $helpProblems = [];
     foreach ($expectedHelp as $role => $expectedText) {
@@ -99,5 +99,48 @@ function run_b9(array $S, string $base): void
         $assetsOk,
         'portal CSS=' . $portalCss['status'] . '; kiosk CSS=' . $kioskCss['status']
         . '; app JS=' . $appJs['status'] . '; Bootstrap JS=' . $bootstrapJs['status']);
+
+    $roleGuidance = [
+        'admin' => [
+            '/blotters/index.php' => 'Manage official blotter records using the permissions available to your role.',
+            '/blotters/hearings.php' => 'Manage hearing schedules and record outcomes for assigned blotter cases.',
+            '/queue/index.php' => 'Issue and manage daily queue tickets for Blotter, Documents and Venue.',
+            '/venues/index.php' => 'Manage venue availability and process counter reservation requests.',
+            '/blotter_requests/index.php' => 'Review reports submitted through the resident kiosk.',
+        ],
+        'captain' => [
+            '/blotters/index.php' => 'View official blotter cases without changing them.',
+            '/blotters/hearings.php' => 'View hearing schedules and related cases without changing hearing records.',
+            '/queue/index.php' => 'Monitor current queue numbers and waiting counts for each service.',
+            '/venues/index.php' => 'View venue availability and reservation statuses.',
+            '/blotter_requests/index.php' => 'View reports submitted through the resident kiosk and their saved review status.',
+        ],
+        'secretary' => [
+            '/blotters/index.php' => 'Manage official blotter records using the permissions available to your role.',
+            '/blotters/hearings.php' => 'Manage hearing schedules and record outcomes for assigned blotter cases.',
+            '/queue/index.php' => 'Monitor current queue numbers and waiting counts for each service.',
+            '/venues/index.php' => 'View venue availability and reservation statuses.',
+            '/blotter_requests/index.php' => 'View reports submitted through the resident kiosk and their saved review status.',
+        ],
+        'clerk' => [
+            '/blotters/index.php' => 'View official blotter cases without changing them.',
+            '/blotters/hearings.php' => 'View hearing schedules and related cases without changing hearing records.',
+            '/queue/index.php' => 'Issue and manage daily queue tickets for Blotter, Documents and Venue.',
+            '/venues/index.php' => 'Manage venue availability and process counter reservation requests.',
+            '/blotter_requests/index.php' => 'Review reports submitted through the resident kiosk.',
+        ],
+    ];
+    $roleGuidanceProblems = [];
+    foreach ($roleGuidance as $role => $routes) {
+        foreach ($routes as $route => $expectedText) {
+            $page = $S[$role]->get($route);
+            if ($page['status'] !== 200 || !str_contains($page['body'], 'page-help')
+                || !str_contains($page['body'], $expectedText)) {
+                $roleGuidanceProblems[] = $role . ':' . $route . '=' . $page['status'];
+            }
+        }
+    }
+    record('B9-8', 'Blotter, hearing, queue, venue and resident-blotter pages explain each role’s actual permitted actions',
+        !$roleGuidanceProblems, implode(', ', $roleGuidanceProblems));
 
 }
