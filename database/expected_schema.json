@@ -1093,6 +1093,12 @@
           "msit_status",
           "requested_at"
         ]
+      },
+      "idx_request_requested_at": {
+        "unique": false,
+        "columns": [
+          "requested_at"
+        ]
       }
     },
     "fks": {
@@ -2180,6 +2186,19 @@
         "columns": [
           "resident_id",
           "issued_at"
+        ]
+      },
+      "idx_queue_issued_at": {
+        "unique": false,
+        "columns": [
+          "issued_at"
+        ]
+      },
+      "idx_queue_date_status": {
+        "unique": false,
+        "columns": [
+          "queue_date",
+          "status"
         ]
       }
     },
@@ -3499,6 +3518,12 @@
         "columns": [
           "resident_id",
           "created_at"
+        ]
+      },
+      "idx_venue_reservation_date": {
+        "unique": false,
+        "columns": [
+          "reservation_date"
         ]
       }
     },
