@@ -17,18 +17,25 @@ $residentNo = post_str('resident_no');
 $lastName = post_str('last_name');
 $firstName = post_str('first_name');
 $birthdate = post_str('birthdate');
-$next = post_str('next') === 'request' ? 'request' : 'home';
-$_SESSION['kiosk_after_verify'] = $next === 'request' ? 'request' : null;
+$allowedDestinations = [
+    'request' => 'kiosk/request.php',
+    'blotter' => 'kiosk/blotter.php',
+    'venue' => 'kiosk/venue.php',
+    'queue' => 'kiosk/queue.php',
+];
+$next = post_str('next');
+if (!isset($allowedDestinations[$next])) { $next = ''; }
+$_SESSION['kiosk_after_verify'] = $next !== '' ? $next : null;
 
 if (!v_date($birthdate) || $birthdate > date('Y-m-d')) {
     kiosk_flash('Enter your correct birthdate.', 'error');
-    redirect('kiosk/index.php');
+    redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
 }
 
 if ($residentNo !== '') {
     if (str_len($residentNo) > 30 || preg_match('/^[A-Za-z0-9-]+$/', $residentNo) !== 1) {
         kiosk_flash('The details could not be verified. Check your Resident ID and birthdate or ask Staff for help.', 'error');
-        redirect('kiosk/index.php');
+        redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
     }
     $matches = db_all(
         'SELECT resident_id FROM residents WHERE resident_no = ? AND birthdate = ? AND archived_at IS NULL LIMIT 2',
@@ -37,19 +44,19 @@ if ($residentNo !== '') {
     if (count($matches) === 1) {
         kiosk_set_resident((int) $matches[0]['resident_id']);
         audit_best_effort('kiosk_identity_verified', 'Kiosk', 'Success', 'Resident verified using Resident ID and birthdate.');
-        kiosk_flash('Identity verified. Choose the service you need.', 'success');
-        $destination = $_SESSION['kiosk_after_verify'] ?? null;
+        kiosk_flash('Identity verified. Continuing to your selected service.', 'success');
+        $destination = (string) ($_SESSION['kiosk_after_verify'] ?? '');
         unset($_SESSION['kiosk_after_verify']);
-        redirect($destination === 'request' ? 'kiosk/request.php' : 'kiosk/index.php');
+        redirect($allowedDestinations[$destination] ?? 'kiosk/index.php');
     }
     audit_best_effort('kiosk_identity_denied', 'Kiosk', 'Failed', 'Resident ID and birthdate did not match an active resident record.');
     kiosk_flash('The details could not be verified. Check your Resident ID and birthdate or ask Staff for help.', 'error');
-    redirect('kiosk/index.php');
+    redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
 }
 
 if (!v_person_name($lastName) || !v_person_name($firstName)) {
     kiosk_flash('Enter a valid first and last name, or use your Resident ID.', 'error');
-    redirect('kiosk/index.php');
+    redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
 }
 $matches = db_all(
     'SELECT resident_id, email_address, contact_number, notification_preference
@@ -62,12 +69,12 @@ if (count($matches) !== 1) {
     kiosk_flash(count($matches) > 1
         ? 'More than one record matches those details. Please ask Staff to verify your identity at the counter.'
         : 'The details could not be verified. Check your name and birthdate or ask Staff for help.', 'error');
-    redirect('kiosk/index.php');
+    redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
 }
 $sent = kiosk_send_verification_code($matches[0]);
 if (!$sent['ok']) {
     kiosk_flash((string) $sent['message'], 'warning');
-    redirect('kiosk/index.php');
+    redirect($next !== '' ? 'kiosk/index.php?next=' . rawurlencode($next) : 'kiosk/index.php');
 }
 kiosk_flash('A one-time code was sent to your registered ' . $sent['channel'] . ' (' . $sent['destination'] . '). It expires in 5 minutes.', 'success');
 redirect('kiosk/verify.php');
