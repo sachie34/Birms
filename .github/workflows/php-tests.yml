@@ -218,6 +218,10 @@ jobs:
           echo "$second" | grep -Fq 'Status: extended MSIT demo set already complete. No changes needed.'
           php tests/verify_msit_extended_demo_seed.php 2>&1 | tee test-reports/extended-demo-seed-verification.log
           echo "PASS: extended MSIT seed applies once, is idempotent, and private assets/history are verified."
+          base_again="$(php tools/seed_msit_demo_data.php --apply)"
+          printf '%s\n' "$base_again"
+          echo "$base_again" | grep -Fq 'Status: complete demo dataset already exists. No changes needed.'
+          php tests/verify_msit_demo_seed.php
 
       - name: Capture PHP development-server log for diagnosing HTTP 5xx responses
         if: always() && steps.start-php.outcome == 'success'
