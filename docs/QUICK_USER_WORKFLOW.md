@@ -1,6 +1,6 @@
 # BIRMS Quick User Workflow
 
-This guide follows the current `john/msit-srs-compliance` branch. The revised MSIT SRS is the controlling requirements baseline. The role mapping and official office procedures still require barangay/adviser approval before production use.
+This guide follows the validated demonstration candidate `john/phase2-kiosk-no-sms` (draft PR #39). The revised MSIT SRS is the controlling requirements baseline. The candidate uses the four operational roles Admin, Chairman, Secretary and Staff; older Captain/Clerk labels are retained only as internal legacy role IDs. The role mapping and official office procedures still require barangay/adviser approval before production use.
 
 ## 1. Resident self-service: start here
 
@@ -144,7 +144,7 @@ The repository currently documents local SQL backup and optional remote WebDAV u
 
 - **Identity cannot be verified:** check Resident ID/birthdate; if using the name fallback, check first/last name and birthdate. If no registered contact is available or records are ambiguous, ask Staff at the counter.
 - **No document type appears:** ask Admin to check whether the document type is active.
-- **A request cannot be approved/rejected:** Secretary/Admin must complete the requirements review first.
+- **A request cannot be approved/rejected:** Secretary/Admin must complete the requirements review first; Staff/Admin make the final decision only after the requirements are complete.
 - **A venue cannot be booked:** choose another time; a Pending or Approved booking may already reserve that slot.
 - **A queue ticket is not called:** watch the public display and ask Staff; do not create repeated tickets.
 - **A menu or action is unavailable:** the current account may not have that permission. Ask Admin; never share credentials or bypass access checks.
