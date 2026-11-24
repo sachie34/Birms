@@ -9,8 +9,17 @@ function run_b4(array $S, string $base): void
     record('B4-0', 'The request workflow test has a valid temporary Chairman signature for certificate-draft approval',
         $signatureFixture['response']['status'] === 302 && is_string($signatureFixture['current']) && $signatureFixture['current'] !== '',
         'upload=' . $signatureFixture['response']['status']);
+    $typeId = 0;
+    $typeSnapshot = null;
     try {
     $typeId = (int) db_val("SELECT type_id FROM document_types WHERE name = 'Barangay Clearance'");
+    $typeSnapshot = db_one('SELECT fee_amount, template_body, requires_chairman_signature FROM document_types WHERE type_id = ?', [$typeId]);
+    if ($typeId < 1 || $typeSnapshot === null) { throw new RuntimeException('The Barangay Clearance test fixture is missing.'); }
+    // FR-D5 now generates the certificate draft in the approval transaction. Supply reversible
+    // test-only fee/wording/signature prerequisites so this module tests request behavior, not
+    // whether an official document template has already been configured on the demo database.
+    db_exec("UPDATE document_types SET fee_amount = '0.00', template_body = ?, requires_chairman_signature = 1 WHERE type_id = ?",
+        ['This certifies {{full_name}} for {{purpose}}.', $typeId]);
     db_exec("INSERT IGNORE INTO document_types (name, is_active, sort_order) VALUES ('ZZ Test Inactive Doc', 0, 9990)");
     $inactive = (int) db_val("SELECT type_id FROM document_types WHERE name = 'ZZ Test Inactive Doc'");
     $purok = db_one("SELECT lookup_id FROM lookups WHERE list_key = 'purok' AND is_active = 1 ORDER BY sort_order, lookup_id LIMIT 1");
@@ -324,6 +333,10 @@ function run_b4(array $S, string $base): void
     db_exec("DELETE FROM households WHERE household_code LIKE 'ZZTEST%'");
     db_exec("DELETE FROM document_types WHERE name LIKE 'ZZ Test%'");
     } finally {
+        if (is_array($typeSnapshot) && $typeId > 0) {
+            db_exec('UPDATE document_types SET fee_amount = ?, template_body = ?, requires_chairman_signature = ? WHERE type_id = ?',
+                [$typeSnapshot['fee_amount'], $typeSnapshot['template_body'], $typeSnapshot['requires_chairman_signature'], $typeId]);
+        }
         fx_restore_chairman_signature($signatureFixture);
     }
 }
