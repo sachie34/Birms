@@ -18,7 +18,7 @@ Do not proceed until each prerequisite is evidenced:
 - [ ] Apache serves **only the repository's `public/` directory** as its document root. Do not expose the repository root, `app/`, `database/`, `docs/`, `tests/`, `tools/`, or `storage/` as the web root.
 - [ ] HTTPS is configured with a certificate issued by a CA trusted by every office PC, kiosk and resident device that will access BIRMS. Do not use plain HTTP for credentials or resident records over Wi-Fi/LAN. Do not bypass browser certificate warnings.
 - [ ] The PHP version is a currently supported, security-patched release. Recommended baseline for this release is PHP 8.3.37 or newer in the 8.3 branch; PHP 8.4.28+, 8.5.13+ and 8.6.0+ are accepted by the runtime guard. PHP 8.2.36+ is only temporarily supported through 31 December 2026. Prefer a maintained branch with a longer support window and verify it against CI before upgrading.
-- [ ] Apache PHP and CLI PHP use the same intended PHP build and required extensions: `pdo_mysql`, `fileinfo`, and `zip`. The optional email/SMS integrations also require their documented transport configuration (including cURL where used).
+- [ ] Apache PHP and CLI PHP use the same intended PHP build and required extensions: `pdo_mysql`, `fileinfo`, and `zip`. Email notifications require the approved mail transport configuration; actual delivery must be tested using an authorized mailbox.
 - [ ] Database engine/version, disk capacity, private-storage capacity, backup location, restore operator and recovery procedure are approved.
 - [ ] All manual gates in `MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md` have recorded evidence, not assumptions.
 
@@ -70,7 +70,7 @@ Use a protected terminal on the server. Clear the environment variable after the
 
 ## 4. Application configuration and services
 
-- Keep email and every SMS provider disabled until the office has approved the sender, message content, budget and consent process.
+- Keep email delivery disabled until the office has approved the sender and message content. SMS is not part of this release.
 - Use a controlled test mailbox/authorized test phone before enabling live notifications. A `Queued` notification is not proof of delivery; verify provider delivery status and failure handling.
 - Keep WebDAV/cloud backup credentials in the ignored private configuration, use HTTPS and a dedicated app password. Verify the uploaded archive exists and is downloadable.
 - Keep certificate wording, fee schedules, Chairman signature and effective dates aligned with written office approval. Do not treat the current PDF's draft warning as approval of the official form.
@@ -102,7 +102,7 @@ Record a named tester, date/time, build commit and evidence for every test:
 - [ ] Document request, requirements, automatic draft generation, Staff/Admin PDF preview, final release, O.R./cash ledger and resident tracking privacy.
 - [ ] Venue availability, overlapping-booking prevention, staff override and reservation notifications.
 - [ ] Separate queue types, issue/call/serve/skip/cancel, kiosk touch targets, display and QR entry.
-- [ ] Email/SMS controlled delivery, queued-vs-delivered state and failure fallback (if enabled).
+- [ ] Email controlled delivery, queued-vs-delivered state and failure handling.
 - [ ] Certificate printed on the actual office printer; wording, signature, margins, QR/reference and paper stock approved.
 - [ ] Full-system backup and scratch restore completed; all private files and DB references verified.
 - [ ] Representative-data performance and concurrent-user test; LAN outage/restart recovery; power-loss recovery.
