@@ -197,7 +197,7 @@ function current_page_help(): ?array
                     'Use the reservation tracker to review submitted and approved bookings.',
                     'Refer reservation changes or room-status updates to the Secretary or Staff.',
                 ], 'Chairman access is read-only for room and reservation information.')),
-        'blotters/hearings.php' => in_array($role, ['admin', 'secretary'], true)
+        'blotters/hearings.php' => $role === 'secretary'
             ? $general('Manage hearing schedules and record outcomes for assigned blotter cases.', [
                 'Open the related case and confirm the parties before scheduling.',
                 'Enter the confirmed date, time and venue for the hearing.',
