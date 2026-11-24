@@ -109,10 +109,6 @@ function kiosk_verification_channel(bool $emailEnabled): ?string
 function kiosk_mask_destination(string $channel, string $destination): string
 {
     $destination = trim($destination);
-    if ($channel === 'sms') {
-        $digits = preg_replace('/\D/', '', $destination) ?? '';
-        return $digits === '' ? 'mobile number' : '••••••' . substr($digits, -4);
-    }
     $parts = explode('@', $destination, 2);
     if (count($parts) !== 2) { return 'email address'; }
     $name = $parts[0];
