@@ -12,7 +12,7 @@ function run_b22(array $S, string $base): void
     $purokLabel = 'ZZ B22 Notification Purok';
     $venueName = 'ZZ B22 Notification Venue';
     $email = 'b22-queue-choice@example.test';
-    $phone = '09179992222';
+    $phone = sprintf('0917%07d', random_int(0, 9999999));
     $residentId = null;
     $secondResidentId = null;
     $secondResidentNo = $residentNo . '-NEXT';
