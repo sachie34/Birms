@@ -4,7 +4,9 @@
 **Repository:** `sachie34/Birms`
 **Working branch:** `john/msit-srs-compliance`
 **Baseline:** current `main` branch
-**Purpose:** Use the revised SRS as the acceptance baseline for all future BIRMS changes. This plan is not evidence that the listed features have already been implemented.
+**Purpose:** Use the revised SRS as the acceptance baseline for all BIRMS changes. This document records the original compliance plan and implementation phases; it is not evidence that every listed feature is already implemented.
+
+> **Current implementation pointer (2026-11-24):** the revised demonstration candidate is `john/phase2-kiosk-no-sms` (draft PR #39), not this plan's original working branch `john/msit-srs-compliance`. The current candidate is email-only (SMS workflows removed), uses Chairman read-only / Secretary requirements review and venue-availability control / Staff final decisions and service operations / Admin technical administration, and passed exact-head CI run [#1277](https://github.com/sachie34/Birms/actions/runs/45373724774). Use [the current quick workflow](QUICK_USER_WORKFLOW.md) and [XAMPP acceptance runbook](MSIT_XAMPP_ACCEPTANCE_RUNBOOK.md) for current roles and manual acceptance gates.
 
 ## 1. Source-of-truth rule
 
