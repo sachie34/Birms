@@ -393,7 +393,7 @@ function msit_demo_apply(): array
             'purpose' => '[DEMO ONLY] Software demonstration', 'date_issued' => date('j F Y'),
             'barangay' => setting('barangay_name', 'Wawa'), 'municipality' => setting('municipality', 'Balagtas'),
             'province' => setting('province', 'Bulacan'), 'reference_no' => $draftReference,
-            'captain_name' => '', 'document_name' => 'DEMO ONLY - Certificate of Residency',
+            'captain_name' => (string) setting('captain_name', 'Demo Captain'), 'document_name' => 'DEMO ONLY - Certificate of Residency',
             'day_ordinal' => date('jS'), 'month_year' => date('F Y'),
         ]);
         db_exec(
@@ -401,10 +401,10 @@ function msit_demo_apply(): array
              (request_id, resident_id, type_id, request_reference_no, certificate_reference_no, resident_name, type_name,
               purpose, fee_amount, body_text, captain_name, signature_text, chairman_signature_path, generated_by,
               generated_by_name, generated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, NULL, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, ?, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
             [$requestIds[1], $residents[1], $typeIds[1], 'DEMO-DOC-READY-01', $draftReference,
              $firstNames[1] . ' ' . $lastNames[1], 'DEMO ONLY - Certificate of Residency',
-             '[DEMO ONLY] Software demonstration', $draftBody]
+             '[DEMO ONLY] Software demonstration', $draftBody, (string) setting('captain_name', 'Demo Captain')]
         );
 
         $issuedReference = msit_demo_unique_certificate_reference((int) substr($draftReference, strrpos($draftReference, '-') + 1) + 1);
@@ -414,17 +414,17 @@ function msit_demo_apply(): array
             'purpose' => '[DEMO ONLY] Previously issued sample', 'date_issued' => date('j F Y'),
             'barangay' => setting('barangay_name', 'Wawa'), 'municipality' => setting('municipality', 'Balagtas'),
             'province' => setting('province', 'Bulacan'), 'reference_no' => $issuedReference,
-            'captain_name' => '', 'document_name' => 'DEMO ONLY - Barangay Clearance',
+            'captain_name' => (string) setting('captain_name', 'Demo Captain'), 'document_name' => 'DEMO ONLY - Barangay Clearance',
             'day_ordinal' => date('jS'), 'month_year' => date('F Y'),
         ]);
         db_exec(
             'INSERT INTO issuances
              (reference_no, request_id, resident_id, type_id, resident_name, type_name, purpose, fee_amount, or_number,
               body_text, captain_name, signature_text, chairman_signature_path, issued_by, issued_by_name, issued_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, NULL, ?, NULL, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, NULL, ?, ?, NULL, NULL, NULL, \'DEMO DATA\', NOW())',
             [$issuedReference, $requestIds[3], $residents[3], $typeIds[0],
              $firstNames[3] . ' ' . $lastNames[3], 'DEMO ONLY - Barangay Clearance',
-             '[DEMO ONLY] Previously issued sample', $issuedBody]
+             '[DEMO ONLY] Previously issued sample', $issuedBody, (string) setting('captain_name', 'Demo Captain')]
         );
 
         $venues = [];
@@ -517,6 +517,8 @@ function msit_demo_apply(): array
                 [$next, $service, $queueDate]
             );
         }
+
+        msit_demo_sync_demo_queue_counters();
 
         audit('msit_demo_data_seeded', 'Demo Data', 'Success',
             'Created clearly labelled fictitious MSIT demonstration records: residents, document templates/requests, certificate draft/history, blotter cases, venues, reservations and queue tickets.');
