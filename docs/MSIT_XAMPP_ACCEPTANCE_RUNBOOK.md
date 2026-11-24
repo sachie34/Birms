@@ -32,16 +32,19 @@ As of 19 November 2026, the application guard requires these stable/security-pat
 - PHP 8.3.37 or later within 8.3
 - PHP 8.2.36 or later only through 31 December 2026; PHP 8.2 must be upgraded before that date
 
-PHP 8.1 and older are rejected. Prefer a current supported branch; PHP 8.6.0 is stable, but this repository's automated matrix has not yet tested PHP 8.6, so verify it separately before adopting it on the XAMPP target. The PHP team published the listed security updates and the first stable PHP 8.6.0 on 19 November 2026. See the [official PHP supported versions](https://www.php.net/supported-versions.php) and [PHP 2026 security release archive](https://www.php.net/archive/2026.php).
+PHP 8.1 and older are rejected. Prefer a current supported branch. The repository CI matrix now exercises PHP 8.3, 8.4, 8.5 and 8.6 against MariaDB 10.4 and 10.11; this does not replace checking the actual Apache PHP binary on the target XAMPP PC. The PHP team published the listed security updates and the first stable PHP 8.6.0 on 19 November 2026. See the [official PHP supported versions](https://www.php.net/supported-versions.php) and [PHP 2026 security release archive](https://www.php.net/archive/2026.php).
 
-Open Command Prompt and run from the MSIT branch folder:
+Open Command Prompt and set these paths for your XAMPP installation. Keep using the **same Command Prompt window** for the commands in the following sections. Change `XAMPP_ROOT` only if you installed XAMPP somewhere else:
 
 ```bat
-cd /d C:\xampp\htdocs\Birms-main
-C:\xampp\php\php.exe -v
-C:\xampp\php\php.exe tools\check_php_includes.php
-C:\xampp\php\php.exe tools\setup_xampp.php --check
-C:\xampp\php\php.exe -m | findstr /I "zip"
+set "XAMPP_ROOT=C:\xampp837"
+set "PROJECT_ROOT=%XAMPP_ROOT%\htdocs\Birms-main"
+set "PHP=%XAMPP_ROOT%\php\php.exe"
+cd /d "%PROJECT_ROOT%"
+"%PHP%" -v
+"%PHP%" tools\check_php_includes.php
+"%PHP%" tools\setup_xampp.php --check
+"%PHP%" -m | findstr /I "pdo_mysql fileinfo zip"
 ```
 
 The setup preflight requires `pdo_mysql`, `fileinfo` and `zip`, and checks that migration 019 is present in the source folder. If this check fails, do not proceed with a mixed or incomplete project copy.
@@ -66,8 +69,8 @@ A PHP runtime guard cannot patch an old PHP binary. Install an updated supported
 First inspect the configured database name in the private local config. Then run:
 
 ```bat
-C:\xampp\php\php.exe tools\migrate.php status
-C:\xampp\php\php.exe tools\schema_check.php
+%PHP% tools\migrate.php status
+%PHP% tools\schema_check.php
 ```
 
 The status command is read-only. If there are pending migrations, back up `barangay_db_work` and restore that backup to a separate scratch database before rehearsing the upgrade.
@@ -86,8 +89,8 @@ If it returns rows, stop. Have the records reviewed and resolved by an authorize
 Once the working-copy backup and duplicate check are complete, apply pending migrations:
 
 ```bat
-C:\xampp\php\php.exe tools\migrate.php up
-C:\xampp\php\php.exe tools\schema_check.php
+%PHP% tools\migrate.php up
+%PHP% tools\schema_check.php
 ```
 
 The schema checker should report no differences. If migrations or the schema check fail, retain the complete output and stop; do not continue with role or kiosk tests on a partially migrated database.
@@ -103,7 +106,7 @@ mkdir test-reports
 Run the security/authentication/audit suite, including the Apache private-folder check:
 
 ```bat
-C:\xampp\php\php.exe tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main > test-reports\security-tests.log 2>&1
+%PHP% tests\run_tests.php http://localhost/Birms-main/public --root=http://localhost/Birms-main > test-reports\security-tests.log 2>&1
 set SECURITY_EXIT=%ERRORLEVEL%
 type test-reports\security-tests.log
 echo Security test exit code: %SECURITY_EXIT%
@@ -112,7 +115,7 @@ echo Security test exit code: %SECURITY_EXIT%
 Then run all module integration tests:
 
 ```bat
-C:\xampp\php\php.exe tests\run_modules.php http://localhost/Birms-main/public > test-reports\module-tests.log 2>&1
+%PHP% tests\run_modules.php http://localhost/Birms-main/public > test-reports\module-tests.log 2>&1
 set MODULE_EXIT=%ERRORLEVEL%
 type test-reports\module-tests.log
 echo Module test exit code: %MODULE_EXIT%
@@ -200,13 +203,13 @@ Use the isolated working database only. The seeder refuses database names that d
 From the BIRMS project folder, first review the read-only plan:
 
 ~~~bat
-C:\xampp\php\php.exe tools\seed_msit_demo_data.php
+%PHP% tools\seed_msit_demo_data.php
 ~~~
 
 If the target shown is barangay_db_work and the plan is correct, insert the synthetic presentation records:
 
 ~~~bat
-C:\xampp\php\php.exe tools\seed_msit_demo_data.php --apply
+%PHP% tools\seed_msit_demo_data.php --apply
 ~~~
 
 The seeder is idempotent: running it again after a complete seed reports that the demo data is already present. If it finds a partial reserved demo set, it refuses to add more rows rather than guessing how to repair it.
