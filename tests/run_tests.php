@@ -46,6 +46,11 @@ $chairmanWrites = array_values(array_filter($map['captain'] ?? [], static fn(str
 $rolePolicyOk = array_keys($map) === ['admin', 'captain', 'secretary', 'clerk']
     && role_can('admin', 'users.manage') && role_can('admin', 'settings.edit')
     && role_can('admin', 'backup.run') && role_can('admin', 'audit.export')
+    && role_can('admin', 'venues.configure') && !role_can('admin', 'venues.manage')
+    && !role_can('admin', 'venues.approve') && !role_can('admin', 'requests.approve')
+    && !role_can('admin', 'certificates.issue') && !role_can('admin', 'queue.manage')
+    && !role_can('admin', 'blotters.add') && !role_can('admin', 'hearings.add')
+    && !role_can('admin', 'blotter_requests.review') && !role_can('admin', 'cash_ledger.manage')
     && role_can('captain', 'reports.view') && role_can('captain', 'cash_ledger.view') && !$chairmanWrites
     && role_can('secretary', 'documents.templates.manage') && role_can('secretary', 'requests.review')
     && role_can('secretary', 'blotters.edit') && role_can('secretary', 'venues.availability.manage')
