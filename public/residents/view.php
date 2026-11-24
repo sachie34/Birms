@@ -61,7 +61,6 @@ $row = static fn(string $label, string $value) => '<tr><th class="text-muted fw-
         <?= $row('Resident type', e((string) ($r['resident_type'] ?? 'Not set'))) ?>
         <?= $row('Mobile number', e((string) ($r['contact_number'] ?? '—'))) ?>
         <?= $row('Email address', e((string) ($r['email_address'] ?? '—'))) ?>
-        <?= $row('Notification preference', e(ucfirst((string) ($r['notification_preference'] ?? 'email')))) ?>
         <?= $row('Registered', e(fmt_dt((string) $r['created_at']))) ?>
       </tbody></table>
     </div></div>
