@@ -90,6 +90,37 @@ function run_b22(array $S, string $base): void
             . '; reservation=' . (string) db_val('SELECT status FROM venue_reservations WHERE reservation_id = ?', [$secretaryReservation['reservation_id']])
         );
 
+        // Venue directory management and availability override are separate duties.
+        // Admin and Staff can manage venue records/reservations, but only Secretary can
+        // set the manual red/green override. The page must not display an unusable control.
+        $adminVenuePage = $S['admin']->get('/venues/index.php');
+        $staffVenuePage = $S['clerk']->get('/venues/index.php');
+        $adminOverride = post_as($S['admin'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'available',
+        ]);
+        $staffOverride = post_as($S['clerk'], '/venues/index.php', '/venues/action.php', [
+            'do' => 'override', 'venue_id' => (string) $venueId, 'override' => 'available',
+        ]);
+        $adminStaffOverrideBoundary = $adminVenuePage['status'] === 200
+            && str_contains($adminVenuePage['body'], 'Add a venue')
+            && !str_contains($adminVenuePage['body'], 'name="do" value="override"')
+            && $staffVenuePage['status'] === 200
+            && str_contains($staffVenuePage['body'], 'Add a venue')
+            && !str_contains($staffVenuePage['body'], 'name="do" value="override"')
+            && $adminOverride['status'] === 403
+            && $staffOverride['status'] === 403
+            && db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId]) === 'in_use';
+        record(
+            'B22-22',
+            'Admin and Staff can manage venue records but only Secretary sees and can save the manual availability override',
+            $adminStaffOverrideBoundary,
+            'admin-page=' . $adminVenuePage['status']
+            . '; staff-page=' . $staffVenuePage['status']
+            . '; admin-override=' . $adminOverride['status']
+            . '; staff-override=' . $staffOverride['status']
+            . '; saved-state=' . (string) db_val('SELECT availability_override FROM venues WHERE venue_id = ?', [$venueId])
+        );
+
         // The shared QR must show the service menu before identity verification.
         $publicKiosk = new Http($base);
         $publicHome = $publicKiosk->get('/kiosk/index.php');
