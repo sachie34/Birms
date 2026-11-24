@@ -180,7 +180,13 @@ function kiosk_send_verification_code(array $resident): array
         $_SESSION['kiosk_challenge_token'] = $token;
         return ['ok' => true, 'channel' => 'email', 'destination' => kiosk_mask_destination($email)];
     }
-    db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
+    try {
+        db_exec('UPDATE resident_verification_challenges SET consumed_at = NOW() WHERE challenge_id = ?', [$challengeId]);
+    } catch (Throwable $consumeError) {
+        error_log('BIRMS kiosk verification challenge cleanup failed for resident #' . $residentId . ': ' . get_class($consumeError));
+        audit_best_effort('resident_verification_cleanup_failed', 'Security', 'Failed',
+            'A failed kiosk verification challenge could not be marked consumed; it remains inaccessible and will expire automatically.');
+    }
     return ['ok' => false, 'message' => 'The verification email could not be sent. Use your Resident ID and birthdate, or ask Staff for help.'];
 }
 
