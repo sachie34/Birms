@@ -590,10 +590,22 @@ try {
         msit_demo_out('Status: complete demo dataset already exists. No changes needed.');
         exit(0);
     }
+    if (msit_demo_legacy_seed_is_complete($counts)) {
+        msit_demo_out('Status: the earlier complete demo dataset exists; a safe workflow upgrade can add the missing resident blotter intake, Secretary hearing/summons example and queue-counter synchronization.');
+        if (!in_array('--apply', $argv, true)) {
+            msit_demo_out('Read-only plan: add 3 DEMO ONLY resident blotter intake states (Pending, Accepted, Rejected), 1 scheduled Secretary hearing with DEMO ONLY summons text, fill only blank demo-name settings, refresh only the exact DEMO ONLY certificate templates, and synchronize queue counters.');
+            msit_demo_out('Nothing was changed. Re-run with --apply to apply this safe upgrade.');
+            exit(0);
+        }
+        $upgrade = msit_demo_upgrade_existing_seed();
+        msit_demo_out($upgrade['already_seeded'] ? 'Workflow demo examples already exist; no changes made.' : 'Demo workflow upgrade applied successfully.');
+        foreach ($upgrade['counts'] as $name => $count) { msit_demo_out('  ' . str_pad($name, 16) . ': ' . $count); }
+        exit(0);
+    }
     if (msit_demo_has_markers($counts)) {
         msit_demo_fail('partial reserved DEMO records exist. No rows were changed; inspect the working database before retrying.');
     }
-    msit_demo_out('Read-only plan: add 6 fictitious residents, 3 DEMO ONLY certificate templates, 4 document requests (including one releasable draft and one issued history item), 3 blotter cases, 2 demo venues, 2 reservations and 3 queue tickets.');
+    msit_demo_out('Read-only plan: add 6 fictitious residents, 3 DEMO ONLY certificate templates, 4 document requests (including one releasable draft and one issued history item), 3 official demo blotter cases, 3 resident blotter intake states, 1 Secretary-managed hearing and DEMO ONLY summons wording, 2 demo venues, 2 reservations and 3 queue tickets with synchronized counters.');
     if (!in_array('--apply', $argv, true)) {
         msit_demo_out('Nothing was inserted. Re-run with --apply to create the demo data.');
         exit(0);
