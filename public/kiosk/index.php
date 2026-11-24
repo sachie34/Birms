@@ -15,11 +15,23 @@ if ($resident !== null) {
         . '<p>Resident ID: <strong>' . e((string) $resident['resident_no']) . '</strong> · Purok: <strong>' . e($purok) . '</strong></p>'
         . '<div class="kiosk-grid">'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/queue.php')) . '"><span class="kiosk-icon">#</span><strong>Get a queue number</strong><small>Blotter · Documents · Venue</small></a>'
-        . '<a class="kiosk-action" href="' . e(base_url('kiosk/request.php')) . '"><span class="kiosk-icon">▤</span><strong>Request a document</strong><small>Submit a new request</small></a>'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/blotter.php')) . '"><span class="kiosk-icon">!</span><strong>File a blotter report</strong><small>Report an incident</small></a>'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/venue.php')) . '"><span class="kiosk-icon">⌂</span><strong>Reserve a venue</strong><small>Check available venues</small></a>'
         . '<a class="kiosk-action" href="' . e(base_url('kiosk/status.php')) . '"><span class="kiosk-icon">✓</span><strong>Check request status</strong><small>Use your reference number</small></a>'
-        . '</div><form method="post" action="' . e(base_url('kiosk/end.php')) . '">' . csrf_field() . '<button class="kiosk-secondary" type="submit">End session</button></form></section>';
+        . '</div>';
+    if ($documentTypes) {
+        echo '<h2 class="kiosk-form-section-title">Choose a document</h2><div class="kiosk-grid">';
+        foreach ($documentTypes as $documentType) {
+            echo '<a class="kiosk-action" href="' . e(base_url('kiosk/request.php?type_id=' . (int) $documentType['type_id'])) . '">'
+                . '<span class="kiosk-icon">▤</span><strong>Get ' . e((string) $documentType['name']) . '</strong>'
+                . '<small>Request this document</small></a>';
+        }
+        echo '</div>';
+    } else {
+        echo '<p class="kiosk-helper">No document types are available right now. Please ask Staff for help.</p>';
+    }
+    echo '<form method="post" action="' . e(base_url('kiosk/end.php')) . '">' . csrf_field()
+        . '<button class="kiosk-secondary" type="submit">End session</button></form></section>';
 } else {
     echo '<section class="kiosk-card"><p class="kiosk-eyebrow">RESIDENT IDENTITY CHECK</p>'
         . '<h2>How would you like to verify?</h2>'
