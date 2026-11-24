@@ -5,7 +5,7 @@
 **Pull request:** [#39 — QR kiosk and email-only workflow](https://github.com/sachie34/Birms/pull/39)  
 **Controlling requirements:** `BRMS_SRS_Revised.docx` (revised MSIT SRS)
 
-> This runbook describes the revised MSIT candidate, not the older B1–B12 `main` build. Download the [validated candidate ZIP](https://github.com/sachie34/Birms/archive/refs/heads/john/phase2-kiosk-no-sms.zip), not the `main` ZIP or the earlier `john/msit-srs-compliance` snapshot.
+> This runbook describes the revised MSIT candidate, not the older B1–B12 `main` build. Download the [email-only follow-up ZIP](https://github.com/sachie34/Birms/archive/refs/heads/codex/email-only-failure-safety.zip) only after its exact-head CI passes; do not use the older base ZIP because it does not contain migration 022.
 >
 > Baseline candidate commit a09e9c2b7725ee6f1c2a9f3f2085fd8ec3128486 was covered by GitHub Actions run [#1309](https://github.com/sachie34/Birms/actions/runs/45377461100): 8 PHP/MariaDB jobs passed, each with 48/48 security checks and 283/283 module checks. The follow-up branch `codex/email-only-failure-safety` adds email-only preference migration 022, removes channel selectors, and hardens email/OTP failure handling. Those follow-up changes are **NOT VERIFIED until their own exact-head CI run passes**. This is hosted CI evidence only; complete the target-PC checks below before calling local acceptance PASS.
 >
