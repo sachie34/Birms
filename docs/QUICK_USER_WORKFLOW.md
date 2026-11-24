@@ -6,18 +6,18 @@ This guide follows the current `john/msit-srs-compliance` branch. The revised MS
 
 Residents use the shared **Resident Request QR** or the touchscreen kiosk. The QR is a shared entry point; it must not contain a resident's personal information.
 
-1. Open the kiosk and choose **Continue**.
+1. Scan the shared QR code or open the kiosk. Choose the service you need from the menu before verifying your identity.
 2. Verify your identity:
    - Preferred: enter your **Resident ID** and **birthdate**.
-   - If you do not know your Resident ID: enter your first name, last name and birthdate. BIRMS sends a one-time code to the contact channel registered on your resident record.
-   - If you have no registered email/mobile contact, or the details cannot be verified, ask Staff to verify you at the counter. Do not keep guessing.
+   - If you do not know your Resident ID: enter your first name, last name and birthdate. BIRMS sends a one-time code to the email address registered on your resident record.
+   - If you do not have a registered email address for the one-time code, use your Resident ID and birthdate or ask Staff to verify you at the counter. Do not keep guessing.
 3. After verification, choose the service you need:
    - **Request a document**
    - **File a blotter report**
    - **Reserve a venue**
    - **Get a queue number**
    - **Check request status**
-4. When asked, choose how to receive updates: **Email**, **SMS**, or **Both**. Email is the default. SMS is optional; if SMS cannot be used and an email address is available, BIRMS records/queues the email fallback. A queued message is not proof that it reached the resident.
+4. Resident notifications use **Email only**. If no valid email address is recorded, the request is still saved and the resident can use the printed reference number and public status tracker.
 5. Keep the printed or displayed **reference number** and queue ticket. Use the reference number to check progress later.
 
 The kiosk is for residents only. It is separate from the staff/admin portal. End the kiosk session when finished; the kiosk also has an inactivity reset.
@@ -42,7 +42,7 @@ The document workflow has visible handoffs. The resident keeps the reference num
 1. Tap **Request a document**.
 2. Choose the document type.
 3. Enter the purpose clearly.
-4. Select Email, SMS or Both for notifications.
+4. Confirm the email-only notification option.
 5. Submit once. Wait for the receipt; do not submit repeatedly if the page takes time.
 6. Keep the reference number and Documents queue ticket.
 7. Use **Check request status** to see the latest public status. If the office needs more information, follow the instruction given by Staff.
@@ -81,10 +81,10 @@ A queue ticket is not the same as approval of a document, blotter report or venu
 ## 5. Venue reservation lifecycle
 
 1. Resident verifies identity and chooses **Reserve a venue**.
-2. Select the venue, date, start/end time and purpose; select a notification preference.
+2. Select the venue, date, start/end time and purpose. Email is the only notification channel.
 3. Submit and keep the reservation reference and Venue queue ticket.
 4. Staff/Admin reviews the reservation and approves or rejects it. A pending or approved reservation blocks overlapping requests for the same venue/time. The system rechecks conflicts when approving.
-5. The venue board shows **Green / Available** or **Red / In Use**. Staff override is an authorized operational action and should be used only when the actual venue condition requires it.
+5. The venue board shows **Available** or **In Use**. The Secretary can change room availability for blotter/hearing arrangements; Staff/Admin handle reservation decisions.
 6. An approved reservation can be marked Completed after use. Residents can check the reference status.
 
 ## 6. Staff workspace: where to go
@@ -112,7 +112,7 @@ These are the permissions currently enforced by the branch, not a substitute for
 |---|---|
 | **Admin** | Full defined access: accounts, settings, resident management, requests/review/decisions, certificates, blotter, venues, queues, reports, audit and backup. |
 | **Chairman** | Read-only access to permitted resident/request/case/venue/queue/report and history views. Cannot perform operational edits, approvals, queue actions or certificate issuance. The stored Chairman signature is applied by the system to eligible certificates; the Chairman does not need an operational login action to sign each request. |
-| **Secretary** | View resident records; intake/edit document requests and complete requirements review; work on permitted blotter/hearing records; view/export reports. Cannot make the final document decision, issue certificates or manage service queues under the current permission map. |
+| **Secretary** | View resident records; intake/edit document requests and complete requirements review; work on permitted blotter/hearing records; change venue-room availability for blotter/hearing arrangements; view/export reports. Cannot make the final document decision, issue certificates or manage service queues under the current permission map. |
 | **Staff** | View resident records; intake/edit requests and make final decisions after requirements review; issue/print certificates; review resident blotter submissions; manage venue reservations and service queues; use the Admin/Staff All Services Tracker. Cannot manage accounts or system settings. |
 | **Resident** | Resident-only kiosk and shared QR services: document requests, blotter submissions, venue reservations, queue tickets and reference-status checks. No access to the staff/admin portal. |
 
@@ -134,7 +134,7 @@ Before real use, Admin/system owner must configure and verify:
 - Venue list, operating rules and authorized staff.
 - Chairman signature image and approved certificate wording/layout.
 - Official fees and receipt/OR procedures, where applicable.
-- Email sender and optional SMS provider. Test delivery with an authorized test account/number.
+- Email sender and server mail transport. Test delivery with an authorized test account.
 - User accounts and the approved role-permission matrix.
 - Backups and a safe restore procedure.
 
@@ -148,11 +148,11 @@ The repository currently documents local SQL backup and optional remote WebDAV u
 - **A venue cannot be booked:** choose another time; a Pending or Approved booking may already reserve that slot.
 - **A queue ticket is not called:** watch the public display and ask Staff; do not create repeated tickets.
 - **A menu or action is unavailable:** the current account may not have that permission. Ask Admin; never share credentials or bypass access checks.
-- **Notification says queued/pending:** queued is not the same as delivered. Confirm email/SMS delivery through the configured provider.
+- **Notification says queued/pending:** queued is not the same as delivered. Confirm email delivery through the configured mail transport.
 - **Reference number is not found:** recheck the printed number and ask Staff if it still cannot be found.
 
 ## 11. Test and deployment boundary
 
 Use only fictitious demo records on a disposable `*_work` or `*_test` database for development and presentation testing. Do not test against the original or production barangay database.
 
-Passing GitHub Actions validates automated checks against disposable CI databases. It does not prove that the target XAMPP PC, Apache PHP runtime, barangay LAN, phone QR scan, physical kiosk/touchscreen, printer, real email/SMS delivery, official signature/template, backup restoration or office user acceptance has passed. Record those manual results before declaring the system production-ready or MSIT-compliant.
+Passing GitHub Actions validates automated checks against disposable CI databases. It does not prove that the target XAMPP PC, Apache PHP runtime, barangay LAN, phone QR scan, physical kiosk/touchscreen, printer, real email delivery, official signature/template, backup restoration or office user acceptance has passed. Record those manual results before declaring the system production-ready or MSIT-compliant.
