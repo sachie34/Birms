@@ -5,7 +5,6 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 $resident = kiosk_require_resident();
 $types = db_all('SELECT type_id, name FROM document_types WHERE is_active = 1 ORDER BY sort_order, name');
 $errors = [];
-$selectedNotificationPreference = queue_resolve_notification_preference(null, (string) ($resident['notification_preference'] ?? 'email'));
 
 if (is_post()) {
     require_csrf();
@@ -13,16 +12,12 @@ if (is_post()) {
         'Too many document requests were submitted from this resident session. Please ask Staff for help.');
     $typeId = post_int('type_id');
     $purpose = post_str('purpose');
-    $requestedPreference = post_str('notification_preference');
-    if ($requestedPreference !== '' && queue_valid_notification_preference($requestedPreference)) {
-        $selectedNotificationPreference = $requestedPreference;
-    }
     $type = $typeId ? db_one('SELECT type_id, name FROM document_types WHERE type_id = ? AND is_active = 1', [$typeId]) : null;
     if ($type === null) { $errors[] = 'Choose an available document type.'; }
     if (!v_len($purpose, 3, 255)) { $errors[] = 'Purpose must be 3-255 characters.'; }
     if (!$errors) {
         try {
-            $result = db_transaction(function () use ($resident, $type, $purpose, $requestedPreference): array {
+            $result = db_transaction(function () use ($resident, $type, $purpose): array {
                 $reference = new_request_reference();
                 db_exec(
                     "INSERT INTO document_requests
@@ -38,8 +33,7 @@ if (is_post()) {
                     [$reference, $requestId]
                 );
                 audit('request_created', 'Requests', 'Success', $reference . ' submitted through the resident kiosk.', 'request', $requestId, 'resident-kiosk', null);
-                $ticket = queue_issue_number('Documents', (int) $resident['resident_id'], $reference, 'kiosk', $purpose,
-                    $requestedPreference !== '' ? $requestedPreference : null, true);
+                $ticket = queue_issue_number('Documents', (int) $resident['resident_id'], $reference, 'kiosk', $purpose, true);
                 return ['request_id' => $requestId, 'reference_no' => $reference, 'ticket' => $ticket];
             });
             queue_notify_ticket_issued((int) $result['ticket']['queue_id']);
@@ -59,9 +53,6 @@ echo '<section class="kiosk-card"><form method="post" action="' . e(base_url('ki
     . '<div class="kiosk-field"><label for="type_id">Document type</label><select id="type_id" name="type_id" required><option value="">Choose a document</option>';
 foreach ($types as $type) { echo '<option value="' . (int) $type['type_id'] . '">' . e((string) $type['name']) . '</option>'; }
 echo '</select></div><div class="kiosk-field"><label for="purpose">Purpose</label><textarea id="purpose" name="purpose" maxlength="255" rows="3" required></textarea></div>'
-    . '<div class="kiosk-field"><label for="notification_preference">How should we notify you?</label><select id="notification_preference" name="notification_preference" required>'
-    . queue_notification_preference_options($selectedNotificationPreference)
-    . '</select><p class="kiosk-helper">Email is the default. If SMS is unavailable, BIRMS will use your registered email when available. Watch the queue display too.</p></div>'
     . '<button class="kiosk-primary" type="submit">Submit document request</button></form>'
     . '<a class="kiosk-secondary-link" href="' . e(base_url('kiosk/index.php')) . '">Back to home</a></section>';
 kiosk_page_end();
