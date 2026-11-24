@@ -74,6 +74,8 @@ C:\xampp\php\php.exe tools\schema_check.php
 
 The status command is read-only. If there are pending migrations, back up `barangay_db_work` and restore that backup to a separate scratch database before rehearsing the upgrade.
 
+**Migration 022 data note:** it changes any existing resident preference of `sms` or `both` to `email`, then restricts the active resident preference column to `ENUM('email')`. It does not delete historical SMS outbox rows or old queue-ticket preference snapshots. The down script widens the column again but cannot reconstruct the former resident preferences; take and retain a working-database backup before applying it.
+
 **Important migration 013 pre-check:** before applying the hearing uniqueness guard to an existing working database, run this query in phpMyAdmin against the working copy:
 
 ```sql
