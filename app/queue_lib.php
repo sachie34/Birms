@@ -15,12 +15,12 @@ function queue_valid_notification_preference(string $preference): bool
     return strtolower(trim($preference)) === 'email';
 }
 
-/** Legacy SMS/Both preferences are normalized to Email; new non-email choices are rejected. */
+/** Accept only the supported email notification preference. */
 function queue_resolve_notification_preference(?string $requested, ?string $fallback = 'email'): string
 {
     if ($requested === null || trim($requested) === '') { return 'email'; }
     if (strtolower(trim($requested)) !== 'email') {
-        throw new InvalidArgumentException('Only Email notifications are available. SMS notifications have been removed.');
+        throw new InvalidArgumentException('Only Email notifications are available.');
     }
     return 'email';
 }
