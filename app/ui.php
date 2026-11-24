@@ -180,17 +180,23 @@ function current_page_help(): ?array
                 'Open the public display when you need to show queue numbers to residents.',
                 'Refer issuing, calling or cancelling numbers to Staff or Administrator.',
             ], 'Chairman and Secretary have view-only access to queue management.'),
-        'venues/index.php' => (role_can($role, 'venues.availability.manage') || role_can($role, 'venues.manage'))
-            ? $general('Manage venue availability and process counter reservation requests.', [
-                'Check the availability board before recording a new reservation.',
-                'Enter the correct resident, venue, purpose, date and time range.',
-                'Review pending reservations and approve or reject them when authorized.',
-            ], 'Approved reservations prevent overlapping bookings; check the saved status after each action.')
-            : $general($role === 'secretary' ? 'Set each room to Available or In Use for blotter/hearing arrangements; reservation decisions remain with Staff.' : 'View venue availability and reservation statuses.', [
-                'Use the green/red availability board to check whether a venue is available.',
-                'Filter the reservation tracker by status or date.',
-                'Refer reservation changes or decisions to Staff or Administrator.',
-            ], 'Chairman and Secretary have view-only access to the venue tracker.'),
+        'venues/index.php' => $role === 'secretary'
+            ? $general('Set each room to Available or In Use for blotter/hearing arrangements; reservation decisions remain with Staff.', [
+                'Check the room on the availability board before a blotter or hearing is arranged.',
+                'Choose Automatic, Available or In Use for the correct room, then select Save status.',
+                'Leave reservation creation, approval, rejection and completion to Staff or Administrator.',
+            ], 'The Secretary can change room availability only. The Secretary cannot create or decide venue reservations.')
+            : ((role_can($role, 'venues.availability.manage') || role_can($role, 'venues.manage'))
+                ? $general('Manage venue availability and process counter reservation requests.', [
+                    'Check the availability board before recording a new reservation.',
+                    'Enter the correct resident, venue, purpose, date and time range.',
+                    'Review pending reservations and approve or reject them when authorized.',
+                ], 'Approved reservations prevent overlapping bookings; check the saved status after each action.')
+                : $general('View venue availability and reservation statuses.', [
+                    'Use the green/red availability board to check whether a venue is available.',
+                    'Filter the reservation tracker by status or date.',
+                    'Refer reservation changes or decisions to Staff or Administrator.',
+                ], 'Chairman has read-only access to venue availability and reservation statuses.')),
         'blotters/hearings.php' => in_array($role, ['admin', 'secretary'], true)
             ? $general('Manage hearing schedules and record outcomes for assigned blotter cases.', [
                 'Open the related case and confirm the parties before scheduling.',
