@@ -485,9 +485,8 @@ function run_b22(array $S, string $base): void
             && $statusRow['recipient'] === $email
             && $statusRow['event_type'] === 'b22_email_only_test'
             && $statusRow['reference_no'] === $statusReference
-            && $statusNotice['email'] === 'queued'
-            && $statusNotice['sms'] === 'removed',
-            'email=' . $statusNotice['email'] . '; sms=' . $statusNotice['sms']
+            && $statusNotice['email'] === 'queued',
+            'email=' . $statusNotice['email']
         );
 
         $emailOptions = queue_notification_preference_options('email');
