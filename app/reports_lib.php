@@ -55,8 +55,7 @@ function report_demographics(): array
          LEFT JOIN households h ON h.household_id = r.household_id
          LEFT JOIN lookups pk ON pk.lookup_id = h.purok_id AND pk.list_key = 'purok'
          LEFT JOIN lookups emp ON emp.lookup_id = r.employment_status_id AND emp.list_key = 'employment_status'
-         WHERE r.archived_at IS NULL AND r.residency_status = 'Active'
-         ORDER BY r.resident_id"
+         WHERE r.archived_at IS NULL AND r.residency_status = 'Active'"
     );
     $data = [
         'total' => count($rows), 'age_brackets' => [], 'sex' => [], 'civil_status' => [],
